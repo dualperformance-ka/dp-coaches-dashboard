@@ -109,6 +109,12 @@ header{background:#0a0a0a;padding:0 18px;height:50px;display:flex;align-items:ce
 .mc-val{font-size:15px;font-weight:700;line-height:1}
 .mc-unit{font-family:var(--mono);font-size:8px;color:var(--dim)}
 
+/* ── Week badge ── */
+.card-head-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.week-badge{text-align:center;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);border-radius:8px;padding:5px 12px;flex-shrink:0}
+.wk-num{font-size:24px;font-weight:900;color:#fff;line-height:1;letter-spacing:-.01em}
+.wk-lbl{font-family:var(--mono);font-size:7px;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:.12em;margin-top:2px}
+
 /* ── Session count (no weekly) ── */
 .sess-row{display:flex;gap:8px;margin-bottom:4px}
 .scard{background:var(--surface2);border-radius:7px;padding:7px 11px;text-align:center}
@@ -270,6 +276,14 @@ function buildAthletes(weekly, sessions, body, nutrition) {
     if (!map[id]) map[id] = { id, weekly: null, body: [], nutrition: [], sessions: [] };
   }
 
+  // Count weekly check-ins per athlete to derive program week number
+  const weekCounts = {};
+  weekly.forEach(r => {
+    const id = nid(r.Name);
+    if (!id || !r['Week Ending']) return;
+    weekCounts[id] = (weekCounts[id] || 0) + 1;
+  });
+
   // Weekly — keep latest per athlete
   const wl = {};
   weekly.forEach(r => {
@@ -374,7 +388,7 @@ function buildAthletes(weekly, sessions, body, nutrition) {
     const wkEnd = w?.['Week Ending'] || '';
     const hasRecent = wkEnd >= dago(10).toISOString().split('T')[0];
 
-    return { ...a, bAvg, nAvg, runS, strS, flags, alertScore, hasRecent };
+    return { ...a, bAvg, nAvg, runS, strS, flags, alertScore, hasRecent, weekNum: weekCounts[a.id] || null };
   }).sort((a, b) => b.alertScore - a.alertScore);
 }
 
@@ -437,7 +451,7 @@ function buildCard(a) {
     const bad = v => v && !['n/a', '', 'none', 'nope', 'nothing', 'no'].includes((v || '').toLowerCase().trim());
 
     training = `<div class="sec">
-      <div class="sec-ttl">Training — Week ending ${esc(w['Week Ending'] || '?')}</div>
+      <div class="sec-ttl">${a.weekNum ? `Week ${a.weekNum} Training` : 'Training'} — ending ${esc(w['Week Ending'] || '?')}</div>
       <div class="tpair">
         <div class="tb">
           <div class="tt run">Run</div>
@@ -513,8 +527,13 @@ function buildCard(a) {
 
   return `<div class="card ${bcls}" data-card="${esc(a.id)}">
     <div class="card-head">
-      <div class="aname">${esc(a.id)}</div>
-      <div class="ameta ${!a.hasRecent ? 'nocheckin' : ''}">${metaText}</div>
+      <div class="card-head-top">
+        <div>
+          <div class="aname">${esc(a.id)}</div>
+          <div class="ameta ${!a.hasRecent ? 'nocheckin' : ''}">${metaText}</div>
+        </div>
+        ${a.weekNum ? `<div class="week-badge"><div class="wk-num">${a.weekNum}</div><div class="wk-lbl">Week</div></div>` : ''}
+      </div>
       ${a.flags.length ? `<div class="flags">${fps}</div>` : ''}
     </div>
     ${scores}${training}${bodyHtml}${nutrHtml}${sessHtml}
