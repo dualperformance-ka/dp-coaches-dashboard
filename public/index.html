@@ -327,11 +327,12 @@ function buildAthletes(weekly, sessions, body, nutrition, athleteDb = []) {
   });
 
   // Sessions — deduplicate at session+day level
+  // Only add to already-known athletes; never create entries from session Name field
+  // (session Name often contains workout text, not athlete names)
   const seen = new Set();
   sessions.forEach(r => {
     const id = sid(r);
-    if (!id) return;
-    ens(id);
+    if (!id || !map[id]) return;
     const ds = ((r.Date || r['Submitted At'] || r._createdTime || '')).split('T')[0];
     if (!ds || new Date(ds) < c14) return;
     const k = `${id}|${r.Session || ''}|${r['Session Category'] || ''}|${ds}`;
