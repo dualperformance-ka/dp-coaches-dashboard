@@ -286,9 +286,13 @@ function buildAthletes(weekly, sessions, body, nutrition, athleteDb = []) {
     if (code && sd) startDates[code] = sd;
   });
 
+  // Manual week overrides — remove once these athletes have a Start Date set
+  const WEEK_OVERRIDES = { 'KARL': 7, 'JACOB': 7, 'KHANG': 7 };
+
   // Calculate program week from start date
   // Week 0 = Discovery week (days 0–6), Week 1 = first full week, etc.
   function calcWeekNum(id) {
+    if (WEEK_OVERRIDES.hasOwnProperty(id)) return WEEK_OVERRIDES[id];
     const sd = startDates[id];
     if (!sd) return null;
     const diffDays = Math.floor((Date.now() - new Date(sd)) / 86400000);
