@@ -223,6 +223,12 @@ function esc(s) {
     .replace(/&/g, '&amp;').replace(/</g, '&lt;')
     .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
+function fmtDate(s) {
+  if (!s) return '';
+  const [y, m, d] = String(s).split('T')[0].split('-');
+  if (!y || !m || !d) return s;
+  return `${d}-${m}-${y}`;
+}
 
 // ── Fetch from our API proxy ──────────────────────────────────────────────────
 async function fetchDB(dbId) {
@@ -467,7 +473,7 @@ function buildCard(a) {
     const bad = v => v && !['n/a', '', 'none', 'nope', 'nothing', 'no'].includes((v || '').toLowerCase().trim());
 
     training = `<div class="sec">
-      <div class="sec-ttl">${a.weekNum !== null ? (a.weekNum === 0 ? 'Discovery Week Training' : `Week ${a.weekNum} Training`) : 'Training'} — ending ${esc(w['Week Ending'] || '?')}</div>
+      <div class="sec-ttl">${a.weekNum !== null ? (a.weekNum === 0 ? 'Discovery Week Training' : `Week ${a.weekNum} Training`) : 'Training'} — ending ${fmtDate(w['Week Ending']) || '?'}</div>
       <div class="tpair">
         <div class="tb">
           <div class="tt run">Run</div>
@@ -500,7 +506,7 @@ function buildCard(a) {
     bodyHtml = `<div class="sec">
       <div class="sec-ttl">Body — 7-day avg</div>
       <div class="body-grid">
-        ${a.bAvg.wt !== undefined ? `<div><div class="wnum">${esc(a.bAvg.wt)}<span class="wunit">kg</span></div><div class="wdate">${esc(a.bAvg.wtd || '')}</div></div>` : ''}
+        ${a.bAvg.wt !== undefined ? `<div><div class="wnum">${esc(a.bAvg.wt)}<span class="wunit">kg</span></div><div class="wdate">${fmtDate(a.bAvg.wtd)}</div></div>` : ''}
         <div class="bmet">
           ${[{l:'Sleep',v:a.bAvg.sleep},{l:'Energy',v:a.bAvg.energy},{l:'Stress',v:a.bAvg.stress},{l:'Sore',v:a.bAvg.soreness}].map(m =>
             `<div class="bm"><div class="bm-lbl">${m.l}</div><div class="bm-val">${m.v !== null ? m.v : '—'}</div></div>`).join('')}
@@ -537,8 +543,8 @@ function buildCard(a) {
   }
 
   const metaText = a.hasRecent
-    ? `Week ending ${esc(w?.['Week Ending'] || '')}`
-    : hW ? `Last check-in ${esc(w?.['Week Ending'] || '')}`
+    ? `Week ending ${fmtDate(w?.['Week Ending'])}`
+    : hW ? `Last check-in ${fmtDate(w?.['Week Ending'])}`
     : a.body.length ? 'Daily tracking only' : 'No recent data';
 
   return `<div class="card ${bcls}" data-card="${esc(a.id)}">
