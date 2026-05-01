@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Coaches Dashboard — Dual Performance</title>
+<style>
+:root{
+  --bg:#f4f3f0;--surface:#fff;--surface2:#f0ede8;
+  --border:rgba(0,0,0,.08);--border-mid:rgba(0,0,0,.14);
+  --text:#0a0a0a;--muted:#5a5a5a;--dim:#999;
+  --run:#b45309;--str:#1e3a8a;
+  --ok:#15803d;--warn:#d97706;--alert:#dc2626;
+  --mono:'SF Mono','Fira Code','Courier New',monospace;
+  --sans:system-ui,-apple-system,sans-serif;
+  --green-bg:#f0fdf4;--green-border:#86efac;--green-text:#15803d;
+  --amber-bg:#fffbeb;--amber-border:#fcd34d;--amber-text:#92400e;
+  --red-bg:#fef2f2;--red-border:#fca5a5;--red-text:#991b1b;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;line-height:1.5}
+
+/* ── Header ── */
+header{background:#0a0a0a;padding:0 18px;height:50px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;gap:12px}
+.logo{font-size:16px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;white-space:nowrap}
+.logo .d{color:#fff}.logo .p{color:rgba(255,255,255,.28)}
+.h-mid{font-family:var(--mono);font-size:9px;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:.12em;white-space:nowrap}
+.h-right{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.updated{font-family:var(--mono);font-size:9px;color:rgba(255,255,255,.28);white-space:nowrap}
+.refresh-btn{background:transparent;border:1px solid rgba(255,255,255,.18);color:rgba(255,255,255,.55);font-family:var(--mono);font-size:10px;padding:5px 12px;border-radius:6px;cursor:pointer;text-transform:uppercase;letter-spacing:.06em;transition:all .15s}
+.refresh-btn:hover{border-color:rgba(255,255,255,.4);color:#fff}
+.refresh-btn:disabled{opacity:.4;cursor:not-allowed}
+
+/* ── Layout ── */
+.main{padding:14px 14px 40px;max-width:1400px;margin:0 auto}
+
+/* ── Summary bar ── */
+.summary-bar{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+.sum-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 16px;min-width:100px}
+.sum-num{font-size:24px;font-weight:800;letter-spacing:-.01em;line-height:1;margin-bottom:1px}
+.sum-num.red{color:var(--alert)}.sum-num.grn{color:var(--ok)}.sum-num.run-c{color:var(--run)}
+.sum-lbl{font-family:var(--mono);font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em}
+
+/* ── States ── */
+.state-box{text-align:center;padding:60px 20px}
+.dots{display:flex;gap:6px;justify-content:center;margin-bottom:12px}
+.dot{width:7px;height:7px;border-radius:50%;background:#ccc;animation:blink 1.2s infinite}
+.dot:nth-child(2){animation-delay:.2s}.dot:nth-child(3){animation-delay:.4s}
+@keyframes blink{0%,100%{opacity:.2}50%{opacity:1}}
+.state-txt{font-family:var(--mono);font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em}
+
+/* ── Grid ── */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:11px}
+
+/* ── Card ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;display:flex;flex-direction:column}
+.card.red{border-color:rgba(220,38,38,.3)}.card.yellow{border-color:rgba(217,119,6,.25)}
+.card-head{background:#0a0a0a;padding:11px 14px 10px}
+.aname{font-size:22px;font-weight:900;letter-spacing:.05em;text-transform:uppercase;color:#fff;line-height:1}
+.ameta{font-family:var(--mono);font-size:8px;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:.08em;margin-top:3px}
+.ameta.nocheckin{color:rgba(248,113,113,.6)}
+.flags{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.fp{font-family:var(--mono);font-size:8px;padding:2px 7px;border-radius:20px;text-transform:uppercase;letter-spacing:.04em}
+.fp.red{background:rgba(248,113,113,.18);color:#fca5a5;border:1px solid rgba(248,113,113,.3)}
+.fp.yellow{background:rgba(251,191,36,.15);color:#f59e0b;border:1px solid rgba(251,191,36,.28)}
+.fp.green{background:rgba(74,222,128,.12);color:#059669;border:1px solid rgba(74,222,128,.22)}
+
+/* ── Scores row ── */
+.scores{display:flex;border-bottom:1px solid var(--border)}
+.sc{flex:1;padding:8px 3px;text-align:center;border-right:1px solid var(--border)}.sc:last-child{border-right:none}
+.sc-lbl{font-family:var(--mono);font-size:7px;color:var(--dim);text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px}
+.sc-val{font-size:17px;font-weight:800;line-height:1}
+.sc-val.good{color:var(--ok)}.sc-val.mid{color:var(--warn)}.sc-val.bad{color:var(--alert)}.sc-val.n{color:var(--text)}
+
+/* ── Sections ── */
+.sec{padding:10px 13px;border-bottom:1px solid var(--border)}.sec:last-child{border-bottom:none}
+.sec-ttl{font-family:var(--mono);font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.1em;margin-bottom:7px}
+
+/* ── Training ── */
+.tpair{display:flex;gap:7px}
+.tb{flex:1;background:var(--surface2);border-radius:8px;padding:8px 9px}
+.tt{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;margin-bottom:3px}
+.tt.run{color:var(--run)}.tt.str{color:var(--str)}
+.ts{font-family:var(--mono);font-size:9px;color:var(--muted);line-height:1.6}
+.ts strong{color:var(--text)}
+.pbar{height:3px;background:rgba(0,0,0,.08);border-radius:2px;overflow:hidden;margin:4px 0}
+.pfill{height:100%;border-radius:2px}.pfill.run{background:var(--run)}.pfill.str{background:var(--str)}
+.nl{font-size:11px;color:var(--muted);line-height:1.4;margin-top:3px}
+.nl-lbl{font-family:var(--mono);font-size:7px;color:var(--dim);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:1px}
+.nl.red{color:var(--alert)}
+.testim{font-size:11px;color:var(--muted);font-style:italic;line-height:1.4;padding:6px 9px;background:var(--surface2);border-radius:6px;border-left:2px solid rgba(0,0,0,.1);margin-top:6px}
+.impact{font-size:11px;color:#92400e;margin-top:5px;padding:4px 8px;background:#fffbeb;border-radius:5px;border-left:2px solid var(--warn)}
+
+/* ── Body ── */
+.body-grid{display:flex;align-items:flex-start;gap:14px}
+.wnum{font-size:26px;font-weight:800;line-height:1;letter-spacing:-.01em}
+.wunit{font-family:var(--mono);font-size:9px;color:var(--dim);margin-left:2px}
+.wdate{font-family:var(--mono);font-size:8px;color:var(--dim);margin-top:2px}
+.bmet{flex:1;display:flex;gap:8px}
+.bm{flex:1;text-align:center}
+.bm-lbl{font-family:var(--mono);font-size:7px;color:var(--dim);text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px}
+.bm-val{font-size:15px;font-weight:700}
+.bnote{font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:6px;border-left:2px solid var(--alert);padding-left:6px;line-height:1.4}
+
+/* ── Nutrition ── */
+.mrow{display:flex;gap:6px}
+.mc{flex:1;background:var(--surface2);border-radius:6px;padding:6px 8px;text-align:center}
+.mc-lbl{font-family:var(--mono);font-size:7px;color:var(--dim);text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px}
+.mc-val{font-size:15px;font-weight:700;line-height:1}
+.mc-unit{font-family:var(--mono);font-size:8px;color:var(--dim)}
+
+/* ── Session count (no weekly) ── */
+.sess-row{display:flex;gap:8px;margin-bottom:4px}
+.scard{background:var(--surface2);border-radius:7px;padding:7px 11px;text-align:center}
+.snum{font-size:20px;font-weight:800;line-height:1}.snum.run-c{color:var(--run)}.snum.str-c{color:var(--str)}
+.slbl{font-family:var(--mono);font-size:7px;color:var(--dim);text-transform:uppercase;letter-spacing:.05em;margin-top:2px}
+
+/* ── AI analysis ── */
+.gen-btn{background:#0a0a0a;border:1px solid rgba(255,255,255,.25);color:#fff;font-family:var(--mono);font-size:10px;padding:5px 14px;border-radius:6px;cursor:pointer;text-transform:uppercase;letter-spacing:.06em;transition:all .15s;white-space:nowrap}
+.gen-btn:hover{background:#222;border-color:rgba(255,255,255,.5)}
+.gen-btn:disabled{opacity:.4;cursor:not-allowed}
+.gen-btn.loading{background:#1a327a;border-color:#3b5bdb;color:#bfdbfe}
+
+.squad-brief{background:#0a0a0a;color:#fff;border-radius:12px;padding:16px 18px;margin-bottom:14px;display:none}
+.squad-brief.visible{display:block}
+.sb-title{font-family:var(--mono);font-size:9px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.12em;margin-bottom:8px}
+.sb-text{font-size:13px;color:rgba(255,255,255,.82);line-height:1.6}
+
+.ai-sec{padding:11px 13px;border-top:1px solid var(--border)}
+.ai-status-badge{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;padding:3px 10px;border-radius:20px;margin-bottom:8px}
+.ai-status-badge.GREEN{background:var(--green-bg);color:var(--green-text);border:1px solid var(--green-border)}
+.ai-status-badge.AMBER{background:var(--amber-bg);color:var(--amber-text);border:1px solid var(--amber-border)}
+.ai-status-badge.RED{background:var(--red-bg);color:var(--red-text);border:1px solid var(--red-border)}
+.ai-status-badge::before{content:'●';font-size:8px}
+
+.ai-flags{display:flex;flex-direction:column;gap:3px;margin-bottom:8px}
+.ai-flag{font-family:var(--mono);font-size:9px;color:var(--muted);padding-left:10px;position:relative;line-height:1.5}
+.ai-flag::before{content:'—';position:absolute;left:0;color:var(--dim)}
+
+.ai-rec{font-size:12px;color:var(--text);line-height:1.55;padding:9px 11px;background:var(--surface2);border-radius:7px;border-left:3px solid #0a0a0a}
+
+.ai-loading{font-family:var(--mono);font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;padding:8px 0;display:flex;align-items:center;gap:6px}
+.ai-loading-dot{width:5px;height:5px;border-radius:50%;background:var(--dim);animation:blink 1.2s infinite}
+.ai-loading-dot:nth-child(2){animation-delay:.2s}.ai-loading-dot:nth-child(3){animation-delay:.4s}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo"><span class="d">DUAL</span> <span class="p">PERFORMANCE</span></div>
+  <div class="h-mid">Coaches Dashboard</div>
+  <div class="h-right">
+    <span class="updated" id="updated"></span>
+    <button class="refresh-btn" id="refresh-btn">↻ Refresh</button>
+    <button class="gen-btn" id="gen-btn" style="display:none">✦ Generate AI Summaries</button>
+  </div>
+</header>
+
+<div class="main">
+  <div id="loading" class="state-box">
+    <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+    <div class="state-txt">Loading athlete data…</div>
+  </div>
+  <div id="err" class="state-box" style="display:none">
+    <div class="state-txt" style="color:var(--alert)" id="err-msg"></div>
+    <button class="refresh-btn" style="color:#0a0a0a;border-color:#ccc;margin-top:14px" onclick="load()">↻ Retry</button>
+  </div>
+  <div id="content" style="display:none">
+    <div class="squad-brief" id="squad-brief">
+      <div class="sb-title">⬡ Squad Brief — AI Coaching Summary</div>
+      <div class="sb-text" id="squad-brief-text"></div>
+    </div>
+    <div class="summary-bar" id="sum-bar"></div>
+    <div class="grid" id="grid"></div>
+  </div>
+</div>
+
+<script>
+// ── Database IDs ─────────────────────────────────────────────────────────────
+// These are your Notion database IDs — safe to keep in the frontend.
+// Your NOTION_TOKEN lives in the server env and is never exposed here.
+const DB = {
+  weekly:    '33e5a96c-c70b-8049-b696-d22e5920e0ee',
+  sessions:  '1c55a96c-c70b-825b-9bdf-819abea4ef7c',
+  body:      '3405a96c-c70b-80a4-b1b9-cf5b9c236f18',
+  nutrition: '3405a96c-c70b-804b-aa9c-f165f2d2e0e9',
+};
+
+const ALIASES = { 'JACOB TUAZON': 'JACOB' };
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+function nid(s) {
+  if (!s) return null;
+  const u = s.toUpperCase().trim();
+  return ALIASES[u] || u;
+}
+function sid(r) {
+  const code = r['Athlete Code'];
+  if (code) return nid(code);
+  const name = (r.Name || '').split('—')[0].trim();
+  return name ? nid(name) : null;
+}
+function avg(arr, k) {
+  const v = arr.map(r => parseFloat(r[k])).filter(x => !isNaN(x));
+  return v.length ? (v.reduce((a, b) => a + b, 0) / v.length).toFixed(1) : null;
+}
+function dago(n) { const d = new Date(); d.setDate(d.getDate() - n); return d; }
+function scoreClass(v, inv) {
+  const n = parseFloat(v);
+  if (isNaN(n)) return 'n';
+  if (inv) return n >= 8 ? 'bad' : n >= 6 ? 'mid' : 'good';
+  return n >= 7.5 ? 'good' : n >= 5 ? 'mid' : 'bad';
+}
+function esc(s) {
+  return String(s || '')
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// ── Fetch from our API proxy ──────────────────────────────────────────────────
+async function fetchDB(dbId) {
+  const res = await fetch(`/api/notion?db=${dbId}`);
+  if (!res.ok) {
+    const e = await res.json().catch(() => ({}));
+    throw new Error(e.error || `HTTP ${res.status}`);
+  }
+  const data = await res.json();
+  return data.results || [];
+}
+
+// ── Main load ─────────────────────────────────────────────────────────────────
+async function load() {
+  document.getElementById('loading').style.display = 'block';
+  document.getElementById('content').style.display = 'none';
+  document.getElementById('err').style.display = 'none';
+  document.getElementById('refresh-btn').disabled = true;
+
+  try {
+    const [weekly, sessions, body, nutrition] = await Promise.all([
+      fetchDB(DB.weekly),
+      fetchDB(DB.sessions),
+      fetchDB(DB.body),
+      fetchDB(DB.nutrition),
+    ]);
+
+    const athletes = buildAthletes(weekly, sessions, body, nutrition);
+    _lastAthletes = athletes;
+    render(athletes);
+
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('content').style.display = 'block';
+    document.getElementById('updated').textContent =
+      'Updated ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  } catch (e) {
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('err').style.display = 'block';
+    document.getElementById('err-msg').textContent = 'Error: ' + e.message;
+  } finally {
+    document.getElementById('refresh-btn').disabled = false;
+  }
+}
+
+// ── Build athlete map ─────────────────────────────────────────────────────────
+function buildAthletes(weekly, sessions, body, nutrition) {
+  const c14 = dago(14), c7 = dago(7);
+  const map = {};
+
+  function ens(id) {
+    if (!id || id.length < 2) return;
+    if (!map[id]) map[id] = { id, weekly: null, body: [], nutrition: [], sessions: [] };
+  }
+
+  // Weekly — keep latest per athlete
+  const wl = {};
+  weekly.forEach(r => {
+    const id = nid(r.Name);
+    if (!id || !r['Week Ending']) return;
+    if (!wl[id] || r['Week Ending'] > wl[id]['Week Ending']) wl[id] = r;
+  });
+  Object.entries(wl).forEach(([id, r]) => { ens(id); map[id].weekly = r; });
+
+  // Body (14d)
+  body.forEach(r => {
+    const id = nid(r.AthleteID);
+    if (!id) return;
+    ens(id);
+    const d = r['date:Date:start'] || r.Date;
+    if (d && new Date(d) >= c14) map[id].body.push(r);
+  });
+
+  // Nutrition (14d)
+  nutrition.forEach(r => {
+    const id = nid(r.AthleteID);
+    if (!id) return;
+    ens(id);
+    const d = r['date:Date:start'] || r.Date;
+    if (d && new Date(d) >= c14) map[id].nutrition.push(r);
+  });
+
+  // Sessions — deduplicate at session+day level
+  const seen = new Set();
+  sessions.forEach(r => {
+    const id = sid(r);
+    if (!id) return;
+    ens(id);
+    const ds = ((r.Date || r['Submitted At'] || r._createdTime || '')).split('T')[0];
+    if (!ds || new Date(ds) < c14) return;
+    const k = `${id}|${r.Session || ''}|${r['Session Category'] || ''}|${ds}`;
+    if (!seen.has(k)) { seen.add(k); map[id].sessions.push({ ...r, _d: ds }); }
+  });
+
+  // Compute per-athlete derived data
+  return Object.values(map).map(a => {
+    const b7 = a.body.filter(r => new Date(r['date:Date:start'] || r.Date) >= c7);
+    const n7 = a.nutrition.filter(r => new Date(r['date:Date:start'] || r.Date) >= c7);
+    const bSorted = [...a.body].sort((x, y) =>
+      (y['date:Date:start'] || y.Date || '') > (x['date:Date:start'] || x.Date || '') ? 1 : -1);
+    const bLast = bSorted[0];
+
+    const bAvg = {
+      wt: bLast?.Weight,
+      wtd: bLast?.['date:Date:start'] || bLast?.Date,
+      sleep: avg(b7, 'Sleep Score'),
+      energy: avg(b7, 'Energy'),
+      stress: avg(b7, 'Stress'),
+      soreness: avg(b7, 'Soreness'),
+    };
+    const nAvg = {
+      cal: avg(n7, 'Calories'),
+      pro: avg(n7, 'Protein'),
+      carb: avg(n7, 'Carbs'),
+      fat: avg(n7, 'Fats'),
+      days: n7.length,
+    };
+
+    const s7 = a.sessions.filter(s => new Date(s._d) >= c7);
+    const runS = s7.filter(s => s['Session Category'] === 'Running' || s['Session Category'] === 'Run');
+    const strS = s7.filter(s => s['Session Category'] === 'Strength');
+
+    // Alert flags
+    const flags = [];
+    const w = a.weekly;
+    if (w) {
+      const nig = ((w['Run Niggles'] || '') + ' ' + (w['Lifts Niggles'] || '')).toLowerCase();
+      if (['lingering', 'niggle', 'pain', 'tight', 'strain', 'physio', 'injury'].some(k => nig.includes(k)))
+        flags.push({ t: 'red', l: 'Niggle' });
+
+      const st = parseInt(w.Stress);
+      if (st >= 8) flags.push({ t: 'red', l: 'Stress ' + st });
+      else if (st >= 6) flags.push({ t: 'yellow', l: 'Stress ' + st });
+
+      const mo = parseInt(w.Motivation);
+      if (mo && mo <= 5) flags.push({ t: 'yellow', l: 'Low Motiv ' + mo });
+
+      const rp = parseInt(w['Run Planned']) || 0, rc = parseInt(w['Run Completed']) || 0;
+      if (rp > 0 && rc < rp) flags.push({ t: 'yellow', l: `Run ${rc}/${rp}` });
+
+      const lp = parseInt(w['Lift Planned']) || 0, lc = parseInt(w['Lift Completed']) || 0;
+      if (lp > 0 && lc < lp) flags.push({ t: 'yellow', l: `Lift ${lc}/${lp}` });
+
+      const rf = parseInt(w['Run Feel /10']);
+      if (rf >= 8) flags.push({ t: 'green', l: 'Run Feel ' + rf });
+    }
+
+    const recentBn = bSorted.slice(0, 3).map(b => (b.Notes || '').toLowerCase()).join(' ');
+    if (!flags.find(f => f.l === 'Niggle') &&
+        ['physio', 'niggle', 'pain', 'injury'].some(k => recentBn.includes(k)))
+      flags.push({ t: 'yellow', l: 'Body Note' });
+
+    const alertScore =
+      flags.filter(f => f.t === 'red').length * 10 +
+      flags.filter(f => f.t === 'yellow').length;
+
+    const wkEnd = w?.['Week Ending'] || '';
+    const hasRecent = wkEnd >= dago(10).toISOString().split('T')[0];
+
+    return { ...a, bAvg, nAvg, runS, strS, flags, alertScore, hasRecent };
+  }).sort((a, b) => b.alertScore - a.alertScore);
+}
+
+// ── Render ────────────────────────────────────────────────────────────────────
+function render(ath) {
+  const alertN = ath.filter(a => a.flags.some(f => f.t === 'red')).length;
+  const watchN = ath.filter(a => !a.flags.some(f => f.t === 'red') && a.flags.some(f => f.t === 'yellow')).length;
+  const totalKm = ath.reduce((s, a) => {
+    const k = parseFloat(a.weekly?.['Weekly Run KM'] || 0);
+    return s + (isNaN(k) ? 0 : k);
+  }, 0);
+  const checkedIn = ath.filter(a => a.hasRecent).length;
+
+  document.getElementById('sum-bar').innerHTML = `
+    <div class="sum-card"><div class="sum-num">${ath.length}</div><div class="sum-lbl">Athletes</div></div>
+    <div class="sum-card"><div class="sum-num ${alertN ? 'red' : 'grn'}">${alertN}</div><div class="sum-lbl">Need Attention</div></div>
+    <div class="sum-card"><div class="sum-num">${watchN}</div><div class="sum-lbl">Watch</div></div>
+    <div class="sum-card"><div class="sum-num grn">${checkedIn}</div><div class="sum-lbl">Checked In</div></div>
+    <div class="sum-card"><div class="sum-num run-c">${totalKm.toFixed(0)}</div><div class="sum-lbl">Total KM (14d)</div></div>`;
+
+  document.getElementById('grid').innerHTML = ath.map(buildCard).join('');
+
+  // Show AI button, hide squad brief until generated
+  document.getElementById('gen-btn').style.display = 'block';
+  document.getElementById('squad-brief').classList.remove('visible');
+}
+
+// ── Card builder ──────────────────────────────────────────────────────────────
+function buildCard(a) {
+  const w = a.weekly;
+  const hW = !!w?.Name;
+  const hR = a.flags.some(f => f.t === 'red');
+  const hY = !hR && a.flags.some(f => f.t === 'yellow');
+  const bcls = hR ? 'red' : hY ? 'yellow' : '';
+  const fps = a.flags.map(f => `<span class="fp ${f.t}">${esc(f.l)}</span>`).join('');
+
+  // Scores
+  let scores = '';
+  if (hW) {
+    const sx = [
+      { l: 'Energy',  v: w['Energy /10'],             inv: false },
+      { l: 'Sleep',   v: w['Sleep hrs'],               inv: false },
+      { l: 'Sore',    v: w['Soreness /10'],            inv: true  },
+      { l: 'Stress',  v: w['Stress'],                  inv: true  },
+      { l: 'Motiv',   v: w['Motivation'],              inv: false },
+      { l: 'Nutr',    v: w['Nutrition Adherence /10'], inv: false },
+    ];
+    scores = `<div class="scores">${sx.map(x =>
+      `<div class="sc"><div class="sc-lbl">${esc(x.l)}</div><div class="sc-val ${scoreClass(x.v, x.inv)}">${esc(x.v) || '—'}</div></div>`
+    ).join('')}</div>`;
+  }
+
+  // Training
+  let training = '';
+  if (hW) {
+    const rp = parseInt(w['Run Planned']) || 0, rc = parseInt(w['Run Completed']) || 0;
+    const lp = parseInt(w['Lift Planned']) || 0, lc = parseInt(w['Lift Completed']) || 0;
+    const rPct = rp > 0 ? Math.min(100, Math.round(rc / rp * 100)) : 0;
+    const lPct = lp > 0 ? Math.min(100, Math.round(lc / lp * 100)) : 0;
+    const bad = v => v && !['n/a', '', 'none', 'nope', 'nothing', 'no'].includes((v || '').toLowerCase().trim());
+
+    training = `<div class="sec">
+      <div class="sec-ttl">Training — Week ending ${esc(w['Week Ending'] || '?')}</div>
+      <div class="tpair">
+        <div class="tb">
+          <div class="tt run">Run</div>
+          <div class="ts"><strong>${rc}/${rp}</strong> sessions · <strong>${esc(w['Weekly Run KM'] || '—')} km</strong></div>
+          <div class="pbar"><div class="pfill run" style="width:${rPct}%"></div></div>
+          <div class="ts">Feel: <strong>${esc(w['Run Feel /10'] || '—')}/10</strong></div>
+          ${bad(w['Run Niggles']) ? `<div class="nl red"><span class="nl-lbl">⚠ Niggle</span>${esc(w['Run Niggles'])}</div>` : ''}
+          ${w['Runs Wins'] && w['Runs Wins'] !== 'n/a' ? `<div class="nl"><span class="nl-lbl">✓ Win</span>${esc(w['Runs Wins'])}</div>` : ''}
+        </div>
+        <div class="tb">
+          <div class="tt str">Lift</div>
+          <div class="ts"><strong>${lc}/${lp}</strong> sessions</div>
+          <div class="pbar"><div class="pfill str" style="width:${lPct}%"></div></div>
+          <div class="ts">Feel: <strong>${esc(w['Lift Feel /10'] || '—')}/10</strong></div>
+          ${bad(w['Lifts Niggles']) ? `<div class="nl red"><span class="nl-lbl">⚠ Niggle</span>${esc(w['Lifts Niggles'])}</div>` : ''}
+          ${w['Lift Wins'] && w['Lift Wins'] !== 'n/a' ? `<div class="nl"><span class="nl-lbl">✓ Win</span>${esc(w['Lift Wins'])}</div>` : ''}
+        </div>
+      </div>
+      ${w['Testimonial'] ? `<div class="testim">"${esc(w['Testimonial'])}"</div>` : ''}
+      ${w['Upcoming Impact'] && w['Upcoming Impact'] !== 'n/a' ? `<div class="impact">⚡ ${esc(w['Upcoming Impact'])}</div>` : ''}
+    </div>`;
+  }
+
+  // Body
+  let bodyHtml = '';
+  if (a.bAvg.wt !== undefined || a.bAvg.sleep !== null) {
+    const bLast = [...a.body].sort((x, y) =>
+      (y['date:Date:start'] || y.Date || '') > (x['date:Date:start'] || x.Date || '') ? 1 : -1)[0];
+    const bn = bLast?.Notes;
+    bodyHtml = `<div class="sec">
+      <div class="sec-ttl">Body — 7-day avg</div>
+      <div class="body-grid">
+        ${a.bAvg.wt !== undefined ? `<div><div class="wnum">${esc(a.bAvg.wt)}<span class="wunit">kg</span></div><div class="wdate">${esc(a.bAvg.wtd || '')}</div></div>` : ''}
+        <div class="bmet">
+          ${[{l:'Sleep',v:a.bAvg.sleep},{l:'Energy',v:a.bAvg.energy},{l:'Stress',v:a.bAvg.stress},{l:'Sore',v:a.bAvg.soreness}].map(m =>
+            `<div class="bm"><div class="bm-lbl">${m.l}</div><div class="bm-val">${m.v !== null ? m.v : '—'}</div></div>`).join('')}
+        </div>
+      </div>
+      ${bn ? `<div class="bnote">${esc(bn)}</div>` : ''}
+    </div>`;
+  }
+
+  // Nutrition
+  let nutrHtml = '';
+  if (a.nAvg.cal !== null) {
+    nutrHtml = `<div class="sec">
+      <div class="sec-ttl">Nutrition — ${a.nAvg.days}d avg</div>
+      <div class="mrow">
+        <div class="mc"><div class="mc-lbl">Calories</div><div class="mc-val">${a.nAvg.cal || '—'}</div></div>
+        <div class="mc"><div class="mc-lbl">Protein</div><div class="mc-val">${a.nAvg.pro || '—'}<span class="mc-unit">g</span></div></div>
+        <div class="mc"><div class="mc-lbl">Carbs</div><div class="mc-val">${a.nAvg.carb || '—'}<span class="mc-unit">g</span></div></div>
+        <div class="mc"><div class="mc-lbl">Fats</div><div class="mc-val">${a.nAvg.fat || '—'}<span class="mc-unit">g</span></div></div>
+      </div>
+    </div>`;
+  }
+
+  // Session count (shown when no weekly check-in)
+  let sessHtml = '';
+  if (!hW && (a.runS.length || a.strS.length)) {
+    sessHtml = `<div class="sec">
+      <div class="sec-ttl">Sessions (7 days)</div>
+      <div class="sess-row">
+        <div class="scard"><div class="snum run-c">${a.runS.length}</div><div class="slbl">Run</div></div>
+        <div class="scard"><div class="snum str-c">${a.strS.length}</div><div class="slbl">Strength</div></div>
+      </div>
+    </div>`;
+  }
+
+  const metaText = a.hasRecent
+    ? `Week ending ${esc(w?.['Week Ending'] || '')}`
+    : hW ? `Last check-in ${esc(w?.['Week Ending'] || '')}`
+    : a.body.length ? 'Daily tracking only' : 'No recent data';
+
+  return `<div class="card ${bcls}" data-card="${esc(a.id)}">
+    <div class="card-head">
+      <div class="aname">${esc(a.id)}</div>
+      <div class="ameta ${!a.hasRecent ? 'nocheckin' : ''}">${metaText}</div>
+      ${a.flags.length ? `<div class="flags">${fps}</div>` : ''}
+    </div>
+    ${scores}${training}${bodyHtml}${nutrHtml}${sessHtml}
+    <div class="ai-sec"></div>
+  </div>`;
+}
+
+// ── AI Analysis ───────────────────────────────────────────────────────────────
+
+let _lastAthletes = [];
+
+async function generateAI() {
+  if (!_lastAthletes.length) return;
+  const btn = document.getElementById('gen-btn');
+  btn.disabled = true;
+  btn.classList.add('loading');
+  btn.textContent = '✦ Analysing…';
+
+  // Show loading state in each card
+  document.querySelectorAll('.ai-sec').forEach(sec => {
+    sec.innerHTML = `<div class="ai-loading">
+      <div class="ai-loading-dot"></div><div class="ai-loading-dot"></div><div class="ai-loading-dot"></div>
+      <span>Generating coaching analysis…</span>
+    </div>`;
+  });
+
+  try {
+    const payload = _lastAthletes
+      .filter(a => a.weekly || a.bAvg?.wt != null)
+      .map(a => ({
+        id: a.id,
+        weekly: a.weekly,
+        bAvg: a.bAvg,
+        nAvg: a.nAvg,
+      }));
+
+    const res = await fetch('/api/analyse', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ athletes: payload }),
+    });
+
+    if (!res.ok) {
+      const e = await res.json().catch(() => ({}));
+      throw new Error(e.error || `HTTP ${res.status}`);
+    }
+
+    const { analyses, squadBrief } = await res.json();
+
+    // Inject per-athlete analysis
+    analyses.forEach(analysis => {
+      const cardId = `card-${analysis.id.replace(/\s+/g, '-')}`;
+      const sec = document.querySelector(`[data-card="${analysis.id}"] .ai-sec`);
+      if (!sec) return;
+      sec.innerHTML = `
+        <div class="ai-status-badge ${analysis.status}">${analysis.status}</div>
+        <div class="ai-flags">${(analysis.flags || []).map(f => `<div class="ai-flag">${esc(f)}</div>`).join('')}</div>
+        <div class="ai-rec">${esc(analysis.recommendation)}</div>`;
+    });
+
+    // Squad brief
+    if (squadBrief) {
+      document.getElementById('squad-brief-text').textContent = squadBrief;
+      document.getElementById('squad-brief').classList.add('visible');
+    }
+
+    btn.textContent = '✦ Regenerate';
+  } catch (e) {
+    document.querySelectorAll('.ai-sec').forEach(sec => {
+      sec.innerHTML = `<div class="ai-loading" style="color:var(--alert)">${esc(e.message)}</div>`;
+    });
+    btn.textContent = '✦ Retry';
+  } finally {
+    btn.disabled = false;
+    btn.classList.remove('loading');
+  }
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', load);
+document.getElementById('refresh-btn').addEventListener('click', load);
+document.getElementById('gen-btn').addEventListener('click', generateAI);
+</script>
+</body>
+</html>

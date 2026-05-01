@@ -1,0 +1,17 @@
+{
+  "name": "dp-coaches-dashboard",
+  "version": "1.0.0",
+  "description": "Dual Performance live coaches dashboard — pulls from Notion via a serverless proxy.",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "dev": "vercel dev"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0"
+  },
+  "devDependencies": {
+    "vercel": "^34.0.0"
+  }
+}
