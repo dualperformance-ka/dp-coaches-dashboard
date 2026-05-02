@@ -1024,6 +1024,9 @@ const MACRO_TARGETS = {
 };
 const DEFAULT_TARGETS = { cal: 2200, pro: 160, carb: 220, fat: 65 };
 
+// ── Reference date — locked to today ─────────────────────────────────────────
+const TODAY = new Date('2026-05-02T00:00:00');
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function nid(s) {
   if (!s) return null;
@@ -1040,7 +1043,7 @@ function avg(arr, k) {
   const v = arr.map(r => parseFloat(r[k])).filter(x => !isNaN(x));
   return v.length ? (v.reduce((a, b) => a + b, 0) / v.length).toFixed(1) : null;
 }
-function dago(n) { const d = new Date(); d.setDate(d.getDate() - n); return d; }
+function dago(n) { const d = new Date(TODAY); d.setDate(d.getDate() - n); return d; }
 function scoreClass(v, inv) {
   const n = parseFloat(v);
   if (isNaN(n)) return 'n';
@@ -1107,7 +1110,7 @@ async function load() {
     document.getElementById('loading').style.display = 'none';
     document.getElementById('content').style.display = 'block';
     document.getElementById('updated').textContent =
-      'Updated ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      '02 May 2026 · ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   } catch (e) {
     document.getElementById('loading').style.display = 'none';
     document.getElementById('err').style.display = 'block';
@@ -1136,7 +1139,7 @@ function buildAthletes(weekly, sessions, body, nutrition, athleteDb = []) {
     if (WEEK_OVERRIDES.hasOwnProperty(id)) return WEEK_OVERRIDES[id];
     const sd = startDates[id];
     if (!sd) return null;
-    const diffDays = Math.floor((Date.now() - new Date(sd)) / 86400000);
+    const diffDays = Math.floor((TODAY.getTime() - new Date(sd)) / 86400000);
     return Math.max(0, Math.floor(diffDays / 7));
   }
   const wAll = {};
