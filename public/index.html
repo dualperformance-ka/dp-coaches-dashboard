@@ -9,46 +9,48 @@
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800;900&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 :root {
-  --bg: #0d0d0f;
-  --bg2: #141417;
-  --bg3: #1a1a1f;
-  --surface: #1e1e24;
-  --surface2: #25252c;
-  --surface3: #2c2c35;
-  --border: rgba(255,255,255,.07);
-  --border-mid: rgba(255,255,255,.12);
-  --text: #f0f0f0;
-  --muted: #888;
-  --dim: #555;
-
-  --run: #f97316;
-  --run-dim: rgba(249,115,22,.15);
-  --str: #6366f1;
-  --str-dim: rgba(99,102,241,.15);
-
-  --ok: #22c55e;
-  --ok-dim: rgba(34,197,94,.12);
-  --warn: #eab308;
-  --warn-dim: rgba(234,179,8,.12);
-  --alert: #ef4444;
-  --alert-dim: rgba(239,68,68,.12);
-  --info: #38bdf8;
-
-  --win-bg: rgba(34,197,94,.1);
-  --win-border: rgba(34,197,94,.25);
-  --win-text: #4ade80;
-
-  --flag-bg: rgba(239,68,68,.1);
-  --flag-border: rgba(239,68,68,.25);
-  --flag-text: #f87171;
-
+  --bg:       #f3f4f7;
+  --bg2:      #ecedf1;
+  --bg3:      #e4e5ea;
+  --surface:  #ffffff;
+  --surface2: #f8f8fb;
+  --surface3: #f0f1f5;
+  --border:   rgba(0,0,0,.07);
+  --border-mid: rgba(0,0,0,.13);
+  --text:     #111118;
+  --muted:    #5a6070;
+  --dim:      #9ba3b0;
+  --run:      #e05f00;
+  --run-dim:  rgba(224,95,0,.09);
+  --run-mid:  rgba(224,95,0,.18);
+  --str:      #4f46e5;
+  --str-dim:  rgba(79,70,229,.09);
+  --str-mid:  rgba(79,70,229,.18);
+  --ok:       #15803d;
+  --ok-dim:   rgba(21,128,61,.08);
+  --ok-mid:   rgba(21,128,61,.18);
+  --warn:     #b45309;
+  --warn-dim: rgba(180,83,9,.08);
+  --warn-mid: rgba(180,83,9,.18);
+  --alert:    #b91c1c;
+  --alert-dim:rgba(185,28,28,.07);
+  --alert-mid:rgba(185,28,28,.18);
+  --info:     #0369a1;
+  --win-bg:   rgba(21,128,61,.07);
+  --win-border:rgba(21,128,61,.2);
+  --win-text: #15803d;
+  --flag-bg:  rgba(185,28,28,.07);
+  --flag-border:rgba(185,28,28,.2);
+  --flag-text:#b91c1c;
   --mono: 'JetBrains Mono', monospace;
   --cond: 'Barlow Condensed', sans-serif;
-  --body-font: 'Barlow', sans-serif;
+  --body-font:'Barlow', sans-serif;
+  --radius: 12px;
+  --shadow: 0 1px 3px rgba(0,0,0,.06), 0 4px 12px rgba(0,0,0,.04);
+  --shadow-md: 0 2px 8px rgba(0,0,0,.08), 0 8px 24px rgba(0,0,0,.05);
 }
-
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
+html { scroll-behavior: smooth; }
 body {
   background: var(--bg);
   color: var(--text);
@@ -56,19 +58,19 @@ body {
   font-size: 14px;
   line-height: 1.5;
   min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
 }
-
-/* ── Scrollbar ── */
-::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: var(--bg2); }
-::-webkit-scrollbar-thumb { background: var(--surface3); border-radius: 3px; }
+::-webkit-scrollbar-thumb { background: var(--bg3); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--dim); }
 
 /* ── Header ── */
 header {
-  background: var(--bg);
+  background: rgba(255,255,255,.92);
   border-bottom: 1px solid var(--border);
-  padding: 0 20px;
-  height: 54px;
+  padding: 0 22px;
+  height: 56px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -76,28 +78,31 @@ header {
   top: 0;
   z-index: 200;
   gap: 14px;
-  backdrop-filter: blur(10px);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 1px 0 rgba(0,0,0,.06);
 }
 .logo {
   font-family: var(--cond);
   font-size: 20px;
   font-weight: 900;
-  letter-spacing: .12em;
+  letter-spacing: .14em;
   text-transform: uppercase;
   white-space: nowrap;
   display: flex;
   align-items: center;
   gap: 3px;
+  user-select: none;
 }
-.logo .d { color: #fff; }
-.logo .sep { color: var(--dim); font-weight: 400; margin: 0 4px; }
-.logo .p { color: rgba(255,255,255,.25); }
+.logo .d { color: var(--text); }
+.logo .sep { color: var(--bg3); font-weight: 400; margin: 0 5px; }
+.logo .p { color: var(--dim); }
 .h-mid {
   font-family: var(--mono);
   font-size: 9px;
-  color: rgba(255,255,255,.25);
+  color: var(--dim);
   text-transform: uppercase;
-  letter-spacing: .14em;
+  letter-spacing: .16em;
   white-space: nowrap;
 }
 .h-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
@@ -108,52 +113,54 @@ header {
   white-space: nowrap;
 }
 .btn {
-  background: transparent;
+  background: var(--surface);
   border: 1px solid var(--border-mid);
   color: var(--muted);
   font-family: var(--mono);
   font-size: 10px;
   padding: 6px 14px;
-  border-radius: 6px;
+  border-radius: 8px;
   cursor: pointer;
   text-transform: uppercase;
   letter-spacing: .07em;
   transition: all .15s;
   white-space: nowrap;
+  box-shadow: 0 1px 2px rgba(0,0,0,.04);
 }
-.btn:hover { border-color: rgba(255,255,255,.3); color: var(--text); }
-.btn:disabled { opacity: .35; cursor: not-allowed; }
+.btn:hover { border-color: var(--str); color: var(--str); background: var(--str-dim); }
+.btn:disabled { opacity: .4; cursor: not-allowed; }
 .btn.primary {
-  background: rgba(99,102,241,.15);
-  border-color: rgba(99,102,241,.4);
-  color: #a5b4fc;
+  background: var(--str);
+  border-color: var(--str);
+  color: #fff;
+  box-shadow: 0 1px 3px rgba(79,70,229,.3);
 }
-.btn.primary:hover { background: rgba(99,102,241,.25); border-color: rgba(99,102,241,.7); color: #c7d2fe; }
+.btn.primary:hover { background: #4338ca; border-color: #4338ca; color: #fff; box-shadow: 0 2px 8px rgba(79,70,229,.35); }
 .btn.loading {
-  background: rgba(99,102,241,.2);
-  border-color: rgba(99,102,241,.5);
-  color: #818cf8;
-  animation: pulse-border 1.4s infinite;
+  background: var(--str-dim);
+  border-color: var(--str);
+  color: var(--str);
+  animation: pulse-btn 1.4s infinite;
 }
-@keyframes pulse-border {
-  0%, 100% { border-color: rgba(99,102,241,.4); }
-  50% { border-color: rgba(99,102,241,.8); }
+@keyframes pulse-btn {
+  0%,100% { box-shadow: 0 0 0 0 rgba(79,70,229,.2); }
+  50%      { box-shadow: 0 0 0 4px rgba(79,70,229,.1); }
 }
 
 /* ── Layout ── */
 .main {
-  padding: 16px 16px 60px;
-  max-width: 1500px;
+  padding: 20px 18px 80px;
+  max-width: 1540px;
   margin: 0 auto;
 }
 
 /* ── Loading / Error ── */
-.state-box { text-align: center; padding: 80px 20px; }
-.dots { display: flex; gap: 7px; justify-content: center; margin-bottom: 14px; }
-.dot { width: 7px; height: 7px; border-radius: 50%; background: var(--surface3); animation: blink 1.4s infinite; }
+.state-box { text-align: center; padding: 100px 20px; }
+.dots { display: flex; gap: 8px; justify-content: center; margin-bottom: 16px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--bg3); animation: blink 1.4s infinite; }
 .dot:nth-child(2) { animation-delay: .2s; }
 .dot:nth-child(3) { animation-delay: .4s; }
-@keyframes blink { 0%, 100% { opacity: .2; } 50% { opacity: 1; } }
+@keyframes blink { 0%,100%{opacity:.2} 50%{opacity:1} }
 .state-txt {
   font-family: var(--mono);
   font-size: 11px;
@@ -166,75 +173,78 @@ header {
 .summary-bar {
   display: flex;
   gap: 8px;
-  margin-bottom: 16px;
+  margin-bottom: 18px;
   flex-wrap: wrap;
 }
 .sum-card {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 11px 18px;
-  min-width: 100px;
+  border-radius: var(--radius);
+  padding: 13px 18px;
   flex: 1;
-  min-width: 90px;
+  min-width: 88px;
   max-width: 160px;
-  transition: border-color .15s;
+  box-shadow: var(--shadow);
+  transition: box-shadow .15s, transform .15s;
 }
-.sum-card:hover { border-color: var(--border-mid); }
+.sum-card:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
 .sum-num {
   font-family: var(--cond);
-  font-size: 30px;
-  font-weight: 800;
+  font-size: 32px;
+  font-weight: 900;
   line-height: 1;
-  margin-bottom: 2px;
+  margin-bottom: 3px;
+  letter-spacing: -.01em;
 }
-.sum-num.red { color: var(--alert); }
-.sum-num.grn { color: var(--ok); }
+.sum-num.default { color: var(--text); }
+.sum-num.red   { color: var(--alert); }
+.sum-num.grn   { color: var(--ok); }
 .sum-num.run-c { color: var(--run); }
 .sum-num.str-c { color: var(--str); }
-.sum-num.warn-c { color: var(--warn); }
+.sum-num.warn-c{ color: var(--warn); }
 .sum-lbl {
   font-family: var(--mono);
   font-size: 8px;
   color: var(--dim);
   text-transform: uppercase;
-  letter-spacing: .09em;
+  letter-spacing: .1em;
 }
 
 /* ── Week Summary Banner ── */
 .week-summary {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 18px 20px;
-  margin-bottom: 16px;
+  border-radius: 16px;
+  padding: 20px 22px;
+  margin-bottom: 18px;
   display: none;
+  box-shadow: var(--shadow);
 }
 .week-summary.visible { display: block; }
 .ws-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 14px;
+  margin-bottom: 16px;
   flex-wrap: wrap;
   gap: 10px;
 }
 .ws-title {
   font-family: var(--cond);
-  font-size: 13px;
-  font-weight: 700;
+  font-size: 15px;
+  font-weight: 800;
   letter-spacing: .1em;
   text-transform: uppercase;
   color: var(--muted);
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 8px;
 }
-.ws-title span { color: var(--str); }
+.ws-title strong { color: var(--str); font-weight: 900; }
 .ws-cols {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  gap: 12px;
 }
 @media (max-width: 700px) { .ws-cols { grid-template-columns: 1fr; } }
 .ws-col { display: flex; flex-direction: column; gap: 6px; }
@@ -244,78 +254,118 @@ header {
   letter-spacing: .1em;
   text-transform: uppercase;
   color: var(--dim);
-  margin-bottom: 2px;
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
 }
 .ws-win {
-  background: var(--win-bg);
-  border: 1px solid var(--win-border);
+  background: rgba(21,128,61,.06);
+  border: 1px solid rgba(21,128,61,.18);
+  border-left: 3px solid var(--ok);
   border-radius: 8px;
   padding: 8px 12px;
   font-size: 12.5px;
-  color: var(--win-text);
-  line-height: 1.4;
+  color: #1a6b3a;
+  line-height: 1.45;
 }
-.ws-win strong { font-weight: 700; color: #86efac; }
+.ws-win strong { font-weight: 700; color: #0f5c30; }
 .ws-flag {
-  background: var(--flag-bg);
-  border: 1px solid var(--flag-border);
+  background: rgba(185,28,28,.05);
+  border: 1px solid rgba(185,28,28,.15);
+  border-left: 3px solid var(--alert);
   border-radius: 8px;
   padding: 8px 12px;
   font-size: 12.5px;
-  color: var(--flag-text);
-  line-height: 1.4;
+  color: #9b1515;
+  line-height: 1.45;
 }
-.ws-flag strong { font-weight: 700; color: #fca5a5; }
+.ws-flag strong { font-weight: 700; color: #7f1010; }
+.ws-flag.soft {
+  background: rgba(180,83,9,.05);
+  border-color: rgba(180,83,9,.15);
+  border-left-color: var(--warn);
+  color: #92400e;
+}
+.ws-flag.soft strong { color: #78350f; }
 .ws-ai-text {
   font-size: 13px;
-  color: rgba(255,255,255,.7);
+  color: var(--muted);
   line-height: 1.65;
-  margin-top: 12px;
-  padding-top: 12px;
+  margin-top: 14px;
+  padding-top: 14px;
   border-top: 1px solid var(--border);
+  display: none;
 }
+
+/* ── Section Divider ── */
+.section-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 20px 0 14px;
+}
+.sd-label {
+  font-family: var(--mono);
+  font-size: 8px;
+  color: var(--dim);
+  text-transform: uppercase;
+  letter-spacing: .14em;
+  white-space: nowrap;
+}
+.sd-line { flex: 1; height: 1px; background: var(--border); }
 
 /* ── Grid ── */
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 12px;
+  align-items: start;
 }
 
 /* ── Card ── */
 .card {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 14px;
+  border-radius: 16px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  transition: border-color .15s;
+  box-shadow: var(--shadow);
+  transition: box-shadow .2s, transform .2s;
 }
-.card:hover { border-color: var(--border-mid); }
-.card.red { border-color: rgba(239,68,68,.35); }
-.card.yellow { border-color: rgba(234,179,8,.3); }
+.card:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
+.card.red {
+  border-color: rgba(185,28,28,.25);
+  box-shadow: 0 0 0 3px rgba(185,28,28,.06), var(--shadow);
+}
+.card.yellow {
+  border-color: rgba(180,83,9,.22);
+  box-shadow: 0 0 0 3px rgba(180,83,9,.05), var(--shadow);
+}
 
 /* ── Card Header ── */
 .card-head {
-  background: var(--bg3);
-  padding: 13px 15px 11px;
+  background: linear-gradient(135deg, var(--surface2) 0%, var(--bg2) 100%);
+  padding: 14px 16px 12px;
   border-bottom: 1px solid var(--border);
 }
+.card.red  .card-head { background: linear-gradient(135deg, rgba(185,28,28,.05) 0%, rgba(185,28,28,.02) 100%); }
+.card.yellow .card-head { background: linear-gradient(135deg, rgba(180,83,9,.05) 0%, rgba(180,83,9,.02) 100%); }
 .card-head-top {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
   gap: 10px;
-  margin-bottom: 8px;
+  margin-bottom: 9px;
 }
 .aname {
   font-family: var(--cond);
-  font-size: 26px;
+  font-size: 28px;
   font-weight: 900;
-  letter-spacing: .07em;
+  letter-spacing: .06em;
   text-transform: uppercase;
-  color: #fff;
+  color: var(--text);
   line-height: 1;
 }
 .ameta {
@@ -323,23 +373,24 @@ header {
   font-size: 8px;
   color: var(--dim);
   text-transform: uppercase;
-  letter-spacing: .09em;
-  margin-top: 4px;
+  letter-spacing: .1em;
+  margin-top: 5px;
 }
-.ameta.nocheckin { color: rgba(239,68,68,.6); }
+.ameta.nocheckin { color: var(--alert); }
 .week-badge {
   text-align: center;
-  background: rgba(255,255,255,.06);
-  border: 1px solid rgba(255,255,255,.12);
-  border-radius: 9px;
-  padding: 5px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border-mid);
+  border-radius: 10px;
+  padding: 5px 14px;
   flex-shrink: 0;
+  box-shadow: 0 1px 3px rgba(0,0,0,.06);
 }
 .wk-num {
   font-family: var(--cond);
   font-size: 26px;
   font-weight: 900;
-  color: #fff;
+  color: var(--text);
   line-height: 1;
   letter-spacing: -.01em;
 }
@@ -357,21 +408,22 @@ header {
 .fp {
   font-family: var(--mono);
   font-size: 8px;
-  padding: 2px 8px;
+  padding: 2px 9px;
   border-radius: 20px;
   text-transform: uppercase;
   letter-spacing: .05em;
+  font-weight: 600;
 }
-.fp.red { background: var(--flag-bg); color: var(--flag-text); border: 1px solid var(--flag-border); }
-.fp.yellow { background: rgba(234,179,8,.1); color: #fbbf24; border: 1px solid rgba(234,179,8,.3); }
-.fp.green { background: var(--win-bg); color: var(--win-text); border: 1px solid var(--win-border); }
-.fp.blue { background: rgba(56,189,248,.1); color: #7dd3fc; border: 1px solid rgba(56,189,248,.25); }
+.fp.red    { background: rgba(185,28,28,.1);  color: var(--alert); border: 1px solid rgba(185,28,28,.2); }
+.fp.yellow { background: rgba(180,83,9,.1);   color: var(--warn);  border: 1px solid rgba(180,83,9,.2); }
+.fp.green  { background: rgba(21,128,61,.1);  color: var(--ok);    border: 1px solid rgba(21,128,61,.2); }
+.fp.blue   { background: rgba(3,105,161,.09); color: var(--info);  border: 1px solid rgba(3,105,161,.2); }
 
 /* ── Scores Row ── */
 .scores {
   display: flex;
   border-bottom: 1px solid var(--border);
-  background: var(--bg3);
+  background: var(--surface);
 }
 .sc {
   flex: 1;
@@ -391,27 +443,22 @@ header {
 }
 .sc-val {
   font-family: var(--cond);
-  font-size: 20px;
+  font-size: 21px;
   font-weight: 800;
   line-height: 1;
+  letter-spacing: -.01em;
 }
 .sc-val.good { color: var(--ok); }
-.sc-val.mid { color: var(--warn); }
-.sc-val.bad { color: var(--alert); }
-.sc-val.n { color: var(--muted); }
-.sc-trend {
-  font-family: var(--mono);
-  font-size: 8px;
-  position: absolute;
-  top: 6px;
-  right: 4px;
-}
+.sc-val.mid  { color: var(--warn); }
+.sc-val.bad  { color: var(--alert); }
+.sc-val.n    { color: var(--dim); }
+.sc-trend { font-family: var(--mono); font-size: 8px; position: absolute; top: 6px; right: 4px; }
 .sc-trend.up { color: var(--ok); }
 .sc-trend.dn { color: var(--alert); }
 
 /* ── Sections ── */
 .sec {
-  padding: 11px 14px;
+  padding: 12px 15px;
   border-bottom: 1px solid var(--border);
 }
 .sec:last-child { border-bottom: none; }
@@ -421,29 +468,24 @@ header {
   color: var(--dim);
   text-transform: uppercase;
   letter-spacing: .1em;
-  margin-bottom: 8px;
+  margin-bottom: 9px;
   display: flex;
   align-items: center;
   gap: 6px;
 }
-.sec-ttl-dot {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-.sec-ttl-dot.run { background: var(--run); }
-.sec-ttl-dot.str { background: var(--str); }
+.sec-ttl-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.sec-ttl-dot.run  { background: var(--run); }
+.sec-ttl-dot.str  { background: var(--str); }
 .sec-ttl-dot.body { background: var(--info); }
 .sec-ttl-dot.nutr { background: var(--ok); }
 
 /* ── Training pair ── */
-.tpair { display: flex; gap: 8px; }
+.tpair { display: flex; gap: 9px; }
 .tb {
   flex: 1;
   background: var(--surface2);
-  border-radius: 9px;
-  padding: 9px 10px;
+  border-radius: 10px;
+  padding: 10px 11px;
   border: 1px solid var(--border);
 }
 .tt {
@@ -464,129 +506,115 @@ header {
   font-family: var(--mono);
   font-size: 9px;
   color: var(--muted);
-  line-height: 1.7;
+  line-height: 1.75;
 }
-.ts strong { color: var(--text); font-weight: 600; }
-.ts .hi { color: var(--run); font-weight: 600; }
-.ts .his { color: var(--str); font-weight: 600; }
+.ts strong  { color: var(--text); font-weight: 600; }
+.ts .hi  { color: var(--run); font-weight: 700; }
+.ts .his { color: var(--str); font-weight: 700; }
 
 /* ── Progress bar ── */
 .pbar {
-  height: 3px;
-  background: rgba(255,255,255,.08);
-  border-radius: 2px;
+  height: 4px;
+  background: rgba(0,0,0,.07);
+  border-radius: 3px;
   overflow: hidden;
   margin: 5px 0;
 }
-.pfill { height: 100%; border-radius: 2px; transition: width .4s ease; }
-.pfill.run { background: var(--run); }
-.pfill.str { background: var(--str); }
+.pfill { height: 100%; border-radius: 3px; transition: width .5s ease; }
+.pfill.run  { background: var(--run); }
+.pfill.str  { background: var(--str); }
 .pfill.full { background: var(--ok); }
 
 /* ── Notes / Niggles / Wins ── */
 .nl {
   font-size: 11px;
-  color: var(--muted);
-  line-height: 1.4;
-  margin-top: 5px;
-  border-radius: 5px;
-  padding: 4px 7px;
+  line-height: 1.45;
+  margin-top: 6px;
+  border-radius: 7px;
+  padding: 5px 8px;
 }
 .nl-lbl {
   font-family: var(--mono);
   font-size: 7px;
-  color: var(--dim);
   text-transform: uppercase;
-  letter-spacing: .06em;
+  letter-spacing: .07em;
   display: block;
   margin-bottom: 1px;
+  font-weight: 700;
 }
-.nl.red { color: var(--alert); background: var(--alert-dim); border-left: 2px solid var(--alert); }
-.nl.green { color: var(--win-text); background: var(--win-bg); border-left: 2px solid var(--ok); }
-.nl.amber { color: #fbbf24; background: var(--warn-dim); border-left: 2px solid var(--warn); }
-
+.nl.red    { color: var(--alert); background: var(--alert-dim); border-left: 3px solid var(--alert); }
+.nl.red .nl-lbl { color: #9b1515; }
+.nl.green  { color: var(--ok);    background: var(--ok-dim);    border-left: 3px solid var(--ok); }
+.nl.green .nl-lbl { color: #0f5c30; }
+.nl.amber  { color: var(--warn);  background: var(--warn-dim);  border-left: 3px solid var(--warn); }
+.nl.amber .nl-lbl { color: #92400e; }
 .testim {
-  font-size: 11px;
-  color: rgba(255,255,255,.55);
+  font-size: 11.5px;
+  color: var(--muted);
   font-style: italic;
-  line-height: 1.5;
-  padding: 7px 10px;
-  background: rgba(255,255,255,.03);
-  border-radius: 6px;
-  border-left: 2px solid rgba(255,255,255,.12);
-  margin-top: 7px;
+  line-height: 1.55;
+  padding: 8px 11px;
+  background: var(--surface2);
+  border-radius: 8px;
+  border-left: 3px solid var(--border-mid);
+  margin-top: 8px;
 }
 .impact {
   font-size: 11px;
-  color: #fbbf24;
-  margin-top: 5px;
-  padding: 4px 8px;
+  color: var(--warn);
+  margin-top: 6px;
+  padding: 5px 9px;
   background: var(--warn-dim);
-  border-radius: 5px;
-  border-left: 2px solid var(--warn);
+  border-radius: 7px;
+  border-left: 3px solid var(--warn);
+  font-weight: 600;
 }
 
 /* ── Strength Highlights ── */
-.str-prs {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin-top: 5px;
-}
+.str-prs { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
 .pr-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 4px 8px;
-  background: rgba(99,102,241,.08);
-  border: 1px solid rgba(99,102,241,.18);
-  border-radius: 6px;
+  padding: 5px 9px;
+  background: rgba(79,70,229,.07);
+  border: 1px solid rgba(79,70,229,.15);
+  border-radius: 7px;
   gap: 8px;
 }
 .pr-move {
   font-family: var(--mono);
   font-size: 9px;
-  color: #a5b4fc;
+  color: var(--str);
   text-transform: uppercase;
   letter-spacing: .04em;
   flex: 1;
+  font-weight: 600;
 }
-.pr-val {
-  font-family: var(--cond);
-  font-size: 15px;
-  font-weight: 800;
-  color: #c7d2fe;
-}
+.pr-val { font-family: var(--cond); font-size: 16px; font-weight: 800; color: #3730a3; }
 .pr-badge {
   font-family: var(--mono);
   font-size: 7px;
-  padding: 1px 5px;
-  border-radius: 3px;
+  padding: 2px 6px;
+  border-radius: 4px;
   text-transform: uppercase;
   letter-spacing: .04em;
+  font-weight: 700;
 }
-.pr-badge.pb { background: rgba(250,204,21,.15); color: #fde68a; border: 1px solid rgba(250,204,21,.3); }
-.pr-badge.strong { background: rgba(34,197,94,.1); color: #86efac; border: 1px solid rgba(34,197,94,.25); }
+.pr-badge.pb { background: rgba(202,138,4,.15); color: #92400e; border: 1px solid rgba(202,138,4,.3); }
+.pr-badge.strong { background: var(--ok-dim); color: var(--ok); border: 1px solid var(--ok-mid); }
 
 /* ── Body Section ── */
-.body-grid {
-  display: flex;
-  align-items: flex-start;
-  gap: 14px;
-}
+.body-grid { display: flex; align-items: flex-start; gap: 14px; }
 .wnum {
   font-family: var(--cond);
-  font-size: 30px;
-  font-weight: 800;
+  font-size: 32px;
+  font-weight: 900;
   line-height: 1;
-  letter-spacing: -.01em;
+  letter-spacing: -.02em;
+  color: var(--text);
 }
-.wunit {
-  font-family: var(--mono);
-  font-size: 9px;
-  color: var(--dim);
-  margin-left: 2px;
-}
+.wunit { font-family: var(--mono); font-size: 9px; color: var(--dim); margin-left: 2px; }
 .wdate { font-family: var(--mono); font-size: 8px; color: var(--dim); margin-top: 2px; }
 .bmet { flex: 1; display: grid; grid-template-columns: repeat(4,1fr); gap: 5px; }
 .bm { text-align: center; }
@@ -596,84 +624,45 @@ header {
   color: var(--dim);
   text-transform: uppercase;
   letter-spacing: .05em;
-  margin-bottom: 2px;
+  margin-bottom: 3px;
 }
-.bm-val {
-  font-family: var(--cond);
-  font-size: 18px;
-  font-weight: 700;
-}
+.bm-val { font-family: var(--cond); font-size: 20px; font-weight: 700; line-height: 1; }
 .bm-val.good { color: var(--ok); }
-.bm-val.mid { color: var(--warn); }
-.bm-val.bad { color: var(--alert); }
+.bm-val.mid  { color: var(--warn); }
+.bm-val.bad  { color: var(--alert); }
 .bnote {
   font-family: var(--mono);
   font-size: 9px;
   color: var(--muted);
-  margin-top: 7px;
-  border-left: 2px solid var(--alert);
-  padding-left: 6px;
-  line-height: 1.5;
+  margin-top: 8px;
+  border-left: 3px solid var(--alert);
+  padding-left: 8px;
+  line-height: 1.55;
 }
 
 /* ── Nutrition ── */
-.nutr-grid { display: flex; gap: 5px; flex-wrap: wrap; }
+.nutr-grid { display: flex; gap: 6px; flex-wrap: wrap; }
 .mc {
   flex: 1;
   background: var(--surface2);
-  border-radius: 7px;
-  padding: 7px 9px;
+  border-radius: 9px;
+  padding: 8px 9px;
   text-align: center;
   border: 1px solid var(--border);
-  min-width: 55px;
-  position: relative;
+  min-width: 56px;
 }
-.mc-lbl {
-  font-family: var(--mono);
-  font-size: 7px;
-  color: var(--dim);
-  text-transform: uppercase;
-  letter-spacing: .05em;
-  margin-bottom: 2px;
-}
-.mc-val {
-  font-family: var(--cond);
-  font-size: 19px;
-  font-weight: 700;
-  line-height: 1;
-}
+.mc-lbl { font-family: var(--mono); font-size: 7px; color: var(--dim); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 2px; }
+.mc-val { font-family: var(--cond); font-size: 20px; font-weight: 700; line-height: 1; color: var(--text); }
 .mc-unit { font-family: var(--mono); font-size: 8px; color: var(--dim); }
-.mc-status {
-  font-family: var(--mono);
-  font-size: 7px;
-  margin-top: 2px;
-  text-transform: uppercase;
-  letter-spacing: .04em;
-}
-.mc-status.over { color: var(--alert); }
+.mc-status { font-family: var(--mono); font-size: 7px; margin-top: 2px; text-transform: uppercase; letter-spacing: .04em; font-weight: 700; }
+.mc-status.over  { color: var(--alert); }
 .mc-status.under { color: var(--warn); }
-.mc-status.good { color: var(--ok); }
-.mc.highlight { border-color: rgba(34,197,94,.3); background: rgba(34,197,94,.05); }
-.mc.flag-over { border-color: rgba(239,68,68,.3); background: rgba(239,68,68,.05); }
-.mc.flag-under { border-color: rgba(234,179,8,.3); background: rgba(234,179,8,.05); }
-
-.nutr-note {
-  font-family: var(--mono);
-  font-size: 9px;
-  color: var(--muted);
-  margin-top: 6px;
-  line-height: 1.5;
-}
-.nutr-note strong { color: var(--text); }
-
-/* ── Macro targets comparison bar ── */
-.macro-compare {
-  margin-top: 7px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.mcomp-row { display: flex; align-items: center; gap: 7px; }
+.mc-status.good  { color: var(--ok); }
+.mc.highlight   { border-color: rgba(21,128,61,.25); background: rgba(21,128,61,.05); }
+.mc.flag-over   { border-color: rgba(185,28,28,.2);  background: rgba(185,28,28,.05); }
+.mc.flag-under  { border-color: rgba(180,83,9,.2);   background: rgba(180,83,9,.05); }
+.macro-compare { margin-top: 8px; display: flex; flex-direction: column; gap: 5px; }
+.mcomp-row { display: flex; align-items: center; gap: 8px; }
 .mcomp-lbl {
   font-family: var(--mono);
   font-size: 8px;
@@ -686,140 +675,96 @@ header {
 .mcomp-track {
   flex: 1;
   height: 5px;
-  background: rgba(255,255,255,.07);
+  background: rgba(0,0,0,.07);
   border-radius: 3px;
   overflow: hidden;
-  position: relative;
 }
-.mcomp-fill {
-  height: 100%;
-  border-radius: 3px;
-  transition: width .4s;
-}
-.mcomp-fill.good { background: var(--ok); }
-.mcomp-fill.over { background: var(--alert); }
+.mcomp-fill { height: 100%; border-radius: 3px; transition: width .4s; }
+.mcomp-fill.good  { background: var(--ok); }
+.mcomp-fill.over  { background: var(--alert); }
 .mcomp-fill.under { background: var(--warn); }
 .mcomp-val {
   font-family: var(--mono);
   font-size: 8px;
   color: var(--muted);
-  width: 55px;
+  width: 60px;
   text-align: right;
   flex-shrink: 0;
 }
 
 /* ── Session count ── */
 .sess-row { display: flex; gap: 7px; margin-bottom: 4px; }
-.scard {
-  background: var(--surface2);
-  border-radius: 8px;
-  padding: 8px 12px;
-  text-align: center;
-  border: 1px solid var(--border);
-  flex: 1;
-}
-.snum {
-  font-family: var(--cond);
-  font-size: 24px;
-  font-weight: 800;
-  line-height: 1;
-}
+.scard { background: var(--surface2); border-radius: 8px; padding: 9px 12px; text-align: center; border: 1px solid var(--border); flex: 1; }
+.snum { font-family: var(--cond); font-size: 26px; font-weight: 800; line-height: 1; }
 .snum.run-c { color: var(--run); }
 .snum.str-c { color: var(--str); }
-.slbl {
-  font-family: var(--mono);
-  font-size: 7px;
-  color: var(--dim);
-  text-transform: uppercase;
-  letter-spacing: .06em;
-  margin-top: 2px;
-}
+.slbl { font-family: var(--mono); font-size: 7px; color: var(--dim); text-transform: uppercase; letter-spacing: .07em; margin-top: 2px; }
 
-/* ── AI Analysis Section ── */
+/* ── AI Section ── */
 .ai-sec {
-  padding: 12px 14px;
+  padding: 12px 15px;
   border-top: 1px solid var(--border);
-  background: rgba(99,102,241,.03);
+  background: rgba(79,70,229,.025);
 }
-.ai-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 8px;
-}
+.ai-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 9px; }
 .ai-status-badge {
   display: inline-flex;
   align-items: center;
   gap: 5px;
   font-family: var(--mono);
   font-size: 8px;
-  font-weight: 600;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: .08em;
-  padding: 3px 10px;
+  letter-spacing: .1em;
+  padding: 4px 11px;
   border-radius: 20px;
 }
-.ai-status-badge::before { content: '●'; font-size: 7px; }
-.ai-status-badge.GREEN { background: var(--ok-dim); color: var(--ok); border: 1px solid rgba(34,197,94,.25); }
-.ai-status-badge.AMBER { background: var(--warn-dim); color: var(--warn); border: 1px solid rgba(234,179,8,.25); }
-.ai-status-badge.RED { background: var(--alert-dim); color: var(--alert); border: 1px solid rgba(239,68,68,.25); }
-
-/* ── AI Wins and Flags ── */
-.ai-wins, .ai-concerns {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  margin-bottom: 8px;
-}
+.ai-status-badge::before { content: '●'; font-size: 8px; }
+.ai-status-badge.GREEN { background: rgba(21,128,61,.1); color: var(--ok);   border: 1px solid rgba(21,128,61,.22); }
+.ai-status-badge.AMBER { background: rgba(180,83,9,.1);  color: var(--warn); border: 1px solid rgba(180,83,9,.22); }
+.ai-status-badge.RED   { background: rgba(185,28,28,.1); color: var(--alert);border: 1px solid rgba(185,28,28,.22); }
+.ai-wins, .ai-concerns { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; }
 .ai-win-item {
   font-family: var(--mono);
   font-size: 9px;
-  color: var(--win-text);
-  padding: 4px 8px;
-  background: var(--win-bg);
-  border-radius: 5px;
-  border: 1px solid var(--win-border);
-  line-height: 1.4;
+  color: #1a6b3a;
+  padding: 5px 9px;
+  background: rgba(21,128,61,.07);
+  border-radius: 6px;
+  border: 1px solid rgba(21,128,61,.18);
+  border-left: 3px solid var(--ok);
+  line-height: 1.45;
 }
-.ai-win-item::before { content: '✦ '; opacity: .7; }
 .ai-concern-item {
   font-family: var(--mono);
   font-size: 9px;
-  color: var(--flag-text);
-  padding: 4px 8px;
-  background: var(--flag-bg);
-  border-radius: 5px;
-  border: 1px solid var(--flag-border);
-  line-height: 1.4;
+  color: #9b1515;
+  padding: 5px 9px;
+  background: rgba(185,28,28,.06);
+  border-radius: 6px;
+  border: 1px solid rgba(185,28,28,.16);
+  border-left: 3px solid var(--alert);
+  line-height: 1.45;
 }
-.ai-concern-item::before { content: '⚠ '; opacity: .7; }
-
-.ai-flags {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  margin-bottom: 8px;
-}
+.ai-flags { display: flex; flex-direction: column; gap: 3px; margin-bottom: 8px; }
 .ai-flag {
   font-family: var(--mono);
   font-size: 9px;
   color: var(--muted);
-  padding-left: 12px;
+  padding-left: 13px;
   position: relative;
-  line-height: 1.5;
+  line-height: 1.55;
 }
 .ai-flag::before { content: '—'; position: absolute; left: 0; color: var(--dim); }
-
 .ai-rec {
-  font-size: 12px;
-  color: rgba(255,255,255,.7);
-  line-height: 1.6;
-  padding: 9px 11px;
+  font-size: 12.5px;
+  color: var(--muted);
+  line-height: 1.65;
+  padding: 10px 12px;
   background: var(--surface2);
-  border-radius: 7px;
-  border-left: 3px solid rgba(99,102,241,.5);
+  border-radius: 8px;
+  border-left: 3px solid var(--str);
 }
-
 .ai-loading {
   font-family: var(--mono);
   font-size: 9px;
@@ -831,79 +776,173 @@ header {
   align-items: center;
   gap: 6px;
 }
-.ai-loading-dot {
-  width: 5px; height: 5px;
-  border-radius: 50%;
-  background: var(--str);
-  animation: blink 1.2s infinite;
-}
+.ai-loading-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--str); animation: blink 1.2s infinite; }
 .ai-loading-dot:nth-child(2) { animation-delay: .2s; }
 .ai-loading-dot:nth-child(3) { animation-delay: .4s; }
 
 /* ── Squad Brief ── */
 .squad-brief {
-  background: var(--surface);
-  border: 1px solid rgba(99,102,241,.3);
-  border-radius: 14px;
-  padding: 18px 20px;
-  margin-bottom: 16px;
+  background: linear-gradient(135deg, rgba(79,70,229,.06) 0%, rgba(79,70,229,.02) 100%);
+  border: 1px solid rgba(79,70,229,.2);
+  border-radius: 16px;
+  padding: 18px 22px;
+  margin-bottom: 18px;
   display: none;
+  box-shadow: 0 0 0 4px rgba(79,70,229,.04);
 }
 .squad-brief.visible { display: block; }
 .sb-title {
   font-family: var(--mono);
   font-size: 9px;
-  color: rgba(99,102,241,.7);
+  color: var(--str);
   text-transform: uppercase;
-  letter-spacing: .13em;
+  letter-spacing: .14em;
   margin-bottom: 10px;
   display: flex;
   align-items: center;
   gap: 7px;
+  font-weight: 700;
 }
-.sb-title::before {
-  content: '';
-  display: inline-block;
-  width: 6px;
-  height: 6px;
-  background: var(--str);
-  border-radius: 50%;
-}
-.sb-text {
-  font-size: 13px;
-  color: rgba(255,255,255,.75);
-  line-height: 1.65;
-}
+.sb-title::before { content: ''; display: inline-block; width: 7px; height: 7px; background: var(--str); border-radius: 50%; }
+.sb-text { font-size: 13.5px; color: var(--muted); line-height: 1.7; }
 
-/* ── Divider tag ── */
-.section-divider {
+/* ── Weekly Wins Ticker ── */
+.wins-ticker {
+  background: rgba(21,128,61,.06);
+  border: 1px solid rgba(21,128,61,.18);
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin-bottom: 18px;
+  display: none;
+}
+.wins-ticker.visible { display: block; }
+.wt-title {
+  font-family: var(--mono);
+  font-size: 8px;
+  color: var(--ok);
+  text-transform: uppercase;
+  letter-spacing: .12em;
+  font-weight: 700;
+  margin-bottom: 10px;
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin: 18px 0 12px;
+  gap: 6px;
 }
-.sd-label {
+.wt-title::before { content: '✦'; }
+.wt-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+.wt-item {
+  background: var(--surface);
+  border: 1px solid rgba(21,128,61,.2);
+  border-radius: 8px;
+  padding: 7px 11px;
+  font-size: 12px;
+  color: var(--text);
+  line-height: 1.4;
+  box-shadow: 0 1px 3px rgba(0,0,0,.04);
+}
+.wt-item .wt-ath {
+  font-family: var(--mono);
+  font-size: 8px;
+  color: var(--ok);
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  font-weight: 700;
+  display: block;
+  margin-bottom: 2px;
+}
+
+/* ── Attention Row ── */
+.attn-row {
+  background: rgba(185,28,28,.04);
+  border: 1px solid rgba(185,28,28,.15);
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin-bottom: 18px;
+  display: none;
+}
+.attn-row.visible { display: block; }
+.attn-title {
+  font-family: var(--mono);
+  font-size: 8px;
+  color: var(--alert);
+  text-transform: uppercase;
+  letter-spacing: .12em;
+  font-weight: 700;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.attn-title::before { content: '⚠'; }
+.attn-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+.attn-item {
+  background: var(--surface);
+  border: 1px solid rgba(185,28,28,.18);
+  border-radius: 8px;
+  padding: 7px 11px;
+  font-size: 12px;
+  color: var(--text);
+  line-height: 1.4;
+  box-shadow: 0 1px 3px rgba(0,0,0,.04);
+}
+.attn-item .attn-ath {
+  font-family: var(--mono);
+  font-size: 8px;
+  color: var(--alert);
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  font-weight: 700;
+  display: block;
+  margin-bottom: 2px;
+}
+
+/* ── Check-in strip ── */
+.checkin-strip {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 18px;
+  margin-bottom: 18px;
+  display: none;
+  box-shadow: var(--shadow);
+}
+.checkin-strip.visible { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+.cs-title {
   font-family: var(--mono);
   font-size: 8px;
   color: var(--dim);
   text-transform: uppercase;
-  letter-spacing: .12em;
-  white-space: nowrap;
+  letter-spacing: .1em;
+  font-weight: 700;
+  flex-shrink: 0;
 }
-.sd-line { flex: 1; height: 1px; background: var(--border); }
+.cs-grid { display: flex; flex-wrap: wrap; gap: 5px; flex: 1; }
+.cs-ath {
+  font-family: var(--mono);
+  font-size: 9px;
+  padding: 3px 9px;
+  border-radius: 20px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+.cs-ath.in  { background: rgba(21,128,61,.1); color: var(--ok);   border: 1px solid rgba(21,128,61,.2); }
+.cs-ath.out { background: rgba(185,28,28,.07); color: var(--alert);border: 1px solid rgba(185,28,28,.18); }
 
 /* ── Responsiveness ── */
 @media (max-width: 600px) {
   .grid { grid-template-columns: 1fr; }
   .tpair { flex-direction: column; }
-  .bmet { grid-template-columns: repeat(2, 1fr); }
+  .bmet { grid-template-columns: repeat(2,1fr); }
+  .ws-cols { grid-template-columns: 1fr; }
 }
 </style>
 </head>
 <body>
-
 <header>
-  <div class="logo"><span class="d">DUAL</span><span class="sep">/</span><span class="p">PERFORMANCE</span></div>
+  <div class="logo">
+    <span class="d">DUAL</span><span class="sep">/</span><span class="p">PERFORMANCE</span>
+  </div>
   <div class="h-mid">Coaches Dashboard</div>
   <div class="h-right">
     <span class="updated" id="updated"></span>
@@ -922,14 +961,32 @@ header {
     <button class="btn" style="margin-top:14px" onclick="load()">↻ Retry</button>
   </div>
   <div id="content" style="display:none">
+    <!-- Squad AI Brief -->
     <div class="squad-brief" id="squad-brief">
       <div class="sb-title">Squad Brief — AI Coaching Summary</div>
       <div class="sb-text" id="squad-brief-text"></div>
     </div>
+    <!-- Summary Numbers -->
     <div class="summary-bar" id="sum-bar"></div>
+    <!-- Check-in Status Strip -->
+    <div class="checkin-strip" id="checkin-strip">
+      <div class="cs-title">Check-in status</div>
+      <div class="cs-grid" id="checkin-grid"></div>
+    </div>
+    <!-- Wins Banner -->
+    <div class="wins-ticker" id="wins-ticker">
+      <div class="wt-title">This Week's Wins</div>
+      <div class="wt-grid" id="wins-grid"></div>
+    </div>
+    <!-- Attention Banner -->
+    <div class="attn-row" id="attn-row">
+      <div class="attn-title">Needs Attention</div>
+      <div class="attn-grid" id="attn-grid"></div>
+    </div>
+    <!-- Week Panel -->
     <div class="week-summary" id="week-summary">
       <div class="ws-header">
-        <div class="ws-title">Weekly Overview — <span id="ws-week-label">Week</span></div>
+        <div class="ws-title">Weekly Overview — <strong id="ws-week-label">Week</strong></div>
       </div>
       <div class="ws-cols">
         <div class="ws-col">
@@ -941,9 +998,13 @@ header {
           <div id="ws-flags"></div>
         </div>
       </div>
-      <div class="ws-ai-text" id="ws-ai-text" style="display:none"></div>
+      <div class="ws-ai-text" id="ws-ai-text"></div>
     </div>
-    <div class="section-divider"><div class="sd-line"></div><div class="sd-label">Athletes</div><div class="sd-line"></div></div>
+    <div class="section-divider">
+      <div class="sd-line"></div>
+      <div class="sd-label">Athletes — sorted by priority</div>
+      <div class="sd-line"></div>
+    </div>
     <div class="grid" id="grid"></div>
   </div>
 </div>
@@ -957,14 +1018,9 @@ const DB = {
   nutrition: '3405a96c-c70b-804b-aa9c-f165f2d2e0e9',
   athletes:  '4a25a96c-c70b-82ff-a679-0139eaa8b458',
 };
-
 const ALIASES = { 'JACOB TUAZON': 'JACOB' };
-
-// Macro targets per athlete (kg bodyweight * factor, or set fixed)
-// Update this with your athlete targets. Falls back to generic ~75kg defaults.
 const MACRO_TARGETS = {
   // 'ATHLETE_NAME': { cal: 2400, pro: 170, carb: 250, fat: 70 }
-  // Or set as null to use defaults
 };
 const DEFAULT_TARGETS = { cal: 2200, pro: 160, carb: 220, fat: 65 };
 
@@ -999,9 +1055,7 @@ function bmClass(lbl, v) {
   return n >= 7.5 ? 'good' : n >= 5 ? 'mid' : 'bad';
 }
 function esc(s) {
-  return String(s || '')
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
-    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 function fmtDate(s) {
   if (!s) return '';
@@ -1042,7 +1096,6 @@ async function load() {
   document.getElementById('content').style.display = 'none';
   document.getElementById('err').style.display = 'none';
   document.getElementById('refresh-btn').disabled = true;
-
   try {
     const [weekly, sessions, body, nutrition, athleteDb] = await Promise.all([
       fetchDB(DB.weekly), fetchDB(DB.sessions), fetchDB(DB.body),
@@ -1068,21 +1121,17 @@ async function load() {
 function buildAthletes(weekly, sessions, body, nutrition, athleteDb = []) {
   const c14 = dago(14), c7 = dago(7);
   const map = {};
-
   function ens(id) {
     if (!id || id.length < 2) return;
     if (!map[id]) map[id] = { id, weekly: null, body: [], nutrition: [], sessions: [] };
   }
-
   const startDates = {};
   athleteDb.forEach(r => {
     const code = nid(r.Code || r.Athlete);
     const sd = r['date:Start Date:start'] || r['Start Date'];
     if (code && sd) startDates[code] = sd;
   });
-
   const WEEK_OVERRIDES = { 'KARL': 7, 'JACOB': 7, 'KHANG': 7 };
-
   function calcWeekNum(id) {
     if (WEEK_OVERRIDES.hasOwnProperty(id)) return WEEK_OVERRIDES[id];
     const sd = startDates[id];
@@ -1090,9 +1139,6 @@ function buildAthletes(weekly, sessions, body, nutrition, athleteDb = []) {
     const diffDays = Math.floor((Date.now() - new Date(sd)) / 86400000);
     return Math.max(0, Math.floor(diffDays / 7));
   }
-
-  // Weekly — keep latest + previous for trend
-  const wl = {}, wlPrev = {};
   const wAll = {};
   weekly.forEach(r => {
     const id = nid(r.Name);
@@ -1105,22 +1151,17 @@ function buildAthletes(weekly, sessions, body, nutrition, athleteDb = []) {
     ens(id);
     map[id].weekly = sorted[0] || null;
     map[id].weeklyPrev = sorted[1] || null;
-    wl[id] = sorted[0];
-    wlPrev[id] = sorted[1];
   });
-
   body.forEach(r => {
     const id = nid(r.AthleteID); if (!id) return; ens(id);
     const d = r['date:Date:start'] || r.Date;
     if (d && new Date(d) >= c14) map[id].body.push(r);
   });
-
   nutrition.forEach(r => {
     const id = nid(r.AthleteID); if (!id) return; ens(id);
     const d = r['date:Date:start'] || r.Date;
     if (d && new Date(d) >= c14) map[id].nutrition.push(r);
   });
-
   const seen = new Set();
   sessions.forEach(r => {
     const id = sid(r);
@@ -1137,7 +1178,6 @@ function buildAthletes(weekly, sessions, body, nutrition, athleteDb = []) {
     const bSorted = [...a.body].sort((x, y) =>
       (y['date:Date:start'] || y.Date || '') > (x['date:Date:start'] || x.Date || '') ? 1 : -1);
     const bLast = bSorted[0];
-
     const bAvg = {
       wt: bLast?.Weight, wtd: bLast?.['date:Date:start'] || bLast?.Date,
       sleep: avg(b7, 'Sleep Score'), energy: avg(b7, 'Energy'),
@@ -1147,12 +1187,9 @@ function buildAthletes(weekly, sessions, body, nutrition, athleteDb = []) {
       cal: avg(n7, 'Calories'), pro: avg(n7, 'Protein'),
       carb: avg(n7, 'Carbs'), fat: avg(n7, 'Fats'), days: n7.length,
     };
-
     const s7 = a.sessions.filter(s => new Date(s._d) >= c7);
     const runS = s7.filter(s => ['Running','Run'].includes(s['Session Category']));
     const strS = s7.filter(s => s['Session Category'] === 'Strength');
-
-    // Extract strength highlights from session notes
     const strHighlights = [];
     strS.forEach(s => {
       const notes = s.Notes || s['Session Notes'] || s.Details || '';
@@ -1165,64 +1202,46 @@ function buildAthletes(weekly, sessions, body, nutrition, athleteDb = []) {
         }
       });
     });
-
-    // Trend vs previous week
     const pw = a.weeklyPrev;
     const trends = {};
     if (pw && a.weekly) {
-      ['Energy /10', 'Sleep hrs', 'Soreness /10', 'Stress', 'Motivation'].forEach(k => {
+      ['Energy /10','Sleep hrs','Soreness /10','Stress','Motivation'].forEach(k => {
         const cur = parseFloat(a.weekly[k]), prev = parseFloat(pw[k]);
         if (!isNaN(cur) && !isNaN(prev)) trends[k] = cur > prev ? 'up' : cur < prev ? 'dn' : '';
       });
     }
-
-    // Alert flags
     const flags = [];
     const w = a.weekly;
     if (w) {
       const nig = ((w['Run Niggles'] || '') + ' ' + (w['Lifts Niggles'] || '')).toLowerCase();
       if (['lingering','niggle','pain','tight','strain','physio','injury'].some(k => nig.includes(k)))
-        flags.push({ t: 'red', l: 'Niggle' });
-
+        flags.push({ t: 'red', l: 'Niggle', detail: nig.slice(0, 60) });
       const st = parseInt(w.Stress);
-      if (st >= 8) flags.push({ t: 'red', l: 'Stress ' + st });
+      if (st >= 8) flags.push({ t: 'red', l: 'High Stress ' + st });
       else if (st >= 6) flags.push({ t: 'yellow', l: 'Stress ' + st });
-
       const mo = parseInt(w.Motivation);
-      if (mo && mo <= 5) flags.push({ t: 'yellow', l: 'Low Motiv ' + mo });
-
+      if (mo && mo <= 5) flags.push({ t: 'yellow', l: 'Low Motivation ' + mo });
       const rp = parseInt(w['Run Planned']) || 0, rc = parseInt(w['Run Completed']) || 0;
-      if (rp > 0 && rc < rp) flags.push({ t: 'yellow', l: `Run ${rc}/${rp}` });
-
+      if (rp > 0 && rc < rp) flags.push({ t: 'yellow', l: `Run ${rc}/${rp} sessions` });
       const lp = parseInt(w['Lift Planned']) || 0, lc = parseInt(w['Lift Completed']) || 0;
-      if (lp > 0 && lc < lp) flags.push({ t: 'yellow', l: `Lift ${lc}/${lp}` });
-
+      if (lp > 0 && lc < lp) flags.push({ t: 'yellow', l: `Lift ${lc}/${lp} sessions` });
       const rf = parseInt(w['Run Feel /10']);
-      if (rf >= 8) flags.push({ t: 'green', l: 'Run Feel ' + rf });
-
-      // Macro flag — low protein
+      if (rf >= 8) flags.push({ t: 'green', l: 'Run Feel ' + rf + '/10' });
       if (nAvg.pro && parseFloat(nAvg.pro) < 100) flags.push({ t: 'yellow', l: 'Low Protein' });
-
-      // High sleep quality flag
-      if (bAvg.sleep && parseFloat(bAvg.sleep) >= 8) flags.push({ t: 'green', l: 'Great Sleep' });
-
-      // Strength PB flag
-      if (strHighlights.some(h => h.isPB)) flags.push({ t: 'blue', l: 'PB 🏆' });
+      if (bAvg.sleep && parseFloat(bAvg.sleep) >= 8) flags.push({ t: 'green', l: 'Great Sleep ' + bAvg.sleep });
+      if (strHighlights.some(h => h.isPB)) flags.push({ t: 'blue', l: 'New PB 🏆' });
+      if (rp > 0 && rc >= rp) flags.push({ t: 'green', l: 'All runs hit ✓' });
+      if (lp > 0 && lc >= lp) flags.push({ t: 'green', l: 'All lifts hit ✓' });
     }
-
     const recentBn = bSorted.slice(0, 3).map(b => (b.Notes || '').toLowerCase()).join(' ');
-    if (!flags.find(f => f.l === 'Niggle') &&
+    if (!flags.find(f => f.l.startsWith('Niggle')) &&
         ['physio','niggle','pain','injury'].some(k => recentBn.includes(k)))
       flags.push({ t: 'yellow', l: 'Body Note' });
-
     const alertScore =
       flags.filter(f => f.t === 'red').length * 10 +
       flags.filter(f => f.t === 'yellow').length;
-
     const wkEnd = w?.['Week Ending'] || '';
     const hasRecent = wkEnd >= dago(10).toISOString().split('T')[0];
-
-    // Wins collection
     const wins = [];
     if (w) {
       if (w['Runs Wins'] && !['n/a',''].includes((w['Runs Wins']||'').toLowerCase().trim()))
@@ -1230,58 +1249,78 @@ function buildAthletes(weekly, sessions, body, nutrition, athleteDb = []) {
       if (w['Lift Wins'] && !['n/a',''].includes((w['Lift Wins']||'').toLowerCase().trim()))
         wins.push({ type: 'str', text: w['Lift Wins'] });
       const rf = parseInt(w['Run Feel /10']);
-      if (rf >= 9) wins.push({ type: 'run', text: `Run feel ${rf}/10 — outstanding week` });
+      if (rf >= 9) wins.push({ type: 'run', text: `Run feel ${rf}/10` });
       const rp = parseInt(w['Run Planned']) || 0, rc = parseInt(w['Run Completed']) || 0;
-      if (rp > 0 && rc >= rp) wins.push({ type: 'run', text: `All ${rc} run sessions completed` });
+      if (rp > 0 && rc >= rp) wins.push({ type: 'run', text: `All ${rc}/${rp} run sessions hit` });
       const lp = parseInt(w['Lift Planned']) || 0, lc = parseInt(w['Lift Completed']) || 0;
-      if (lp > 0 && lc >= lp) wins.push({ type: 'str', text: `All ${lc} strength sessions hit` });
+      if (lp > 0 && lc >= lp) wins.push({ type: 'str', text: `All ${lc}/${lp} strength sessions hit` });
     }
-
     return { ...a, bAvg, nAvg, runS, strS, strHighlights, flags, alertScore, hasRecent, weekNum: calcWeekNum(a.id), trends, wins };
   }).sort((a, b) => b.alertScore - a.alertScore);
 }
 
 // ── Render ────────────────────────────────────────────────────────────────────
 function render(ath) {
-  const alertN = ath.filter(a => a.flags.some(f => f.t === 'red')).length;
-  const watchN = ath.filter(a => !a.flags.some(f => f.t === 'red') && a.flags.some(f => f.t === 'yellow')).length;
-  const winN = ath.filter(a => a.wins?.length > 0).length;
-  const totalKm = ath.reduce((s, a) => {
-    const k = parseFloat(a.weekly?.['Weekly Run KM'] || 0);
-    return s + (isNaN(k) ? 0 : k);
-  }, 0);
+  const alertN   = ath.filter(a => a.flags.some(f => f.t === 'red')).length;
+  const watchN   = ath.filter(a => !a.flags.some(f => f.t === 'red') && a.flags.some(f => f.t === 'yellow')).length;
+  const winN     = ath.filter(a => a.wins?.length > 0).length;
+  const totalKm  = ath.reduce((s, a) => { const k = parseFloat(a.weekly?.['Weekly Run KM'] || 0); return s + (isNaN(k) ? 0 : k); }, 0);
   const checkedIn = ath.filter(a => a.hasRecent).length;
   const totalStr = ath.reduce((s, a) => s + (a.strS?.length || 0), 0);
 
+  // Summary bar
   document.getElementById('sum-bar').innerHTML = `
-    <div class="sum-card"><div class="sum-num">${ath.length}</div><div class="sum-lbl">Athletes</div></div>
+    <div class="sum-card"><div class="sum-num default">${ath.length}</div><div class="sum-lbl">Athletes</div></div>
     <div class="sum-card"><div class="sum-num grn">${checkedIn}</div><div class="sum-lbl">Checked In</div></div>
     <div class="sum-card"><div class="sum-num ${alertN ? 'red' : 'grn'}">${alertN}</div><div class="sum-lbl">Need Attention</div></div>
     <div class="sum-card"><div class="sum-num warn-c">${watchN}</div><div class="sum-lbl">Watch</div></div>
-    <div class="sum-card"><div class="sum-num run-c">${totalKm.toFixed(0)}</div><div class="sum-lbl">Total KM</div></div>
+    <div class="sum-card"><div class="sum-num run-c">${totalKm.toFixed(0)}</div><div class="sum-lbl">Squad KM</div></div>
     <div class="sum-card"><div class="sum-num str-c">${totalStr}</div><div class="sum-lbl">Str Sessions</div></div>
-    <div class="sum-card"><div class="sum-num grn">${winN}</div><div class="sum-lbl">Had Wins</div></div>`;
+    <div class="sum-card"><div class="sum-num grn">${winN}</div><div class="sum-lbl">Had Wins</div></div>
+  `;
 
-  // Build weekly summary panel
+  // Check-in strip
+  if (ath.length > 0) {
+    document.getElementById('checkin-grid').innerHTML = ath.map(a =>
+      `<span class="cs-ath ${a.hasRecent ? 'in' : 'out'}">${esc(a.id)}</span>`
+    ).join('');
+    document.getElementById('checkin-strip').classList.add('visible');
+  }
+
+  // Wins ticker
   const allWins = [];
-  const allFlags = [];
-  ath.forEach(a => {
-    (a.wins || []).forEach(w => allWins.push({ athlete: a.id, ...w }));
-    a.flags.filter(f => f.t === 'red').forEach(f => allFlags.push({ athlete: a.id, flag: f.l }));
-    a.flags.filter(f => f.t === 'yellow').forEach(f => allFlags.push({ athlete: a.id, flag: f.l, soft: true }));
-  });
+  ath.forEach(a => (a.wins || []).forEach(w => allWins.push({ athlete: a.id, ...w })));
+  if (allWins.length > 0) {
+    document.getElementById('wins-grid').innerHTML = allWins.slice(0,10).map(w =>
+      `<div class="wt-item"><span class="wt-ath">${esc(w.athlete)}</span>${esc(w.text)}</div>`
+    ).join('');
+    document.getElementById('wins-ticker').classList.add('visible');
+  }
 
-  const winsHtml = allWins.slice(0, 8).map(w =>
+  // Attention row
+  const redFlags = [];
+  ath.forEach(a => a.flags.filter(f => f.t === 'red').forEach(f =>
+    redFlags.push({ athlete: a.id, flag: f.l })));
+  const yellowFlags = [];
+  ath.forEach(a => a.flags.filter(f => f.t === 'yellow').forEach(f =>
+    yellowFlags.push({ athlete: a.id, flag: f.l })));
+  if (redFlags.length > 0) {
+    document.getElementById('attn-grid').innerHTML = redFlags.map(f =>
+      `<div class="attn-item"><span class="attn-ath">${esc(f.athlete)}</span>${esc(f.flag)}</div>`
+    ).join('');
+    document.getElementById('attn-row').classList.add('visible');
+  }
+
+  // Week summary panel (detailed)
+  const allFlagsForPanel = [...redFlags, ...yellowFlags];
+  const winsHtml = allWins.slice(0, 6).map(w =>
     `<div class="ws-win"><strong>${esc(w.athlete)}</strong> — ${esc(w.text)}</div>`
   ).join('') || '<div class="ws-win" style="opacity:.4">No wins logged yet this week</div>';
-
-  const flagsHtml = allFlags.slice(0, 8).map(f =>
-    `<div class="ws-flag ${f.soft ? 'style="opacity:.75"' : ''}"><strong>${esc(f.athlete)}</strong> — ${esc(f.flag)}</div>`
-  ).join('') || '<div class="ws-flag" style="opacity:.4">No major flags — squad looking solid</div>';
-
+  const flagsHtml = allFlagsForPanel.slice(0, 6).map(f =>
+    `<div class="ws-flag ${f.soft ? 'soft' : ''}"><strong>${esc(f.athlete)}</strong> — ${esc(f.flag)}</div>`
+  ).join('') || '<div style="font-size:12px;color:var(--ok);padding:6px 0">Squad looking solid — no major flags 🟢</div>';
   document.getElementById('ws-wins').innerHTML = winsHtml;
   document.getElementById('ws-flags').innerHTML = flagsHtml;
-
   const latestWeek = ath.find(a => a.weekly?.['Week Ending'])?.weekly?.['Week Ending'];
   document.getElementById('ws-week-label').textContent =
     latestWeek ? `Week ending ${fmtDate(latestWeek)}` : 'This Week';
@@ -1301,7 +1340,7 @@ function buildCard(a) {
   const bcls = hR ? 'red' : hY ? 'yellow' : '';
   const fps = a.flags.map(f => `<span class="fp ${f.t}">${esc(f.l)}</span>`).join('');
 
-  // Scores with trends
+  // Scores
   let scores = '';
   if (hW) {
     const sx = [
@@ -1327,8 +1366,6 @@ function buildCard(a) {
     const rPct = rp > 0 ? Math.min(100, Math.round(rc / rp * 100)) : 0;
     const lPct = lp > 0 ? Math.min(100, Math.round(lc / lp * 100)) : 0;
     const bad = v => v && !['n/a','','none','nope','nothing','no'].includes((v||'').toLowerCase().trim());
-
-    // Strength highlights from sessions
     const shHtml = a.strHighlights?.length ? `
       <div class="str-prs">
         ${a.strHighlights.slice(0,3).map(h => `
@@ -1338,7 +1375,6 @@ function buildCard(a) {
             ${h.isPB ? '<span class="pr-badge pb">PB</span>' : '<span class="pr-badge strong">↑</span>'}
           </div>`).join('')}
       </div>` : '';
-
     training = `<div class="sec">
       <div class="sec-ttl"><div class="sec-ttl-dot run"></div>${a.weekNum !== null ? (a.weekNum === 0 ? 'Discovery Week Training' : `Week ${a.weekNum} Training`) : 'Training'} — ${fmtDate(w['Week Ending']) || '?'}</div>
       <div class="tpair">
@@ -1371,40 +1407,29 @@ function buildCard(a) {
     const bLast = [...a.body].sort((x, y) =>
       (y['date:Date:start'] || y.Date || '') > (x['date:Date:start'] || x.Date || '') ? 1 : -1)[0];
     const bn = bLast?.Notes;
-    const sleepC = bmClass('sleep', a.bAvg.sleep);
-    const energyC = bmClass('energy', a.bAvg.energy);
-    const stressC = bmClass('stress', a.bAvg.stress);
-    const soreC = bmClass('sore', a.bAvg.soreness);
-
     bodyHtml = `<div class="sec">
       <div class="sec-ttl"><div class="sec-ttl-dot body"></div>Body — 7-day avg</div>
       <div class="body-grid">
         ${a.bAvg.wt !== undefined ? `<div><div class="wnum">${esc(a.bAvg.wt)}<span class="wunit">kg</span></div><div class="wdate">${fmtDate(a.bAvg.wtd)}</div></div>` : ''}
         <div class="bmet">
-          <div class="bm"><div class="bm-lbl">Sleep</div><div class="bm-val ${sleepC}">${a.bAvg.sleep !== null ? a.bAvg.sleep : '—'}</div></div>
-          <div class="bm"><div class="bm-lbl">Energy</div><div class="bm-val ${energyC}">${a.bAvg.energy !== null ? a.bAvg.energy : '—'}</div></div>
-          <div class="bm"><div class="bm-lbl">Stress</div><div class="bm-val ${stressC}">${a.bAvg.stress !== null ? a.bAvg.stress : '—'}</div></div>
-          <div class="bm"><div class="bm-lbl">Sore</div><div class="bm-val ${soreC}">${a.bAvg.soreness !== null ? a.bAvg.soreness : '—'}</div></div>
+          <div class="bm"><div class="bm-lbl">Sleep</div><div class="bm-val ${bmClass('sleep', a.bAvg.sleep)}">${a.bAvg.sleep ?? '—'}</div></div>
+          <div class="bm"><div class="bm-lbl">Energy</div><div class="bm-val ${bmClass('energy', a.bAvg.energy)}">${a.bAvg.energy ?? '—'}</div></div>
+          <div class="bm"><div class="bm-lbl">Stress</div><div class="bm-val ${bmClass('stress', a.bAvg.stress)}">${a.bAvg.stress ?? '—'}</div></div>
+          <div class="bm"><div class="bm-lbl">Sore</div><div class="bm-val ${bmClass('sore', a.bAvg.soreness)}">${a.bAvg.soreness ?? '—'}</div></div>
         </div>
       </div>
       ${bn ? `<div class="bnote">${esc(bn)}</div>` : ''}
     </div>`;
   }
 
-  // Nutrition with macro targets
+  // Nutrition
   let nutrHtml = '';
   if (a.nAvg.cal !== null) {
     const t = MACRO_TARGETS[a.id] || DEFAULT_TARGETS;
-    const calS = macroStatus(a.nAvg.cal, t.cal);
-    const proS = macroStatus(a.nAvg.pro, t.pro);
+    const calS  = macroStatus(a.nAvg.cal,  t.cal);
+    const proS  = macroStatus(a.nAvg.pro,  t.pro);
     const carbS = macroStatus(a.nAvg.carb, t.carb);
-    const fatS = macroStatus(a.nAvg.fat, t.fat);
-
-    const calPct = Math.min(120, pct(a.nAvg.cal, t.cal));
-    const proPct = Math.min(120, pct(a.nAvg.pro, t.pro));
-    const carbPct = Math.min(120, pct(a.nAvg.carb, t.carb));
-    const fatPct = Math.min(120, pct(a.nAvg.fat, t.fat));
-
+    const fatS  = macroStatus(a.nAvg.fat,  t.fat);
     nutrHtml = `<div class="sec">
       <div class="sec-ttl"><div class="sec-ttl-dot nutr"></div>Nutrition — ${a.nAvg.days}d avg <span style="margin-left:auto;font-size:7px;opacity:.5">vs target</span></div>
       <div class="nutr-grid">
@@ -1432,24 +1457,24 @@ function buildCard(a) {
       <div class="macro-compare">
         <div class="mcomp-row">
           <span class="mcomp-lbl">Protein</span>
-          <div class="mcomp-track"><div class="mcomp-fill ${proS}" style="width:${proPct}%"></div></div>
+          <div class="mcomp-track"><div class="mcomp-fill ${proS}" style="width:${Math.min(100,pct(a.nAvg.pro,t.pro))}%"></div></div>
           <span class="mcomp-val">${a.nAvg.pro || '—'}g / ${t.pro}g</span>
         </div>
         <div class="mcomp-row">
           <span class="mcomp-lbl">Cals</span>
-          <div class="mcomp-track"><div class="mcomp-fill ${calS}" style="width:${Math.min(100,calPct)}%"></div></div>
+          <div class="mcomp-track"><div class="mcomp-fill ${calS}" style="width:${Math.min(100,pct(a.nAvg.cal,t.cal))}%"></div></div>
           <span class="mcomp-val">${a.nAvg.cal || '—'} / ${t.cal}</span>
         </div>
         <div class="mcomp-row">
           <span class="mcomp-lbl">Carbs</span>
-          <div class="mcomp-track"><div class="mcomp-fill ${carbS}" style="width:${Math.min(100,carbPct)}%"></div></div>
+          <div class="mcomp-track"><div class="mcomp-fill ${carbS}" style="width:${Math.min(100,pct(a.nAvg.carb,t.carb))}%"></div></div>
           <span class="mcomp-val">${a.nAvg.carb || '—'}g / ${t.carb}g</span>
         </div>
       </div>
     </div>`;
   }
 
-  // Session count fallback
+  // Session fallback
   let sessHtml = '';
   if (!hW && (a.runS.length || a.strS.length)) {
     sessHtml = `<div class="sec">
@@ -1463,8 +1488,7 @@ function buildCard(a) {
 
   const metaText = a.hasRecent
     ? `Week ending ${fmtDate(w?.['Week Ending'])}`
-    : hW ? `Last check-in ${fmtDate(w?.['Week Ending'])}`
-    : a.body.length ? 'Daily tracking only' : 'No recent data';
+    : hW ? `Last check-in ${fmtDate(w?.['Week Ending'])}` : a.body.length ? 'Daily tracking only' : 'No recent data';
 
   return `<div class="card ${bcls}" data-card="${esc(a.id)}">
     <div class="card-head">
@@ -1484,81 +1508,64 @@ function buildCard(a) {
 
 // ── AI Analysis ───────────────────────────────────────────────────────────────
 let _lastAthletes = [];
-
 async function generateAI() {
   if (!_lastAthletes.length) return;
   const btn = document.getElementById('gen-btn');
   btn.disabled = true;
   btn.classList.add('loading');
   btn.textContent = '✦ Analysing…';
-
   document.querySelectorAll('.ai-sec').forEach(sec => {
     sec.innerHTML = `<div class="ai-loading">
       <div class="ai-loading-dot"></div><div class="ai-loading-dot"></div><div class="ai-loading-dot"></div>
       <span>Generating coaching analysis…</span>
     </div>`;
   });
-
   try {
     const payload = _lastAthletes
       .filter(a => a.weekly || a.bAvg?.wt != null)
       .map(a => ({
-        id: a.id,
-        weekNum: a.weekNum,
-        weekly: a.weekly,
-        weeklyPrev: a.weeklyPrev,
-        bAvg: a.bAvg,
-        nAvg: a.nAvg,
-        strHighlights: a.strHighlights,
-        wins: a.wins,
-        runSessions: a.runS.length,
-        strSessions: a.strS.length,
-        flags: a.flags,
+        id: a.id, weekNum: a.weekNum, weekly: a.weekly, weeklyPrev: a.weeklyPrev,
+        bAvg: a.bAvg, nAvg: a.nAvg, strHighlights: a.strHighlights, wins: a.wins,
+        runSessions: a.runS.length, strSessions: a.strS.length, flags: a.flags,
       }));
-
     const res = await fetch('/api/analyse', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         athletes: payload,
-        prompt: `You are an expert coach. For each athlete provide:
-1. An overall status: GREEN (on track), AMBER (needs watch), or RED (needs immediate attention)
-2. wins: array of 1-3 specific wins or positives (be specific about numbers, PRs, consistency)
-3. concerns: array of 1-3 things to flag or address (be specific — low protein, missed sessions, niggles)  
+        prompt: `You are an expert hybrid coach. For each athlete provide:
+1. status: GREEN (on track), AMBER (needs watch), or RED (needs immediate attention)
+2. wins: array of 1-3 specific wins (be specific about numbers, PRs, consistency)
+3. concerns: array of 1-3 things to flag (low protein, missed sessions, niggles — be specific)
 4. flags: array of coaching notes (max 3)
 5. recommendation: 2-3 sentence personalised coaching note with specific next steps
-
-Focus heavily on: strength training wins/PRs, macro targets vs actuals (especially protein), training completion rates, recovery metrics trends, and any injury flags. Be specific and data-driven. Also provide a squadBrief: overall squad summary in 2-3 sentences highlighting the week's key themes.
-
+Focus on: strength wins/PRs, macro targets vs actuals (especially protein), training completion, recovery trends, injury flags. Be specific and data-driven.
+Also provide a squadBrief: 2-3 sentence overall squad summary highlighting key themes.
 Return JSON: { analyses: [{id, status, wins, concerns, flags, recommendation}], squadBrief }`
       }),
     });
-
     if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || `HTTP ${res.status}`); }
     const { analyses, squadBrief } = await res.json();
-
     analyses.forEach(analysis => {
       const sec = document.querySelector(`[data-card="${analysis.id}"] .ai-sec`);
       if (!sec) return;
-      const winsHtml = (analysis.wins || []).map(w => `<div class="ai-win-item">${esc(w)}</div>`).join('');
-      const concernsHtml = (analysis.concerns || []).map(c => `<div class="ai-concern-item">${esc(c)}</div>`).join('');
+      const winsHtml    = (analysis.wins    || []).map(w => `<div class="ai-win-item">${esc(w)}</div>`).join('');
+      const concernsHtml= (analysis.concerns|| []).map(c => `<div class="ai-concern-item">${esc(c)}</div>`).join('');
       sec.innerHTML = `
         <div class="ai-header">
           <div class="ai-status-badge ${analysis.status}">${analysis.status}</div>
         </div>
-        ${winsHtml ? `<div class="ai-wins">${winsHtml}</div>` : ''}
+        ${winsHtml     ? `<div class="ai-wins">${winsHtml}</div>` : ''}
         ${concernsHtml ? `<div class="ai-concerns">${concernsHtml}</div>` : ''}
         ${(analysis.flags||[]).length ? `<div class="ai-flags">${analysis.flags.map(f=>`<div class="ai-flag">${esc(f)}</div>`).join('')}</div>` : ''}
         <div class="ai-rec">${esc(analysis.recommendation)}</div>`;
     });
-
     if (squadBrief) {
       document.getElementById('squad-brief-text').textContent = squadBrief;
       document.getElementById('squad-brief').classList.add('visible');
       document.getElementById('ws-ai-text').textContent = squadBrief;
       document.getElementById('ws-ai-text').style.display = 'block';
     }
-
     btn.textContent = '✦ Regenerate';
   } catch (e) {
     document.querySelectorAll('.ai-sec').forEach(sec => {
