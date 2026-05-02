@@ -929,6 +929,28 @@ header {
 .cs-ath.in  { background: rgba(21,128,61,.1); color: var(--ok);   border: 1px solid rgba(21,128,61,.2); }
 .cs-ath.out { background: rgba(185,28,28,.07); color: var(--alert);border: 1px solid rgba(185,28,28,.18); }
 
+/* ── Empty / no-data states ── */
+.no-data-msg {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--dim);
+  padding: 6px 0 2px;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+}
+.no-checkin-msg {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: rgba(0,0,0,.03);
+  border: 1px dashed var(--border-mid);
+  border-radius: 9px;
+  font-size: 12px;
+  color: var(--dim);
+}
+.nc-icon { font-size: 16px; flex-shrink: 0; }
+
 /* ── Responsiveness ── */
 @media (max-width: 600px) {
   .grid { grid-template-columns: 1fr; }
@@ -1175,24 +1197,47 @@ function buildAthletes(weekly, sessions, body, nutrition, athleteDb = []) {
     if (!seen.has(k)) { seen.add(k); map[id].sessions.push({ ...r, _d: ds }); }
   });
 
+  // THIS WEEK = week ending date falls within the last 7 days of TODAY
+  const thisWeekCutoff = dago(7).toISOString().split('T')[0];
+
   return Object.values(map).map(a => {
+    // ── Only use weekly check-in if it belongs to THIS week ──
+    const wkEnd = a.weekly?.['Week Ending'] || '';
+    const hasRecent = !!wkEnd && wkEnd >= thisWeekCutoff;
+    // Expose the current week's record only if it's recent; otherwise null it out for display
+    const weeklyThisWeek = hasRecent ? a.weekly : null;
+
+    // ── Body: this-week only (7 days). Weight: most recent within 7 days only ──
     const b7 = a.body.filter(r => new Date(r['date:Date:start'] || r.Date) >= c7);
-    const n7 = a.nutrition.filter(r => new Date(r['date:Date:start'] || r.Date) >= c7);
-    const bSorted = [...a.body].sort((x, y) =>
+    const b7sorted = [...b7].sort((x, y) =>
       (y['date:Date:start'] || y.Date || '') > (x['date:Date:start'] || x.Date || '') ? 1 : -1);
-    const bLast = bSorted[0];
+    const bLastThisWeek = b7sorted[0]; // undefined if nothing logged this week
     const bAvg = {
-      wt: bLast?.Weight, wtd: bLast?.['date:Date:start'] || bLast?.Date,
-      sleep: avg(b7, 'Sleep Score'), energy: avg(b7, 'Energy'),
-      stress: avg(b7, 'Stress'), soreness: avg(b7, 'Soreness'),
+      wt:  bLastThisWeek?.Weight,
+      wtd: bLastThisWeek?.['date:Date:start'] || bLastThisWeek?.Date,
+      sleep:    b7.length ? avg(b7, 'Sleep Score') : null,
+      energy:   b7.length ? avg(b7, 'Energy')      : null,
+      stress:   b7.length ? avg(b7, 'Stress')       : null,
+      soreness: b7.length ? avg(b7, 'Soreness')     : null,
+      hasData: b7.length > 0,
     };
+
+    // ── Nutrition: this-week only ──
+    const n7 = a.nutrition.filter(r => new Date(r['date:Date:start'] || r.Date) >= c7);
     const nAvg = {
-      cal: avg(n7, 'Calories'), pro: avg(n7, 'Protein'),
-      carb: avg(n7, 'Carbs'), fat: avg(n7, 'Fats'), days: n7.length,
+      cal:  n7.length ? avg(n7, 'Calories') : null,
+      pro:  n7.length ? avg(n7, 'Protein')  : null,
+      carb: n7.length ? avg(n7, 'Carbs')    : null,
+      fat:  n7.length ? avg(n7, 'Fats')     : null,
+      days: n7.length,
+      hasData: n7.length > 0,
     };
+
+    // ── Sessions: this week only ──
     const s7 = a.sessions.filter(s => new Date(s._d) >= c7);
     const runS = s7.filter(s => ['Running','Run'].includes(s['Session Category']));
     const strS = s7.filter(s => s['Session Category'] === 'Strength');
+
     const strHighlights = [];
     strS.forEach(s => {
       const notes = s.Notes || s['Session Notes'] || s.Details || '';
@@ -1205,16 +1250,24 @@ function buildAthletes(weekly, sessions, body, nutrition, athleteDb = []) {
         }
       });
     });
+
+    // Trends only valid when this week's check-in exists
     const pw = a.weeklyPrev;
     const trends = {};
-    if (pw && a.weekly) {
+    if (pw && weeklyThisWeek) {
       ['Energy /10','Sleep hrs','Soreness /10','Stress','Motivation'].forEach(k => {
-        const cur = parseFloat(a.weekly[k]), prev = parseFloat(pw[k]);
+        const cur = parseFloat(weeklyThisWeek[k]), prev = parseFloat(pw[k]);
         if (!isNaN(cur) && !isNaN(prev)) trends[k] = cur > prev ? 'up' : cur < prev ? 'dn' : '';
       });
     }
+
+    // ── Flags: only from this week's data ──
     const flags = [];
-    const w = a.weekly;
+    if (!hasRecent) {
+      // Missing check-in is itself a flag
+      flags.push({ t: 'yellow', l: 'No check-in yet' });
+    }
+    const w = weeklyThisWeek;
     if (w) {
       const nig = ((w['Run Niggles'] || '') + ' ' + (w['Lifts Niggles'] || '')).toLowerCase();
       if (['lingering','niggle','pain','tight','strain','physio','injury'].some(k => nig.includes(k)))
@@ -1236,15 +1289,17 @@ function buildAthletes(weekly, sessions, body, nutrition, athleteDb = []) {
       if (rp > 0 && rc >= rp) flags.push({ t: 'green', l: 'All runs hit ✓' });
       if (lp > 0 && lc >= lp) flags.push({ t: 'green', l: 'All lifts hit ✓' });
     }
-    const recentBn = bSorted.slice(0, 3).map(b => (b.Notes || '').toLowerCase()).join(' ');
+    // Body notes this week only
+    const recentBn = b7sorted.slice(0, 3).map(b => (b.Notes || '').toLowerCase()).join(' ');
     if (!flags.find(f => f.l.startsWith('Niggle')) &&
         ['physio','niggle','pain','injury'].some(k => recentBn.includes(k)))
       flags.push({ t: 'yellow', l: 'Body Note' });
+
     const alertScore =
       flags.filter(f => f.t === 'red').length * 10 +
       flags.filter(f => f.t === 'yellow').length;
-    const wkEnd = w?.['Week Ending'] || '';
-    const hasRecent = wkEnd >= dago(10).toISOString().split('T')[0];
+
+    // ── Wins: only from this week's check-in ──
     const wins = [];
     if (w) {
       if (w['Runs Wins'] && !['n/a',''].includes((w['Runs Wins']||'').toLowerCase().trim()))
@@ -1258,7 +1313,8 @@ function buildAthletes(weekly, sessions, body, nutrition, athleteDb = []) {
       const lp = parseInt(w['Lift Planned']) || 0, lc = parseInt(w['Lift Completed']) || 0;
       if (lp > 0 && lc >= lp) wins.push({ type: 'str', text: `All ${lc}/${lp} strength sessions hit` });
     }
-    return { ...a, bAvg, nAvg, runS, strS, strHighlights, flags, alertScore, hasRecent, weekNum: calcWeekNum(a.id), trends, wins };
+
+    return { ...a, weekly: weeklyThisWeek, bAvg, nAvg, runS, strS, strHighlights, flags, alertScore, hasRecent, weekNum: calcWeekNum(a.id), trends, wins };
   }).sort((a, b) => b.alertScore - a.alertScore);
 }
 
@@ -1404,14 +1460,18 @@ function buildCard(a) {
     </div>`;
   }
 
-  // Body metrics
+  // Body metrics — this week only
   let bodyHtml = '';
-  if (a.bAvg.wt !== undefined || a.bAvg.sleep !== null) {
-    const bLast = [...a.body].sort((x, y) =>
-      (y['date:Date:start'] || y.Date || '') > (x['date:Date:start'] || x.Date || '') ? 1 : -1)[0];
-    const bn = bLast?.Notes;
+  if (a.bAvg.hasData) {
+    const bn = a.bAvg.wt !== undefined
+      ? null  // weight entries often don't have notes
+      : null;
+    // Pull note from most recent b7 entry
+    const bNote = a.body
+      .filter(r => new Date(r['date:Date:start'] || r.Date) >= dago(7))
+      .sort((x, y) => (y['date:Date:start'] || y.Date || '') > (x['date:Date:start'] || x.Date || '') ? 1 : -1)[0]?.Notes;
     bodyHtml = `<div class="sec">
-      <div class="sec-ttl"><div class="sec-ttl-dot body"></div>Body — 7-day avg</div>
+      <div class="sec-ttl"><div class="sec-ttl-dot body"></div>Body — this week avg</div>
       <div class="body-grid">
         ${a.bAvg.wt !== undefined ? `<div><div class="wnum">${esc(a.bAvg.wt)}<span class="wunit">kg</span></div><div class="wdate">${fmtDate(a.bAvg.wtd)}</div></div>` : ''}
         <div class="bmet">
@@ -1421,13 +1481,18 @@ function buildCard(a) {
           <div class="bm"><div class="bm-lbl">Sore</div><div class="bm-val ${bmClass('sore', a.bAvg.soreness)}">${a.bAvg.soreness ?? '—'}</div></div>
         </div>
       </div>
-      ${bn ? `<div class="bnote">${esc(bn)}</div>` : ''}
+      ${bNote ? `<div class="bnote">${esc(bNote)}</div>` : ''}
+    </div>`;
+  } else {
+    bodyHtml = `<div class="sec">
+      <div class="sec-ttl"><div class="sec-ttl-dot body"></div>Body</div>
+      <div class="no-data-msg">No daily tracking logged this week</div>
     </div>`;
   }
 
-  // Nutrition
+  // Nutrition — this week only
   let nutrHtml = '';
-  if (a.nAvg.cal !== null) {
+  if (a.nAvg.hasData) {
     const t = MACRO_TARGETS[a.id] || DEFAULT_TARGETS;
     const calS  = macroStatus(a.nAvg.cal,  t.cal);
     const proS  = macroStatus(a.nAvg.pro,  t.pro);
@@ -1475,13 +1540,30 @@ function buildCard(a) {
         </div>
       </div>
     </div>`;
+  } else {
+    nutrHtml = `<div class="sec">
+      <div class="sec-ttl"><div class="sec-ttl-dot nutr"></div>Nutrition</div>
+      <div class="no-data-msg">No nutrition logged this week</div>
+    </div>`;
   }
 
-  // Session fallback
+  // No weekly check-in placeholder (replaces training block when missing)
+  let noCheckinHtml = '';
+  if (!hW) {
+    noCheckinHtml = `<div class="sec">
+      <div class="sec-ttl"><div class="sec-ttl-dot run"></div>Weekly Check-in</div>
+      <div class="no-checkin-msg">
+        <span class="nc-icon">📋</span>
+        <span>No check-in submitted this week</span>
+      </div>
+    </div>`;
+  }
+
+  // Session fallback — only show if no weekly check-in but sessions exist
   let sessHtml = '';
   if (!hW && (a.runS.length || a.strS.length)) {
     sessHtml = `<div class="sec">
-      <div class="sec-ttl">Sessions (7 days)</div>
+      <div class="sec-ttl">Sessions logged this week</div>
       <div class="sess-row">
         <div class="scard"><div class="snum run-c">${a.runS.length}</div><div class="slbl">Run</div></div>
         <div class="scard"><div class="snum str-c">${a.strS.length}</div><div class="slbl">Strength</div></div>
@@ -1491,7 +1573,7 @@ function buildCard(a) {
 
   const metaText = a.hasRecent
     ? `Week ending ${fmtDate(w?.['Week Ending'])}`
-    : hW ? `Last check-in ${fmtDate(w?.['Week Ending'])}` : a.body.length ? 'Daily tracking only' : 'No recent data';
+    : 'No check-in this week';
 
   return `<div class="card ${bcls}" data-card="${esc(a.id)}">
     <div class="card-head">
@@ -1504,7 +1586,7 @@ function buildCard(a) {
       </div>
       ${a.flags.length ? `<div class="flags">${fps}</div>` : ''}
     </div>
-    ${scores}${training}${bodyHtml}${nutrHtml}${sessHtml}
+    ${scores}${hW ? training : noCheckinHtml}${sessHtml}${bodyHtml}${nutrHtml}
     <div class="ai-sec"></div>
   </div>`;
 }
