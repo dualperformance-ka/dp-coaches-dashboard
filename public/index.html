@@ -1041,6 +1041,8 @@ const DB = {
   athletes:  '4a25a96c-c70b-82ff-a679-0139eaa8b458',
 };
 const ALIASES = { 'JACOB TUAZON': 'JACOB' };
+// Athletes to exclude entirely from the dashboard
+const EXCLUDE = new Set(['DAVID HA', 'DAVID']);
 const MACRO_TARGETS = {
   // 'ATHLETE_NAME': { cal: 2400, pro: 170, carb: 250, fat: 70 }
 };
@@ -1148,6 +1150,8 @@ function buildAthletes(weekly, sessions, body, nutrition, athleteDb = []) {
   const map = {};
   function ens(id) {
     if (!id || id.length < 2) return;
+    if (/^\d+$/.test(id)) return;          // purely numeric = not a real athlete ID
+    if (EXCLUDE.has(id)) return;            // explicitly excluded
     if (!map[id]) map[id] = { id, weekly: null, body: [], nutrition: [], sessions: [] };
   }
   const startDates = {};
@@ -1168,6 +1172,7 @@ function buildAthletes(weekly, sessions, body, nutrition, athleteDb = []) {
   weekly.forEach(r => {
     const id = nid(r.Name);
     if (!id || !r['Week Ending']) return;
+    if (/^\d+$/.test(id) || EXCLUDE.has(id)) return;
     if (!wAll[id]) wAll[id] = [];
     wAll[id].push(r);
   });
