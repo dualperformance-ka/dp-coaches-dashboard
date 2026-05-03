@@ -370,6 +370,18 @@ const WEEK_OVERRIDES = { 'JACOB': 7, 'KHANG': 7 };
 // In-memory call notes per athlete
 const callNotes = {};
 
+// ── Current week ending (same for ALL athletes) ───────────────────────────────
+// Weeks run Mon–Sun. The week ending is always the most recent Sunday.
+// Today Mon 4 May → last Sunday = 3 May. Today Thu 7 May → last Sunday still 3 May.
+// On Sunday itself → that day is the week ending.
+const currentWeekEnd = (() => {
+  const today = new Date();
+  const day = today.getDay(); // 0 = Sun, 1 = Mon, …, 6 = Sat
+  const lastSunday = new Date(today);
+  lastSunday.setDate(today.getDate() - day); // if today is Sun (0), setDate stays same
+  return lastSunday.toISOString().split('T')[0];
+})();
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
 function nid(s) {
   if (!s) return null;
@@ -557,28 +569,19 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = []) {
       flags.filter(f => f.t === 'red').length * 10 +
       flags.filter(f => f.t === 'yellow').length;
 
-    // Calculate the expected week-ending date for this athlete based on their start date.
-    // Each athlete's "week" runs from their start day, so week endings differ per person.
+    // Weeks reset on Monday for everyone.
+    // The expected week ending is always the MOST RECENT SUNDAY (same date for all athletes).
     const wkNum = calcWeekNum(a.id);
-    let expectedWeekEnd = null;
-    const sd = startDates[a.id];
-    if (sd && wkNum !== null) {
-      const startDate = new Date(sd);
-      const endDate = new Date(startDate);
-      // Week N ends on day (N * 7) - 1 from start (week 1 = days 0–6, ends day 6)
-      endDate.setDate(startDate.getDate() + (Math.max(1, wkNum) * 7) - 1);
-      expectedWeekEnd = endDate.toISOString().split('T')[0];
-    }
+    const expectedWeekEnd = currentWeekEnd; // global, computed once at load time
 
     const wkEnd = w?.['Week Ending'] || '';
-    // "Checked in this week" = their submitted week ending matches the expected end
-    // Allow ±3 days tolerance to handle athletes who submit a day early/late
-    const hasCurrentCheckin = !!expectedWeekEnd && !!wkEnd && (() => {
+    // "Checked in this week" = submitted week ending is within ±3 days of last Sunday
+    // (tolerance covers athletes who log Saturday or Monday as their end date)
+    const hasCurrentCheckin = !!wkEnd && (() => {
       const diff = Math.abs(new Date(wkEnd) - new Date(expectedWeekEnd)) / 86400000;
       return diff <= 3;
     })();
-    // Fallback: if we have no start date, treat any check-in within 10 days as current
-    const hasRecent = hasCurrentCheckin || (!expectedWeekEnd && wkEnd >= dago(10).toISOString().split('T')[0]);
+    const hasRecent = hasCurrentCheckin || wkEnd >= dago(10).toISOString().split('T')[0];
 
     return {
       ...a, bAvg, nAvg, runS, strS, flags, alertScore,
