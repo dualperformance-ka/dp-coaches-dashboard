@@ -557,13 +557,33 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = []) {
       flags.filter(f => f.t === 'red').length * 10 +
       flags.filter(f => f.t === 'yellow').length;
 
+    // Calculate the expected week-ending date for this athlete based on their start date.
+    // Each athlete's "week" runs from their start day, so week endings differ per person.
+    const wkNum = calcWeekNum(a.id);
+    let expectedWeekEnd = null;
+    const sd = startDates[a.id];
+    if (sd && wkNum !== null) {
+      const startDate = new Date(sd);
+      const endDate = new Date(startDate);
+      // Week N ends on day (N * 7) - 1 from start (week 1 = days 0–6, ends day 6)
+      endDate.setDate(startDate.getDate() + (Math.max(1, wkNum) * 7) - 1);
+      expectedWeekEnd = endDate.toISOString().split('T')[0];
+    }
+
     const wkEnd = w?.['Week Ending'] || '';
-    const hasRecent = wkEnd >= dago(10).toISOString().split('T')[0];
+    // "Checked in this week" = their submitted week ending matches the expected end
+    // Allow ±3 days tolerance to handle athletes who submit a day early/late
+    const hasCurrentCheckin = !!expectedWeekEnd && !!wkEnd && (() => {
+      const diff = Math.abs(new Date(wkEnd) - new Date(expectedWeekEnd)) / 86400000;
+      return diff <= 3;
+    })();
+    // Fallback: if we have no start date, treat any check-in within 10 days as current
+    const hasRecent = hasCurrentCheckin || (!expectedWeekEnd && wkEnd >= dago(10).toISOString().split('T')[0]);
 
     return {
       ...a, bAvg, nAvg, runS, strS, flags, alertScore,
-      hasRecent, compliance,
-      weekNum: calcWeekNum(a.id),
+      hasRecent, hasCurrentCheckin, expectedWeekEnd, compliance,
+      weekNum: wkNum,
       isCoach: COACHES.has(a.id),
     };
   });
@@ -600,7 +620,7 @@ function render({ athletes, coaches }) {
 function renderSummary(ath) {
   const alertN   = ath.filter(a => a.flags.some(f => f.t === 'red')).length;
   const watchN   = ath.filter(a => !a.flags.some(f => f.t === 'red') && a.flags.some(f => f.t === 'yellow')).length;
-  const checkedIn = ath.filter(a => a.hasRecent).length;
+  const checkedIn = ath.filter(a => a.hasCurrentCheckin || a.hasRecent).length;
   const totalKm  = ath.reduce((s, a) => {
     const k = parseFloat(a.weekly?.['Weekly Run KM'] || 0);
     return s + (isNaN(k) ? 0 : k);
@@ -674,6 +694,19 @@ function buildCard(a) {
     </div>`;
   }
 
+  // Stale data banner — shown when athlete has old check-in data but missed this week
+  const staleBanner = (hW && a.expectedWeekEnd && !a.hasCurrentCheckin)
+    ? `<div class="sec" style="background:#fffbeb;border-color:rgba(217,119,6,.2)">
+        <div style="display:flex;align-items:center;gap:7px">
+          <span style="font-size:13px">⚠️</span>
+          <div>
+            <div style="font-family:var(--mono);font-size:9px;font-weight:700;color:#92400e;text-transform:uppercase;letter-spacing:.08em">No check-in submitted this week</div>
+            <div style="font-family:var(--mono);font-size:9px;color:#b45309;margin-top:1px">Showing last submission — week ending ${fmtDate(w['Week Ending'])}</div>
+          </div>
+        </div>
+      </div>`
+    : '';
+
   // Training
   let training = '';
   if (hW) {
@@ -683,7 +716,7 @@ function buildCard(a) {
     const lPct = lp > 0 ? Math.min(100, Math.round(lc / lp * 100)) : 0;
 
     training = `<div class="sec">
-      <div class="sec-ttl">${a.weekNum !== null ? (a.weekNum === 0 ? 'Discovery Week Training' : `Wk ${a.weekNum} Training`) : 'Training'} — ending ${fmtDate(w['Week Ending']) || '?'}</div>
+      <div class="sec-ttl">${a.weekNum !== null ? (a.weekNum === 0 ? 'Discovery Week Training' : `Wk ${a.weekNum} Training`) : 'Training'} — ending ${fmtDate(a.expectedWeekEnd || w['Week Ending']) || '?'}</div>
       <div class="tpair">
         <div class="tb">
           <div class="tt run">Run</div>
@@ -786,23 +819,36 @@ function buildCard(a) {
       </div>
     </div>`;
 
-  const metaText = a.hasRecent
-    ? `Week ending ${fmtDate(w?.['Week Ending'])}`
-    : hW ? `Last check-in ${fmtDate(w?.['Week Ending'])}`
-    : a.body.length ? 'Daily tracking only' : 'No recent data';
+  // Always show the EXPECTED week ending so all cards are on the same reference date.
+  // If no check-in was submitted for this week, call that out explicitly.
+  let metaText;
+  if (a.expectedWeekEnd) {
+    if (a.hasCurrentCheckin) {
+      metaText = `Week ending ${fmtDate(a.expectedWeekEnd)}`;
+    } else {
+      // No check-in for current week — note it, and show last submission if there is one
+      const lastStr = hW ? ` · last ${fmtDate(w['Week Ending'])}` : '';
+      metaText = `No check-in — wk ends ${fmtDate(a.expectedWeekEnd)}${lastStr}`;
+    }
+  } else {
+    // No start date set — fall back to whatever we have
+    metaText = hW
+      ? (a.hasRecent ? `Week ending ${fmtDate(w['Week Ending'])}` : `Last check-in ${fmtDate(w['Week Ending'])}`)
+      : a.body.length ? 'Daily tracking only' : 'No recent data';
+  }
 
   return `<div class="card ${bcls}" data-card="${esc(a.id)}" data-alert="${a.alertScore}" data-name="${esc(a.id)}" data-week="${a.weekNum ?? 0}" data-compliance="${a.compliance ?? 0}" data-checkin="${w?.['Week Ending'] || ''}">
     <div class="card-head">
       <div class="card-head-top">
         <div>
           <div class="aname">${esc(a.id)}</div>
-          <div class="ameta ${!a.hasRecent ? 'nocheckin' : ''}">${metaText}</div>
+          <div class="ameta ${(!a.hasCurrentCheckin && !a.hasRecent) ? 'nocheckin' : (a.expectedWeekEnd && !a.hasCurrentCheckin ? 'nocheckin' : '')}">${metaText}</div>
         </div>
         ${a.weekNum !== null ? `<div class="week-badge"><div class="wk-num">${a.weekNum}</div><div class="wk-lbl">${a.weekNum === 0 ? 'Discovery' : 'Week'}</div></div>` : ''}
       </div>
       ${a.flags.length ? `<div class="flags">${fps}</div>` : ''}
     </div>
-    ${compBar}${scores}${training}${bodyHtml}${nutrHtml}${sessHtml}
+    ${staleBanner}${compBar}${scores}${training}${bodyHtml}${nutrHtml}${sessHtml}
     <div class="ai-sec"></div>
     ${callPrepHtml}
   </div>`;
