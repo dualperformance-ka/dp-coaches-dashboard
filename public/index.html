@@ -4,1035 +4,353 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Coaches Dashboard — Dual Performance</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800;900&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-:root {
-  --bg:       #f3f4f7;
-  --bg2:      #ecedf1;
-  --bg3:      #e4e5ea;
-  --surface:  #ffffff;
-  --surface2: #f8f8fb;
-  --surface3: #f0f1f5;
-  --border:   rgba(0,0,0,.07);
-  --border-mid: rgba(0,0,0,.13);
-  --text:     #111118;
-  --muted:    #5a6070;
-  --dim:      #9ba3b0;
-  --run:      #e05f00;
-  --run-dim:  rgba(224,95,0,.09);
-  --run-mid:  rgba(224,95,0,.18);
-  --str:      #4f46e5;
-  --str-dim:  rgba(79,70,229,.09);
-  --str-mid:  rgba(79,70,229,.18);
-  --ok:       #15803d;
-  --ok-dim:   rgba(21,128,61,.08);
-  --ok-mid:   rgba(21,128,61,.18);
-  --warn:     #b45309;
-  --warn-dim: rgba(180,83,9,.08);
-  --warn-mid: rgba(180,83,9,.18);
-  --alert:    #b91c1c;
-  --alert-dim:rgba(185,28,28,.07);
-  --alert-mid:rgba(185,28,28,.18);
-  --info:     #0369a1;
-  --win-bg:   rgba(21,128,61,.07);
-  --win-border:rgba(21,128,61,.2);
-  --win-text: #15803d;
-  --flag-bg:  rgba(185,28,28,.07);
-  --flag-border:rgba(185,28,28,.2);
-  --flag-text:#b91c1c;
-  --mono: 'JetBrains Mono', monospace;
-  --cond: 'Barlow Condensed', sans-serif;
-  --body-font:'Barlow', sans-serif;
-  --radius: 12px;
-  --shadow: 0 1px 3px rgba(0,0,0,.06), 0 4px 12px rgba(0,0,0,.04);
-  --shadow-md: 0 2px 8px rgba(0,0,0,.08), 0 8px 24px rgba(0,0,0,.05);
+:root{
+  --bg:#f4f3f0;--surface:#fff;--surface2:#f0ede8;
+  --border:rgba(0,0,0,.08);--border-mid:rgba(0,0,0,.14);
+  --text:#0a0a0a;--muted:#5a5a5a;--dim:#999;
+  --run:#b45309;--str:#1e3a8a;
+  --ok:#15803d;--warn:#d97706;--alert:#dc2626;
+  --mono:'SF Mono','Fira Code','Courier New',monospace;
+  --sans:system-ui,-apple-system,sans-serif;
+  --green-bg:#f0fdf4;--green-border:#86efac;--green-text:#15803d;
+  --amber-bg:#fffbeb;--amber-border:#fcd34d;--amber-text:#92400e;
+  --red-bg:#fef2f2;--red-border:#fca5a5;--red-text:#991b1b;
+  --coach-bg:#f0f4ff;--coach-border:#a5b4fc;--coach-text:#3730a3;
 }
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html { scroll-behavior: smooth; }
-body {
-  background: var(--bg);
-  color: var(--text);
-  font-family: var(--body-font);
-  font-size: 14px;
-  line-height: 1.5;
-  min-height: 100vh;
-  -webkit-font-smoothing: antialiased;
-}
-::-webkit-scrollbar { width: 5px; height: 5px; }
-::-webkit-scrollbar-track { background: var(--bg2); }
-::-webkit-scrollbar-thumb { background: var(--bg3); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: var(--dim); }
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;line-height:1.5}
 
 /* ── Header ── */
-header {
-  background: rgba(255,255,255,.92);
-  border-bottom: 1px solid var(--border);
-  padding: 0 22px;
-  height: 56px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  position: sticky;
-  top: 0;
-  z-index: 200;
-  gap: 14px;
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  box-shadow: 0 1px 0 rgba(0,0,0,.06);
-}
-.logo {
-  font-family: var(--cond);
-  font-size: 20px;
-  font-weight: 900;
-  letter-spacing: .14em;
-  text-transform: uppercase;
-  white-space: nowrap;
-  display: flex;
-  align-items: center;
-  gap: 3px;
-  user-select: none;
-}
-.logo .d { color: var(--text); }
-.logo .sep { color: var(--bg3); font-weight: 400; margin: 0 5px; }
-.logo .p { color: var(--dim); }
-.h-mid {
-  font-family: var(--mono);
-  font-size: 9px;
-  color: var(--dim);
-  text-transform: uppercase;
-  letter-spacing: .16em;
-  white-space: nowrap;
-}
-.h-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
-.updated {
-  font-family: var(--mono);
-  font-size: 9px;
-  color: var(--dim);
-  white-space: nowrap;
-}
-.btn {
-  background: var(--surface);
-  border: 1px solid var(--border-mid);
-  color: var(--muted);
-  font-family: var(--mono);
-  font-size: 10px;
-  padding: 6px 14px;
-  border-radius: 8px;
-  cursor: pointer;
-  text-transform: uppercase;
-  letter-spacing: .07em;
-  transition: all .15s;
-  white-space: nowrap;
-  box-shadow: 0 1px 2px rgba(0,0,0,.04);
-}
-.btn:hover { border-color: var(--str); color: var(--str); background: var(--str-dim); }
-.btn:disabled { opacity: .4; cursor: not-allowed; }
-.btn.primary {
-  background: var(--str);
-  border-color: var(--str);
-  color: #fff;
-  box-shadow: 0 1px 3px rgba(79,70,229,.3);
-}
-.btn.primary:hover { background: #4338ca; border-color: #4338ca; color: #fff; box-shadow: 0 2px 8px rgba(79,70,229,.35); }
-.btn.loading {
-  background: var(--str-dim);
-  border-color: var(--str);
-  color: var(--str);
-  animation: pulse-btn 1.4s infinite;
-}
-@keyframes pulse-btn {
-  0%,100% { box-shadow: 0 0 0 0 rgba(79,70,229,.2); }
-  50%      { box-shadow: 0 0 0 4px rgba(79,70,229,.1); }
-}
+header{background:#0a0a0a;padding:0 18px;height:50px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;gap:12px}
+.logo{font-size:16px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;white-space:nowrap}
+.logo .d{color:#fff}.logo .p{color:rgba(255,255,255,.28)}
+.h-mid{font-family:var(--mono);font-size:9px;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:.12em;white-space:nowrap}
+.h-right{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.updated{font-family:var(--mono);font-size:9px;color:rgba(255,255,255,.28);white-space:nowrap}
+.refresh-btn{background:transparent;border:1px solid rgba(255,255,255,.18);color:rgba(255,255,255,.55);font-family:var(--mono);font-size:10px;padding:5px 12px;border-radius:6px;cursor:pointer;text-transform:uppercase;letter-spacing:.06em;transition:all .15s}
+.refresh-btn:hover{border-color:rgba(255,255,255,.4);color:#fff}
+.refresh-btn:disabled{opacity:.4;cursor:not-allowed}
+
+/* ── Tab Bar ── */
+.tab-bar{background:#0a0a0a;border-bottom:1px solid rgba(255,255,255,.08);padding:0 18px;display:flex;align-items:flex-end;gap:2px;position:sticky;top:50px;z-index:99}
+.tab{background:transparent;border:none;border-bottom:2px solid transparent;color:rgba(255,255,255,.35);font-family:var(--mono);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;padding:10px 16px 9px;cursor:pointer;transition:all .15s;white-space:nowrap;display:flex;align-items:center;gap:6px}
+.tab:hover{color:rgba(255,255,255,.65)}
+.tab.active{color:#fff;border-bottom-color:#fff}
+.tab-badge{background:rgba(255,255,255,.12);border-radius:20px;padding:1px 7px;font-size:9px;min-width:20px;text-align:center}
+.tab.active .tab-badge{background:rgba(255,255,255,.22)}
+.tab-badge.red{background:rgba(220,38,38,.5);color:#fca5a5}
+
+/* ── Filter Bar ── */
+.filter-bar{background:var(--surface);border-bottom:1px solid var(--border);padding:8px 18px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;position:sticky;top:82px;z-index:98}
+.search-input{border:1px solid var(--border-mid);border-radius:7px;padding:6px 12px;font-family:var(--mono);font-size:11px;color:var(--text);background:var(--surface);outline:none;min-width:180px;transition:border .15s}
+.search-input:focus{border-color:rgba(0,0,0,.3)}
+.search-input::placeholder{color:var(--dim)}
+.sf-group{display:flex;gap:4px;align-items:center}
+.sf{background:transparent;border:1px solid var(--border-mid);border-radius:20px;padding:4px 12px;font-family:var(--mono);font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;cursor:pointer;color:var(--muted);transition:all .15s}
+.sf:hover{border-color:rgba(0,0,0,.25);color:var(--text)}
+.sf.active{background:#0a0a0a;border-color:#0a0a0a;color:#fff}
+.sf.sf-red.active{background:var(--alert);border-color:var(--alert);color:#fff}
+.sf.sf-amber.active{background:var(--warn);border-color:var(--warn);color:#fff}
+.sf.sf-green.active{background:var(--ok);border-color:var(--ok);color:#fff}
+.sort-select{border:1px solid var(--border-mid);border-radius:7px;padding:5px 10px;font-family:var(--mono);font-size:10px;color:var(--muted);background:var(--surface);cursor:pointer;outline:none}
+.filter-divider{width:1px;height:22px;background:var(--border-mid)}
+.filter-label{font-family:var(--mono);font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;white-space:nowrap}
 
 /* ── Layout ── */
-.main {
-  padding: 20px 18px 80px;
-  max-width: 1540px;
-  margin: 0 auto;
-}
+.main{padding:14px 14px 40px;max-width:1400px;margin:0 auto}
 
-/* ── Loading / Error ── */
-.state-box { text-align: center; padding: 100px 20px; }
-.dots { display: flex; gap: 8px; justify-content: center; margin-bottom: 16px; }
-.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--bg3); animation: blink 1.4s infinite; }
-.dot:nth-child(2) { animation-delay: .2s; }
-.dot:nth-child(3) { animation-delay: .4s; }
-@keyframes blink { 0%,100%{opacity:.2} 50%{opacity:1} }
-.state-txt {
-  font-family: var(--mono);
-  font-size: 11px;
-  color: var(--dim);
-  text-transform: uppercase;
-  letter-spacing: .1em;
-}
+/* ── Summary bar ── */
+.summary-bar{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+.sum-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 16px;min-width:100px}
+.sum-num{font-size:24px;font-weight:800;letter-spacing:-.01em;line-height:1;margin-bottom:1px}
+.sum-num.red{color:var(--alert)}.sum-num.grn{color:var(--ok)}.sum-num.run-c{color:var(--run)}.sum-num.str-c{color:var(--str)}
+.sum-lbl{font-family:var(--mono);font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em}
 
-/* ── Summary Bar ── */
-.summary-bar {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 18px;
-  flex-wrap: wrap;
-}
-.sum-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 13px 18px;
-  flex: 1;
-  min-width: 88px;
-  max-width: 160px;
-  box-shadow: var(--shadow);
-  transition: box-shadow .15s, transform .15s;
-}
-.sum-card:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
-.sum-num {
-  font-family: var(--cond);
-  font-size: 32px;
-  font-weight: 900;
-  line-height: 1;
-  margin-bottom: 3px;
-  letter-spacing: -.01em;
-}
-.sum-num.default { color: var(--text); }
-.sum-num.red   { color: var(--alert); }
-.sum-num.grn   { color: var(--ok); }
-.sum-num.run-c { color: var(--run); }
-.sum-num.str-c { color: var(--str); }
-.sum-num.warn-c{ color: var(--warn); }
-.sum-lbl {
-  font-family: var(--mono);
-  font-size: 8px;
-  color: var(--dim);
-  text-transform: uppercase;
-  letter-spacing: .1em;
-}
-
-/* ── Week Summary Banner ── */
-.week-summary {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 20px 22px;
-  margin-bottom: 18px;
-  display: none;
-  box-shadow: var(--shadow);
-}
-.week-summary.visible { display: block; }
-.ws-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 16px;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-.ws-title {
-  font-family: var(--cond);
-  font-size: 15px;
-  font-weight: 800;
-  letter-spacing: .1em;
-  text-transform: uppercase;
-  color: var(--muted);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.ws-title strong { color: var(--str); font-weight: 900; }
-.ws-cols {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-}
-@media (max-width: 700px) { .ws-cols { grid-template-columns: 1fr; } }
-.ws-col { display: flex; flex-direction: column; gap: 6px; }
-.ws-col-ttl {
-  font-family: var(--mono);
-  font-size: 8px;
-  letter-spacing: .1em;
-  text-transform: uppercase;
-  color: var(--dim);
-  margin-bottom: 4px;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-.ws-win {
-  background: rgba(21,128,61,.06);
-  border: 1px solid rgba(21,128,61,.18);
-  border-left: 3px solid var(--ok);
-  border-radius: 8px;
-  padding: 8px 12px;
-  font-size: 12.5px;
-  color: #1a6b3a;
-  line-height: 1.45;
-}
-.ws-win strong { font-weight: 700; color: #0f5c30; }
-.ws-flag {
-  background: rgba(185,28,28,.05);
-  border: 1px solid rgba(185,28,28,.15);
-  border-left: 3px solid var(--alert);
-  border-radius: 8px;
-  padding: 8px 12px;
-  font-size: 12.5px;
-  color: #9b1515;
-  line-height: 1.45;
-}
-.ws-flag strong { font-weight: 700; color: #7f1010; }
-.ws-flag.soft {
-  background: rgba(180,83,9,.05);
-  border-color: rgba(180,83,9,.15);
-  border-left-color: var(--warn);
-  color: #92400e;
-}
-.ws-flag.soft strong { color: #78350f; }
-.ws-ai-text {
-  font-size: 13px;
-  color: var(--muted);
-  line-height: 1.65;
-  margin-top: 14px;
-  padding-top: 14px;
-  border-top: 1px solid var(--border);
-  display: none;
-}
-
-/* ── Section Divider ── */
-.section-divider {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin: 20px 0 14px;
-}
-.sd-label {
-  font-family: var(--mono);
-  font-size: 8px;
-  color: var(--dim);
-  text-transform: uppercase;
-  letter-spacing: .14em;
-  white-space: nowrap;
-}
-.sd-line { flex: 1; height: 1px; background: var(--border); }
+/* ── States ── */
+.state-box{text-align:center;padding:60px 20px}
+.dots{display:flex;gap:6px;justify-content:center;margin-bottom:12px}
+.dot{width:7px;height:7px;border-radius:50%;background:#ccc;animation:blink 1.2s infinite}
+.dot:nth-child(2){animation-delay:.2s}.dot:nth-child(3){animation-delay:.4s}
+@keyframes blink{0%,100%{opacity:.2}50%{opacity:1}}
+.state-txt{font-family:var(--mono);font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em}
 
 /* ── Grid ── */
-.grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-  gap: 12px;
-  align-items: start;
-}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:11px}
 
 /* ── Card ── */
-.card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  box-shadow: var(--shadow);
-  transition: box-shadow .2s, transform .2s;
-}
-.card:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
-.card.red {
-  border-color: rgba(185,28,28,.25);
-  box-shadow: 0 0 0 3px rgba(185,28,28,.06), var(--shadow);
-}
-.card.yellow {
-  border-color: rgba(180,83,9,.22);
-  box-shadow: 0 0 0 3px rgba(180,83,9,.05), var(--shadow);
-}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;display:flex;flex-direction:column;transition:box-shadow .15s}
+.card:hover{box-shadow:0 4px 18px rgba(0,0,0,.08)}
+.card.red{border-color:rgba(220,38,38,.35)}.card.yellow{border-color:rgba(217,119,6,.3)}
+.card.hidden{display:none}
+.card-head{background:#0a0a0a;padding:11px 14px 10px}
+.aname{font-size:22px;font-weight:900;letter-spacing:.05em;text-transform:uppercase;color:#fff;line-height:1}
+.ameta{font-family:var(--mono);font-size:8px;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:.08em;margin-top:3px}
+.ameta.nocheckin{color:rgba(248,113,113,.6)}
+.flags{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.fp{font-family:var(--mono);font-size:8px;padding:2px 7px;border-radius:20px;text-transform:uppercase;letter-spacing:.04em}
+.fp.red{background:rgba(248,113,113,.18);color:#fca5a5;border:1px solid rgba(248,113,113,.3)}
+.fp.yellow{background:rgba(251,191,36,.15);color:#f59e0b;border:1px solid rgba(251,191,36,.28)}
+.fp.green{background:rgba(74,222,128,.12);color:#059669;border:1px solid rgba(74,222,128,.22)}
 
-/* ── Card Header ── */
-.card-head {
-  background: linear-gradient(135deg, var(--surface2) 0%, var(--bg2) 100%);
-  padding: 14px 16px 12px;
-  border-bottom: 1px solid var(--border);
-}
-.card.red  .card-head { background: linear-gradient(135deg, rgba(185,28,28,.05) 0%, rgba(185,28,28,.02) 100%); }
-.card.yellow .card-head { background: linear-gradient(135deg, rgba(180,83,9,.05) 0%, rgba(180,83,9,.02) 100%); }
-.card-head-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 10px;
-  margin-bottom: 9px;
-}
-.aname {
-  font-family: var(--cond);
-  font-size: 28px;
-  font-weight: 900;
-  letter-spacing: .06em;
-  text-transform: uppercase;
-  color: var(--text);
-  line-height: 1;
-}
-.ameta {
-  font-family: var(--mono);
-  font-size: 8px;
-  color: var(--dim);
-  text-transform: uppercase;
-  letter-spacing: .1em;
-  margin-top: 5px;
-}
-.ameta.nocheckin { color: var(--alert); }
-.week-badge {
-  text-align: center;
-  background: var(--surface);
-  border: 1px solid var(--border-mid);
-  border-radius: 10px;
-  padding: 5px 14px;
-  flex-shrink: 0;
-  box-shadow: 0 1px 3px rgba(0,0,0,.06);
-}
-.wk-num {
-  font-family: var(--cond);
-  font-size: 26px;
-  font-weight: 900;
-  color: var(--text);
-  line-height: 1;
-  letter-spacing: -.01em;
-}
-.wk-lbl {
-  font-family: var(--mono);
-  font-size: 7px;
-  color: var(--dim);
-  text-transform: uppercase;
-  letter-spacing: .12em;
-  margin-top: 2px;
-}
+/* ── Scores row ── */
+.scores{display:flex;border-bottom:1px solid var(--border)}
+.sc{flex:1;padding:8px 3px;text-align:center;border-right:1px solid var(--border)}.sc:last-child{border-right:none}
+.sc-lbl{font-family:var(--mono);font-size:7px;color:var(--dim);text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px}
+.sc-val{font-size:17px;font-weight:800;line-height:1}
+.sc-val.good{color:var(--ok)}.sc-val.mid{color:var(--warn)}.sc-val.bad{color:var(--alert)}.sc-val.n{color:var(--text)}
 
-/* ── Flags ── */
-.flags { display: flex; flex-wrap: wrap; gap: 4px; }
-.fp {
-  font-family: var(--mono);
-  font-size: 8px;
-  padding: 2px 9px;
-  border-radius: 20px;
-  text-transform: uppercase;
-  letter-spacing: .05em;
-  font-weight: 600;
-}
-.fp.red    { background: rgba(185,28,28,.1);  color: var(--alert); border: 1px solid rgba(185,28,28,.2); }
-.fp.yellow { background: rgba(180,83,9,.1);   color: var(--warn);  border: 1px solid rgba(180,83,9,.2); }
-.fp.green  { background: rgba(21,128,61,.1);  color: var(--ok);    border: 1px solid rgba(21,128,61,.2); }
-.fp.blue   { background: rgba(3,105,161,.09); color: var(--info);  border: 1px solid rgba(3,105,161,.2); }
-
-/* ── Scores Row ── */
-.scores {
-  display: flex;
-  border-bottom: 1px solid var(--border);
-  background: var(--surface);
-}
-.sc {
-  flex: 1;
-  padding: 8px 3px;
-  text-align: center;
-  border-right: 1px solid var(--border);
-  position: relative;
-}
-.sc:last-child { border-right: none; }
-.sc-lbl {
-  font-family: var(--mono);
-  font-size: 7px;
-  color: var(--dim);
-  text-transform: uppercase;
-  letter-spacing: .05em;
-  margin-bottom: 2px;
-}
-.sc-val {
-  font-family: var(--cond);
-  font-size: 21px;
-  font-weight: 800;
-  line-height: 1;
-  letter-spacing: -.01em;
-}
-.sc-val.good { color: var(--ok); }
-.sc-val.mid  { color: var(--warn); }
-.sc-val.bad  { color: var(--alert); }
-.sc-val.n    { color: var(--dim); }
-.sc-trend { font-family: var(--mono); font-size: 8px; position: absolute; top: 6px; right: 4px; }
-.sc-trend.up { color: var(--ok); }
-.sc-trend.dn { color: var(--alert); }
+/* ── Compliance bar ── */
+.compliance-row{display:flex;align-items:center;gap:8px;padding:8px 13px 4px;border-bottom:1px solid var(--border)}
+.comp-lbl{font-family:var(--mono);font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;white-space:nowrap}
+.comp-track{flex:1;height:5px;background:rgba(0,0,0,.07);border-radius:3px;overflow:hidden}
+.comp-fill{height:100%;border-radius:3px;transition:width .3s}
+.comp-fill.good{background:var(--ok)}.comp-fill.mid{background:var(--warn)}.comp-fill.bad{background:var(--alert)}
+.comp-pct{font-family:var(--mono);font-size:10px;font-weight:700;min-width:28px;text-align:right}
+.comp-pct.good{color:var(--ok)}.comp-pct.mid{color:var(--warn)}.comp-pct.bad{color:var(--alert)}
 
 /* ── Sections ── */
-.sec {
-  padding: 12px 15px;
-  border-bottom: 1px solid var(--border);
-}
-.sec:last-child { border-bottom: none; }
-.sec-ttl {
-  font-family: var(--mono);
-  font-size: 8px;
-  color: var(--dim);
-  text-transform: uppercase;
-  letter-spacing: .1em;
-  margin-bottom: 9px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.sec-ttl-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
-.sec-ttl-dot.run  { background: var(--run); }
-.sec-ttl-dot.str  { background: var(--str); }
-.sec-ttl-dot.body { background: var(--info); }
-.sec-ttl-dot.nutr { background: var(--ok); }
+.sec{padding:10px 13px;border-bottom:1px solid var(--border)}.sec:last-child{border-bottom:none}
+.sec-ttl{font-family:var(--mono);font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.1em;margin-bottom:7px}
 
-/* ── Training pair ── */
-.tpair { display: flex; gap: 9px; }
-.tb {
-  flex: 1;
-  background: var(--surface2);
-  border-radius: 10px;
-  padding: 10px 11px;
-  border: 1px solid var(--border);
-}
-.tt {
-  font-family: var(--cond);
-  font-size: 13px;
-  font-weight: 800;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  margin-bottom: 5px;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-.tt.run { color: var(--run); }
-.tt.str { color: var(--str); }
-.tt-icon { font-size: 12px; }
-.ts {
-  font-family: var(--mono);
-  font-size: 9px;
-  color: var(--muted);
-  line-height: 1.75;
-}
-.ts strong  { color: var(--text); font-weight: 600; }
-.ts .hi  { color: var(--run); font-weight: 700; }
-.ts .his { color: var(--str); font-weight: 700; }
+/* ── Training ── */
+.tpair{display:flex;gap:7px}
+.tb{flex:1;background:var(--surface2);border-radius:8px;padding:8px 9px}
+.tt{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;margin-bottom:3px}
+.tt.run{color:var(--run)}.tt.str{color:var(--str)}
+.ts{font-family:var(--mono);font-size:9px;color:var(--muted);line-height:1.6}
+.ts strong{color:var(--text)}
+.pbar{height:3px;background:rgba(0,0,0,.08);border-radius:2px;overflow:hidden;margin:4px 0}
+.pfill{height:100%;border-radius:2px}.pfill.run{background:var(--run)}.pfill.str{background:var(--str)}
+.nl{font-size:11px;color:var(--muted);line-height:1.4;margin-top:3px}
+.nl-lbl{font-family:var(--mono);font-size:7px;color:var(--dim);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:1px}
+.nl.red{color:var(--alert)}
+.testim{font-size:11px;color:var(--muted);font-style:italic;line-height:1.4;padding:6px 9px;background:var(--surface2);border-radius:6px;border-left:2px solid rgba(0,0,0,.1);margin-top:6px}
+.impact{font-size:11px;color:#92400e;margin-top:5px;padding:4px 8px;background:#fffbeb;border-radius:5px;border-left:2px solid var(--warn)}
 
-/* ── Progress bar ── */
-.pbar {
-  height: 4px;
-  background: rgba(0,0,0,.07);
-  border-radius: 3px;
-  overflow: hidden;
-  margin: 5px 0;
-}
-.pfill { height: 100%; border-radius: 3px; transition: width .5s ease; }
-.pfill.run  { background: var(--run); }
-.pfill.str  { background: var(--str); }
-.pfill.full { background: var(--ok); }
-
-/* ── Notes / Niggles / Wins ── */
-.nl {
-  font-size: 11px;
-  line-height: 1.45;
-  margin-top: 6px;
-  border-radius: 7px;
-  padding: 5px 8px;
-}
-.nl-lbl {
-  font-family: var(--mono);
-  font-size: 7px;
-  text-transform: uppercase;
-  letter-spacing: .07em;
-  display: block;
-  margin-bottom: 1px;
-  font-weight: 700;
-}
-.nl.red    { color: var(--alert); background: var(--alert-dim); border-left: 3px solid var(--alert); }
-.nl.red .nl-lbl { color: #9b1515; }
-.nl.green  { color: var(--ok);    background: var(--ok-dim);    border-left: 3px solid var(--ok); }
-.nl.green .nl-lbl { color: #0f5c30; }
-.nl.amber  { color: var(--warn);  background: var(--warn-dim);  border-left: 3px solid var(--warn); }
-.nl.amber .nl-lbl { color: #92400e; }
-.testim {
-  font-size: 11.5px;
-  color: var(--muted);
-  font-style: italic;
-  line-height: 1.55;
-  padding: 8px 11px;
-  background: var(--surface2);
-  border-radius: 8px;
-  border-left: 3px solid var(--border-mid);
-  margin-top: 8px;
-}
-.impact {
-  font-size: 11px;
-  color: var(--warn);
-  margin-top: 6px;
-  padding: 5px 9px;
-  background: var(--warn-dim);
-  border-radius: 7px;
-  border-left: 3px solid var(--warn);
-  font-weight: 600;
-}
-
-/* ── Strength Highlights ── */
-.str-prs { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
-.pr-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 5px 9px;
-  background: rgba(79,70,229,.07);
-  border: 1px solid rgba(79,70,229,.15);
-  border-radius: 7px;
-  gap: 8px;
-}
-.pr-move {
-  font-family: var(--mono);
-  font-size: 9px;
-  color: var(--str);
-  text-transform: uppercase;
-  letter-spacing: .04em;
-  flex: 1;
-  font-weight: 600;
-}
-.pr-val { font-family: var(--cond); font-size: 16px; font-weight: 800; color: #3730a3; }
-.pr-badge {
-  font-family: var(--mono);
-  font-size: 7px;
-  padding: 2px 6px;
-  border-radius: 4px;
-  text-transform: uppercase;
-  letter-spacing: .04em;
-  font-weight: 700;
-}
-.pr-badge.pb { background: rgba(202,138,4,.15); color: #92400e; border: 1px solid rgba(202,138,4,.3); }
-.pr-badge.strong { background: var(--ok-dim); color: var(--ok); border: 1px solid var(--ok-mid); }
-
-/* ── Body Section ── */
-.body-grid { display: flex; align-items: flex-start; gap: 14px; }
-.wnum {
-  font-family: var(--cond);
-  font-size: 32px;
-  font-weight: 900;
-  line-height: 1;
-  letter-spacing: -.02em;
-  color: var(--text);
-}
-.wunit { font-family: var(--mono); font-size: 9px; color: var(--dim); margin-left: 2px; }
-.wdate { font-family: var(--mono); font-size: 8px; color: var(--dim); margin-top: 2px; }
-.bmet { flex: 1; display: grid; grid-template-columns: repeat(4,1fr); gap: 5px; }
-.bm { text-align: center; }
-.bm-lbl {
-  font-family: var(--mono);
-  font-size: 7px;
-  color: var(--dim);
-  text-transform: uppercase;
-  letter-spacing: .05em;
-  margin-bottom: 3px;
-}
-.bm-val { font-family: var(--cond); font-size: 20px; font-weight: 700; line-height: 1; }
-.bm-val.good { color: var(--ok); }
-.bm-val.mid  { color: var(--warn); }
-.bm-val.bad  { color: var(--alert); }
-.bnote {
-  font-family: var(--mono);
-  font-size: 9px;
-  color: var(--muted);
-  margin-top: 8px;
-  border-left: 3px solid var(--alert);
-  padding-left: 8px;
-  line-height: 1.55;
-}
+/* ── Body ── */
+.body-grid{display:flex;align-items:flex-start;gap:14px}
+.wnum{font-size:26px;font-weight:800;line-height:1;letter-spacing:-.01em}
+.wunit{font-family:var(--mono);font-size:9px;color:var(--dim);margin-left:2px}
+.wdate{font-family:var(--mono);font-size:8px;color:var(--dim);margin-top:2px}
+.bmet{flex:1;display:flex;gap:8px}
+.bm{flex:1;text-align:center}
+.bm-lbl{font-family:var(--mono);font-size:7px;color:var(--dim);text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px}
+.bm-val{font-size:15px;font-weight:700}
+.bnote{font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:6px;border-left:2px solid var(--alert);padding-left:6px;line-height:1.4}
 
 /* ── Nutrition ── */
-.nutr-grid { display: flex; gap: 6px; flex-wrap: wrap; }
-.mc {
-  flex: 1;
-  background: var(--surface2);
-  border-radius: 9px;
-  padding: 8px 9px;
-  text-align: center;
-  border: 1px solid var(--border);
-  min-width: 56px;
-}
-.mc-lbl { font-family: var(--mono); font-size: 7px; color: var(--dim); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 2px; }
-.mc-val { font-family: var(--cond); font-size: 20px; font-weight: 700; line-height: 1; color: var(--text); }
-.mc-unit { font-family: var(--mono); font-size: 8px; color: var(--dim); }
-.mc-status { font-family: var(--mono); font-size: 7px; margin-top: 2px; text-transform: uppercase; letter-spacing: .04em; font-weight: 700; }
-.mc-status.over  { color: var(--alert); }
-.mc-status.under { color: var(--warn); }
-.mc-status.good  { color: var(--ok); }
-.mc.highlight   { border-color: rgba(21,128,61,.25); background: rgba(21,128,61,.05); }
-.mc.flag-over   { border-color: rgba(185,28,28,.2);  background: rgba(185,28,28,.05); }
-.mc.flag-under  { border-color: rgba(180,83,9,.2);   background: rgba(180,83,9,.05); }
-.macro-compare { margin-top: 8px; display: flex; flex-direction: column; gap: 5px; }
-.mcomp-row { display: flex; align-items: center; gap: 8px; }
-.mcomp-lbl {
-  font-family: var(--mono);
-  font-size: 8px;
-  color: var(--dim);
-  width: 44px;
-  text-transform: uppercase;
-  letter-spacing: .04em;
-  flex-shrink: 0;
-}
-.mcomp-track {
-  flex: 1;
-  height: 5px;
-  background: rgba(0,0,0,.07);
-  border-radius: 3px;
-  overflow: hidden;
-}
-.mcomp-fill { height: 100%; border-radius: 3px; transition: width .4s; }
-.mcomp-fill.good  { background: var(--ok); }
-.mcomp-fill.over  { background: var(--alert); }
-.mcomp-fill.under { background: var(--warn); }
-.mcomp-val {
-  font-family: var(--mono);
-  font-size: 8px;
-  color: var(--muted);
-  width: 60px;
-  text-align: right;
-  flex-shrink: 0;
-}
+.mrow{display:flex;gap:6px}
+.mc{flex:1;background:var(--surface2);border-radius:6px;padding:6px 8px;text-align:center}
+.mc-lbl{font-family:var(--mono);font-size:7px;color:var(--dim);text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px}
+.mc-val{font-size:15px;font-weight:700;line-height:1}
+.mc-unit{font-family:var(--mono);font-size:8px;color:var(--dim)}
 
-/* ── Session count ── */
-.sess-row { display: flex; gap: 7px; margin-bottom: 4px; }
-.scard { background: var(--surface2); border-radius: 8px; padding: 9px 12px; text-align: center; border: 1px solid var(--border); flex: 1; }
-.snum { font-family: var(--cond); font-size: 26px; font-weight: 800; line-height: 1; }
-.snum.run-c { color: var(--run); }
-.snum.str-c { color: var(--str); }
-.slbl { font-family: var(--mono); font-size: 7px; color: var(--dim); text-transform: uppercase; letter-spacing: .07em; margin-top: 2px; }
+/* ── Week badge ── */
+.card-head-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.week-badge{text-align:center;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);border-radius:8px;padding:5px 12px;flex-shrink:0}
+.wk-num{font-size:24px;font-weight:900;color:#fff;line-height:1;letter-spacing:-.01em}
+.wk-lbl{font-family:var(--mono);font-size:7px;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:.12em;margin-top:2px}
 
-/* ── AI Section ── */
-.ai-sec {
-  padding: 12px 15px;
-  border-top: 1px solid var(--border);
-  background: rgba(79,70,229,.025);
-}
-.ai-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 9px; }
-.ai-status-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  font-family: var(--mono);
-  font-size: 8px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: .1em;
-  padding: 4px 11px;
-  border-radius: 20px;
-}
-.ai-status-badge::before { content: '●'; font-size: 8px; }
-.ai-status-badge.GREEN { background: rgba(21,128,61,.1); color: var(--ok);   border: 1px solid rgba(21,128,61,.22); }
-.ai-status-badge.AMBER { background: rgba(180,83,9,.1);  color: var(--warn); border: 1px solid rgba(180,83,9,.22); }
-.ai-status-badge.RED   { background: rgba(185,28,28,.1); color: var(--alert);border: 1px solid rgba(185,28,28,.22); }
-.ai-wins, .ai-concerns { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; }
-.ai-win-item {
-  font-family: var(--mono);
-  font-size: 9px;
-  color: #1a6b3a;
-  padding: 5px 9px;
-  background: rgba(21,128,61,.07);
-  border-radius: 6px;
-  border: 1px solid rgba(21,128,61,.18);
-  border-left: 3px solid var(--ok);
-  line-height: 1.45;
-}
-.ai-concern-item {
-  font-family: var(--mono);
-  font-size: 9px;
-  color: #9b1515;
-  padding: 5px 9px;
-  background: rgba(185,28,28,.06);
-  border-radius: 6px;
-  border: 1px solid rgba(185,28,28,.16);
-  border-left: 3px solid var(--alert);
-  line-height: 1.45;
-}
-.ai-flags { display: flex; flex-direction: column; gap: 3px; margin-bottom: 8px; }
-.ai-flag {
-  font-family: var(--mono);
-  font-size: 9px;
-  color: var(--muted);
-  padding-left: 13px;
-  position: relative;
-  line-height: 1.55;
-}
-.ai-flag::before { content: '—'; position: absolute; left: 0; color: var(--dim); }
-.ai-rec {
-  font-size: 12.5px;
-  color: var(--muted);
-  line-height: 1.65;
-  padding: 10px 12px;
-  background: var(--surface2);
-  border-radius: 8px;
-  border-left: 3px solid var(--str);
-}
-.ai-loading {
-  font-family: var(--mono);
-  font-size: 9px;
-  color: var(--dim);
-  text-transform: uppercase;
-  letter-spacing: .08em;
-  padding: 8px 0;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.ai-loading-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--str); animation: blink 1.2s infinite; }
-.ai-loading-dot:nth-child(2) { animation-delay: .2s; }
-.ai-loading-dot:nth-child(3) { animation-delay: .4s; }
+/* ── Session count (no weekly) ── */
+.sess-row{display:flex;gap:8px;margin-bottom:4px}
+.scard{background:var(--surface2);border-radius:7px;padding:7px 11px;text-align:center}
+.snum{font-size:20px;font-weight:800;line-height:1}.snum.run-c{color:var(--run)}.snum.str-c{color:var(--str)}
+.slbl{font-family:var(--mono);font-size:7px;color:var(--dim);text-transform:uppercase;letter-spacing:.05em;margin-top:2px}
 
-/* ── Squad Brief ── */
-.squad-brief {
-  background: linear-gradient(135deg, rgba(79,70,229,.06) 0%, rgba(79,70,229,.02) 100%);
-  border: 1px solid rgba(79,70,229,.2);
-  border-radius: 16px;
-  padding: 18px 22px;
-  margin-bottom: 18px;
-  display: none;
-  box-shadow: 0 0 0 4px rgba(79,70,229,.04);
-}
-.squad-brief.visible { display: block; }
-.sb-title {
-  font-family: var(--mono);
-  font-size: 9px;
-  color: var(--str);
-  text-transform: uppercase;
-  letter-spacing: .14em;
-  margin-bottom: 10px;
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  font-weight: 700;
-}
-.sb-title::before { content: ''; display: inline-block; width: 7px; height: 7px; background: var(--str); border-radius: 50%; }
-.sb-text { font-size: 13.5px; color: var(--muted); line-height: 1.7; }
+/* ── Call Prep ── */
+.call-prep{border-top:2px solid #0a0a0a}
+.cp-header{background:#0a0a0a;padding:8px 13px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none}
+.cp-title{font-family:var(--mono);font-size:9px;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:.12em;display:flex;align-items:center;gap:7px}
+.cp-icon{font-size:11px}
+.cp-toggle{font-family:var(--mono);font-size:9px;color:rgba(255,255,255,.35);transition:transform .2s}
+.cp-toggle.open{transform:rotate(180deg)}
+.cp-body{padding:11px 13px;display:flex;flex-direction:column;gap:9px}
+.cp-block{}
+.cp-block-lbl{font-family:var(--mono);font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px;display:flex;align-items:center;gap:5px}
+.cp-block-lbl.win{color:var(--ok)}
+.cp-block-lbl.issue{color:var(--alert)}
+.cp-block-lbl.ask{color:var(--str)}
+.cp-block-lbl.note-lbl{color:var(--dim)}
+.cp-items{display:flex;flex-direction:column;gap:3px}
+.cp-item{font-size:11px;color:var(--muted);line-height:1.5;padding-left:14px;position:relative}
+.cp-item::before{position:absolute;left:0;font-size:10px}
+.cp-item.win::before{content:'✓';color:var(--ok)}
+.cp-item.issue::before{content:'⚠';color:var(--alert)}
+.cp-item.ask::before{content:'→';color:var(--str)}
+.cp-item em{font-style:italic;color:var(--dim)}
+.cp-none{font-family:var(--mono);font-size:9px;color:var(--dim);font-style:italic}
+.cp-note{width:100%;border:1px solid var(--border-mid);border-radius:6px;padding:7px 10px;font-family:var(--sans);font-size:11px;color:var(--text);background:var(--surface2);resize:vertical;min-height:52px;outline:none;transition:border .15s;line-height:1.45}
+.cp-note:focus{border-color:rgba(0,0,0,.3);background:var(--surface)}
+.cp-note::placeholder{color:var(--dim)}
 
-/* ── Weekly Wins Ticker ── */
-.wins-ticker {
-  background: rgba(21,128,61,.06);
-  border: 1px solid rgba(21,128,61,.18);
-  border-radius: 12px;
-  padding: 12px 16px;
-  margin-bottom: 18px;
-  display: none;
-}
-.wins-ticker.visible { display: block; }
-.wt-title {
-  font-family: var(--mono);
-  font-size: 8px;
-  color: var(--ok);
-  text-transform: uppercase;
-  letter-spacing: .12em;
-  font-weight: 700;
-  margin-bottom: 10px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.wt-title::before { content: '✦'; }
-.wt-grid { display: flex; flex-wrap: wrap; gap: 6px; }
-.wt-item {
-  background: var(--surface);
-  border: 1px solid rgba(21,128,61,.2);
-  border-radius: 8px;
-  padding: 7px 11px;
-  font-size: 12px;
-  color: var(--text);
-  line-height: 1.4;
-  box-shadow: 0 1px 3px rgba(0,0,0,.04);
-}
-.wt-item .wt-ath {
-  font-family: var(--mono);
-  font-size: 8px;
-  color: var(--ok);
-  text-transform: uppercase;
-  letter-spacing: .08em;
-  font-weight: 700;
-  display: block;
-  margin-bottom: 2px;
-}
+/* ── AI analysis ── */
+.gen-btn{background:#0a0a0a;border:1px solid rgba(255,255,255,.25);color:#fff;font-family:var(--mono);font-size:10px;padding:5px 14px;border-radius:6px;cursor:pointer;text-transform:uppercase;letter-spacing:.06em;transition:all .15s;white-space:nowrap}
+.gen-btn:hover{background:#222;border-color:rgba(255,255,255,.5)}
+.gen-btn:disabled{opacity:.4;cursor:not-allowed}
+.gen-btn.loading{background:#1a327a;border-color:#3b5bdb;color:#bfdbfe}
 
-/* ── Attention Row ── */
-.attn-row {
-  background: rgba(185,28,28,.04);
-  border: 1px solid rgba(185,28,28,.15);
-  border-radius: 12px;
-  padding: 12px 16px;
-  margin-bottom: 18px;
-  display: none;
-}
-.attn-row.visible { display: block; }
-.attn-title {
-  font-family: var(--mono);
-  font-size: 8px;
-  color: var(--alert);
-  text-transform: uppercase;
-  letter-spacing: .12em;
-  font-weight: 700;
-  margin-bottom: 10px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.attn-title::before { content: '⚠'; }
-.attn-grid { display: flex; flex-wrap: wrap; gap: 6px; }
-.attn-item {
-  background: var(--surface);
-  border: 1px solid rgba(185,28,28,.18);
-  border-radius: 8px;
-  padding: 7px 11px;
-  font-size: 12px;
-  color: var(--text);
-  line-height: 1.4;
-  box-shadow: 0 1px 3px rgba(0,0,0,.04);
-}
-.attn-item .attn-ath {
-  font-family: var(--mono);
-  font-size: 8px;
-  color: var(--alert);
-  text-transform: uppercase;
-  letter-spacing: .08em;
-  font-weight: 700;
-  display: block;
-  margin-bottom: 2px;
-}
+.squad-brief{background:#0a0a0a;color:#fff;border-radius:12px;padding:16px 18px;margin-bottom:14px;display:none}
+.squad-brief.visible{display:block}
+.sb-title{font-family:var(--mono);font-size:9px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.12em;margin-bottom:8px}
+.sb-text{font-size:13px;color:rgba(255,255,255,.82);line-height:1.6}
 
-/* ── Check-in strip ── */
-.checkin-strip {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 12px 18px;
-  margin-bottom: 18px;
-  display: none;
-  box-shadow: var(--shadow);
-}
-.checkin-strip.visible { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
-.cs-title {
-  font-family: var(--mono);
-  font-size: 8px;
-  color: var(--dim);
-  text-transform: uppercase;
-  letter-spacing: .1em;
-  font-weight: 700;
-  flex-shrink: 0;
-}
-.cs-grid { display: flex; flex-wrap: wrap; gap: 5px; flex: 1; }
-.cs-ath {
-  font-family: var(--mono);
-  font-size: 9px;
-  padding: 3px 9px;
-  border-radius: 20px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: .06em;
-}
-.cs-ath.in  { background: rgba(21,128,61,.1); color: var(--ok);   border: 1px solid rgba(21,128,61,.2); }
-.cs-ath.out { background: rgba(185,28,28,.07); color: var(--alert);border: 1px solid rgba(185,28,28,.18); }
+.ai-sec{padding:11px 13px;border-top:1px solid var(--border)}
+.ai-status-badge{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;padding:3px 10px;border-radius:20px;margin-bottom:8px}
+.ai-status-badge.GREEN{background:var(--green-bg);color:var(--green-text);border:1px solid var(--green-border)}
+.ai-status-badge.AMBER{background:var(--amber-bg);color:var(--amber-text);border:1px solid var(--amber-border)}
+.ai-status-badge.RED{background:var(--red-bg);color:var(--red-text);border:1px solid var(--red-border)}
+.ai-status-badge::before{content:'●';font-size:8px}
 
-/* ── Empty / no-data states ── */
-.no-data-msg {
-  font-family: var(--mono);
-  font-size: 10px;
-  color: var(--dim);
-  padding: 6px 0 2px;
-  text-transform: uppercase;
-  letter-spacing: .07em;
-}
-.no-checkin-msg {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 12px;
-  background: rgba(0,0,0,.03);
-  border: 1px dashed var(--border-mid);
-  border-radius: 9px;
-  font-size: 12px;
-  color: var(--dim);
-}
-.nc-icon { font-size: 16px; flex-shrink: 0; }
+.ai-flags{display:flex;flex-direction:column;gap:3px;margin-bottom:8px}
+.ai-flag{font-family:var(--mono);font-size:9px;color:var(--muted);padding-left:10px;position:relative;line-height:1.5}
+.ai-flag::before{content:'—';position:absolute;left:0;color:var(--dim)}
 
-/* ── Responsiveness ── */
-@media (max-width: 600px) {
-  .grid { grid-template-columns: 1fr; }
-  .tpair { flex-direction: column; }
-  .bmet { grid-template-columns: repeat(2,1fr); }
-  .ws-cols { grid-template-columns: 1fr; }
+.ai-rec{font-size:12px;color:var(--text);line-height:1.55;padding:9px 11px;background:var(--surface2);border-radius:7px;border-left:3px solid #0a0a0a}
+
+.ai-loading{font-family:var(--mono);font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;padding:8px 0;display:flex;align-items:center;gap:6px}
+.ai-loading-dot{width:5px;height:5px;border-radius:50%;background:var(--dim);animation:blink 1.2s infinite}
+.ai-loading-dot:nth-child(2){animation-delay:.2s}.ai-loading-dot:nth-child(3){animation-delay:.4s}
+
+/* ── Coaches Tab ── */
+.coaches-section{max-width:1400px;margin:0 auto;padding:14px 14px 40px}
+.coaches-intro{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 18px;margin-bottom:18px;display:flex;align-items:center;gap:12px}
+.coaches-intro-icon{font-size:22px}
+.coaches-intro-text{font-size:13px;color:var(--muted)}
+.coaches-intro-text strong{color:var(--text)}
+.coaches-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:14px}
+
+.coach-card{background:var(--surface);border:1px solid var(--coach-border);border-radius:14px;overflow:hidden}
+.coach-card-head{background:linear-gradient(135deg,#1e3a8a 0%,#1e40af 100%);padding:14px 16px 12px}
+.coach-card-head-top{display:flex;justify-content:space-between;align-items:flex-start}
+.coach-name-row{display:flex;align-items:center;gap:10px}
+.coach-name{font-size:26px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;color:#fff;line-height:1}
+.coach-badge{font-family:var(--mono);font-size:7px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;padding:3px 8px;border-radius:20px;background:rgba(255,255,255,.18);color:rgba(255,255,255,.9);border:1px solid rgba(255,255,255,.3);align-self:center}
+.coach-meta{font-family:var(--mono);font-size:8px;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:.08em;margin-top:4px}
+.coach-wk-badge{text-align:center;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);border-radius:8px;padding:5px 14px}
+.coach-wk-num{font-size:26px;font-weight:900;color:#fff;line-height:1;letter-spacing:-.01em}
+.coach-wk-lbl{font-family:var(--mono);font-size:7px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.12em;margin-top:2px}
+
+.coach-scores{display:flex;border-bottom:1px solid var(--border)}
+.coach-scores .sc{flex:1;padding:9px 3px;text-align:center;border-right:1px solid var(--border)}
+.coach-scores .sc:last-child{border-right:none}
+
+.coach-training{padding:12px 14px;border-bottom:1px solid var(--border)}
+.coach-training-lbl{font-family:var(--mono);font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px}
+
+.coach-body-row{display:flex;gap:8px;padding:12px 14px;border-bottom:1px solid var(--border)}
+.coach-body-item{flex:1;background:var(--coach-bg);border-radius:7px;padding:8px 10px;text-align:center}
+.coach-body-item-val{font-size:18px;font-weight:800;color:var(--coach-text);line-height:1}
+.coach-body-item-lbl{font-family:var(--mono);font-size:7px;color:var(--dim);text-transform:uppercase;letter-spacing:.05em;margin-top:2px}
+
+.coach-notes{padding:12px 14px}
+.coach-notes-lbl{font-family:var(--mono);font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px}
+.coach-quote{font-size:12px;color:var(--muted);font-style:italic;line-height:1.5;padding:7px 10px;background:var(--surface2);border-radius:7px;border-left:2px solid var(--coach-border)}
+
+.coach-no-data{padding:30px;text-align:center}
+.coach-no-data-txt{font-family:var(--mono);font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em}
+
+/* ── No results ── */
+.no-results{text-align:center;padding:50px 20px}
+.no-results-txt{font-family:var(--mono);font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em}
+
+/* ── Responsive ── */
+@media(max-width:600px){
+  .filter-bar{top:82px}
+  .tab-bar{top:50px}
+  .grid{grid-template-columns:1fr}
+  .coaches-grid{grid-template-columns:1fr}
+  .search-input{width:100%}
 }
 </style>
 </head>
 <body>
+
 <header>
-  <div class="logo">
-    <span class="d">DUAL</span><span class="sep">/</span><span class="p">PERFORMANCE</span>
-  </div>
+  <div class="logo"><span class="d">DUAL</span> <span class="p">PERFORMANCE</span></div>
   <div class="h-mid">Coaches Dashboard</div>
   <div class="h-right">
     <span class="updated" id="updated"></span>
-    <button class="btn" id="refresh-btn">↻ Refresh</button>
-    <button class="btn primary" id="gen-btn" style="display:none">✦ AI Analysis</button>
+    <button class="refresh-btn" id="refresh-btn">↻ Refresh</button>
+    <button class="gen-btn" id="gen-btn" style="display:none">✦ AI Summaries</button>
   </div>
 </header>
 
-<div class="main">
-  <div id="loading" class="state-box">
-    <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
-    <div class="state-txt">Loading athlete data…</div>
+<div class="tab-bar">
+  <button class="tab active" id="tab-athletes-btn" onclick="switchTab('athletes')">
+    Athletes <span class="tab-badge" id="tab-ath-count">—</span>
+  </button>
+  <button class="tab" id="tab-coaches-btn" onclick="switchTab('coaches')">
+    Coaches <span class="tab-badge">2</span>
+  </button>
+</div>
+
+<!-- Filter bar (athletes only) -->
+<div class="filter-bar" id="filter-bar">
+  <input type="text" class="search-input" id="search-input" placeholder="Search athlete…" oninput="applyFilters()">
+  <div class="filter-divider"></div>
+  <span class="filter-label">Status:</span>
+  <div class="sf-group">
+    <button class="sf active" data-status="all" onclick="setStatusFilter(this,'all')">All</button>
+    <button class="sf sf-red" data-status="red" onclick="setStatusFilter(this,'red')">⚠ Alert</button>
+    <button class="sf sf-amber" data-status="amber" onclick="setStatusFilter(this,'amber')">Watch</button>
+    <button class="sf sf-green" data-status="green" onclick="setStatusFilter(this,'green')">On Track</button>
   </div>
-  <div id="err" class="state-box" style="display:none">
-    <div class="state-txt" style="color:var(--alert)" id="err-msg"></div>
-    <button class="btn" style="margin-top:14px" onclick="load()">↻ Retry</button>
+  <div class="filter-divider"></div>
+  <select class="sort-select" id="sort-select" onchange="applyFilters()">
+    <option value="alert">Sort: Needs Attention</option>
+    <option value="name">Sort: Name A–Z</option>
+    <option value="week">Sort: Program Week</option>
+    <option value="compliance">Sort: Compliance</option>
+    <option value="checkin">Sort: Last Check-in</option>
+  </select>
+</div>
+
+<!-- ATHLETES TAB -->
+<div id="tab-athletes-content">
+  <div class="main">
+    <div id="loading" class="state-box">
+      <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+      <div class="state-txt">Loading athlete data…</div>
+    </div>
+    <div id="err" class="state-box" style="display:none">
+      <div class="state-txt" style="color:var(--alert)" id="err-msg"></div>
+      <button class="refresh-btn" style="color:#0a0a0a;border-color:#ccc;margin-top:14px" onclick="load()">↻ Retry</button>
+    </div>
+    <div id="content" style="display:none">
+      <div class="squad-brief" id="squad-brief">
+        <div class="sb-title">⬡ Squad Brief — AI Coaching Summary</div>
+        <div class="sb-text" id="squad-brief-text"></div>
+      </div>
+      <div class="summary-bar" id="sum-bar"></div>
+      <div class="grid" id="grid"></div>
+      <div class="no-results" id="no-results" style="display:none">
+        <div class="no-results-txt">No athletes match this filter</div>
+      </div>
+    </div>
   </div>
-  <div id="content" style="display:none">
-    <!-- Squad AI Brief -->
-    <div class="squad-brief" id="squad-brief">
-      <div class="sb-title">Squad Brief — AI Coaching Summary</div>
-      <div class="sb-text" id="squad-brief-text"></div>
-    </div>
-    <!-- Summary Numbers -->
-    <div class="summary-bar" id="sum-bar"></div>
-    <!-- Check-in Status Strip -->
-    <div class="checkin-strip" id="checkin-strip">
-      <div class="cs-title">Check-in status</div>
-      <div class="cs-grid" id="checkin-grid"></div>
-    </div>
-    <!-- Wins Banner -->
-    <div class="wins-ticker" id="wins-ticker">
-      <div class="wt-title">This Week's Wins</div>
-      <div class="wt-grid" id="wins-grid"></div>
-    </div>
-    <!-- Attention Banner -->
-    <div class="attn-row" id="attn-row">
-      <div class="attn-title">Needs Attention</div>
-      <div class="attn-grid" id="attn-grid"></div>
-    </div>
-    <!-- Week Panel -->
-    <div class="week-summary" id="week-summary">
-      <div class="ws-header">
-        <div class="ws-title">Weekly Overview — <strong id="ws-week-label">Week</strong></div>
+</div>
+
+<!-- COACHES TAB -->
+<div id="tab-coaches-content" style="display:none">
+  <div class="coaches-section">
+    <div class="coaches-intro">
+      <div class="coaches-intro-icon">🎯</div>
+      <div class="coaches-intro-text">
+        <strong>Coaching Team</strong> — Karl &amp; Alex's own training data.
+        This tab tracks your personal check-ins separate from the athlete roster.
       </div>
-      <div class="ws-cols">
-        <div class="ws-col">
-          <div class="ws-col-ttl">✦ Squad Wins This Week</div>
-          <div id="ws-wins"></div>
-        </div>
-        <div class="ws-col">
-          <div class="ws-col-ttl">⚠ Needs Attention</div>
-          <div id="ws-flags"></div>
-        </div>
-      </div>
-      <div class="ws-ai-text" id="ws-ai-text"></div>
     </div>
-    <div class="section-divider">
-      <div class="sd-line"></div>
-      <div class="sd-label">Athletes — sorted by priority</div>
-      <div class="sd-line"></div>
+    <div id="coaches-loading" class="state-box" style="display:none">
+      <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+      <div class="state-txt">Loading coach data…</div>
     </div>
-    <div class="grid" id="grid"></div>
+    <div class="coaches-grid" id="coaches-grid"></div>
   </div>
 </div>
 
 <script>
-// ── Database IDs ──────────────────────────────────────────────────────────────
+// ── Config ───────────────────────────────────────────────────────────────────
 const DB = {
   weekly:    '33e5a96c-c70b-8049-b696-d22e5920e0ee',
   sessions:  '1c55a96c-c70b-825b-9bdf-819abea4ef7c',
@@ -1040,18 +358,19 @@ const DB = {
   nutrition: '3405a96c-c70b-804b-aa9c-f165f2d2e0e9',
   athletes:  '4a25a96c-c70b-82ff-a679-0139eaa8b458',
 };
+
 const ALIASES = { 'JACOB TUAZON': 'JACOB' };
-// Athletes to exclude entirely from the dashboard
-const EXCLUDE = new Set(['DAVID HA', 'DAVID']);
-const MACRO_TARGETS = {
-  // 'ATHLETE_NAME': { cal: 2400, pro: 170, carb: 250, fat: 70 }
-};
-const DEFAULT_TARGETS = { cal: 2200, pro: 160, carb: 220, fat: 65 };
 
-// ── Reference date — locked to today ─────────────────────────────────────────
-const TODAY = new Date('2026-05-02T00:00:00');
+// Coaches are filtered OUT of the athletes grid and shown on the Coaches tab
+const COACHES = new Set(['KARL', 'ALEX']);
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// Manual week overrides (until Start Date is set in Notion)
+const WEEK_OVERRIDES = { 'JACOB': 7, 'KHANG': 7 };
+
+// In-memory call notes per athlete
+const callNotes = {};
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
 function nid(s) {
   if (!s) return null;
   const u = s.toUpperCase().trim();
@@ -1067,22 +386,17 @@ function avg(arr, k) {
   const v = arr.map(r => parseFloat(r[k])).filter(x => !isNaN(x));
   return v.length ? (v.reduce((a, b) => a + b, 0) / v.length).toFixed(1) : null;
 }
-function dago(n) { const d = new Date(TODAY); d.setDate(d.getDate() - n); return d; }
+function dago(n) { const d = new Date(); d.setDate(d.getDate() - n); return d; }
 function scoreClass(v, inv) {
   const n = parseFloat(v);
   if (isNaN(n)) return 'n';
   if (inv) return n >= 8 ? 'bad' : n >= 6 ? 'mid' : 'good';
   return n >= 7.5 ? 'good' : n >= 5 ? 'mid' : 'bad';
 }
-function bmClass(lbl, v) {
-  const n = parseFloat(v);
-  if (isNaN(n)) return '';
-  const inv = ['stress','sore','soreness'].includes(lbl.toLowerCase());
-  if (inv) return n >= 8 ? 'bad' : n >= 6 ? 'mid' : 'good';
-  return n >= 7.5 ? 'good' : n >= 5 ? 'mid' : 'bad';
-}
 function esc(s) {
-  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return String(s || '')
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 function fmtDate(s) {
   if (!s) return '';
@@ -1090,108 +404,81 @@ function fmtDate(s) {
   if (!y || !m || !d) return s;
   return `${d}-${m}-${y}`;
 }
-function pct(v, t) {
-  if (!v || !t) return 0;
-  return Math.min(120, Math.round((parseFloat(v) / parseFloat(t)) * 100));
+function isBad(v) {
+  return v && !['n/a', '', 'none', 'nope', 'nothing', 'no', '-'].includes((v || '').toLowerCase().trim());
 }
-function macroStatus(v, t) {
-  if (!v || !t) return '';
-  const p = parseFloat(v) / parseFloat(t);
-  if (p > 1.12) return 'over';
-  if (p < 0.88) return 'under';
-  return 'good';
-}
-function macroStatusLabel(v, t) {
-  if (!v || !t) return '';
-  const p = parseFloat(v) / parseFloat(t);
-  if (p > 1.12) return `+${Math.round((p-1)*100)}%`;
-  if (p < 0.88) return `-${Math.round((1-p)*100)}%`;
-  return 'On Target';
+function daysAgo(dateStr) {
+  if (!dateStr) return null;
+  const diff = Math.floor((Date.now() - new Date(dateStr)) / 86400000);
+  return diff;
 }
 
-// ── Fetch ─────────────────────────────────────────────────────────────────────
+// ── Fetch ────────────────────────────────────────────────────────────────────
 async function fetchDB(dbId) {
   const res = await fetch(`/api/notion?db=${dbId}`);
-  if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || `HTTP ${res.status}`); }
+  if (!res.ok) {
+    const e = await res.json().catch(() => ({}));
+    throw new Error(e.error || `HTTP ${res.status}`);
+  }
   const data = await res.json();
   return data.results || [];
 }
 
-// ── Load ──────────────────────────────────────────────────────────────────────
-async function load() {
-  document.getElementById('loading').style.display = 'block';
-  document.getElementById('content').style.display = 'none';
-  document.getElementById('err').style.display = 'none';
-  document.getElementById('refresh-btn').disabled = true;
-  try {
-    const [weekly, sessions, body, nutrition, athleteDb] = await Promise.all([
-      fetchDB(DB.weekly), fetchDB(DB.sessions), fetchDB(DB.body),
-      fetchDB(DB.nutrition), fetchDB(DB.athletes),
-    ]);
-    const athletes = buildAthletes(weekly, sessions, body, nutrition, athleteDb);
-    _lastAthletes = athletes;
-    render(athletes);
-    document.getElementById('loading').style.display = 'none';
-    document.getElementById('content').style.display = 'block';
-    document.getElementById('updated').textContent =
-      '02 May 2026 · ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  } catch (e) {
-    document.getElementById('loading').style.display = 'none';
-    document.getElementById('err').style.display = 'block';
-    document.getElementById('err-msg').textContent = 'Error: ' + e.message;
-  } finally {
-    document.getElementById('refresh-btn').disabled = false;
-  }
-}
-
-// ── Build Athletes ─────────────────────────────────────────────────────────────
-function buildAthletes(weekly, sessions, body, nutrition, athleteDb = []) {
+// ── Build ─────────────────────────────────────────────────────────────────────
+function buildAll(weekly, sessions, body, nutrition, athleteDb = []) {
   const c14 = dago(14), c7 = dago(7);
   const map = {};
+
   function ens(id) {
     if (!id || id.length < 2) return;
-    if (/^\d+$/.test(id)) return;          // purely numeric = not a real athlete ID
-    if (EXCLUDE.has(id)) return;            // explicitly excluded
     if (!map[id]) map[id] = { id, weekly: null, body: [], nutrition: [], sessions: [] };
   }
+
   const startDates = {};
   athleteDb.forEach(r => {
     const code = nid(r.Code || r.Athlete);
     const sd = r['date:Start Date:start'] || r['Start Date'];
     if (code && sd) startDates[code] = sd;
   });
-  const WEEK_OVERRIDES = { 'KARL': 7, 'JACOB': 7, 'KHANG': 7 };
+
   function calcWeekNum(id) {
     if (WEEK_OVERRIDES.hasOwnProperty(id)) return WEEK_OVERRIDES[id];
+    // Coaches don't have program weeks
+    if (COACHES.has(id)) return null;
     const sd = startDates[id];
     if (!sd) return null;
-    const diffDays = Math.floor((TODAY.getTime() - new Date(sd)) / 86400000);
+    const diffDays = Math.floor((Date.now() - new Date(sd)) / 86400000);
     return Math.max(0, Math.floor(diffDays / 7));
   }
-  const wAll = {};
+
+  // Weekly — keep latest per athlete
+  const wl = {};
   weekly.forEach(r => {
     const id = nid(r.Name);
     if (!id || !r['Week Ending']) return;
-    if (/^\d+$/.test(id) || EXCLUDE.has(id)) return;
-    if (!wAll[id]) wAll[id] = [];
-    wAll[id].push(r);
+    if (!wl[id] || r['Week Ending'] > wl[id]['Week Ending']) wl[id] = r;
   });
-  Object.entries(wAll).forEach(([id, records]) => {
-    const sorted = records.sort((a, b) => (b['Week Ending'] > a['Week Ending'] ? 1 : -1));
-    ens(id);
-    map[id].weekly = sorted[0] || null;
-    map[id].weeklyPrev = sorted[1] || null;
-  });
+  Object.entries(wl).forEach(([id, r]) => { ens(id); map[id].weekly = r; });
+
+  // Body (14d)
   body.forEach(r => {
-    const id = nid(r.AthleteID); if (!id) return; ens(id);
+    const id = nid(r.AthleteID);
+    if (!id) return;
+    ens(id);
     const d = r['date:Date:start'] || r.Date;
     if (d && new Date(d) >= c14) map[id].body.push(r);
   });
+
+  // Nutrition (14d)
   nutrition.forEach(r => {
-    const id = nid(r.AthleteID); if (!id) return; ens(id);
+    const id = nid(r.AthleteID);
+    if (!id) return;
+    ens(id);
     const d = r['date:Date:start'] || r.Date;
     if (d && new Date(d) >= c14) map[id].nutrition.push(r);
   });
+
+  // Sessions
   const seen = new Set();
   sessions.forEach(r => {
     const id = sid(r);
@@ -1202,200 +489,156 @@ function buildAthletes(weekly, sessions, body, nutrition, athleteDb = []) {
     if (!seen.has(k)) { seen.add(k); map[id].sessions.push({ ...r, _d: ds }); }
   });
 
-  // THIS WEEK = week ending date falls within the last 7 days of TODAY
-  const thisWeekCutoff = dago(7).toISOString().split('T')[0];
-
-  return Object.values(map).map(a => {
-    // ── Only use weekly check-in if it belongs to THIS week ──
-    const wkEnd = a.weekly?.['Week Ending'] || '';
-    const hasRecent = !!wkEnd && wkEnd >= thisWeekCutoff;
-    // Expose the current week's record only if it's recent; otherwise null it out for display
-    const weeklyThisWeek = hasRecent ? a.weekly : null;
-
-    // ── Body: this-week only (7 days). Weight: most recent within 7 days only ──
+  // Derive stats
+  const all = Object.values(map).map(a => {
     const b7 = a.body.filter(r => new Date(r['date:Date:start'] || r.Date) >= c7);
-    const b7sorted = [...b7].sort((x, y) =>
-      (y['date:Date:start'] || y.Date || '') > (x['date:Date:start'] || x.Date || '') ? 1 : -1);
-    const bLastThisWeek = b7sorted[0]; // undefined if nothing logged this week
-    const bAvg = {
-      wt:  bLastThisWeek?.Weight,
-      wtd: bLastThisWeek?.['date:Date:start'] || bLastThisWeek?.Date,
-      sleep:    b7.length ? avg(b7, 'Sleep Score') : null,
-      energy:   b7.length ? avg(b7, 'Energy')      : null,
-      stress:   b7.length ? avg(b7, 'Stress')       : null,
-      soreness: b7.length ? avg(b7, 'Soreness')     : null,
-      hasData: b7.length > 0,
-    };
-
-    // ── Nutrition: this-week only ──
     const n7 = a.nutrition.filter(r => new Date(r['date:Date:start'] || r.Date) >= c7);
+    const bSorted = [...a.body].sort((x, y) =>
+      (y['date:Date:start'] || y.Date || '') > (x['date:Date:start'] || x.Date || '') ? 1 : -1);
+    const bLast = bSorted[0];
+
+    const bAvg = {
+      wt: bLast?.Weight,
+      wtd: bLast?.['date:Date:start'] || bLast?.Date,
+      sleep: avg(b7, 'Sleep Score'),
+      energy: avg(b7, 'Energy'),
+      stress: avg(b7, 'Stress'),
+      soreness: avg(b7, 'Soreness'),
+    };
     const nAvg = {
-      cal:  n7.length ? avg(n7, 'Calories') : null,
-      pro:  n7.length ? avg(n7, 'Protein')  : null,
-      carb: n7.length ? avg(n7, 'Carbs')    : null,
-      fat:  n7.length ? avg(n7, 'Fats')     : null,
+      cal: avg(n7, 'Calories'),
+      pro: avg(n7, 'Protein'),
+      carb: avg(n7, 'Carbs'),
+      fat: avg(n7, 'Fats'),
       days: n7.length,
-      hasData: n7.length > 0,
     };
 
-    // ── Sessions: this week only ──
     const s7 = a.sessions.filter(s => new Date(s._d) >= c7);
-    const runS = s7.filter(s => ['Running','Run'].includes(s['Session Category']));
+    const runS = s7.filter(s => s['Session Category'] === 'Running' || s['Session Category'] === 'Run');
     const strS = s7.filter(s => s['Session Category'] === 'Strength');
 
-    const strHighlights = [];
-    strS.forEach(s => {
-      const notes = s.Notes || s['Session Notes'] || s.Details || '';
-      const lifts = ['squat','bench','deadlift','press','rdl','row','pull','lunge','hip thrust'];
-      lifts.forEach(lift => {
-        const m = notes.toLowerCase().match(new RegExp(`(\\d+(?:\\.\\d)?\\s*(?:kg|lb|x)\\s*)?(?:[x×]\\s*\\d+\\s*)?${lift}\\w*[^.]*`, 'i'));
-        if (m && m[0].length > 4) {
-          const kg = notes.match(/(\d+(?:\\.\\d)?)\s*kg/i);
-          if (kg) strHighlights.push({ lift: lift.charAt(0).toUpperCase()+lift.slice(1), val: kg[1]+'kg', isPB: notes.toLowerCase().includes('pb') || notes.toLowerCase().includes('personal best') });
-        }
-      });
-    });
+    // Compliance
+    const w = a.weekly;
+    const rp = parseInt(w?.['Run Planned']) || 0;
+    const rc = parseInt(w?.['Run Completed']) || 0;
+    const lp = parseInt(w?.['Lift Planned']) || 0;
+    const lc = parseInt(w?.['Lift Completed']) || 0;
+    const totalPlanned = rp + lp;
+    const totalDone = rc + lc;
+    const compliance = totalPlanned > 0 ? Math.round((totalDone / totalPlanned) * 100) : null;
 
-    // Trends only valid when this week's check-in exists
-    const pw = a.weeklyPrev;
-    const trends = {};
-    if (pw && weeklyThisWeek) {
-      ['Energy /10','Sleep hrs','Soreness /10','Stress','Motivation'].forEach(k => {
-        const cur = parseFloat(weeklyThisWeek[k]), prev = parseFloat(pw[k]);
-        if (!isNaN(cur) && !isNaN(prev)) trends[k] = cur > prev ? 'up' : cur < prev ? 'dn' : '';
-      });
-    }
-
-    // ── Flags: only from this week's data ──
+    // Flags
     const flags = [];
-    if (!hasRecent) {
-      // Missing check-in is itself a flag
-      flags.push({ t: 'yellow', l: 'No check-in yet' });
-    }
-    const w = weeklyThisWeek;
     if (w) {
       const nig = ((w['Run Niggles'] || '') + ' ' + (w['Lifts Niggles'] || '')).toLowerCase();
-      if (['lingering','niggle','pain','tight','strain','physio','injury'].some(k => nig.includes(k)))
-        flags.push({ t: 'red', l: 'Niggle', detail: nig.slice(0, 60) });
+      if (['lingering', 'niggle', 'pain', 'tight', 'strain', 'physio', 'injury'].some(k => nig.includes(k)))
+        flags.push({ t: 'red', l: 'Niggle' });
+
       const st = parseInt(w.Stress);
-      if (st >= 8) flags.push({ t: 'red', l: 'High Stress ' + st });
+      if (st >= 8) flags.push({ t: 'red', l: 'Stress ' + st });
       else if (st >= 6) flags.push({ t: 'yellow', l: 'Stress ' + st });
+
       const mo = parseInt(w.Motivation);
-      if (mo && mo <= 5) flags.push({ t: 'yellow', l: 'Low Motivation ' + mo });
-      const rp = parseInt(w['Run Planned']) || 0, rc = parseInt(w['Run Completed']) || 0;
-      if (rp > 0 && rc < rp) flags.push({ t: 'yellow', l: `Run ${rc}/${rp} sessions` });
-      const lp = parseInt(w['Lift Planned']) || 0, lc = parseInt(w['Lift Completed']) || 0;
-      if (lp > 0 && lc < lp) flags.push({ t: 'yellow', l: `Lift ${lc}/${lp} sessions` });
+      if (mo && mo <= 5) flags.push({ t: 'yellow', l: 'Low Motiv ' + mo });
+
+      if (rp > 0 && rc < rp) flags.push({ t: 'yellow', l: `Run ${rc}/${rp}` });
+      if (lp > 0 && lc < lp) flags.push({ t: 'yellow', l: `Lift ${lc}/${lp}` });
+
       const rf = parseInt(w['Run Feel /10']);
-      if (rf >= 8) flags.push({ t: 'green', l: 'Run Feel ' + rf + '/10' });
-      if (nAvg.pro && parseFloat(nAvg.pro) < 100) flags.push({ t: 'yellow', l: 'Low Protein' });
-      if (bAvg.sleep && parseFloat(bAvg.sleep) >= 8) flags.push({ t: 'green', l: 'Great Sleep ' + bAvg.sleep });
-      if (strHighlights.some(h => h.isPB)) flags.push({ t: 'blue', l: 'New PB 🏆' });
-      if (rp > 0 && rc >= rp) flags.push({ t: 'green', l: 'All runs hit ✓' });
-      if (lp > 0 && lc >= lp) flags.push({ t: 'green', l: 'All lifts hit ✓' });
+      if (rf >= 8) flags.push({ t: 'green', l: 'Run Feel ' + rf });
     }
-    // Body notes this week only
-    const recentBn = b7sorted.slice(0, 3).map(b => (b.Notes || '').toLowerCase()).join(' ');
-    if (!flags.find(f => f.l.startsWith('Niggle')) &&
-        ['physio','niggle','pain','injury'].some(k => recentBn.includes(k)))
+
+    const recentBn = bSorted.slice(0, 3).map(b => (b.Notes || '').toLowerCase()).join(' ');
+    if (!flags.find(f => f.l === 'Niggle') &&
+        ['physio', 'niggle', 'pain', 'injury'].some(k => recentBn.includes(k)))
       flags.push({ t: 'yellow', l: 'Body Note' });
 
     const alertScore =
       flags.filter(f => f.t === 'red').length * 10 +
       flags.filter(f => f.t === 'yellow').length;
 
-    // ── Wins: only from this week's check-in ──
-    const wins = [];
-    if (w) {
-      if (w['Runs Wins'] && !['n/a',''].includes((w['Runs Wins']||'').toLowerCase().trim()))
-        wins.push({ type: 'run', text: w['Runs Wins'] });
-      if (w['Lift Wins'] && !['n/a',''].includes((w['Lift Wins']||'').toLowerCase().trim()))
-        wins.push({ type: 'str', text: w['Lift Wins'] });
-      const rf = parseInt(w['Run Feel /10']);
-      if (rf >= 9) wins.push({ type: 'run', text: `Run feel ${rf}/10` });
-      const rp = parseInt(w['Run Planned']) || 0, rc = parseInt(w['Run Completed']) || 0;
-      if (rp > 0 && rc >= rp) wins.push({ type: 'run', text: `All ${rc}/${rp} run sessions hit` });
-      const lp = parseInt(w['Lift Planned']) || 0, lc = parseInt(w['Lift Completed']) || 0;
-      if (lp > 0 && lc >= lp) wins.push({ type: 'str', text: `All ${lc}/${lp} strength sessions hit` });
-    }
+    const wkEnd = w?.['Week Ending'] || '';
+    const hasRecent = wkEnd >= dago(10).toISOString().split('T')[0];
 
-    return { ...a, weekly: weeklyThisWeek, bAvg, nAvg, runS, strS, strHighlights, flags, alertScore, hasRecent, weekNum: calcWeekNum(a.id), trends, wins };
-  }).sort((a, b) => b.alertScore - a.alertScore);
+    return {
+      ...a, bAvg, nAvg, runS, strS, flags, alertScore,
+      hasRecent, compliance,
+      weekNum: calcWeekNum(a.id),
+      isCoach: COACHES.has(a.id),
+    };
+  });
+
+  const coaches  = all.filter(a => a.isCoach);
+  const athletes = all.filter(a => !a.isCoach).sort((a, b) => b.alertScore - a.alertScore);
+
+  return { athletes, coaches };
 }
 
-// ── Render ────────────────────────────────────────────────────────────────────
-function render(ath) {
-  const alertN   = ath.filter(a => a.flags.some(f => f.t === 'red')).length;
-  const watchN   = ath.filter(a => !a.flags.some(f => f.t === 'red') && a.flags.some(f => f.t === 'yellow')).length;
-  const winN     = ath.filter(a => a.wins?.length > 0).length;
-  const totalKm  = ath.reduce((s, a) => { const k = parseFloat(a.weekly?.['Weekly Run KM'] || 0); return s + (isNaN(k) ? 0 : k); }, 0);
-  const checkedIn = ath.filter(a => a.hasRecent).length;
-  const totalStr = ath.reduce((s, a) => s + (a.strS?.length || 0), 0);
+// ── Render athletes ───────────────────────────────────────────────────────────
+let _allAthletes = [];
+let _coaches = [];
+let _statusFilter = 'all';
 
-  // Summary bar
-  document.getElementById('sum-bar').innerHTML = `
-    <div class="sum-card"><div class="sum-num default">${ath.length}</div><div class="sum-lbl">Athletes</div></div>
-    <div class="sum-card"><div class="sum-num grn">${checkedIn}</div><div class="sum-lbl">Checked In</div></div>
-    <div class="sum-card"><div class="sum-num ${alertN ? 'red' : 'grn'}">${alertN}</div><div class="sum-lbl">Need Attention</div></div>
-    <div class="sum-card"><div class="sum-num warn-c">${watchN}</div><div class="sum-lbl">Watch</div></div>
-    <div class="sum-card"><div class="sum-num run-c">${totalKm.toFixed(0)}</div><div class="sum-lbl">Squad KM</div></div>
-    <div class="sum-card"><div class="sum-num str-c">${totalStr}</div><div class="sum-lbl">Str Sessions</div></div>
-    <div class="sum-card"><div class="sum-num grn">${winN}</div><div class="sum-lbl">Had Wins</div></div>
-  `;
+function render({ athletes, coaches }) {
+  _allAthletes = athletes;
+  _coaches     = coaches;
 
-  // Check-in strip
-  if (ath.length > 0) {
-    document.getElementById('checkin-grid').innerHTML = ath.map(a =>
-      `<span class="cs-ath ${a.hasRecent ? 'in' : 'out'}">${esc(a.id)}</span>`
-    ).join('');
-    document.getElementById('checkin-strip').classList.add('visible');
-  }
+  // Tab count
+  const alertCount = athletes.filter(a => a.flags.some(f => f.t === 'red')).length;
+  const badge = document.getElementById('tab-ath-count');
+  badge.textContent = athletes.length;
+  if (alertCount > 0) badge.classList.add('red'); else badge.classList.remove('red');
 
-  // Wins ticker
-  const allWins = [];
-  ath.forEach(a => (a.wins || []).forEach(w => allWins.push({ athlete: a.id, ...w })));
-  if (allWins.length > 0) {
-    document.getElementById('wins-grid').innerHTML = allWins.slice(0,10).map(w =>
-      `<div class="wt-item"><span class="wt-ath">${esc(w.athlete)}</span>${esc(w.text)}</div>`
-    ).join('');
-    document.getElementById('wins-ticker').classList.add('visible');
-  }
+  renderSummary(athletes);
+  renderGrid(athletes);
+  renderCoaches(coaches);
 
-  // Attention row
-  const redFlags = [];
-  ath.forEach(a => a.flags.filter(f => f.t === 'red').forEach(f =>
-    redFlags.push({ athlete: a.id, flag: f.l })));
-  const yellowFlags = [];
-  ath.forEach(a => a.flags.filter(f => f.t === 'yellow').forEach(f =>
-    yellowFlags.push({ athlete: a.id, flag: f.l })));
-  if (redFlags.length > 0) {
-    document.getElementById('attn-grid').innerHTML = redFlags.map(f =>
-      `<div class="attn-item"><span class="attn-ath">${esc(f.athlete)}</span>${esc(f.flag)}</div>`
-    ).join('');
-    document.getElementById('attn-row').classList.add('visible');
-  }
-
-  // Week summary panel (detailed)
-  const allFlagsForPanel = [...redFlags, ...yellowFlags];
-  const winsHtml = allWins.slice(0, 6).map(w =>
-    `<div class="ws-win"><strong>${esc(w.athlete)}</strong> — ${esc(w.text)}</div>`
-  ).join('') || '<div class="ws-win" style="opacity:.4">No wins logged yet this week</div>';
-  const flagsHtml = allFlagsForPanel.slice(0, 6).map(f =>
-    `<div class="ws-flag ${f.soft ? 'soft' : ''}"><strong>${esc(f.athlete)}</strong> — ${esc(f.flag)}</div>`
-  ).join('') || '<div style="font-size:12px;color:var(--ok);padding:6px 0">Squad looking solid — no major flags 🟢</div>';
-  document.getElementById('ws-wins').innerHTML = winsHtml;
-  document.getElementById('ws-flags').innerHTML = flagsHtml;
-  const latestWeek = ath.find(a => a.weekly?.['Week Ending'])?.weekly?.['Week Ending'];
-  document.getElementById('ws-week-label').textContent =
-    latestWeek ? `Week ending ${fmtDate(latestWeek)}` : 'This Week';
-  document.getElementById('week-summary').classList.add('visible');
-
-  document.getElementById('grid').innerHTML = ath.map(buildCard).join('');
   document.getElementById('gen-btn').style.display = 'block';
   document.getElementById('squad-brief').classList.remove('visible');
 }
 
-// ── Card Builder ──────────────────────────────────────────────────────────────
+function renderSummary(ath) {
+  const alertN   = ath.filter(a => a.flags.some(f => f.t === 'red')).length;
+  const watchN   = ath.filter(a => !a.flags.some(f => f.t === 'red') && a.flags.some(f => f.t === 'yellow')).length;
+  const checkedIn = ath.filter(a => a.hasRecent).length;
+  const totalKm  = ath.reduce((s, a) => {
+    const k = parseFloat(a.weekly?.['Weekly Run KM'] || 0);
+    return s + (isNaN(k) ? 0 : k);
+  }, 0);
+  const compList = ath.filter(a => a.compliance !== null).map(a => a.compliance);
+  const avgComp  = compList.length
+    ? Math.round(compList.reduce((a, b) => a + b, 0) / compList.length)
+    : null;
+
+  document.getElementById('sum-bar').innerHTML = `
+    <div class="sum-card"><div class="sum-num">${ath.length}</div><div class="sum-lbl">Athletes</div></div>
+    <div class="sum-card"><div class="sum-num ${alertN ? 'red' : 'grn'}">${alertN}</div><div class="sum-lbl">Need Attention</div></div>
+    <div class="sum-card"><div class="sum-num">${watchN}</div><div class="sum-lbl">Watch</div></div>
+    <div class="sum-card"><div class="sum-num grn">${checkedIn}</div><div class="sum-lbl">Checked In</div></div>
+    <div class="sum-card"><div class="sum-num run-c">${totalKm.toFixed(0)}</div><div class="sum-lbl">Squad KM (14d)</div></div>
+    ${avgComp !== null ? `<div class="sum-card"><div class="sum-num ${avgComp >= 80 ? 'grn' : avgComp >= 60 ? '' : 'red'}">${avgComp}%</div><div class="sum-lbl">Avg Compliance</div></div>` : ''}`;
+}
+
+function renderGrid(ath) {
+  document.getElementById('grid').innerHTML = ath.map(buildCard).join('');
+}
+
+function renderCoaches(coaches) {
+  const grid = document.getElementById('coaches-grid');
+  if (!coaches.length) {
+    grid.innerHTML = `<div class="coach-no-data"><div class="coach-no-data-txt">No coach data found for Karl or Alex</div></div>`;
+    return;
+  }
+  // Always show Karl first, then Alex, then others
+  const ordered = [
+    ...coaches.filter(c => c.id === 'KARL'),
+    ...coaches.filter(c => c.id === 'ALEX'),
+    ...coaches.filter(c => c.id !== 'KARL' && c.id !== 'ALEX'),
+  ];
+  grid.innerHTML = ordered.map(buildCoachCard).join('');
+}
+
+// ── Athlete Card ──────────────────────────────────────────────────────────────
 function buildCard(a) {
   const w = a.weekly;
   const hW = !!w?.Name;
@@ -1408,18 +651,27 @@ function buildCard(a) {
   let scores = '';
   if (hW) {
     const sx = [
-      { l: 'Energy',  v: w['Energy /10'],             inv: false, tk: 'Energy /10' },
-      { l: 'Sleep',   v: w['Sleep hrs'],               inv: false, tk: 'Sleep hrs' },
-      { l: 'Sore',    v: w['Soreness /10'],            inv: true,  tk: 'Soreness /10' },
-      { l: 'Stress',  v: w['Stress'],                  inv: true,  tk: 'Stress' },
-      { l: 'Motiv',   v: w['Motivation'],              inv: false, tk: 'Motivation' },
-      { l: 'Nutr',    v: w['Nutrition Adherence /10'], inv: false, tk: null },
+      { l: 'Energy',  v: w['Energy /10'],             inv: false },
+      { l: 'Sleep',   v: w['Sleep hrs'],               inv: false },
+      { l: 'Sore',    v: w['Soreness /10'],            inv: true  },
+      { l: 'Stress',  v: w['Stress'],                  inv: true  },
+      { l: 'Motiv',   v: w['Motivation'],              inv: false },
+      { l: 'Nutr',    v: w['Nutrition Adherence /10'], inv: false },
     ];
-    scores = `<div class="scores">${sx.map(x => {
-      const tr = x.tk && a.trends?.[x.tk];
-      const trHtml = tr ? `<span class="sc-trend ${tr}">${tr === 'up' ? '▲' : '▼'}</span>` : '';
-      return `<div class="sc">${trHtml}<div class="sc-lbl">${esc(x.l)}</div><div class="sc-val ${scoreClass(x.v, x.inv)}">${esc(x.v) || '—'}</div></div>`;
-    }).join('')}</div>`;
+    scores = `<div class="scores">${sx.map(x =>
+      `<div class="sc"><div class="sc-lbl">${esc(x.l)}</div><div class="sc-val ${scoreClass(x.v, x.inv)}">${esc(x.v) || '—'}</div></div>`
+    ).join('')}</div>`;
+  }
+
+  // Compliance bar
+  let compBar = '';
+  if (a.compliance !== null) {
+    const cc = a.compliance >= 90 ? 'good' : a.compliance >= 70 ? 'mid' : 'bad';
+    compBar = `<div class="compliance-row">
+      <span class="comp-lbl">Compliance</span>
+      <div class="comp-track"><div class="comp-fill ${cc}" style="width:${a.compliance}%"></div></div>
+      <span class="comp-pct ${cc}">${a.compliance}%</span>
+    </div>`;
   }
 
   // Training
@@ -1429,35 +681,25 @@ function buildCard(a) {
     const lp = parseInt(w['Lift Planned']) || 0, lc = parseInt(w['Lift Completed']) || 0;
     const rPct = rp > 0 ? Math.min(100, Math.round(rc / rp * 100)) : 0;
     const lPct = lp > 0 ? Math.min(100, Math.round(lc / lp * 100)) : 0;
-    const bad = v => v && !['n/a','','none','nope','nothing','no'].includes((v||'').toLowerCase().trim());
-    const shHtml = a.strHighlights?.length ? `
-      <div class="str-prs">
-        ${a.strHighlights.slice(0,3).map(h => `
-          <div class="pr-row">
-            <span class="pr-move">${esc(h.lift)}</span>
-            <span class="pr-val">${esc(h.val)}</span>
-            ${h.isPB ? '<span class="pr-badge pb">PB</span>' : '<span class="pr-badge strong">↑</span>'}
-          </div>`).join('')}
-      </div>` : '';
+
     training = `<div class="sec">
-      <div class="sec-ttl"><div class="sec-ttl-dot run"></div>${a.weekNum !== null ? (a.weekNum === 0 ? 'Discovery Week Training' : `Week ${a.weekNum} Training`) : 'Training'} — ${fmtDate(w['Week Ending']) || '?'}</div>
+      <div class="sec-ttl">${a.weekNum !== null ? (a.weekNum === 0 ? 'Discovery Week Training' : `Wk ${a.weekNum} Training`) : 'Training'} — ending ${fmtDate(w['Week Ending']) || '?'}</div>
       <div class="tpair">
         <div class="tb">
-          <div class="tt run"><span class="tt-icon">🏃</span>Run</div>
-          <div class="ts"><strong class="hi">${rc}/${rp}</strong> sessions · <strong class="hi">${esc(w['Weekly Run KM'] || '—')} km</strong></div>
-          <div class="pbar"><div class="pfill ${rPct >= 100 ? 'full' : 'run'}" style="width:${rPct}%"></div></div>
-          <div class="ts">Feel: <strong>${esc(w['Run Feel /10'] || '—')}/10</strong> · Pace: <strong>${esc(w['Average Pace'] || w['Run Pace'] || '—')}</strong></div>
-          ${bad(w['Run Niggles']) ? `<div class="nl red"><span class="nl-lbl">⚠ Niggle</span>${esc(w['Run Niggles'])}</div>` : ''}
-          ${w['Runs Wins'] && w['Runs Wins'] !== 'n/a' ? `<div class="nl green"><span class="nl-lbl">✦ Win</span>${esc(w['Runs Wins'])}</div>` : ''}
+          <div class="tt run">Run</div>
+          <div class="ts"><strong>${rc}/${rp}</strong> sessions · <strong>${esc(w['Weekly Run KM'] || '—')} km</strong></div>
+          <div class="pbar"><div class="pfill run" style="width:${rPct}%"></div></div>
+          <div class="ts">Feel: <strong>${esc(w['Run Feel /10'] || '—')}/10</strong></div>
+          ${isBad(w['Run Niggles']) ? `<div class="nl red"><span class="nl-lbl">⚠ Niggle</span>${esc(w['Run Niggles'])}</div>` : ''}
+          ${w['Runs Wins'] && w['Runs Wins'] !== 'n/a' ? `<div class="nl"><span class="nl-lbl">✓ Win</span>${esc(w['Runs Wins'])}</div>` : ''}
         </div>
         <div class="tb">
-          <div class="tt str"><span class="tt-icon">🏋️</span>Strength</div>
-          <div class="ts"><strong class="his">${lc}/${lp}</strong> sessions</div>
-          <div class="pbar"><div class="pfill ${lPct >= 100 ? 'full' : 'str'}" style="width:${lPct}%"></div></div>
+          <div class="tt str">Lift</div>
+          <div class="ts"><strong>${lc}/${lp}</strong> sessions</div>
+          <div class="pbar"><div class="pfill str" style="width:${lPct}%"></div></div>
           <div class="ts">Feel: <strong>${esc(w['Lift Feel /10'] || '—')}/10</strong></div>
-          ${bad(w['Lifts Niggles']) ? `<div class="nl red"><span class="nl-lbl">⚠ Niggle</span>${esc(w['Lifts Niggles'])}</div>` : ''}
-          ${w['Lift Wins'] && w['Lift Wins'] !== 'n/a' ? `<div class="nl green"><span class="nl-lbl">✦ Win</span>${esc(w['Lift Wins'])}</div>` : ''}
-          ${shHtml}
+          ${isBad(w['Lifts Niggles']) ? `<div class="nl red"><span class="nl-lbl">⚠ Niggle</span>${esc(w['Lifts Niggles'])}</div>` : ''}
+          ${w['Lift Wins'] && w['Lift Wins'] !== 'n/a' ? `<div class="nl"><span class="nl-lbl">✓ Win</span>${esc(w['Lift Wins'])}</div>` : ''}
         </div>
       </div>
       ${w['Testimonial'] ? `<div class="testim">"${esc(w['Testimonial'])}"</div>` : ''}
@@ -1465,110 +707,44 @@ function buildCard(a) {
     </div>`;
   }
 
-  // Body metrics — this week only
+  // Body
   let bodyHtml = '';
-  if (a.bAvg.hasData) {
-    const bn = a.bAvg.wt !== undefined
-      ? null  // weight entries often don't have notes
-      : null;
-    // Pull note from most recent b7 entry
-    const bNote = a.body
-      .filter(r => new Date(r['date:Date:start'] || r.Date) >= dago(7))
-      .sort((x, y) => (y['date:Date:start'] || y.Date || '') > (x['date:Date:start'] || x.Date || '') ? 1 : -1)[0]?.Notes;
+  if (a.bAvg.wt !== undefined || a.bAvg.sleep !== null) {
+    const bLast = [...a.body].sort((x, y) =>
+      (y['date:Date:start'] || y.Date || '') > (x['date:Date:start'] || x.Date || '') ? 1 : -1)[0];
+    const bn = bLast?.Notes;
     bodyHtml = `<div class="sec">
-      <div class="sec-ttl"><div class="sec-ttl-dot body"></div>Body — this week avg</div>
+      <div class="sec-ttl">Body — 7-day avg</div>
       <div class="body-grid">
         ${a.bAvg.wt !== undefined ? `<div><div class="wnum">${esc(a.bAvg.wt)}<span class="wunit">kg</span></div><div class="wdate">${fmtDate(a.bAvg.wtd)}</div></div>` : ''}
         <div class="bmet">
-          <div class="bm"><div class="bm-lbl">Sleep</div><div class="bm-val ${bmClass('sleep', a.bAvg.sleep)}">${a.bAvg.sleep ?? '—'}</div></div>
-          <div class="bm"><div class="bm-lbl">Energy</div><div class="bm-val ${bmClass('energy', a.bAvg.energy)}">${a.bAvg.energy ?? '—'}</div></div>
-          <div class="bm"><div class="bm-lbl">Stress</div><div class="bm-val ${bmClass('stress', a.bAvg.stress)}">${a.bAvg.stress ?? '—'}</div></div>
-          <div class="bm"><div class="bm-lbl">Sore</div><div class="bm-val ${bmClass('sore', a.bAvg.soreness)}">${a.bAvg.soreness ?? '—'}</div></div>
+          ${[{l:'Sleep',v:a.bAvg.sleep},{l:'Energy',v:a.bAvg.energy},{l:'Stress',v:a.bAvg.stress},{l:'Sore',v:a.bAvg.soreness}].map(m =>
+            `<div class="bm"><div class="bm-lbl">${m.l}</div><div class="bm-val">${m.v !== null ? m.v : '—'}</div></div>`).join('')}
         </div>
       </div>
-      ${bNote ? `<div class="bnote">${esc(bNote)}</div>` : ''}
-    </div>`;
-  } else {
-    bodyHtml = `<div class="sec">
-      <div class="sec-ttl"><div class="sec-ttl-dot body"></div>Body</div>
-      <div class="no-data-msg">No daily tracking logged this week</div>
+      ${bn ? `<div class="bnote">${esc(bn)}</div>` : ''}
     </div>`;
   }
 
-  // Nutrition — this week only
+  // Nutrition
   let nutrHtml = '';
-  if (a.nAvg.hasData) {
-    const t = MACRO_TARGETS[a.id] || DEFAULT_TARGETS;
-    const calS  = macroStatus(a.nAvg.cal,  t.cal);
-    const proS  = macroStatus(a.nAvg.pro,  t.pro);
-    const carbS = macroStatus(a.nAvg.carb, t.carb);
-    const fatS  = macroStatus(a.nAvg.fat,  t.fat);
+  if (a.nAvg.cal !== null) {
     nutrHtml = `<div class="sec">
-      <div class="sec-ttl"><div class="sec-ttl-dot nutr"></div>Nutrition — ${a.nAvg.days}d avg <span style="margin-left:auto;font-size:7px;opacity:.5">vs target</span></div>
-      <div class="nutr-grid">
-        <div class="mc ${calS === 'good' ? 'highlight' : calS === 'over' ? 'flag-over' : calS === 'under' ? 'flag-under' : ''}">
-          <div class="mc-lbl">Calories</div>
-          <div class="mc-val">${a.nAvg.cal || '—'}</div>
-          <div class="mc-status ${calS}">${macroStatusLabel(a.nAvg.cal, t.cal)}</div>
-        </div>
-        <div class="mc ${proS === 'good' ? 'highlight' : proS === 'over' ? 'flag-over' : proS === 'under' ? 'flag-under' : ''}">
-          <div class="mc-lbl">Protein</div>
-          <div class="mc-val">${a.nAvg.pro || '—'}<span class="mc-unit">g</span></div>
-          <div class="mc-status ${proS}">${macroStatusLabel(a.nAvg.pro, t.pro)}</div>
-        </div>
-        <div class="mc ${carbS === 'good' ? 'highlight' : carbS === 'over' ? 'flag-over' : carbS === 'under' ? 'flag-under' : ''}">
-          <div class="mc-lbl">Carbs</div>
-          <div class="mc-val">${a.nAvg.carb || '—'}<span class="mc-unit">g</span></div>
-          <div class="mc-status ${carbS}">${macroStatusLabel(a.nAvg.carb, t.carb)}</div>
-        </div>
-        <div class="mc ${fatS === 'good' ? 'highlight' : fatS === 'over' ? 'flag-over' : fatS === 'under' ? 'flag-under' : ''}">
-          <div class="mc-lbl">Fats</div>
-          <div class="mc-val">${a.nAvg.fat || '—'}<span class="mc-unit">g</span></div>
-          <div class="mc-status ${fatS}">${macroStatusLabel(a.nAvg.fat, t.fat)}</div>
-        </div>
-      </div>
-      <div class="macro-compare">
-        <div class="mcomp-row">
-          <span class="mcomp-lbl">Protein</span>
-          <div class="mcomp-track"><div class="mcomp-fill ${proS}" style="width:${Math.min(100,pct(a.nAvg.pro,t.pro))}%"></div></div>
-          <span class="mcomp-val">${a.nAvg.pro || '—'}g / ${t.pro}g</span>
-        </div>
-        <div class="mcomp-row">
-          <span class="mcomp-lbl">Cals</span>
-          <div class="mcomp-track"><div class="mcomp-fill ${calS}" style="width:${Math.min(100,pct(a.nAvg.cal,t.cal))}%"></div></div>
-          <span class="mcomp-val">${a.nAvg.cal || '—'} / ${t.cal}</span>
-        </div>
-        <div class="mcomp-row">
-          <span class="mcomp-lbl">Carbs</span>
-          <div class="mcomp-track"><div class="mcomp-fill ${carbS}" style="width:${Math.min(100,pct(a.nAvg.carb,t.carb))}%"></div></div>
-          <span class="mcomp-val">${a.nAvg.carb || '—'}g / ${t.carb}g</span>
-        </div>
-      </div>
-    </div>`;
-  } else {
-    nutrHtml = `<div class="sec">
-      <div class="sec-ttl"><div class="sec-ttl-dot nutr"></div>Nutrition</div>
-      <div class="no-data-msg">No nutrition logged this week</div>
-    </div>`;
-  }
-
-  // No weekly check-in placeholder (replaces training block when missing)
-  let noCheckinHtml = '';
-  if (!hW) {
-    noCheckinHtml = `<div class="sec">
-      <div class="sec-ttl"><div class="sec-ttl-dot run"></div>Weekly Check-in</div>
-      <div class="no-checkin-msg">
-        <span class="nc-icon">📋</span>
-        <span>No check-in submitted this week</span>
+      <div class="sec-ttl">Nutrition — ${a.nAvg.days}d avg</div>
+      <div class="mrow">
+        <div class="mc"><div class="mc-lbl">Calories</div><div class="mc-val">${a.nAvg.cal || '—'}</div></div>
+        <div class="mc"><div class="mc-lbl">Protein</div><div class="mc-val">${a.nAvg.pro || '—'}<span class="mc-unit">g</span></div></div>
+        <div class="mc"><div class="mc-lbl">Carbs</div><div class="mc-val">${a.nAvg.carb || '—'}<span class="mc-unit">g</span></div></div>
+        <div class="mc"><div class="mc-lbl">Fats</div><div class="mc-val">${a.nAvg.fat || '—'}<span class="mc-unit">g</span></div></div>
       </div>
     </div>`;
   }
 
-  // Session fallback — only show if no weekly check-in but sessions exist
+  // Session count (no weekly)
   let sessHtml = '';
   if (!hW && (a.runS.length || a.strS.length)) {
     sessHtml = `<div class="sec">
-      <div class="sec-ttl">Sessions logged this week</div>
+      <div class="sec-ttl">Sessions (7 days)</div>
       <div class="sess-row">
         <div class="scard"><div class="snum run-c">${a.runS.length}</div><div class="slbl">Run</div></div>
         <div class="scard"><div class="snum str-c">${a.strS.length}</div><div class="slbl">Strength</div></div>
@@ -1576,11 +752,46 @@ function buildCard(a) {
     </div>`;
   }
 
+  // Call Prep
+  const callPrep = buildCallPrep(a);
+  const cpId = `cp-${a.id.replace(/\s+/g,'-')}`;
+  const savedNote = callNotes[a.id] || '';
+  const callPrepHtml = `
+    <div class="call-prep">
+      <div class="cp-header" onclick="toggleCallPrep('${cpId}')">
+        <div class="cp-title"><span class="cp-icon">📋</span> Call Prep</div>
+        <span class="cp-toggle" id="${cpId}-toggle">▼</span>
+      </div>
+      <div class="cp-body" id="${cpId}">
+        ${callPrep.wins.length ? `
+          <div class="cp-block">
+            <div class="cp-block-lbl win">✓ Open With (Wins)</div>
+            <div class="cp-items">${callPrep.wins.map(t => `<div class="cp-item win">${esc(t)}</div>`).join('')}</div>
+          </div>` : ''}
+        ${callPrep.issues.length ? `
+          <div class="cp-block">
+            <div class="cp-block-lbl issue">⚠ Address</div>
+            <div class="cp-items">${callPrep.issues.map(t => `<div class="cp-item issue">${esc(t)}</div>`).join('')}</div>
+          </div>` : ''}
+        ${callPrep.ask.length ? `
+          <div class="cp-block">
+            <div class="cp-block-lbl ask">→ Ask / Follow Up</div>
+            <div class="cp-items">${callPrep.ask.map(t => `<div class="cp-item ask">${esc(t)}</div>`).join('')}</div>
+          </div>` : ''}
+        ${!callPrep.wins.length && !callPrep.issues.length && !callPrep.ask.length ? `<div class="cp-none">No check-in data to prep from yet.</div>` : ''}
+        <div class="cp-block">
+          <div class="cp-block-lbl note-lbl">📝 Call Notes</div>
+          <textarea class="cp-note" placeholder="Notes for this call…" onchange="saveNote('${a.id}', this.value)">${esc(savedNote)}</textarea>
+        </div>
+      </div>
+    </div>`;
+
   const metaText = a.hasRecent
     ? `Week ending ${fmtDate(w?.['Week Ending'])}`
-    : 'No check-in this week';
+    : hW ? `Last check-in ${fmtDate(w?.['Week Ending'])}`
+    : a.body.length ? 'Daily tracking only' : 'No recent data';
 
-  return `<div class="card ${bcls}" data-card="${esc(a.id)}">
+  return `<div class="card ${bcls}" data-card="${esc(a.id)}" data-alert="${a.alertScore}" data-name="${esc(a.id)}" data-week="${a.weekNum ?? 0}" data-compliance="${a.compliance ?? 0}" data-checkin="${w?.['Week Ending'] || ''}">
     <div class="card-head">
       <div class="card-head-top">
         <div>
@@ -1591,70 +802,339 @@ function buildCard(a) {
       </div>
       ${a.flags.length ? `<div class="flags">${fps}</div>` : ''}
     </div>
-    ${scores}${hW ? training : noCheckinHtml}${sessHtml}${bodyHtml}${nutrHtml}
+    ${compBar}${scores}${training}${bodyHtml}${nutrHtml}${sessHtml}
     <div class="ai-sec"></div>
+    ${callPrepHtml}
   </div>`;
+}
+
+// ── Call Prep Builder ─────────────────────────────────────────────────────────
+function buildCallPrep(a) {
+  const w = a.weekly;
+  const wins = [], issues = [], ask = [];
+
+  if (w) {
+    // Wins
+    if (w['Runs Wins'] && isBad(w['Runs Wins'])) wins.push('Running: ' + w['Runs Wins']);
+    if (w['Lift Wins'] && isBad(w['Lift Wins'])) wins.push('Lifting: ' + w['Lift Wins']);
+    if (w['Testimonial'] && isBad(w['Testimonial'])) wins.push(`"${w['Testimonial']}"`);
+
+    const rf = parseInt(w['Run Feel /10']);
+    const lf = parseInt(w['Lift Feel /10']);
+    if (rf >= 8) wins.push(`Strong run feel this week (${rf}/10)`);
+    if (lf >= 8) wins.push(`Strong lift feel this week (${lf}/10)`);
+
+    const energy = parseInt(w['Energy /10']);
+    if (energy >= 8) wins.push(`High energy (${energy}/10)`);
+
+    // Issues
+    if (isBad(w['Run Niggles'])) issues.push('Run niggle: ' + w['Run Niggles']);
+    if (isBad(w['Lifts Niggles'])) issues.push('Lift niggle: ' + w['Lifts Niggles']);
+
+    const stress = parseInt(w['Stress']);
+    if (stress >= 8) issues.push(`High stress score (${stress}/10) — check in on life load`);
+    else if (stress >= 6) issues.push(`Elevated stress (${stress}/10)`);
+
+    const motiv = parseInt(w['Motivation']);
+    if (motiv && motiv <= 4) issues.push(`Low motivation (${motiv}/10) — explore why`);
+    else if (motiv && motiv <= 6) issues.push(`Below-average motivation (${motiv}/10)`);
+
+    const rp = parseInt(w['Run Planned']) || 0, rc = parseInt(w['Run Completed']) || 0;
+    const lp = parseInt(w['Lift Planned']) || 0, lc = parseInt(w['Lift Completed']) || 0;
+    if (rp > 0 && rc < rp) issues.push(`Missed ${rp - rc} of ${rp} planned runs`);
+    if (lp > 0 && lc < lp) issues.push(`Missed ${lp - lc} of ${lp} planned lifts`);
+
+    const nutrAdh = parseInt(w['Nutrition Adherence /10']);
+    if (nutrAdh && nutrAdh <= 5) issues.push(`Low nutrition adherence (${nutrAdh}/10)`);
+
+    // Ask / Follow-up
+    if (isBad(w['Upcoming Impact'])) ask.push('Upcoming impact: ' + w['Upcoming Impact']);
+    if (isBad(w['Social Event Upcoming'])) ask.push('Social event coming up: ' + w['Social Event Upcoming']);
+    if (isBad(w['Fuelling'])) ask.push('Fuelling note: ' + w['Fuelling']);
+    if (isBad(w['Notes'])) ask.push('Their notes: ' + w['Notes']);
+  }
+
+  // From body notes
+  if (a.body.length) {
+    const bSorted = [...a.body].sort((x, y) =>
+      (y['date:Date:start'] || y.Date || '') > (x['date:Date:start'] || x.Date || '') ? 1 : -1);
+    const bn = bSorted[0]?.Notes;
+    if (isBad(bn) && !ask.some(i => i.includes(bn))) ask.push('Recent body note: ' + bn);
+  }
+
+  return { wins, issues, ask };
+}
+
+// ── Coach Card ────────────────────────────────────────────────────────────────
+function buildCoachCard(a) {
+  const w = a.weekly;
+  const hW = !!w?.Name;
+
+  // Scores
+  let scores = '';
+  if (hW) {
+    const sx = [
+      { l: 'Energy',  v: w['Energy /10'],             inv: false },
+      { l: 'Sleep',   v: w['Sleep hrs'],               inv: false },
+      { l: 'Sore',    v: w['Soreness /10'],            inv: true  },
+      { l: 'Stress',  v: w['Stress'],                  inv: true  },
+      { l: 'Motiv',   v: w['Motivation'],              inv: false },
+      { l: 'Nutr',    v: w['Nutrition Adherence /10'], inv: false },
+    ];
+    scores = `<div class="coach-scores">${sx.map(x =>
+      `<div class="sc"><div class="sc-lbl">${esc(x.l)}</div><div class="sc-val ${scoreClass(x.v, x.inv)}">${esc(x.v) || '—'}</div></div>`
+    ).join('')}</div>`;
+  }
+
+  // Training
+  let trainingHtml = '';
+  if (hW) {
+    const rp = parseInt(w['Run Planned']) || 0, rc = parseInt(w['Run Completed']) || 0;
+    const lp = parseInt(w['Lift Planned']) || 0, lc = parseInt(w['Lift Completed']) || 0;
+    const rPct = rp > 0 ? Math.min(100, Math.round(rc / rp * 100)) : 0;
+    const lPct = lp > 0 ? Math.min(100, Math.round(lc / lp * 100)) : 0;
+
+    trainingHtml = `<div class="coach-training">
+      <div class="coach-training-lbl">Training — week ending ${fmtDate(w['Week Ending']) || '?'}</div>
+      <div class="tpair">
+        <div class="tb">
+          <div class="tt run">Run</div>
+          <div class="ts"><strong>${rc}/${rp}</strong> sessions · <strong>${esc(w['Weekly Run KM'] || '—')} km</strong></div>
+          <div class="pbar"><div class="pfill run" style="width:${rPct}%"></div></div>
+          <div class="ts">Feel: <strong>${esc(w['Run Feel /10'] || '—')}/10</strong></div>
+          ${isBad(w['Run Niggles']) ? `<div class="nl red"><span class="nl-lbl">⚠ Niggle</span>${esc(w['Run Niggles'])}</div>` : ''}
+          ${w['Runs Wins'] && w['Runs Wins'] !== 'n/a' ? `<div class="nl"><span class="nl-lbl">✓ Win</span>${esc(w['Runs Wins'])}</div>` : ''}
+        </div>
+        <div class="tb">
+          <div class="tt str">Lift</div>
+          <div class="ts"><strong>${lc}/${lp}</strong> sessions</div>
+          <div class="pbar"><div class="pfill str" style="width:${lPct}%"></div></div>
+          <div class="ts">Feel: <strong>${esc(w['Lift Feel /10'] || '—')}/10</strong></div>
+          ${isBad(w['Lifts Niggles']) ? `<div class="nl red"><span class="nl-lbl">⚠ Niggle</span>${esc(w['Lifts Niggles'])}</div>` : ''}
+          ${w['Lift Wins'] && w['Lift Wins'] !== 'n/a' ? `<div class="nl"><span class="nl-lbl">✓ Win</span>${esc(w['Lift Wins'])}</div>` : ''}
+        </div>
+      </div>
+      ${w['Testimonial'] ? `<div class="testim">"${esc(w['Testimonial'])}"</div>` : ''}
+      ${w['Upcoming Impact'] && w['Upcoming Impact'] !== 'n/a' ? `<div class="impact">⚡ ${esc(w['Upcoming Impact'])}</div>` : ''}
+    </div>`;
+  }
+
+  // Body
+  let bodyHtml = '';
+  if (a.bAvg.wt !== undefined || a.bAvg.sleep !== null) {
+    const items = [
+      { l: 'Weight', v: a.bAvg.wt !== undefined ? a.bAvg.wt + ' kg' : null },
+      { l: 'Sleep',  v: a.bAvg.sleep },
+      { l: 'Energy', v: a.bAvg.energy },
+      { l: 'Stress', v: a.bAvg.stress },
+    ].filter(i => i.v !== null);
+    if (items.length) {
+      bodyHtml = `<div class="coach-body-row">${items.map(i =>
+        `<div class="coach-body-item"><div class="coach-body-item-val">${esc(i.v)}</div><div class="coach-body-item-lbl">${esc(i.l)}</div></div>`
+      ).join('')}</div>`;
+    }
+  }
+
+  // Notes
+  let notesHtml = '';
+  if (hW && w['Notes'] && isBad(w['Notes'])) {
+    notesHtml = `<div class="coach-notes">
+      <div class="coach-notes-lbl">Notes</div>
+      <div class="coach-quote">${esc(w['Notes'])}</div>
+    </div>`;
+  }
+
+  const noData = !hW && !a.bAvg.wt && !a.bAvg.sleep;
+  const metaTxt = hW
+    ? `Week ending ${fmtDate(w['Week Ending'])}`
+    : a.body.length ? 'Daily tracking only' : 'No check-in data yet';
+
+  return `<div class="coach-card">
+    <div class="coach-card-head">
+      <div class="coach-card-head-top">
+        <div>
+          <div class="coach-name-row">
+            <div class="coach-name">${esc(a.id)}</div>
+            <div class="coach-badge">Coach</div>
+          </div>
+          <div class="coach-meta">${metaTxt}</div>
+        </div>
+        ${a.compliance !== null ? `<div class="coach-wk-badge"><div class="coach-wk-num">${a.compliance}%</div><div class="coach-wk-lbl">Compliance</div></div>` : ''}
+      </div>
+    </div>
+    ${scores}
+    ${trainingHtml}
+    ${bodyHtml}
+    ${notesHtml}
+    ${noData ? `<div class="coach-no-data"><div class="coach-no-data-txt">No recent data found</div></div>` : ''}
+  </div>`;
+}
+
+// ── Filters ───────────────────────────────────────────────────────────────────
+function setStatusFilter(btn, status) {
+  _statusFilter = status;
+  document.querySelectorAll('.sf').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  applyFilters();
+}
+
+function applyFilters() {
+  const query = (document.getElementById('search-input')?.value || '').toLowerCase().trim();
+  const sortBy = document.getElementById('sort-select')?.value || 'alert';
+
+  let visible = _allAthletes;
+
+  // Status filter
+  if (_statusFilter === 'red') {
+    visible = visible.filter(a => a.flags.some(f => f.t === 'red'));
+  } else if (_statusFilter === 'amber') {
+    visible = visible.filter(a => !a.flags.some(f => f.t === 'red') && a.flags.some(f => f.t === 'yellow'));
+  } else if (_statusFilter === 'green') {
+    visible = visible.filter(a => !a.flags.some(f => f.t === 'red') && !a.flags.some(f => f.t === 'yellow'));
+  }
+
+  // Search
+  if (query) {
+    visible = visible.filter(a => a.id.toLowerCase().includes(query));
+  }
+
+  // Sort
+  if (sortBy === 'name') {
+    visible = [...visible].sort((a, b) => a.id.localeCompare(b.id));
+  } else if (sortBy === 'week') {
+    visible = [...visible].sort((a, b) => (b.weekNum ?? -1) - (a.weekNum ?? -1));
+  } else if (sortBy === 'compliance') {
+    visible = [...visible].sort((a, b) => (b.compliance ?? -1) - (a.compliance ?? -1));
+  } else if (sortBy === 'checkin') {
+    visible = [...visible].sort((a, b) => {
+      const da = a.weekly?.['Week Ending'] || '';
+      const db = b.weekly?.['Week Ending'] || '';
+      return db.localeCompare(da);
+    });
+  } else {
+    visible = [...visible].sort((a, b) => b.alertScore - a.alertScore);
+  }
+
+  // Show/hide cards
+  const cards = document.querySelectorAll('#grid .card');
+  const visibleIds = new Set(visible.map(a => a.id));
+  cards.forEach(card => {
+    const id = card.getAttribute('data-card');
+    card.classList.toggle('hidden', !visibleIds.has(id));
+  });
+
+  // Sort DOM order
+  const grid = document.getElementById('grid');
+  visible.forEach(a => {
+    const card = grid.querySelector(`[data-card="${a.id}"]`);
+    if (card) grid.appendChild(card);
+  });
+
+  // No-results message
+  document.getElementById('no-results').style.display = visible.length === 0 ? 'block' : 'none';
+}
+
+// ── Tab switching ─────────────────────────────────────────────────────────────
+function switchTab(tab) {
+  const isAthletes = tab === 'athletes';
+  document.getElementById('tab-athletes-content').style.display = isAthletes ? '' : 'none';
+  document.getElementById('tab-coaches-content').style.display  = isAthletes ? 'none' : '';
+  document.getElementById('filter-bar').style.display           = isAthletes ? '' : 'none';
+  document.getElementById('gen-btn').style.display              = isAthletes && _allAthletes.length ? 'block' : 'none';
+
+  document.getElementById('tab-athletes-btn').classList.toggle('active', isAthletes);
+  document.getElementById('tab-coaches-btn').classList.toggle('active', !isAthletes);
+}
+
+// ── Call Prep toggle ──────────────────────────────────────────────────────────
+function toggleCallPrep(id) {
+  const body = document.getElementById(id);
+  const toggle = document.getElementById(id + '-toggle');
+  if (!body) return;
+  const isOpen = body.style.display !== 'none';
+  body.style.display = isOpen ? 'none' : '';
+  toggle.classList.toggle('open', !isOpen);
+}
+
+function saveNote(athleteId, value) {
+  callNotes[athleteId] = value;
+}
+
+// ── Main load ─────────────────────────────────────────────────────────────────
+async function load() {
+  document.getElementById('loading').style.display = 'block';
+  document.getElementById('content').style.display = 'none';
+  document.getElementById('err').style.display = 'none';
+  document.getElementById('refresh-btn').disabled = true;
+
+  try {
+    const [weekly, sessions, body, nutrition, athleteDb] = await Promise.all([
+      fetchDB(DB.weekly), fetchDB(DB.sessions), fetchDB(DB.body),
+      fetchDB(DB.nutrition), fetchDB(DB.athletes),
+    ]);
+
+    const { athletes, coaches } = buildAll(weekly, sessions, body, nutrition, athleteDb);
+    render({ athletes, coaches });
+
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('content').style.display = 'block';
+    document.getElementById('updated').textContent =
+      'Updated ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  } catch (e) {
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('err').style.display = 'block';
+    document.getElementById('err-msg').textContent = 'Error: ' + e.message;
+  } finally {
+    document.getElementById('refresh-btn').disabled = false;
+  }
 }
 
 // ── AI Analysis ───────────────────────────────────────────────────────────────
 let _lastAthletes = [];
+
 async function generateAI() {
-  if (!_lastAthletes.length) return;
+  if (!_allAthletes.length) return;
   const btn = document.getElementById('gen-btn');
   btn.disabled = true;
   btn.classList.add('loading');
   btn.textContent = '✦ Analysing…';
+
   document.querySelectorAll('.ai-sec').forEach(sec => {
     sec.innerHTML = `<div class="ai-loading">
       <div class="ai-loading-dot"></div><div class="ai-loading-dot"></div><div class="ai-loading-dot"></div>
-      <span>Generating coaching analysis…</span>
+      <span>Generating analysis…</span>
     </div>`;
   });
+
   try {
-    const payload = _lastAthletes
+    const payload = _allAthletes
       .filter(a => a.weekly || a.bAvg?.wt != null)
-      .map(a => ({
-        id: a.id, weekNum: a.weekNum, weekly: a.weekly, weeklyPrev: a.weeklyPrev,
-        bAvg: a.bAvg, nAvg: a.nAvg, strHighlights: a.strHighlights, wins: a.wins,
-        runSessions: a.runS.length, strSessions: a.strS.length, flags: a.flags,
-      }));
+      .map(a => ({ id: a.id, weekly: a.weekly, bAvg: a.bAvg, nAvg: a.nAvg }));
+
     const res = await fetch('/api/analyse', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        athletes: payload,
-        prompt: `You are an expert hybrid coach. For each athlete provide:
-1. status: GREEN (on track), AMBER (needs watch), or RED (needs immediate attention)
-2. wins: array of 1-3 specific wins (be specific about numbers, PRs, consistency)
-3. concerns: array of 1-3 things to flag (low protein, missed sessions, niggles — be specific)
-4. flags: array of coaching notes (max 3)
-5. recommendation: 2-3 sentence personalised coaching note with specific next steps
-Focus on: strength wins/PRs, macro targets vs actuals (especially protein), training completion, recovery trends, injury flags. Be specific and data-driven.
-Also provide a squadBrief: 2-3 sentence overall squad summary highlighting key themes.
-Return JSON: { analyses: [{id, status, wins, concerns, flags, recommendation}], squadBrief }`
-      }),
+      body: JSON.stringify({ athletes: payload }),
     });
-    if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || `HTTP ${res.status}`); }
+    if (!res.ok) {
+      const e = await res.json().catch(() => ({}));
+      throw new Error(e.error || `HTTP ${res.status}`);
+    }
+
     const { analyses, squadBrief } = await res.json();
+
     analyses.forEach(analysis => {
       const sec = document.querySelector(`[data-card="${analysis.id}"] .ai-sec`);
       if (!sec) return;
-      const winsHtml    = (analysis.wins    || []).map(w => `<div class="ai-win-item">${esc(w)}</div>`).join('');
-      const concernsHtml= (analysis.concerns|| []).map(c => `<div class="ai-concern-item">${esc(c)}</div>`).join('');
       sec.innerHTML = `
-        <div class="ai-header">
-          <div class="ai-status-badge ${analysis.status}">${analysis.status}</div>
-        </div>
-        ${winsHtml     ? `<div class="ai-wins">${winsHtml}</div>` : ''}
-        ${concernsHtml ? `<div class="ai-concerns">${concernsHtml}</div>` : ''}
-        ${(analysis.flags||[]).length ? `<div class="ai-flags">${analysis.flags.map(f=>`<div class="ai-flag">${esc(f)}</div>`).join('')}</div>` : ''}
+        <div class="ai-status-badge ${analysis.status}">${analysis.status}</div>
+        <div class="ai-flags">${(analysis.flags || []).map(f => `<div class="ai-flag">${esc(f)}</div>`).join('')}</div>
         <div class="ai-rec">${esc(analysis.recommendation)}</div>`;
     });
+
     if (squadBrief) {
       document.getElementById('squad-brief-text').textContent = squadBrief;
       document.getElementById('squad-brief').classList.add('visible');
-      document.getElementById('ws-ai-text').textContent = squadBrief;
-      document.getElementById('ws-ai-text').style.display = 'block';
     }
     btn.textContent = '✦ Regenerate';
   } catch (e) {
