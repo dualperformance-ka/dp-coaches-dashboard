@@ -588,20 +588,41 @@ function daysAgo(dateStr) {
   return diff;
 }
 
-// ── Fetch ────────────────────────────────────────────────────────────────────
+// ── Fetch (with full pagination) ──────────────────────────────────────────────
+// Notion caps each API response at 100 rows. Without pagination the sessions DB
+// (one row per exercise logged) only returns the first ~100 entries, which for
+// a busy squad means recent sessions are silently missing. This function keeps
+// requesting the next page until there is no more data.
+// Requires the /api/notion backend to:
+//   • Accept ?cursor=<next_cursor> and pass it to the Notion API as start_cursor
+//   • Return has_more (boolean) and next_cursor (string) from the Notion response
 async function fetchDB(dbId) {
-  const res = await fetch(`/api/notion?db=${dbId}`);
-  if (!res.ok) {
-    const e = await res.json().catch(() => ({}));
-    throw new Error(e.error || `HTTP ${res.status}`);
-  }
-  const data = await res.json();
-  return data.results || [];
+  const all = [];
+  let cursor = null;
+  let pages = 0;
+  const MAX_PAGES = 40; // safety cap — 40 × 100 = 4 000 rows max
+
+  do {
+    const url = cursor
+      ? `/api/notion?db=${dbId}&cursor=${encodeURIComponent(cursor)}`
+      : `/api/notion?db=${dbId}`;
+    const res = await fetch(url);
+    if (!res.ok) {
+      const e = await res.json().catch(() => ({}));
+      throw new Error(e.error || `HTTP ${res.status}`);
+    }
+    const data = await res.json();
+    all.push(...(data.results || []));
+    cursor = data.has_more ? data.next_cursor : null;
+    pages++;
+  } while (cursor && pages < MAX_PAGES);
+
+  return all;
 }
 
 // ── Build ─────────────────────────────────────────────────────────────────────
 function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = []) {
-  const c14 = dago(14), c7 = dago(7);
+  const c21 = dago(21), c14 = dago(14), c7 = dago(7);
   const map = {};
 
   function ens(id) {
@@ -685,13 +706,14 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [
     if (d && new Date(d) >= c14) map[id].nutrition.push(r);
   });
 
-  // Sessions
+  // Sessions — keep 21 days so prev-week sessions are always available
+  // for the "Week in Progress" prev-week fallback at the start of a new week
   const seen = new Set();
   sessions.forEach(r => {
     const id = sid(r);
     if (!id || !map[id]) return;
     const ds = ((r.Date || r['Submitted At'] || r._createdTime || '')).split('T')[0];
-    if (!ds || new Date(ds) < c14) return;
+    if (!ds || new Date(ds) < c21) return;
     const k = `${id}|${r.Session || ''}|${r['Session Category'] || ''}|${ds}`;
     if (!seen.has(k)) { seen.add(k); map[id].sessions.push({ ...r, _d: ds }); }
   });
@@ -728,6 +750,17 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [
     const sCurr = a.sessions.filter(s => new Date(s._d) >= currentWeekStart);
     const currRunS = sCurr.filter(s => s['Session Category'] === 'Running' || s['Session Category'] === 'Run');
     const currStrS = sCurr.filter(s => s['Session Category'] === 'Strength');
+
+    // Previous calendar week sessions (Mon–Sun before currentWeekStart)
+    // Used to show activity when an athlete hasn't checked in yet at the start of a new week
+    const prevWeekStart = new Date(currentWeekStart);
+    prevWeekStart.setDate(prevWeekStart.getDate() - 7);
+    const sPrev = a.sessions.filter(s => {
+      const d = new Date(s._d);
+      return d >= prevWeekStart && d < currentWeekStart;
+    });
+    const prevRunS = sPrev.filter(s => s['Session Category'] === 'Running' || s['Session Category'] === 'Run');
+    const prevStrS = sPrev.filter(s => s['Session Category'] === 'Strength');
 
     // Compliance
     const w = a.weekly;
@@ -802,7 +835,10 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [
     const target = weekLabel && targetMap[a.id] ? (targetMap[a.id][weekLabel] || null) : null;
 
     return {
-      ...a, bAvg, nAvg, runS, strS, currRunS, currStrS, flags, alertScore,
+      ...a, bAvg, nAvg, runS, strS,
+      currRunS, currStrS,
+      prevRunS, prevStrS,
+      flags, alertScore,
       hasRecent, hasCurrentCheckin, hasLastWeekCheckin, isStale,
       expectedWeekEnd, compliance,
       weekNum: wkNum,
@@ -923,16 +959,26 @@ function buildCard(a) {
   // how far into the week they are — separate from last week's completed data.
   let weekInProgress = '';
   if (!a.hasCurrentCheckin) {
-    const rCount = a.currRunS.length;
-    const sCount = a.currStrS.length;
-    const noSessions = rCount === 0 && sCount === 0;
+    const rCount  = a.currRunS.length;
+    const sCount  = a.currStrS.length;
+    const prCount = a.prevRunS.length;
+    const psCount = a.prevStrS.length;
+    const noThisWeek = rCount === 0 && sCount === 0;
+    // Show previous week's session counts when there are no sessions yet this week
+    // (common on Monday morning before anyone logs a session for the new week)
+    const showPrev = noThisWeek && (prCount > 0 || psCount > 0);
     weekInProgress = `<div class="sec" style="background:var(--surface2);border-color:rgba(0,0,0,.06)">
       <div class="sec-ttl" style="color:var(--str)">📍 Week ${a.weekNum ?? ''} In Progress — ends ${fmtDate(a.expectedWeekEnd)}</div>
-      <div class="sess-row" style="margin-bottom:${noSessions ? 0 : 4}px">
+      <div class="sess-row" style="margin-bottom:${noThisWeek && !showPrev ? 0 : 4}px">
         <div class="scard"><div class="snum run-c">${rCount}</div><div class="slbl">Run</div></div>
         <div class="scard"><div class="snum str-c">${sCount}</div><div class="slbl">Strength</div></div>
       </div>
-      ${noSessions ? `<div style="font-family:var(--mono);font-size:9px;color:var(--dim);margin-top:4px">No sessions logged yet this week</div>` : ''}
+      ${noThisWeek && !showPrev ? `<div style="font-family:var(--mono);font-size:9px;color:var(--dim);margin-top:4px">No sessions logged yet this week</div>` : ''}
+      ${showPrev ? `<div style="font-family:var(--mono);font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;margin-top:6px;margin-bottom:3px">Last week's sessions</div>
+        <div class="sess-row">
+          <div class="scard" style="opacity:.65"><div class="snum run-c">${prCount}</div><div class="slbl">Run</div></div>
+          <div class="scard" style="opacity:.65"><div class="snum str-c">${psCount}</div><div class="slbl">Strength</div></div>
+        </div>` : ''}
     </div>`;
   }
 
@@ -1257,15 +1303,24 @@ function buildFPCard(a) {
   // Week-in-progress
   let wipHtml = '';
   if (!a.hasCurrentCheckin) {
-    const rCount = a.currRunS.length;
-    const sCount = a.currStrS.length;
+    const rCount  = a.currRunS.length;
+    const sCount  = a.currStrS.length;
+    const prCount = a.prevRunS.length;
+    const psCount = a.prevStrS.length;
+    const noThisWeek = rCount === 0 && sCount === 0;
+    const showPrev = noThisWeek && (prCount > 0 || psCount > 0);
     wipHtml = `<div class="fpc-wip">
       <div class="fpc-wip-title">📍 Week ${a.weekNum ?? ''} In Progress — ends ${fmtDate(a.expectedWeekEnd)}</div>
       <div class="fpc-sess-row">
         <div class="fpc-sess"><div class="fpc-sess-num run">${rCount}</div><div class="fpc-sess-lbl">Run Sessions</div></div>
         <div class="fpc-sess"><div class="fpc-sess-num str">${sCount}</div><div class="fpc-sess-lbl">Strength Sessions</div></div>
       </div>
-      ${rCount === 0 && sCount === 0 ? `<div style="font-family:var(--mono);font-size:10px;color:var(--dim);margin-top:12px">No sessions logged yet this week</div>` : ''}
+      ${noThisWeek && !showPrev ? `<div style="font-family:var(--mono);font-size:10px;color:var(--dim);margin-top:12px">No sessions logged yet this week</div>` : ''}
+      ${showPrev ? `<div style="font-family:var(--mono);font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;margin-top:16px;margin-bottom:10px">Last week's sessions</div>
+        <div class="fpc-sess-row">
+          <div class="fpc-sess" style="opacity:.65"><div class="fpc-sess-num run">${prCount}</div><div class="fpc-sess-lbl">Run Sessions</div></div>
+          <div class="fpc-sess" style="opacity:.65"><div class="fpc-sess-num str">${psCount}</div><div class="fpc-sess-lbl">Strength Sessions</div></div>
+        </div>` : ''}
     </div>`;
   }
 
