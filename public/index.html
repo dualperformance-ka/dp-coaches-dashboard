@@ -357,9 +357,11 @@ const DB = {
   body:      '3405a96c-c70b-80a4-b1b9-cf5b9c236f18',
   nutrition: '3405a96c-c70b-804b-aa9c-f165f2d2e0e9',
   athletes:  '4a25a96c-c70b-82ff-a679-0139eaa8b458',
+  targets:   '3405a96c-c70b-80de-9221-c2a40653277c', // weekly prescribed macro targets
 };
 
-const ALIASES = { 'JACOB TUAZON': 'JACOB' };
+// Name aliases — maps any variant to the canonical athlete ID used everywhere
+const ALIASES = { 'JACOB TUAZON': 'JACOB', 'BRYAN GOH': 'BRYAN' };
 
 // Coaches are filtered OUT of the athletes grid and shown on the Coaches tab
 const COACHES = new Set(['KARL', 'ALEX']);
@@ -371,16 +373,14 @@ const COACHES = new Set(['KARL', 'ALEX']);
 // floor(days/7)  →  Week 0 on Day 0, Week 1 on Day 7.
 const NO_DISCOVERY = new Set(['JACOB', 'KHANG']);
 
-// ── Week anchors — fallback when no Notion Start Date is set ─────────────────
+// ── Week anchors — fallback ONLY for athletes without a Notion Start Date ─────
 // { ID: { week: N, endDate: 'YYYY-MM-DD' } }
 // 'week' = the week number whose Sunday was 'endDate'.
 // calcWeekNum() auto-advances from this anchor each Monday.
-// Remove an entry once the athlete has a Start Date in Notion.
-const WEEK_OVERRIDES = {
-  // Week 7 ran Apr 27–May 3. Today (Mon May 4) = Week 8.
-  'JACOB': { week: 7, endDate: '2026-05-03' },
-  'KHANG': { week: 7, endDate: '2026-05-03' },
-};
+// Add an entry here only if an athlete is missing a Start Date in Notion.
+// Remove the entry once the Start Date is set — Notion Start Date takes priority.
+const WEEK_OVERRIDES = {};
+// JACOB and KHANG both have Start Dates in Notion — overrides removed.
 
 // In-memory call notes per athlete
 const callNotes = {};
@@ -478,7 +478,7 @@ async function fetchDB(dbId) {
 }
 
 // ── Build ─────────────────────────────────────────────────────────────────────
-function buildAll(weekly, sessions, body, nutrition, athleteDb = []) {
+function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = []) {
   const c14 = dago(14), c7 = dago(7);
   const map = {};
 
@@ -494,27 +494,42 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = []) {
     if (code && sd) startDates[code] = sd;
   });
 
+  // Build targets lookup: targetMap[athleteId][weekLabel] = row
+  // weekLabel matches exactly what calcWeekNum returns, e.g. 'Week 8' or 'Week 0'
+  const targetMap = {};
+  targets.forEach(r => {
+    const id = nid(r.Name);
+    if (!id) return;
+    if (!targetMap[id]) targetMap[id] = {};
+    const wk = (r.Week || '').trim(); // e.g. 'Week 8'
+    if (wk) targetMap[id][wk] = r;
+  });
+
   function calcWeekNum(id) {
     if (COACHES.has(id)) return null;
 
     // Priority 1: Notion Start Date (most accurate — set this per athlete in Notion)
     const sd = startDates[id];
     if (sd) {
-      // Week 1 = days 0–6 from start. Week N = floor(days/7) + 1.
       const diffDays = Math.floor((Date.now() - new Date(sd)) / 86400000);
-      return Math.max(1, Math.floor(diffDays / 7) + 1);
+      // NO_DISCOVERY athletes started directly on Week 1 (no discovery week).
+      // Formula: floor(days/7) + 1  →  Day 0–6 = Week 1, Day 7–13 = Week 2 …
+      if (NO_DISCOVERY.has(id)) {
+        return Math.max(1, Math.floor(diffDays / 7) + 1);
+      }
+      // All other athletes go through a Week 0 discovery week.
+      // Formula: floor(days/7)  →  Day 0–6 = Week 0, Day 7–13 = Week 1 …
+      return Math.floor(diffDays / 7);
     }
 
-    // Priority 2: Date-anchored override — auto-advances each Monday without manual edits.
-    // anchor.week = the week that ENDED on anchor.endDate.
-    // currentWeekEnd is the coming Sunday. Weeks between anchor and now = full 7-day blocks.
+    // Priority 2: Date-anchored override — fallback for athletes missing a Notion Start Date.
+    // anchor.week = the week number that ENDED on anchor.endDate (Sunday).
+    // Auto-advances each Monday without manual edits.
     if (WEEK_OVERRIDES.hasOwnProperty(id)) {
       const anchor = WEEK_OVERRIDES[id];
       const weeksSinceAnchor = Math.round(
         (new Date(currentWeekEnd) - new Date(anchor.endDate)) / (7 * 86400000)
       );
-      // anchor.week ended on anchor.endDate, so the week that ends on currentWeekEnd
-      // is anchor.week + weeksSinceAnchor
       return anchor.week + weeksSinceAnchor;
     }
 
@@ -660,11 +675,16 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = []) {
     // hasRecent used for summary bar "Checked In" count
     const hasRecent = hasCurrentCheckin || hasLastWeekCheckin;
 
+    // Prescribed macro target for the current week (from targets DB)
+    const weekLabel = wkNum !== null ? `Week ${wkNum}` : null;
+    const target = weekLabel && targetMap[a.id] ? (targetMap[a.id][weekLabel] || null) : null;
+
     return {
       ...a, bAvg, nAvg, runS, strS, currRunS, currStrS, flags, alertScore,
       hasRecent, hasCurrentCheckin, hasLastWeekCheckin, isStale,
       expectedWeekEnd, compliance,
       weekNum: wkNum,
+      target,
       isCoach: COACHES.has(a.id),
     };
   });
@@ -886,17 +906,34 @@ function buildCard(a) {
     </div>`;
   }
 
-  // Nutrition
+  // Nutrition — actual 7d avg + prescribed target for the current week
   let nutrHtml = '';
-  if (a.nAvg.cal !== null) {
+  if (a.nAvg.cal !== null || a.target) {
+    const t = a.target;
+    // Strip 'g' suffix from target values for display
+    const tCal  = t?.Calories ? String(t.Calories).replace(/[^\d.]/g,'') : null;
+    const tPro  = t?.Protein  ? String(t.Protein).replace(/[^\d.]/g,'')  : null;
+    const tCarb = t?.Carbs    ? String(t.Carbs).replace(/[^\d.]/g,'')    : null;
+    const tFat  = t?.Fats     ? String(t.Fats).replace(/[^\d.]/g,'')     : null;
+    const tKM   = t?.['Weekly KM Target'] ? String(t['Weekly KM Target']) : null;
+    const hasTarget = tCal || tPro || tCarb || tFat;
+
     nutrHtml = `<div class="sec">
-      <div class="sec-ttl">Nutrition — ${a.nAvg.days}d avg</div>
-      <div class="mrow">
+      <div class="sec-ttl">Nutrition${a.nAvg.cal !== null ? ` — ${a.nAvg.days}d avg` : ''}</div>
+      ${a.nAvg.cal !== null ? `<div class="mrow" style="margin-bottom:${hasTarget?'6':'0'}px">
         <div class="mc"><div class="mc-lbl">Calories</div><div class="mc-val">${a.nAvg.cal || '—'}</div></div>
         <div class="mc"><div class="mc-lbl">Protein</div><div class="mc-val">${a.nAvg.pro || '—'}<span class="mc-unit">g</span></div></div>
         <div class="mc"><div class="mc-lbl">Carbs</div><div class="mc-val">${a.nAvg.carb || '—'}<span class="mc-unit">g</span></div></div>
         <div class="mc"><div class="mc-lbl">Fats</div><div class="mc-val">${a.nAvg.fat || '—'}<span class="mc-unit">g</span></div></div>
-      </div>
+      </div>` : ''}
+      ${hasTarget ? `<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:5px 8px;background:var(--coach-bg);border-radius:6px;border:1px solid var(--coach-border)">
+        <span style="font-family:var(--mono);font-size:7px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;white-space:nowrap">Wk ${a.weekNum ?? ''} Target →</span>
+        ${tCal  ? `<span style="font-family:var(--mono);font-size:9px;color:var(--coach-text)"><strong>${tCal}</strong> kcal</span>` : ''}
+        ${tPro  ? `<span style="font-family:var(--mono);font-size:9px;color:var(--coach-text)"><strong>${tPro}g</strong> P</span>` : ''}
+        ${tCarb ? `<span style="font-family:var(--mono);font-size:9px;color:var(--coach-text)"><strong>${tCarb}g</strong> C</span>` : ''}
+        ${tFat  ? `<span style="font-family:var(--mono);font-size:9px;color:var(--coach-text)"><strong>${tFat}g</strong> F</span>` : ''}
+        ${tKM   ? `<span style="font-family:var(--mono);font-size:9px;color:var(--run)"><strong>${tKM} km</strong> run</span>` : ''}
+      </div>` : ''}
     </div>`;
   }
 
@@ -1241,12 +1278,12 @@ async function load() {
   document.getElementById('refresh-btn').disabled = true;
 
   try {
-    const [weekly, sessions, body, nutrition, athleteDb] = await Promise.all([
+    const [weekly, sessions, body, nutrition, athleteDb, targets] = await Promise.all([
       fetchDB(DB.weekly), fetchDB(DB.sessions), fetchDB(DB.body),
-      fetchDB(DB.nutrition), fetchDB(DB.athletes),
+      fetchDB(DB.nutrition), fetchDB(DB.athletes), fetchDB(DB.targets),
     ]);
 
-    const { athletes, coaches } = buildAll(weekly, sessions, body, nutrition, athleteDb);
+    const { athletes, coaches } = buildAll(weekly, sessions, body, nutrition, athleteDb, targets);
     render({ athletes, coaches });
 
     document.getElementById('loading').style.display = 'none';
