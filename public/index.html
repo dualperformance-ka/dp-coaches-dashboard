@@ -254,7 +254,49 @@ header{background:#0a0a0a;padding:0 18px;height:50px;display:flex;align-items:ce
 .no-results{text-align:center;padding:50px 20px}
 .no-results-txt{font-family:var(--mono);font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em}
 
-/* ── Responsive ── */
+/* ── Full-page overlay ── */
+#fp-overlay{position:fixed;inset:0;background:var(--bg);z-index:300;overflow-y:auto;display:none}
+.fp-topbar{background:#0a0a0a;padding:0 20px;height:50px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10;gap:12px}
+.fp-back{background:transparent;border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.65);font-family:var(--mono);font-size:10px;padding:6px 14px;border-radius:6px;cursor:pointer;text-transform:uppercase;letter-spacing:.07em;transition:all .15s}
+.fp-back:hover{color:#fff;border-color:rgba(255,255,255,.5)}
+.fp-nav{display:flex;align-items:center;gap:8px}
+.fp-nav-btn{background:transparent;border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.45);font-family:var(--mono);font-size:10px;padding:5px 14px;border-radius:6px;cursor:pointer;text-transform:uppercase;letter-spacing:.06em;transition:all .15s}
+.fp-nav-btn:hover:not([disabled]){color:#fff;border-color:rgba(255,255,255,.45)}
+.fp-nav-btn[disabled]{opacity:.2;cursor:not-allowed}
+.fp-idx{font-family:var(--mono);font-size:9px;color:rgba(255,255,255,.28);min-width:40px;text-align:center}
+.fp-hint{font-family:var(--mono);font-size:8px;color:rgba(255,255,255,.18);text-transform:uppercase;letter-spacing:.08em}
+.fp-body{max-width:900px;margin:0 auto;padding:22px 18px 60px}
+
+/* Inside full-page: scale everything up */
+#fp-overlay .card{border-radius:14px;border-width:1px}
+#fp-overlay .aname{font-size:36px}
+#fp-overlay .ameta{font-size:10px}
+#fp-overlay .wk-num{font-size:32px}
+#fp-overlay .sc-val{font-size:22px}
+#fp-overlay .sc-lbl{font-size:8px}
+#fp-overlay .sec{padding:14px 18px}
+#fp-overlay .sec-ttl{font-size:9px;margin-bottom:9px}
+#fp-overlay .tb{padding:10px 13px}
+#fp-overlay .tt{font-size:13px}
+#fp-overlay .ts{font-size:10px;line-height:1.7}
+#fp-overlay .nl{font-size:12px}
+#fp-overlay .mc-val{font-size:20px}
+#fp-overlay .testim{font-size:12px}
+#fp-overlay .impact{font-size:12px}
+#fp-overlay .card-head{padding:16px 18px 14px}
+#fp-overlay .wnum{font-size:32px}
+#fp-overlay .bm-val{font-size:18px}
+#fp-overlay .compliance-row{padding:10px 16px 6px}
+#fp-overlay .cp-header{padding:10px 16px}
+#fp-overlay .cp-body{padding:13px 16px}
+#fp-overlay .cp-item{font-size:12px}
+#fp-overlay .cp-note{font-size:12px;min-height:64px}
+
+/* Expand button on grid cards */
+.fp-open-btn{background:transparent;border:1px solid rgba(255,255,255,.18);color:rgba(255,255,255,.38);font-family:var(--mono);font-size:9px;padding:4px 10px;border-radius:5px;cursor:pointer;text-transform:uppercase;letter-spacing:.06em;transition:all .15s;white-space:nowrap;align-self:flex-start;flex-shrink:0}
+.fp-open-btn:hover{color:#fff;border-color:rgba(255,255,255,.55)}
+
+/* Responsive ── */
 @media(max-width:600px){
   .filter-bar{top:82px}
   .tab-bar{top:50px}
@@ -265,6 +307,20 @@ header{background:#0a0a0a;padding:0 18px;height:50px;display:flex;align-items:ce
 </style>
 </head>
 <body>
+
+<!-- ── Full-page athlete view ── -->
+<div id="fp-overlay">
+  <div class="fp-topbar">
+    <button class="fp-back" onclick="hideFP()">← Back to Squad</button>
+    <div class="fp-nav">
+      <button class="fp-nav-btn" id="fp-prev" onclick="fpNav(-1)">← Prev</button>
+      <span class="fp-idx" id="fp-idx"></span>
+      <button class="fp-nav-btn" id="fp-next" onclick="fpNav(1)">Next →</button>
+    </div>
+    <span class="fp-hint">Esc to close · ← → to navigate</span>
+  </div>
+  <div class="fp-body" id="fp-body"></div>
+</div>
 
 <header>
   <div class="logo"><span class="d">DUAL</span> <span class="p">PERFORMANCE</span></div>
@@ -1008,7 +1064,10 @@ function buildCard(a) {
           <div class="aname">${esc(a.id)}</div>
           <div class="ameta ${a.isStale ? 'nocheckin' : ''}">${metaText}</div>
         </div>
-        ${a.weekNum !== null ? `<div class="week-badge"><div class="wk-num">${a.weekNum}</div><div class="wk-lbl">${a.weekNum === 0 ? 'Discovery' : 'Week'}</div></div>` : ''}
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">
+          <button class="fp-open-btn" onclick="showFP('${esc(a.id)}')">⤢ Full Page</button>
+          ${a.weekNum !== null ? `<div class="week-badge"><div class="wk-num">${a.weekNum}</div><div class="wk-lbl">${a.weekNum === 0 ? 'Discovery' : 'Week'}</div></div>` : ''}
+        </div>
       </div>
       ${a.flags.length ? `<div class="flags">${fps}</div>` : ''}
     </div>
@@ -1357,6 +1416,71 @@ async function generateAI() {
     btn.classList.remove('loading');
   }
 }
+
+// ── Full-page view ────────────────────────────────────────────────────────────
+let _fpOrder = [];   // athlete IDs in nav order (mirrors visible grid cards)
+let _fpIdx   = 0;
+
+function showFP(id) {
+  // Build nav order from whatever is currently visible in the grid
+  const cards = [...document.querySelectorAll('#grid .card:not(.hidden)')];
+  _fpOrder = cards.map(c => c.getAttribute('data-card'));
+  // If the id isn't in the visible list (e.g. called from a coach card), just show it alone
+  if (!_fpOrder.includes(id)) _fpOrder = [id];
+  _fpIdx = Math.max(0, _fpOrder.indexOf(id));
+  _drawFP();
+  document.getElementById('fp-overlay').style.display = 'block';
+  document.body.style.overflow = 'hidden';
+}
+
+function hideFP() {
+  document.getElementById('fp-overlay').style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+function fpNav(dir) {
+  _fpIdx = Math.max(0, Math.min(_fpOrder.length - 1, _fpIdx + dir));
+  _drawFP();
+}
+
+function _drawFP() {
+  const id = _fpOrder[_fpIdx];
+  const a  = _allAthletes.find(x => x.id === id) || _coaches.find(x => x.id === id);
+  if (!a) return;
+
+  // Restore any saved call note before rebuilding
+  const cardHtml = buildCard(a);
+
+  document.getElementById('fp-body').innerHTML = cardHtml;
+  document.getElementById('fp-overlay').scrollTop = 0;
+
+  // Restore saved call note into the textarea that just rendered
+  const ta = document.querySelector('#fp-body textarea.cp-note');
+  if (ta && callNotes[a.id]) ta.value = callNotes[a.id];
+
+  // Auto-expand call prep in full-page mode
+  const cpBody = document.querySelector('#fp-body [id^="cp-"]');
+  if (cpBody) {
+    cpBody.style.display = '';
+    const toggle = cpBody.parentElement?.querySelector('.cp-toggle');
+    if (toggle) toggle.classList.add('open');
+  }
+
+  // Nav controls
+  document.getElementById('fp-prev').disabled = _fpIdx === 0;
+  document.getElementById('fp-next').disabled = _fpIdx === _fpOrder.length - 1;
+  document.getElementById('fp-idx').textContent =
+    _fpOrder.length > 1 ? `${_fpIdx + 1} / ${_fpOrder.length}` : '';
+}
+
+// Keyboard shortcuts: Escape = close, ←→ = navigate
+document.addEventListener('keydown', e => {
+  const overlay = document.getElementById('fp-overlay');
+  if (overlay.style.display === 'none') return;
+  if (e.key === 'Escape') hideFP();
+  if (e.key === 'ArrowLeft'  && _fpIdx > 0)                  fpNav(-1);
+  if (e.key === 'ArrowRight' && _fpIdx < _fpOrder.length - 1) fpNav(1);
+});
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', load);
