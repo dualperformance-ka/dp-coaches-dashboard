@@ -267,30 +267,96 @@ header{background:#0a0a0a;padding:0 18px;height:50px;display:flex;align-items:ce
 .fp-hint{font-family:var(--mono);font-size:8px;color:rgba(255,255,255,.18);text-transform:uppercase;letter-spacing:.08em}
 .fp-body{max-width:900px;margin:0 auto;padding:22px 18px 60px}
 
-/* Inside full-page: scale everything up */
-#fp-overlay .card{border-radius:14px;border-width:1px}
-#fp-overlay .aname{font-size:36px}
-#fp-overlay .ameta{font-size:10px}
-#fp-overlay .wk-num{font-size:32px}
-#fp-overlay .sc-val{font-size:22px}
-#fp-overlay .sc-lbl{font-size:8px}
-#fp-overlay .sec{padding:14px 18px}
-#fp-overlay .sec-ttl{font-size:9px;margin-bottom:9px}
-#fp-overlay .tb{padding:10px 13px}
-#fp-overlay .tt{font-size:13px}
-#fp-overlay .ts{font-size:10px;line-height:1.7}
-#fp-overlay .nl{font-size:12px}
-#fp-overlay .mc-val{font-size:20px}
-#fp-overlay .testim{font-size:12px}
-#fp-overlay .impact{font-size:12px}
-#fp-overlay .card-head{padding:16px 18px 14px}
-#fp-overlay .wnum{font-size:32px}
-#fp-overlay .bm-val{font-size:18px}
-#fp-overlay .compliance-row{padding:10px 16px 6px}
-#fp-overlay .cp-header{padding:10px 16px}
-#fp-overlay .cp-body{padding:13px 16px}
-#fp-overlay .cp-item{font-size:12px}
-#fp-overlay .cp-note{font-size:12px;min-height:64px}
+/* ── Full-page card: clean layout ── */
+.fpc-hero{background:#0a0a0a;border-radius:16px;padding:28px 30px 24px;margin-bottom:18px}
+.fpc-hero-top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
+.fpc-name{font-size:52px;font-weight:900;letter-spacing:.04em;text-transform:uppercase;color:#fff;line-height:1}
+.fpc-meta{font-family:var(--mono);font-size:11px;color:rgba(255,255,255,.4);margin-top:8px;letter-spacing:.05em}
+.fpc-meta.stale{color:rgba(248,113,113,.7)}
+.fpc-week-badge{text-align:center;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:12px;padding:12px 24px;flex-shrink:0}
+.fpc-week-num{font-size:44px;font-weight:900;color:#fff;line-height:1;letter-spacing:-.01em}
+.fpc-week-lbl{font-family:var(--mono);font-size:9px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.14em;margin-top:4px}
+.fpc-flags{display:flex;gap:6px;flex-wrap:wrap;margin-top:16px}
+
+.fpc-banner{border-radius:12px;padding:14px 18px;margin-bottom:18px;display:flex;align-items:flex-start;gap:12px}
+.fpc-banner.stale{background:#fef2f2;border:1px solid rgba(220,38,38,.2)}
+.fpc-banner.lastweek{background:#f0f9ff;border:1px solid rgba(14,165,233,.18)}
+.fpc-banner-icon{font-size:18px;flex-shrink:0;line-height:1.3}
+.fpc-banner-title{font-family:var(--mono);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-bottom:3px}
+.fpc-banner-title.stale{color:#991b1b}
+.fpc-banner-title.lastweek{color:#0369a1}
+.fpc-banner-sub{font-family:var(--mono);font-size:10px;color:#6b7280}
+
+.fpc-section{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:22px 24px;margin-bottom:16px}
+.fpc-section-title{font-family:var(--mono);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.14em;color:var(--dim);margin-bottom:18px}
+
+.fpc-scores{display:grid;grid-template-columns:repeat(6,1fr);gap:0;border-top:1px solid var(--border);margin:0 -24px}
+.fpc-score{text-align:center;padding:18px 8px;border-right:1px solid var(--border)}
+.fpc-score:last-child{border-right:none}
+.fpc-score-lbl{font-family:var(--mono);font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px}
+.fpc-score-val{font-size:38px;font-weight:900;line-height:1;letter-spacing:-.02em}
+.fpc-score-val.good{color:var(--ok)}.fpc-score-val.mid{color:var(--warn)}.fpc-score-val.bad{color:var(--alert)}.fpc-score-val.n{color:var(--text)}
+
+.fpc-wip{background:#f0f4ff;border:1px solid rgba(30,58,138,.12);border-radius:14px;padding:20px 24px;margin-bottom:16px}
+.fpc-wip-title{font-family:var(--mono);font-size:9px;font-weight:700;color:var(--str);text-transform:uppercase;letter-spacing:.1em;margin-bottom:16px}
+.fpc-sess-row{display:flex;gap:14px}
+.fpc-sess{background:#fff;border:1px solid rgba(30,58,138,.14);border-radius:10px;padding:16px 24px;text-align:center}
+.fpc-sess-num{font-size:44px;font-weight:900;line-height:1}
+.fpc-sess-num.run{color:var(--run)}.fpc-sess-num.str{color:var(--str)}
+.fpc-sess-lbl{font-family:var(--mono);font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;margin-top:6px}
+
+.fpc-train-pair{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.fpc-train-block{background:var(--surface2);border-radius:10px;padding:18px 20px}
+.fpc-train-label{font-size:14px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;margin-bottom:12px}
+.fpc-train-label.run{color:var(--run)}.fpc-train-label.str{color:var(--str)}
+.fpc-train-stat{font-family:var(--mono);font-size:12px;color:var(--muted);margin-bottom:4px;line-height:1.5}
+.fpc-train-stat strong{color:var(--text);font-size:15px}
+.fpc-pbar{height:4px;background:rgba(0,0,0,.08);border-radius:2px;overflow:hidden;margin:10px 0}
+.fpc-pfill{height:100%;border-radius:2px}.fpc-pfill.run{background:var(--run)}.fpc-pfill.str{background:var(--str)}
+.fpc-train-note{font-size:12px;line-height:1.55;margin-top:10px;padding:9px 11px;border-radius:7px}
+.fpc-train-note.bad{color:var(--alert);background:#fef2f2;border-left:3px solid var(--alert)}
+.fpc-train-note.good{color:var(--ok);background:#f0fdf4;border-left:3px solid var(--ok)}
+.fpc-testim{font-size:14px;color:var(--muted);font-style:italic;line-height:1.65;padding:16px 18px;background:var(--surface2);border-radius:10px;border-left:3px solid rgba(0,0,0,.12);margin-top:18px}
+.fpc-impact{font-size:13px;color:#92400e;margin-top:14px;padding:12px 16px;background:#fffbeb;border-radius:9px;border-left:3px solid var(--warn)}
+
+.fpc-body-nutr{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px}
+.fpc-body-nutr .fpc-section{margin-bottom:0}
+.fpc-metric-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.fpc-metric{background:var(--surface2);border-radius:9px;padding:14px;text-align:center}
+.fpc-metric-val{font-size:30px;font-weight:800;line-height:1;color:var(--text)}
+.fpc-metric-lbl{font-family:var(--mono);font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;margin-top:6px}
+.fpc-weight{font-size:46px;font-weight:900;line-height:1;letter-spacing:-.02em;margin-bottom:2px}
+.fpc-weight-unit{font-family:var(--mono);font-size:13px;color:var(--dim);margin-left:3px}
+.fpc-weight-date{font-family:var(--mono);font-size:9px;color:var(--dim);margin-bottom:16px}
+.fpc-bnote{font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:14px;border-left:2px solid var(--alert);padding-left:10px;line-height:1.5}
+
+.fpc-nutr-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.fpc-nutr-cell{background:var(--surface2);border-radius:9px;padding:14px;text-align:center}
+.fpc-nutr-val{font-size:28px;font-weight:800;line-height:1}
+.fpc-nutr-unit{font-family:var(--mono);font-size:10px;color:var(--dim)}
+.fpc-nutr-lbl{font-family:var(--mono);font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;margin-top:6px}
+.fpc-target{background:var(--coach-bg);border:1px solid var(--coach-border);border-radius:9px;padding:14px 16px}
+.fpc-target-lbl{font-family:var(--mono);font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px}
+.fpc-target-vals{display:flex;gap:12px;flex-wrap:wrap}
+.fpc-target-val{font-family:var(--mono);font-size:11px;color:var(--coach-text)}
+.fpc-target-val strong{font-size:14px}
+
+.fpc-cp{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden}
+.fpc-cp-head{background:#0a0a0a;padding:16px 22px;display:flex;align-items:center;gap:10px}
+.fpc-cp-head-title{font-family:var(--mono);font-size:10px;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:.14em}
+.fpc-cp-body{padding:22px 24px;display:flex;flex-direction:column;gap:20px}
+.fpc-cp-section-lbl{font-family:var(--mono);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.fpc-cp-section-lbl.win{color:var(--ok)}.fpc-cp-section-lbl.issue{color:var(--alert)}.fpc-cp-section-lbl.ask{color:var(--str)}.fpc-cp-section-lbl.note{color:var(--dim)}
+.fpc-cp-items{display:flex;flex-direction:column;gap:8px}
+.fpc-cp-item{font-size:13px;line-height:1.6;color:var(--muted);padding-left:22px;position:relative}
+.fpc-cp-item::before{position:absolute;left:0;font-size:12px}
+.fpc-cp-item.win::before{content:'✓';color:var(--ok)}
+.fpc-cp-item.issue::before{content:'⚠';color:var(--alert)}
+.fpc-cp-item.ask::before{content:'→';color:var(--str)}
+.fpc-cp-none{font-family:var(--mono);font-size:11px;color:var(--dim);font-style:italic}
+.fpc-note{width:100%;border:1px solid var(--border-mid);border-radius:8px;padding:12px 14px;font-family:var(--sans);font-size:13px;color:var(--text);background:var(--surface2);resize:vertical;min-height:80px;outline:none;transition:border .15s;line-height:1.5}
+.fpc-note:focus{border-color:rgba(0,0,0,.3);background:var(--surface)}
+.fpc-note::placeholder{color:var(--dim)}
 
 /* Expand button on grid cards */
 .fp-open-btn{background:transparent;border:1px solid rgba(255,255,255,.18);color:rgba(255,255,255,.38);font-family:var(--mono);font-size:9px;padding:4px 10px;border-radius:5px;cursor:pointer;text-transform:uppercase;letter-spacing:.06em;transition:all .15s;white-space:nowrap;align-self:flex-start;flex-shrink:0}
@@ -1134,6 +1200,241 @@ function buildCallPrep(a) {
   return { wins, issues, ask };
 }
 
+// ── Full-page Card (clean reading layout for screen-sharing) ─────────────────
+function buildFPCard(a) {
+  const w = a.weekly;
+  const hW = !!w?.Name;
+  const fps = a.flags.map(f => `<span class="fp ${f.t}">${esc(f.l)}</span>`).join('');
+
+  // Meta text (same logic as buildCard)
+  let metaText;
+  const wkEndDisplay = fmtDate(a.expectedWeekEnd);
+  if (a.hasCurrentCheckin) {
+    metaText = `Week ending ${wkEndDisplay}`;
+  } else if (a.hasLastWeekCheckin && hW) {
+    metaText = `Submitted ${fmtDate(w['Week Ending'])} · wk ends ${wkEndDisplay}`;
+  } else if (hW) {
+    metaText = `No check-in — wk ends ${wkEndDisplay} · last ${fmtDate(w['Week Ending'])}`;
+  } else {
+    metaText = a.body.length ? 'Daily tracking only' : 'No recent data';
+  }
+
+  // Hero
+  const hero = `<div class="fpc-hero">
+    <div class="fpc-hero-top">
+      <div>
+        <div class="fpc-name">${esc(a.id)}</div>
+        <div class="fpc-meta ${a.isStale ? 'stale' : ''}">${metaText}</div>
+      </div>
+      ${a.weekNum !== null ? `<div class="fpc-week-badge">
+        <div class="fpc-week-num">${a.weekNum}</div>
+        <div class="fpc-week-lbl">${a.weekNum === 0 ? 'Discovery' : 'Week'}</div>
+      </div>` : ''}
+    </div>
+    ${a.flags.length ? `<div class="fpc-flags">${fps}</div>` : ''}
+  </div>`;
+
+  // Banner
+  let banner = '';
+  if (hW && a.isStale) {
+    banner = `<div class="fpc-banner stale">
+      <div class="fpc-banner-icon">🚨</div>
+      <div>
+        <div class="fpc-banner-title stale">No check-in submitted this week</div>
+        <div class="fpc-banner-sub">Showing last submission — week ending ${fmtDate(w['Week Ending'])}</div>
+      </div>
+    </div>`;
+  } else if (hW && a.hasLastWeekCheckin) {
+    banner = `<div class="fpc-banner lastweek">
+      <div class="fpc-banner-icon">📅</div>
+      <div>
+        <div class="fpc-banner-title lastweek">Last week's check-in</div>
+        <div class="fpc-banner-sub">Submitted ${fmtDate(w['Week Ending'])} · new week ends ${fmtDate(a.expectedWeekEnd)}</div>
+      </div>
+    </div>`;
+  }
+
+  // Week-in-progress
+  let wipHtml = '';
+  if (!a.hasCurrentCheckin) {
+    const rCount = a.currRunS.length;
+    const sCount = a.currStrS.length;
+    wipHtml = `<div class="fpc-wip">
+      <div class="fpc-wip-title">📍 Week ${a.weekNum ?? ''} In Progress — ends ${fmtDate(a.expectedWeekEnd)}</div>
+      <div class="fpc-sess-row">
+        <div class="fpc-sess"><div class="fpc-sess-num run">${rCount}</div><div class="fpc-sess-lbl">Run Sessions</div></div>
+        <div class="fpc-sess"><div class="fpc-sess-num str">${sCount}</div><div class="fpc-sess-lbl">Strength Sessions</div></div>
+      </div>
+      ${rCount === 0 && sCount === 0 ? `<div style="font-family:var(--mono);font-size:10px;color:var(--dim);margin-top:12px">No sessions logged yet this week</div>` : ''}
+    </div>`;
+  }
+
+  // Scores
+  let scoresHtml = '';
+  if (hW) {
+    const sx = [
+      { l: 'Energy',  v: w['Energy /10'],             inv: false },
+      { l: 'Sleep',   v: w['Sleep hrs'],               inv: false },
+      { l: 'Sore',    v: w['Soreness /10'],            inv: true  },
+      { l: 'Stress',  v: w['Stress'],                  inv: true  },
+      { l: 'Motiv',   v: w['Motivation'],              inv: false },
+      { l: 'Nutr',    v: w['Nutrition Adherence /10'], inv: false },
+    ];
+    scoresHtml = `<div class="fpc-section" style="padding-bottom:0">
+      <div class="fpc-section-title">Weekly Check-in Scores</div>
+      <div class="fpc-scores">
+        ${sx.map(x => `<div class="fpc-score">
+          <div class="fpc-score-lbl">${esc(x.l)}</div>
+          <div class="fpc-score-val ${scoreClass(x.v, x.inv)}">${esc(x.v) || '—'}</div>
+        </div>`).join('')}
+      </div>
+    </div>`;
+  }
+
+  // Training
+  let trainingHtml = '';
+  if (hW) {
+    const rp = parseInt(w['Run Planned']) || 0, rc = parseInt(w['Run Completed']) || 0;
+    const lp = parseInt(w['Lift Planned']) || 0, lc = parseInt(w['Lift Completed']) || 0;
+    const rPct = rp > 0 ? Math.min(100, Math.round(rc / rp * 100)) : 0;
+    const lPct = lp > 0 ? Math.min(100, Math.round(lc / lp * 100)) : 0;
+
+    const submittedEnd = w['Week Ending'];
+    let dataWeekNum = a.weekNum;
+    if (a.weekNum !== null && submittedEnd) {
+      const weeksBehind = Math.round(
+        (new Date(currentWeekEnd) - new Date(submittedEnd)) / (7 * 86400000)
+      );
+      dataWeekNum = Math.max(1, a.weekNum - weeksBehind);
+    }
+    const trainingLabel = dataWeekNum === null ? 'Training'
+      : dataWeekNum === 0 ? 'Discovery Week Training'
+      : `Week ${dataWeekNum} Training`;
+
+    trainingHtml = `<div class="fpc-section">
+      <div class="fpc-section-title">${trainingLabel} — ending ${fmtDate(submittedEnd) || '?'}</div>
+      <div class="fpc-train-pair">
+        <div class="fpc-train-block">
+          <div class="fpc-train-label run">Run</div>
+          <div class="fpc-train-stat"><strong>${rc}/${rp}</strong> sessions</div>
+          <div class="fpc-train-stat"><strong>${esc(w['Weekly Run KM'] || '—')} km</strong> this week</div>
+          <div class="fpc-pbar"><div class="fpc-pfill run" style="width:${rPct}%"></div></div>
+          <div class="fpc-train-stat">Feel: <strong>${esc(w['Run Feel /10'] || '—')}/10</strong></div>
+          ${isBad(w['Run Niggles']) ? `<div class="fpc-train-note bad">⚠ ${esc(w['Run Niggles'])}</div>` : ''}
+          ${w['Runs Wins'] && w['Runs Wins'] !== 'n/a' ? `<div class="fpc-train-note good">✓ ${esc(w['Runs Wins'])}</div>` : ''}
+        </div>
+        <div class="fpc-train-block">
+          <div class="fpc-train-label str">Lift</div>
+          <div class="fpc-train-stat"><strong>${lc}/${lp}</strong> sessions</div>
+          <div class="fpc-pbar"><div class="fpc-pfill str" style="width:${lPct}%"></div></div>
+          <div class="fpc-train-stat">Feel: <strong>${esc(w['Lift Feel /10'] || '—')}/10</strong></div>
+          ${isBad(w['Lifts Niggles']) ? `<div class="fpc-train-note bad">⚠ ${esc(w['Lifts Niggles'])}</div>` : ''}
+          ${w['Lift Wins'] && w['Lift Wins'] !== 'n/a' ? `<div class="fpc-train-note good">✓ ${esc(w['Lift Wins'])}</div>` : ''}
+        </div>
+      </div>
+      ${w['Testimonial'] ? `<div class="fpc-testim">"${esc(w['Testimonial'])}"</div>` : ''}
+      ${w['Upcoming Impact'] && w['Upcoming Impact'] !== 'n/a' ? `<div class="fpc-impact">⚡ ${esc(w['Upcoming Impact'])}</div>` : ''}
+    </div>`;
+  }
+
+  // Body
+  let bodyHtml = '';
+  if (a.bAvg.wt !== undefined || a.bAvg.sleep !== null) {
+    const bLast = [...a.body].sort((x, y) =>
+      (y['date:Date:start'] || y.Date || '') > (x['date:Date:start'] || x.Date || '') ? 1 : -1)[0];
+    const bn = bLast?.Notes;
+    bodyHtml = `<div class="fpc-section" style="margin-bottom:0">
+      <div class="fpc-section-title">Body — 7-day avg</div>
+      ${a.bAvg.wt !== undefined ? `<div class="fpc-weight">${esc(a.bAvg.wt)}<span class="fpc-weight-unit">kg</span></div>
+      <div class="fpc-weight-date">${fmtDate(a.bAvg.wtd)}</div>` : ''}
+      <div class="fpc-metric-grid">
+        ${[{l:'Sleep',v:a.bAvg.sleep},{l:'Energy',v:a.bAvg.energy},{l:'Stress',v:a.bAvg.stress},{l:'Soreness',v:a.bAvg.soreness}].map(m =>
+          `<div class="fpc-metric"><div class="fpc-metric-val">${m.v !== null ? m.v : '—'}</div><div class="fpc-metric-lbl">${m.l}</div></div>`
+        ).join('')}
+      </div>
+      ${bn ? `<div class="fpc-bnote">${esc(bn)}</div>` : ''}
+    </div>`;
+  }
+
+  // Nutrition
+  let nutrHtml = '';
+  if (a.nAvg.cal !== null || a.target) {
+    const t = a.target;
+    const tCal  = t?.Calories ? String(t.Calories).replace(/[^\d.]/g,'') : null;
+    const tPro  = t?.Protein  ? String(t.Protein).replace(/[^\d.]/g,'')  : null;
+    const tCarb = t?.Carbs    ? String(t.Carbs).replace(/[^\d.]/g,'')    : null;
+    const tFat  = t?.Fats     ? String(t.Fats).replace(/[^\d.]/g,'')     : null;
+    const tKM   = t?.['Weekly KM Target'] ? String(t['Weekly KM Target']) : null;
+    const hasTarget = tCal || tPro || tCarb || tFat;
+
+    nutrHtml = `<div class="fpc-section" style="margin-bottom:0">
+      <div class="fpc-section-title">Nutrition${a.nAvg.cal !== null ? ` — ${a.nAvg.days}d avg` : ''}</div>
+      ${a.nAvg.cal !== null ? `<div class="fpc-nutr-row">
+        <div class="fpc-nutr-cell"><div class="fpc-nutr-val">${a.nAvg.cal || '—'}</div><div class="fpc-nutr-lbl">Calories</div></div>
+        <div class="fpc-nutr-cell"><div class="fpc-nutr-val">${a.nAvg.pro || '—'}<span class="fpc-nutr-unit">g</span></div><div class="fpc-nutr-lbl">Protein</div></div>
+        <div class="fpc-nutr-cell"><div class="fpc-nutr-val">${a.nAvg.carb || '—'}<span class="fpc-nutr-unit">g</span></div><div class="fpc-nutr-lbl">Carbs</div></div>
+        <div class="fpc-nutr-cell"><div class="fpc-nutr-val">${a.nAvg.fat || '—'}<span class="fpc-nutr-unit">g</span></div><div class="fpc-nutr-lbl">Fats</div></div>
+      </div>` : ''}
+      ${hasTarget ? `<div class="fpc-target">
+        <div class="fpc-target-lbl">Week ${a.weekNum ?? ''} Prescribed Target</div>
+        <div class="fpc-target-vals">
+          ${tCal  ? `<span class="fpc-target-val"><strong>${tCal}</strong> kcal</span>` : ''}
+          ${tPro  ? `<span class="fpc-target-val"><strong>${tPro}g</strong> protein</span>` : ''}
+          ${tCarb ? `<span class="fpc-target-val"><strong>${tCarb}g</strong> carbs</span>` : ''}
+          ${tFat  ? `<span class="fpc-target-val"><strong>${tFat}g</strong> fat</span>` : ''}
+          ${tKM   ? `<span class="fpc-target-val" style="color:var(--run)"><strong>${tKM} km</strong> run target</span>` : ''}
+        </div>
+      </div>` : ''}
+    </div>`;
+  }
+
+  // Body + Nutrition combined row (or separate if only one exists)
+  const bodyNutrPart = (bodyHtml || nutrHtml)
+    ? `<div class="${bodyHtml && nutrHtml ? 'fpc-body-nutr' : ''}" style="${bodyHtml && nutrHtml ? '' : 'margin-bottom:16px'}">${bodyHtml}${nutrHtml}</div>`
+    : '';
+
+  // Call Prep (always expanded)
+  const callPrep = buildCallPrep(a);
+  const savedNote = callNotes[a.id] || '';
+  const cpId = `fcp-${a.id.replace(/\s+/g,'-')}`;
+  const callPrepHtml = `<div class="fpc-cp">
+    <div class="fpc-cp-head">
+      <span style="font-size:14px">📋</span>
+      <div class="fpc-cp-head-title">Call Prep</div>
+    </div>
+    <div class="fpc-cp-body" id="${cpId}">
+      ${callPrep.wins.length ? `<div>
+        <div class="fpc-cp-section-lbl win">✓ Open With (Wins)</div>
+        <div class="fpc-cp-items">${callPrep.wins.map(t => `<div class="fpc-cp-item win">${esc(t)}</div>`).join('')}</div>
+      </div>` : ''}
+      ${callPrep.issues.length ? `<div>
+        <div class="fpc-cp-section-lbl issue">⚠ Address</div>
+        <div class="fpc-cp-items">${callPrep.issues.map(t => `<div class="fpc-cp-item issue">${esc(t)}</div>`).join('')}</div>
+      </div>` : ''}
+      ${callPrep.ask.length ? `<div>
+        <div class="fpc-cp-section-lbl ask">→ Ask / Follow Up</div>
+        <div class="fpc-cp-items">${callPrep.ask.map(t => `<div class="fpc-cp-item ask">${esc(t)}</div>`).join('')}</div>
+      </div>` : ''}
+      ${!callPrep.wins.length && !callPrep.issues.length && !callPrep.ask.length
+        ? `<div class="fpc-cp-none">No check-in data to prep from yet.</div>` : ''}
+      <div>
+        <div class="fpc-cp-section-lbl note">📝 Call Notes</div>
+        <textarea class="fpc-note" placeholder="Notes for this call…" onchange="saveNote('${esc(a.id)}', this.value)">${esc(savedNote)}</textarea>
+      </div>
+    </div>
+  </div>`;
+
+  return `<div>
+    ${hero}
+    ${banner}
+    ${wipHtml}
+    ${scoresHtml}
+    ${trainingHtml}
+    ${bodyNutrPart}
+    ${callPrepHtml}
+  </div>`;
+}
+
 // ── Coach Card ────────────────────────────────────────────────────────────────
 function buildCoachCard(a) {
   const w = a.weekly;
@@ -1448,23 +1749,12 @@ function _drawFP() {
   const a  = _allAthletes.find(x => x.id === id) || _coaches.find(x => x.id === id);
   if (!a) return;
 
-  // Restore any saved call note before rebuilding
-  const cardHtml = buildCard(a);
-
-  document.getElementById('fp-body').innerHTML = cardHtml;
+  document.getElementById('fp-body').innerHTML = buildFPCard(a);
   document.getElementById('fp-overlay').scrollTop = 0;
 
-  // Restore saved call note into the textarea that just rendered
-  const ta = document.querySelector('#fp-body textarea.cp-note');
+  // Restore saved note (fpc-note textarea uses onchange so pre-fill here)
+  const ta = document.querySelector('#fp-body textarea.fpc-note');
   if (ta && callNotes[a.id]) ta.value = callNotes[a.id];
-
-  // Auto-expand call prep in full-page mode
-  const cpBody = document.querySelector('#fp-body [id^="cp-"]');
-  if (cpBody) {
-    cpBody.style.display = '';
-    const toggle = cpBody.parentElement?.querySelector('.cp-toggle');
-    if (toggle) toggle.classList.add('open');
-  }
 
   // Nav controls
   document.getElementById('fp-prev').disabled = _fpIdx === 0;
