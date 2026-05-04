@@ -364,8 +364,17 @@ const ALIASES = { 'JACOB TUAZON': 'JACOB' };
 // Coaches are filtered OUT of the athletes grid and shown on the Coaches tab
 const COACHES = new Set(['KARL', 'ALEX']);
 
-// Manual week overrides (until Start Date is set in Notion)
-const WEEK_OVERRIDES = { 'JACOB': 7, 'KHANG': 7 };
+// Week anchors for athletes without a Notion Start Date.
+// { ID: { week: N, endDate: 'YYYY-MM-DD' } }
+// 'week' = the week number whose last day was 'endDate'.
+// calcWeekNum() auto-advances each Monday — no manual updates needed week to week.
+// Remove an entry once that athlete has a Start Date set in Notion.
+const WEEK_OVERRIDES = {
+  // week 7 ran Apr 27 – May 3. Now (Mon May 4) we're in week 8.
+  // endDate = the Sunday that week N ended on → calcWeekNum auto-advances from here.
+  'JACOB': { week: 7, endDate: '2026-05-03' },
+  'KHANG': { week: 7, endDate: '2026-05-03' },
+};
 
 // In-memory call notes per athlete
 const callNotes = {};
@@ -469,13 +478,30 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = []) {
   });
 
   function calcWeekNum(id) {
-    if (WEEK_OVERRIDES.hasOwnProperty(id)) return WEEK_OVERRIDES[id];
-    // Coaches don't have program weeks
     if (COACHES.has(id)) return null;
+
+    // Priority 1: Notion Start Date (most accurate — set this per athlete in Notion)
     const sd = startDates[id];
-    if (!sd) return null;
-    const diffDays = Math.floor((Date.now() - new Date(sd)) / 86400000);
-    return Math.max(0, Math.floor(diffDays / 7));
+    if (sd) {
+      // Week 1 = days 0–6 from start. Week N = floor(days/7) + 1.
+      const diffDays = Math.floor((Date.now() - new Date(sd)) / 86400000);
+      return Math.max(1, Math.floor(diffDays / 7) + 1);
+    }
+
+    // Priority 2: Date-anchored override — auto-advances each Monday without manual edits.
+    // anchor.week = the week that ENDED on anchor.endDate.
+    // currentWeekEnd is the coming Sunday. Weeks between anchor and now = full 7-day blocks.
+    if (WEEK_OVERRIDES.hasOwnProperty(id)) {
+      const anchor = WEEK_OVERRIDES[id];
+      const weeksSinceAnchor = Math.round(
+        (new Date(currentWeekEnd) - new Date(anchor.endDate)) / (7 * 86400000)
+      );
+      // anchor.week ended on anchor.endDate, so the week that ends on currentWeekEnd
+      // is anchor.week + weeksSinceAnchor
+      return anchor.week + weeksSinceAnchor;
+    }
+
+    return null;
   }
 
   // Weekly — keep latest per athlete
@@ -590,17 +616,32 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = []) {
     const expectedWeekEnd = currentWeekEnd; // global, computed once at load time
 
     const wkEnd = w?.['Week Ending'] || '';
-    // "Checked in this week" = submitted week ending is within ±3 days of last Sunday
-    // (tolerance covers athletes who log Saturday or Monday as their end date)
-    const hasCurrentCheckin = !!wkEnd && (() => {
-      const diff = Math.abs(new Date(wkEnd) - new Date(expectedWeekEnd)) / 86400000;
+    const wkEndDate = wkEnd ? new Date(wkEnd) : null;
+
+    // Submitted for the CURRENT week (within ±3 days of coming Sunday)
+    const hasCurrentCheckin = !!wkEndDate && (() => {
+      const diff = Math.abs(wkEndDate - new Date(expectedWeekEnd)) / 86400000;
       return diff <= 3;
     })();
-    const hasRecent = hasCurrentCheckin || wkEnd >= dagoStr(10);
+
+    // Submitted for LAST week — within 8 days but doesn't match current week.
+    // e.g. athlete submitted Sunday May 3, today is Monday May 4 — show their data,
+    // just note it's last week's. Don't alarm the coaches.
+    const daysSinceSubmission = wkEndDate
+      ? Math.floor((Date.now() - wkEndDate) / 86400000)
+      : 999;
+    const hasLastWeekCheckin = !hasCurrentCheckin && daysSinceSubmission <= 8;
+
+    // Stale = genuinely missing — no submission for more than 8 days
+    const isStale = !hasCurrentCheckin && !hasLastWeekCheckin;
+
+    // hasRecent used for summary bar "Checked In" count
+    const hasRecent = hasCurrentCheckin || hasLastWeekCheckin;
 
     return {
       ...a, bAvg, nAvg, runS, strS, flags, alertScore,
-      hasRecent, hasCurrentCheckin, expectedWeekEnd, compliance,
+      hasRecent, hasCurrentCheckin, hasLastWeekCheckin, isStale,
+      expectedWeekEnd, compliance,
       weekNum: wkNum,
       isCoach: COACHES.has(a.id),
     };
@@ -712,18 +753,30 @@ function buildCard(a) {
     </div>`;
   }
 
-  // Stale data banner — shown when athlete has old check-in data but missed this week
-  const staleBanner = (hW && a.expectedWeekEnd && !a.hasCurrentCheckin)
-    ? `<div class="sec" style="background:#fffbeb;border-color:rgba(217,119,6,.2)">
+  // Stale banner: BIG warning only for genuinely missing athletes (>8 days)
+  // Last-week submitters get a soft note — they submitted, new week just started
+  let staleBanner = '';
+  if (hW && a.isStale) {
+    staleBanner = `<div class="sec" style="background:#fef2f2;border-color:rgba(220,38,38,.18)">
         <div style="display:flex;align-items:center;gap:7px">
-          <span style="font-size:13px">⚠️</span>
+          <span style="font-size:13px">🚨</span>
           <div>
-            <div style="font-family:var(--mono);font-size:9px;font-weight:700;color:#92400e;text-transform:uppercase;letter-spacing:.08em">No check-in submitted this week</div>
-            <div style="font-family:var(--mono);font-size:9px;color:#b45309;margin-top:1px">Showing last submission — week ending ${fmtDate(w['Week Ending'])}</div>
+            <div style="font-family:var(--mono);font-size:9px;font-weight:700;color:#991b1b;text-transform:uppercase;letter-spacing:.08em">No check-in submitted this week</div>
+            <div style="font-family:var(--mono);font-size:9px;color:#b91c1c;margin-top:1px">Showing last submission — week ending ${fmtDate(w['Week Ending'])}</div>
           </div>
         </div>
-      </div>`
-    : '';
+      </div>`;
+  } else if (hW && a.hasLastWeekCheckin) {
+    staleBanner = `<div class="sec" style="background:#f0f9ff;border-color:rgba(14,165,233,.15)">
+        <div style="display:flex;align-items:center;gap:7px">
+          <span style="font-size:12px">📅</span>
+          <div>
+            <div style="font-family:var(--mono);font-size:9px;font-weight:700;color:#0369a1;text-transform:uppercase;letter-spacing:.08em">Last week's check-in</div>
+            <div style="font-family:var(--mono);font-size:9px;color:#0284c7;margin-top:1px">Submitted ${fmtDate(w['Week Ending'])} · new week ends ${fmtDate(a.expectedWeekEnd)}</div>
+          </div>
+        </div>
+      </div>`;
+  }
 
   // Training
   let training = '';
@@ -734,7 +787,22 @@ function buildCard(a) {
     const lPct = lp > 0 ? Math.min(100, Math.round(lc / lp * 100)) : 0;
 
     training = `<div class="sec">
-      <div class="sec-ttl">${a.weekNum !== null ? (a.weekNum === 0 ? 'Discovery Week Training' : `Wk ${a.weekNum} Training`) : 'Training'} — ending ${fmtDate(a.expectedWeekEnd || w['Week Ending']) || '?'}</div>
+      <div class="sec-ttl">${(() => {
+        // Show the week the submitted data actually belongs to, not the current week.
+        // dataWeekNum = current week minus however many weeks behind the check-in is.
+        const submittedEnd = w['Week Ending'];
+        let dataWeekNum = a.weekNum;
+        if (a.weekNum !== null && submittedEnd) {
+          const weeksBehind = Math.round(
+            (new Date(currentWeekEnd) - new Date(submittedEnd)) / (7 * 86400000)
+          );
+          dataWeekNum = Math.max(1, a.weekNum - weeksBehind);
+        }
+        const label = dataWeekNum === null ? 'Training'
+          : dataWeekNum === 0 ? 'Discovery Week Training'
+          : `Wk ${dataWeekNum} Training`;
+        return `${label} — ending ${fmtDate(submittedEnd) || '?'}`;
+      })()}</div>
       <div class="tpair">
         <div class="tb">
           <div class="tt run">Run</div>
@@ -837,22 +905,22 @@ function buildCard(a) {
       </div>
     </div>`;
 
-  // Always show the EXPECTED week ending so all cards are on the same reference date.
-  // If no check-in was submitted for this week, call that out explicitly.
+  // Card header: always anchored to the same expected week end for all athletes.
+  // Three states:
+  //  1. hasCurrentCheckin  → "Week ending DD-MM"           (normal, this week's data)
+  //  2. hasLastWeekCheckin → "Last wk · wk ends DD-MM"     (soft amber — submitted recently but new week started)
+  //  3. isStale            → "No check-in · wk ends DD-MM · last DD-MM"  (red warning)
   let metaText;
-  if (a.expectedWeekEnd) {
-    if (a.hasCurrentCheckin) {
-      metaText = `Week ending ${fmtDate(a.expectedWeekEnd)}`;
-    } else {
-      // No check-in for current week — note it, and show last submission if there is one
-      const lastStr = hW ? ` · last ${fmtDate(w['Week Ending'])}` : '';
-      metaText = `No check-in — wk ends ${fmtDate(a.expectedWeekEnd)}${lastStr}`;
-    }
+  const wkEndDisplay = fmtDate(a.expectedWeekEnd);
+  if (a.hasCurrentCheckin) {
+    metaText = `Week ending ${wkEndDisplay}`;
+  } else if (a.hasLastWeekCheckin && hW) {
+    metaText = `Submitted ${fmtDate(w['Week Ending'])} · wk ends ${wkEndDisplay}`;
+  } else if (hW) {
+    const lastStr = ` · last ${fmtDate(w['Week Ending'])}`;
+    metaText = `No check-in — wk ends ${wkEndDisplay}${lastStr}`;
   } else {
-    // No start date set — fall back to whatever we have
-    metaText = hW
-      ? (a.hasRecent ? `Week ending ${fmtDate(w['Week Ending'])}` : `Last check-in ${fmtDate(w['Week Ending'])}`)
-      : a.body.length ? 'Daily tracking only' : 'No recent data';
+    metaText = a.body.length ? 'Daily tracking only' : 'No recent data';
   }
 
   return `<div class="card ${bcls}" data-card="${esc(a.id)}" data-alert="${a.alertScore}" data-name="${esc(a.id)}" data-week="${a.weekNum ?? 0}" data-compliance="${a.compliance ?? 0}" data-checkin="${w?.['Week Ending'] || ''}">
@@ -860,7 +928,7 @@ function buildCard(a) {
       <div class="card-head-top">
         <div>
           <div class="aname">${esc(a.id)}</div>
-          <div class="ameta ${(!a.hasCurrentCheckin && !a.hasRecent) ? 'nocheckin' : (a.expectedWeekEnd && !a.hasCurrentCheckin ? 'nocheckin' : '')}">${metaText}</div>
+          <div class="ameta ${a.isStale ? 'nocheckin' : ''}">${metaText}</div>
         </div>
         ${a.weekNum !== null ? `<div class="week-badge"><div class="wk-num">${a.weekNum}</div><div class="wk-lbl">${a.weekNum === 0 ? 'Discovery' : 'Week'}</div></div>` : ''}
       </div>
