@@ -364,14 +364,20 @@ const ALIASES = { 'JACOB TUAZON': 'JACOB' };
 // Coaches are filtered OUT of the athletes grid and shown on the Coaches tab
 const COACHES = new Set(['KARL', 'ALEX']);
 
-// Week anchors for athletes without a Notion Start Date.
+// ── Legacy athletes: no discovery week ───────────────────────────────────────
+// These athletes started on Week 1 directly (no Week 0 discovery week).
+// Their week formula is: floor(days/7) + 1  →  Week 1 on Day 0.
+// New athletes all go through a Week 0 discovery week, so their formula is
+// floor(days/7)  →  Week 0 on Day 0, Week 1 on Day 7.
+const NO_DISCOVERY = new Set(['JACOB', 'KHANG']);
+
+// ── Week anchors — fallback when no Notion Start Date is set ─────────────────
 // { ID: { week: N, endDate: 'YYYY-MM-DD' } }
-// 'week' = the week number whose last day was 'endDate'.
-// calcWeekNum() auto-advances each Monday — no manual updates needed week to week.
-// Remove an entry once that athlete has a Start Date set in Notion.
+// 'week' = the week number whose Sunday was 'endDate'.
+// calcWeekNum() auto-advances from this anchor each Monday.
+// Remove an entry once the athlete has a Start Date in Notion.
 const WEEK_OVERRIDES = {
-  // week 7 ran Apr 27 – May 3. Now (Mon May 4) we're in week 8.
-  // endDate = the Sunday that week N ended on → calcWeekNum auto-advances from here.
+  // Week 7 ran Apr 27–May 3. Today (Mon May 4) = Week 8.
   'JACOB': { week: 7, endDate: '2026-05-03' },
   'KHANG': { week: 7, endDate: '2026-05-03' },
 };
@@ -396,6 +402,17 @@ function localDateStr(d) {
 //   Sun 10 May → week ends Sun 10 May  (last day of this week)
 // Bug fixed: use localDateStr() not toISOString() — ISO converts to UTC which
 // shifts the date back by 10–11 hours in AEST and gives the wrong day.
+// Start of the current Mon–Sun week (local time, same timezone-safe approach)
+const currentWeekStart = (() => {
+  const today = new Date();
+  const day = today.getDay();               // 0=Sun, 1=Mon … 6=Sat
+  const daysToMonday = day === 0 ? 6 : day - 1;
+  const monday = new Date(today);
+  monday.setDate(today.getDate() - daysToMonday);
+  monday.setHours(0, 0, 0, 0);
+  return monday;
+})();
+
 const currentWeekEnd = (() => {
   const today = new Date();
   const day = today.getDay();               // 0=Sun, 1=Mon … 6=Sat
@@ -570,6 +587,11 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = []) {
     const runS = s7.filter(s => s['Session Category'] === 'Running' || s['Session Category'] === 'Run');
     const strS = s7.filter(s => s['Session Category'] === 'Strength');
 
+    // Current-week sessions (Mon → now) — resets each Monday regardless of check-in
+    const sCurr = a.sessions.filter(s => new Date(s._d) >= currentWeekStart);
+    const currRunS = sCurr.filter(s => s['Session Category'] === 'Running' || s['Session Category'] === 'Run');
+    const currStrS = sCurr.filter(s => s['Session Category'] === 'Strength');
+
     // Compliance
     const w = a.weekly;
     const rp = parseInt(w?.['Run Planned']) || 0;
@@ -639,7 +661,7 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = []) {
     const hasRecent = hasCurrentCheckin || hasLastWeekCheckin;
 
     return {
-      ...a, bAvg, nAvg, runS, strS, flags, alertScore,
+      ...a, bAvg, nAvg, runS, strS, currRunS, currStrS, flags, alertScore,
       hasRecent, hasCurrentCheckin, hasLastWeekCheckin, isStale,
       expectedWeekEnd, compliance,
       weekNum: wkNum,
@@ -750,6 +772,25 @@ function buildCard(a) {
       <span class="comp-lbl">Compliance</span>
       <div class="comp-track"><div class="comp-fill ${cc}" style="width:${a.compliance}%"></div></div>
       <span class="comp-pct ${cc}">${a.compliance}%</span>
+    </div>`;
+  }
+
+  // ── Week-in-progress section ──────────────────────────────────────────────────
+  // For athletes who haven't submitted this week's check-in, show current-week
+  // live session counts (resets to 0 on Monday). This makes it immediately clear
+  // how far into the week they are — separate from last week's completed data.
+  let weekInProgress = '';
+  if (!a.hasCurrentCheckin) {
+    const rCount = a.currRunS.length;
+    const sCount = a.currStrS.length;
+    const noSessions = rCount === 0 && sCount === 0;
+    weekInProgress = `<div class="sec" style="background:var(--surface2);border-color:rgba(0,0,0,.06)">
+      <div class="sec-ttl" style="color:var(--str)">📍 Week ${a.weekNum ?? ''} In Progress — ends ${fmtDate(a.expectedWeekEnd)}</div>
+      <div class="sess-row" style="margin-bottom:${noSessions ? 0 : 4}px">
+        <div class="scard"><div class="snum run-c">${rCount}</div><div class="slbl">Run</div></div>
+        <div class="scard"><div class="snum str-c">${sCount}</div><div class="slbl">Strength</div></div>
+      </div>
+      ${noSessions ? `<div style="font-family:var(--mono);font-size:9px;color:var(--dim);margin-top:4px">No sessions logged yet this week</div>` : ''}
     </div>`;
   }
 
@@ -934,7 +975,7 @@ function buildCard(a) {
       </div>
       ${a.flags.length ? `<div class="flags">${fps}</div>` : ''}
     </div>
-    ${staleBanner}${compBar}${scores}${training}${bodyHtml}${nutrHtml}${sessHtml}
+    ${weekInProgress}${staleBanner}${compBar}${scores}${training}${bodyHtml}${nutrHtml}${sessHtml}
     <div class="ai-sec"></div>
     ${callPrepHtml}
   </div>`;
