@@ -370,16 +370,30 @@ const WEEK_OVERRIDES = { 'JACOB': 7, 'KHANG': 7 };
 // In-memory call notes per athlete
 const callNotes = {};
 
+// ── Local date helper (avoids UTC-shift bug with toISOString) ─────────────────
+function localDateStr(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const n = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${n}`;
+}
+
 // ── Current week ending (same for ALL athletes) ───────────────────────────────
-// Weeks run Mon–Sun. The week ending is always the most recent Sunday.
-// Today Mon 4 May → last Sunday = 3 May. Today Thu 7 May → last Sunday still 3 May.
-// On Sunday itself → that day is the week ending.
+// Weeks run Mon–Sun. Week resets on Monday.
+// "Current week ending" = the COMING Sunday (or today if today IS Sunday).
+// Examples:
+//   Mon 4 May  → week ends Sun 10 May  (new week just started, reset)
+//   Thu 7 May  → week ends Sun 10 May
+//   Sun 10 May → week ends Sun 10 May  (last day of this week)
+// Bug fixed: use localDateStr() not toISOString() — ISO converts to UTC which
+// shifts the date back by 10–11 hours in AEST and gives the wrong day.
 const currentWeekEnd = (() => {
   const today = new Date();
-  const day = today.getDay(); // 0 = Sun, 1 = Mon, …, 6 = Sat
-  const lastSunday = new Date(today);
-  lastSunday.setDate(today.getDate() - day); // if today is Sun (0), setDate stays same
-  return lastSunday.toISOString().split('T')[0];
+  const day = today.getDay();               // 0=Sun, 1=Mon … 6=Sat
+  const daysUntilSunday = day === 0 ? 0 : 7 - day;
+  const sunday = new Date(today);
+  sunday.setDate(today.getDate() + daysUntilSunday);
+  return localDateStr(sunday);
 })();
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -399,6 +413,7 @@ function avg(arr, k) {
   return v.length ? (v.reduce((a, b) => a + b, 0) / v.length).toFixed(1) : null;
 }
 function dago(n) { const d = new Date(); d.setDate(d.getDate() - n); return d; }
+function dagoStr(n) { return localDateStr(dago(n)); } // timezone-safe date string
 function scoreClass(v, inv) {
   const n = parseFloat(v);
   if (isNaN(n)) return 'n';
@@ -581,7 +596,7 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = []) {
       const diff = Math.abs(new Date(wkEnd) - new Date(expectedWeekEnd)) / 86400000;
       return diff <= 3;
     })();
-    const hasRecent = hasCurrentCheckin || wkEnd >= dago(10).toISOString().split('T')[0];
+    const hasRecent = hasCurrentCheckin || wkEnd >= dagoStr(10);
 
     return {
       ...a, bAvg, nAvg, runS, strS, flags, alertScore,
