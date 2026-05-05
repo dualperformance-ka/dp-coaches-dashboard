@@ -4,15 +4,20 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Coaches Dashboard — Dual Performance</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800;900&family=Barlow:ital,wght@0,400;0,500;0,600;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 :root{
   --bg:#f4f3f0;--surface:#fff;--surface2:#f0ede8;
   --border:rgba(0,0,0,.08);--border-mid:rgba(0,0,0,.14);
   --text:#0a0a0a;--muted:#5a5a5a;--dim:#999;
   --run:#b45309;--str:#1e3a8a;
+  --amber:#f59e0b;--amber-dim:#fcd34d;
   --ok:#15803d;--warn:#d97706;--alert:#dc2626;
-  --mono:'SF Mono','Fira Code','Courier New',monospace;
-  --sans:system-ui,-apple-system,sans-serif;
+  --mono:'DM Mono','SF Mono','Fira Code',monospace;
+  --sans:'Barlow',system-ui,sans-serif;
+  --cond:'Barlow Condensed','Arial Narrow',sans-serif;
   --green-bg:#f0fdf4;--green-border:#86efac;--green-text:#15803d;
   --amber-bg:#fffbeb;--amber-border:#fcd34d;--amber-text:#92400e;
   --red-bg:#fef2f2;--red-border:#fca5a5;--red-text:#991b1b;
@@ -84,7 +89,7 @@ header{background:#0a0a0a;padding:0 18px;height:50px;display:flex;align-items:ce
 .card.red{border-color:rgba(220,38,38,.35)}.card.yellow{border-color:rgba(217,119,6,.3)}
 .card.hidden{display:none}
 .card-head{background:#0a0a0a;padding:11px 14px 10px}
-.aname{font-size:22px;font-weight:900;letter-spacing:.05em;text-transform:uppercase;color:#fff;line-height:1}
+.aname{font-family:var(--cond);font-size:26px;font-weight:900;letter-spacing:.05em;text-transform:uppercase;color:#fff;line-height:1}
 .ameta{font-family:var(--mono);font-size:8px;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:.08em;margin-top:3px}
 .ameta.nocheckin{color:rgba(248,113,113,.6)}
 .flags{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
@@ -270,7 +275,7 @@ header{background:#0a0a0a;padding:0 18px;height:50px;display:flex;align-items:ce
 /* ── Full-page card: clean layout ── */
 .fpc-hero{background:#0a0a0a;border-radius:16px;padding:28px 30px 24px;margin-bottom:18px}
 .fpc-hero-top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
-.fpc-name{font-size:52px;font-weight:900;letter-spacing:.04em;text-transform:uppercase;color:#fff;line-height:1}
+.fpc-name{font-family:var(--cond);font-size:52px;font-weight:900;letter-spacing:.04em;text-transform:uppercase;color:#fff;line-height:1}
 .fpc-meta{font-family:var(--mono);font-size:11px;color:rgba(255,255,255,.4);margin-top:8px;letter-spacing:.05em}
 .fpc-meta.stale{color:rgba(248,113,113,.7)}
 .fpc-week-badge{text-align:center;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:12px;padding:12px 24px;flex-shrink:0}
@@ -362,12 +367,96 @@ header{background:#0a0a0a;padding:0 18px;height:50px;display:flex;align-items:ce
 .fp-open-btn{background:transparent;border:1px solid rgba(255,255,255,.18);color:rgba(255,255,255,.38);font-family:var(--mono);font-size:9px;padding:4px 10px;border-radius:5px;cursor:pointer;text-transform:uppercase;letter-spacing:.06em;transition:all .15s;white-space:nowrap;align-self:flex-start;flex-shrink:0}
 .fp-open-btn:hover{color:#fff;border-color:rgba(255,255,255,.55)}
 
+/* ── Session badges ── */
+.sched-badges{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.sbadge{display:inline-flex;align-items:center;gap:4px;font-family:var(--mono);font-size:9px;font-weight:500;padding:3px 8px;border-radius:20px;border:1px solid;letter-spacing:.04em;white-space:nowrap}
+.sbadge .sdot{width:5px;height:5px;border-radius:50%;flex-shrink:0}
+.sbadge.planned{opacity:.65}
+.sbadge.completed{opacity:1}
+.sbadge.missed{opacity:.55;text-decoration:line-through}
+.sbadge.sick{opacity:.45;font-style:italic}
+.sbadge-tempo{background:#fff7ed;color:#c2410c;border-color:#fed7aa}.sbadge-tempo .sdot{background:#f97316}
+.sbadge-speed{background:#fef2f2;color:#b91c1c;border-color:#fecaca}.sbadge-speed .sdot{background:#ef4444}
+.sbadge-longrun{background:#fdf4ff;color:#7e22ce;border-color:#e9d5ff}.sbadge-longrun .sdot{background:#a855f7}
+.sbadge-strength{background:#eff6ff;color:#1e40af;border-color:#bfdbfe}.sbadge-strength .sdot{background:#3b82f6}
+.sbadge-runstr{background:#f5f3ff;color:#5b21b6;border-color:#ddd6fe}.sbadge-runstr .sdot{background:#8b5cf6}
+.sbadge-rest{background:#f9fafb;color:#4b5563;border-color:#e5e7eb}.sbadge-rest .sdot{background:#9ca3af}
+.sbadge-recovery{background:#f0fdfa;color:#0f766e;border-color:#99f6e4}.sbadge-recovery .sdot{background:#14b8a6}
+.sbadge-easy{background:#f0fdf4;color:#15803d;border-color:#bbf7d0}.sbadge-easy .sdot{background:#22c55e}
+.sbadge-optional{background:#fafafa;color:#6b7280;border-color:#e5e5e5}.sbadge-optional .sdot{background:#d1d5db}
+.sbadge-race{background:#fff1f2;color:#9f1239;border-color:#fda4af}.sbadge-race .sdot{background:#f43f5e}
+.sbadge-run{background:#fff7ed;color:#92400e;border-color:#fde68a}.sbadge-run .sdot{background:#f59e0b}
+.sbadge-default{background:#f4f3f0;color:#5a5a5a;border-color:#d1d5db}.sbadge-default .sdot{background:#9ca3af}
+.sbadge-status{font-family:var(--mono);font-size:8px;margin-left:2px;opacity:.8}
+
+/* ── Recovery score ── */
+.recovery-row{display:flex;align-items:center;gap:10px;padding:8px 13px;border-bottom:1px solid var(--border);background:linear-gradient(90deg,rgba(245,158,11,.04) 0%,transparent 60%)}
+.recovery-lbl{font-family:var(--mono);font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;white-space:nowrap}
+.recovery-score{font-size:20px;font-weight:800;line-height:1;letter-spacing:-.01em;font-family:var(--cond)}
+.recovery-score.good{color:var(--ok)}.recovery-score.mid{color:var(--warn)}.recovery-score.bad{color:var(--alert)}.recovery-score.n{color:var(--text)}
+.recovery-bar-wrap{flex:1;height:4px;background:rgba(0,0,0,.07);border-radius:2px;overflow:hidden}
+.recovery-bar{height:100%;border-radius:2px;transition:width .3s}
+.recovery-bar.good{background:var(--ok)}.recovery-bar.mid{background:var(--warn)}.recovery-bar.bad{background:var(--alert)}
+
+/* ── This week's plan section ── */
+.plan-sec{padding:9px 13px;border-bottom:1px solid var(--border);background:var(--surface2)}
+.plan-sec-ttl{font-family:var(--mono);font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px;display:flex;align-items:center;gap:5px}
+.plan-sec-comp{font-family:var(--mono);font-size:9px;font-weight:700;margin-left:auto}
+.plan-sec-comp.good{color:var(--ok)}.plan-sec-comp.mid{color:var(--warn)}.plan-sec-comp.bad{color:var(--alert)}
+
+/* ── Macro compliance bars ── */
+.macro-bar-row{display:flex;flex-direction:column;gap:4px;margin-top:6px}
+.macro-bar-item{display:flex;align-items:center;gap:6px}
+.macro-bar-lbl{font-family:var(--mono);font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.05em;width:34px;flex-shrink:0}
+.macro-bar-track{flex:1;height:4px;background:rgba(0,0,0,.07);border-radius:2px;overflow:hidden;position:relative}
+.macro-bar-fill{height:100%;border-radius:2px;transition:width .3s;background:var(--amber)}
+.macro-bar-fill.over{background:var(--alert)}
+.macro-bar-val{font-family:var(--mono);font-size:9px;color:var(--muted);min-width:38px;text-align:right}
+
+/* ── Schedule tab ── */
+.sched-section{max-width:1400px;margin:0 auto;padding:14px 14px 40px}
+.sched-intro{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 18px;margin-bottom:14px;font-family:var(--mono);font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em}
+.sched-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:11px}
+.sched-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.sched-card-head{background:#0a0a0a;padding:10px 14px}
+.sched-card-name{font-family:var(--cond);font-size:20px;font-weight:900;letter-spacing:.05em;text-transform:uppercase;color:#fff;line-height:1}
+.sched-card-meta{font-family:var(--mono);font-size:8px;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.08em;margin-top:2px}
+.sched-card-body{padding:10px 13px}
+.sched-session-row{display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)}
+.sched-session-row:last-child{border-bottom:none}
+.sched-date{font-family:var(--mono);font-size:9px;color:var(--dim);white-space:nowrap;min-width:40px;padding-top:2px}
+.sched-session-name{font-size:11px;color:var(--muted);line-height:1.4;flex:1}
+.sched-status-icon{font-size:11px;flex-shrink:0}
+
+/* ── Applications tab ── */
+.apps-section{max-width:1400px;margin:0 auto;padding:14px 14px 40px}
+.apps-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:11px}
+.app-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.app-card-head{background:#0a0a0a;padding:11px 14px 10px}
+.app-name{font-family:var(--cond);font-size:22px;font-weight:900;letter-spacing:.05em;text-transform:uppercase;color:#fff;line-height:1}
+.app-meta{font-family:var(--mono);font-size:8px;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.08em;margin-top:3px}
+.app-body{padding:12px 14px}
+.app-field{margin-bottom:8px}
+.app-field-lbl{font-family:var(--mono);font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px}
+.app-field-val{font-size:12px;color:var(--muted);line-height:1.45}
+.app-field-val.strong{color:var(--text);font-weight:600}
+.app-status{display:inline-block;font-family:var(--mono);font-size:8px;padding:2px 8px;border-radius:20px;text-transform:uppercase;letter-spacing:.06em;font-weight:700;margin-top:2px}
+.app-status.new{background:var(--amber-bg);color:var(--amber-text);border:1px solid var(--amber-border)}
+.app-status.accepted{background:var(--green-bg);color:var(--green-text);border:1px solid var(--green-border)}
+.app-status.rejected{background:var(--red-bg);color:var(--red-text);border:1px solid var(--red-border)}
+
+/* ── Amber accent on week badge ── */
+.week-badge{background:rgba(245,158,11,.18)!important;border-color:rgba(245,158,11,.35)!important}
+.wk-num{color:var(--amber)!important}
+
 /* Responsive ── */
 @media(max-width:600px){
   .filter-bar{top:82px}
   .tab-bar{top:50px}
   .grid{grid-template-columns:1fr}
   .coaches-grid{grid-template-columns:1fr}
+  .sched-grid{grid-template-columns:1fr}
+  .apps-grid{grid-template-columns:1fr}
   .search-input{width:100%}
 }
 </style>
@@ -404,6 +493,12 @@ header{background:#0a0a0a;padding:0 18px;height:50px;display:flex;align-items:ce
   </button>
   <button class="tab" id="tab-coaches-btn" onclick="switchTab('coaches')">
     Coaches <span class="tab-badge">2</span>
+  </button>
+  <button class="tab" id="tab-schedule-btn" onclick="switchTab('schedule')">
+    Schedule <span class="tab-badge" id="tab-sched-count">—</span>
+  </button>
+  <button class="tab" id="tab-apps-btn" onclick="switchTab('applications')">
+    Pipeline <span class="tab-badge" id="tab-apps-count">—</span>
   </button>
 </div>
 
@@ -453,6 +548,23 @@ header{background:#0a0a0a;padding:0 18px;height:50px;display:flex;align-items:ce
   </div>
 </div>
 
+<!-- SCHEDULE TAB -->
+<div id="tab-schedule-content" style="display:none">
+  <div class="sched-section">
+    <div class="sched-intro" id="sched-intro">Week ending <span id="sched-week-end">—</span> · Planned sessions for all athletes</div>
+    <div class="sched-grid" id="sched-grid"></div>
+  </div>
+</div>
+
+<!-- APPLICATIONS TAB -->
+<div id="tab-apps-content" style="display:none">
+  <div class="apps-section">
+    <div class="apps-grid" id="apps-grid">
+      <div class="state-box"><div class="state-txt">Loading applications…</div></div>
+    </div>
+  </div>
+</div>
+
 <!-- COACHES TAB -->
 <div id="tab-coaches-content" style="display:none">
   <div class="coaches-section">
@@ -474,13 +586,63 @@ header{background:#0a0a0a;padding:0 18px;height:50px;display:flex;align-items:ce
 <script>
 // ── Config ───────────────────────────────────────────────────────────────────
 const DB = {
-  weekly:    '33e5a96c-c70b-8049-b696-d22e5920e0ee',
-  sessions:  '1c55a96c-c70b-825b-9bdf-819abea4ef7c',
-  body:      '3405a96c-c70b-80a4-b1b9-cf5b9c236f18',
-  nutrition: '3405a96c-c70b-804b-aa9c-f165f2d2e0e9',
-  athletes:  '4a25a96c-c70b-82ff-a679-0139eaa8b458',
-  targets:   '3405a96c-c70b-80de-9221-c2a40653277c', // weekly prescribed macro targets
+  weekly:       '33e5a96c-c70b-8049-b696-d22e5920e0ee',
+  sessions:     '1c55a96c-c70b-825b-9bdf-819abea4ef7c',
+  body:         '3405a96c-c70b-80a4-b1b9-cf5b9c236f18',
+  nutrition:    '3405a96c-c70b-804b-aa9c-f165f2d2e0e9',
+  athletes:     '4a25a96c-c70b-82ff-a679-0139eaa8b458',
+  targets:      '3405a96c-c70b-80de-9221-c2a40653277c',
+  planning:     '0b85a96c-c70b-8368-98fd-013e0e15c4f2',
+  applications: '33f5a96c-c70b-8008-ac37-e11d3b48d8c1',
 };
+
+// ── Session type → badge class mapping ───────────────────────────────────────
+const ST_CLASS = {
+  'Tempo':'tempo','Speed':'speed','Long Run':'longrun',
+  'Strength':'strength','Run + Strength':'runstr',
+  'Rest':'rest','Recovery':'recovery','Easy Effort':'easy',
+  'Optional':'optional','race':'race','Run':'run',
+  'Weekly KM Total':'optional',
+};
+const ST_LABEL = {
+  'Long Run':'Long Run','Run + Strength':'Run+Str','Easy Effort':'Easy',
+  'Weekly KM Total':'KM Total','race':'Race',
+};
+function stClass(t){ return ST_CLASS[t] || 'default'; }
+function stLabel(t){ return ST_LABEL[t] || t || 'Session'; }
+
+function sessionBadgeHTML(sessionType, status, sessionName) {
+  const cls = stClass(sessionType);
+  const lbl = stLabel(sessionType);
+  const statusCls = (status||'planned').trim().toLowerCase().replace(/\s+/g,'');
+  const statusIcon = statusCls==='completed'?'✓':statusCls==='missed'?'✗':statusCls==='sick'?'🤒':'→';
+  const title = sessionName ? `${sessionName} (${sessionType||''})` : (sessionType||'Session');
+  return `<span class="sbadge sbadge-${cls} ${statusCls}" title="${esc(title)}"><span class="sdot"></span>${esc(lbl)} <span class="sbadge-status">${statusIcon}</span></span>`;
+}
+
+// ── Recovery score (composite 0–10) ─────────────────────────────────────────
+function calcRecoveryScore(w) {
+  if (!w) return null;
+  const vals = [];
+  const sleep = parseFloat(w['Sleep hrs']); if (!isNaN(sleep)) vals.push(Math.min(10, (sleep/8)*10));
+  const energy = parseFloat(w['Energy /10']); if (!isNaN(energy)) vals.push(energy);
+  const stress = parseFloat(w['Stress']); if (!isNaN(stress)) vals.push(10-stress);
+  const soreness = parseFloat(w['Soreness /10']); if (!isNaN(soreness)) vals.push(10-soreness);
+  if (!vals.length) return null;
+  return Math.round((vals.reduce((a,b)=>a+b,0)/vals.length)*10)/10;
+}
+
+// ── Extract athlete ID from a planning schedule row ──────────────────────────
+// The Athlete field comes back as a relation — could be a name string, JSON array, or comma-list
+function getPlanningAthleteId(r) {
+  const a = r['Athlete'] || r['athlete'];
+  if (!a) return null;
+  const s = String(a).trim();
+  if (s.startsWith('[')) {
+    try { const p=JSON.parse(s); return nid(Array.isArray(p)?String(p[0]):String(p)); } catch{}
+  }
+  return nid(s.split(',')[0].trim());
+}
 
 // Name aliases — maps any variant to the canonical athlete ID used everywhere
 const ALIASES = { 'JACOB TUAZON': 'JACOB', 'BRYAN GOH': 'BRYAN' };
@@ -621,7 +783,7 @@ async function fetchDB(dbId) {
 }
 
 // ── Build ─────────────────────────────────────────────────────────────────────
-function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = []) {
+function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [], planning = [], applications = []) {
   const c21 = dago(21), c14 = dago(14), c7 = dago(7);
   const map = {};
 
@@ -834,6 +996,31 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [
     const weekLabel = wkNum !== null ? `Week ${wkNum}` : null;
     const target = weekLabel && targetMap[a.id] ? (targetMap[a.id][weekLabel] || null) : null;
 
+    // Planning schedule: match rows to this athlete
+    const athletePlan = planning.filter(r => getPlanningAthleteId(r) === a.id);
+
+    // This week's planned sessions (Mon–Sun of current week)
+    const thisWeekPlan = athletePlan.filter(r => {
+      const d = r['date:Planned Date:start'] || r['Planned Date'] || '';
+      if (!d) return false;
+      const dt = new Date(d);
+      return dt >= currentWeekStart && dt <= new Date(currentWeekEnd + 'T23:59:59');
+    }).sort((a,b) => (a['date:Planned Date:start']||'') > (b['date:Planned Date:start']||'') ? 1 : -1);
+
+    // Schedule compliance from planning (last 28 days)
+    const c28 = dago(28);
+    const pastPlan = athletePlan.filter(r => {
+      const d = r['date:Planned Date:start'] || r['Planned Date'] || '';
+      return d && new Date(d) >= c28 && new Date(d) < currentWeekStart;
+    });
+    const planCompleted = pastPlan.filter(r => (r['Status '] || r['Status'] || '').trim() === 'Completed').length;
+    const planMissed = pastPlan.filter(r => (r['Status '] || r['Status'] || '').trim() === 'Missed').length;
+    const scheduleCompliance = (planCompleted + planMissed) > 0
+      ? Math.round((planCompleted / (planCompleted + planMissed)) * 100) : null;
+
+    // Recovery score from weekly check-in
+    const recoveryScore = calcRecoveryScore(w);
+
     return {
       ...a, bAvg, nAvg, runS, strS,
       currRunS, currStrS,
@@ -843,6 +1030,9 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [
       expectedWeekEnd, compliance,
       weekNum: wkNum,
       target,
+      thisWeekPlan,
+      scheduleCompliance,
+      recoveryScore,
       isCoach: COACHES.has(a.id),
     };
   });
@@ -856,21 +1046,30 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [
 // ── Render athletes ───────────────────────────────────────────────────────────
 let _allAthletes = [];
 let _coaches = [];
+let _allApplications = [];
 let _statusFilter = 'all';
 
-function render({ athletes, coaches }) {
-  _allAthletes = athletes;
-  _coaches     = coaches;
+function render({ athletes, coaches, applications = [] }) {
+  _allAthletes     = athletes;
+  _coaches         = coaches;
+  _allApplications = applications;
 
-  // Tab count
+  // Tab badges
   const alertCount = athletes.filter(a => a.flags.some(f => f.t === 'red')).length;
   const badge = document.getElementById('tab-ath-count');
   badge.textContent = athletes.length;
   if (alertCount > 0) badge.classList.add('red'); else badge.classList.remove('red');
 
+  const totalPlan = athletes.reduce((s,a)=>s+(a.thisWeekPlan||[]).length,0);
+  document.getElementById('tab-sched-count').textContent = totalPlan || '—';
+  document.getElementById('tab-apps-count').textContent  = applications.length || '—';
+  document.getElementById('sched-week-end').textContent  = fmtDate(currentWeekEnd);
+
   renderSummary(athletes);
   renderGrid(athletes);
   renderCoaches(coaches);
+  renderSchedule(athletes);
+  renderApplications(applications);
 
   document.getElementById('gen-btn').style.display = 'block';
   document.getElementById('squad-brief').classList.remove('visible');
@@ -1117,6 +1316,33 @@ function buildCard(a) {
     </div>`;
   }
 
+  // Recovery score row
+  let recoveryHtml = '';
+  if (a.recoveryScore !== null) {
+    const rc = a.recoveryScore >= 7.5 ? 'good' : a.recoveryScore >= 5 ? 'mid' : 'bad';
+    const pct = Math.round((a.recoveryScore/10)*100);
+    recoveryHtml = `<div class="recovery-row">
+      <span class="recovery-lbl">Recovery</span>
+      <span class="recovery-score ${rc}">${a.recoveryScore}</span>
+      <div class="recovery-bar-wrap"><div class="recovery-bar ${rc}" style="width:${pct}%"></div></div>
+    </div>`;
+  }
+
+  // This week's plan
+  let planHtml = '';
+  if (a.thisWeekPlan && a.thisWeekPlan.length) {
+    const badges = a.thisWeekPlan.slice(0, 7).map(r =>
+      sessionBadgeHTML(r['Session Type'] || r['SessionType'], r['Status '] || r['Status'], r.Session)
+    ).join('');
+    const extra = a.thisWeekPlan.length > 7 ? `<span class="sbadge sbadge-default">+${a.thisWeekPlan.length-7}</span>` : '';
+    const comp = a.scheduleCompliance;
+    const cc = comp !== null ? (comp>=80?'good':comp>=60?'mid':'bad') : '';
+    planHtml = `<div class="plan-sec">
+      <div class="plan-sec-ttl">📅 This Week's Plan${comp!==null?`<span class="plan-sec-comp ${cc}">${comp}%</span>`:''}</div>
+      <div class="sched-badges">${badges}${extra}</div>
+    </div>`;
+  }
+
   // Call Prep
   const callPrep = buildCallPrep(a);
   const cpId = `cp-${a.id.replace(/\s+/g,'-')}`;
@@ -1183,7 +1409,7 @@ function buildCard(a) {
       </div>
       ${a.flags.length ? `<div class="flags">${fps}</div>` : ''}
     </div>
-    ${weekInProgress}${staleBanner}${compBar}${scores}${training}${bodyHtml}${nutrHtml}${sessHtml}
+    ${weekInProgress}${staleBanner}${recoveryHtml}${planHtml}${compBar}${scores}${training}${bodyHtml}${nutrHtml}${sessHtml}
     <div class="ai-sec"></div>
     ${callPrepHtml}
   </div>`;
@@ -1659,16 +1885,89 @@ function applyFilters() {
   document.getElementById('no-results').style.display = visible.length === 0 ? 'block' : 'none';
 }
 
+// ── renderSchedule ────────────────────────────────────────────────────────────
+function renderSchedule(athletes) {
+  const grid = document.getElementById('sched-grid');
+  if (!grid) return;
+  const withPlan = athletes.filter(a => a.thisWeekPlan && a.thisWeekPlan.length > 0);
+  if (!withPlan.length) {
+    grid.innerHTML = `<div style="font-family:var(--mono);font-size:11px;color:var(--dim);padding:20px 0;text-transform:uppercase;letter-spacing:.08em">No planning data for this week</div>`;
+    return;
+  }
+  grid.innerHTML = withPlan.map(a => {
+    const rows = a.thisWeekPlan.map(r => {
+      const d = r['date:Planned Date:start'] || r['Planned Date'] || '';
+      const dateStr = d ? fmtDate(d.split('T')[0]) : '—';
+      const status = (r['Status '] || r['Status'] || 'planned').trim().toLowerCase();
+      const statusIcon = status==='completed'?'✓':status==='missed'?'✗':status==='sick'?'🤒':'→';
+      const badge = sessionBadgeHTML(r['Session Type'], r['Status ']||r['Status'], r.Session);
+      const name = r.Session || r['Session Type'] || 'Session';
+      return `<div class="sched-session-row">
+        <span class="sched-date">${dateStr}</span>
+        ${badge}
+        <span class="sched-session-name">${esc(name)}</span>
+        <span class="sched-status-icon">${statusIcon}</span>
+      </div>`;
+    }).join('');
+    const comp = a.scheduleCompliance;
+    const compStr = comp!==null ? ` · ${comp}% compliant` : '';
+    return `<div class="sched-card">
+      <div class="sched-card-head">
+        <div class="sched-card-name">${esc(a.id)}</div>
+        <div class="sched-card-meta">Week ${a.weekNum ?? '—'} · ${a.thisWeekPlan.length} session${a.thisWeekPlan.length!==1?'s':''}${compStr}</div>
+      </div>
+      <div class="sched-card-body">${rows}</div>
+    </div>`;
+  }).join('');
+}
+
+// ── renderApplications ────────────────────────────────────────────────────────
+function renderApplications(apps) {
+  const grid = document.getElementById('apps-grid');
+  if (!grid) return;
+  if (!apps || !apps.length) {
+    grid.innerHTML = `<div style="font-family:var(--mono);font-size:11px;color:var(--dim);padding:20px 0;text-transform:uppercase;letter-spacing:.08em">No applications found</div>`;
+    return;
+  }
+  grid.innerHTML = apps.map(r => {
+    const name      = r.Name || r['name'] || 'Unknown';
+    const age       = r.Age ? `${r.Age} yrs` : '';
+    const occ       = r.Occupation || '';
+    const goal      = r['Three Month Goal'] || '';
+    const barrier   = r['Biggest Barrier'] || '';
+    const daysWk    = r['Days Per Week'] || '';
+    const status    = r['Current Status'] || '';
+    const injuries  = r.Injuries || '';
+    const submitted = r['date:Submitted at:start'] || r['Submitted at'] || '';
+    const statusCls = status.toLowerCase().includes('accept') ? 'accepted' : status.toLowerCase().includes('reject') ? 'rejected' : 'new';
+    return `<div class="app-card">
+      <div class="app-card-head">
+        <div class="app-name">${esc(name)}</div>
+        <div class="app-meta">${[age, occ, submitted ? `Applied ${fmtDate(submitted.split('T')[0])}` : ''].filter(Boolean).join(' · ')}</div>
+      </div>
+      <div class="app-body">
+        ${status ? `<div class="app-field"><span class="app-status ${statusCls}">${esc(status)}</span></div>` : ''}
+        ${goal ? `<div class="app-field"><div class="app-field-lbl">3-Month Goal</div><div class="app-field-val strong">${esc(goal)}</div></div>` : ''}
+        ${barrier ? `<div class="app-field"><div class="app-field-lbl">Biggest Barrier</div><div class="app-field-val">${esc(barrier)}</div></div>` : ''}
+        ${daysWk ? `<div class="app-field"><div class="app-field-lbl">Days / Week</div><div class="app-field-val">${esc(daysWk)}</div></div>` : ''}
+        ${injuries && isBad(injuries) ? `<div class="app-field"><div class="app-field-lbl">Injuries / History</div><div class="app-field-val">${esc(injuries)}</div></div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
 // ── Tab switching ─────────────────────────────────────────────────────────────
 function switchTab(tab) {
-  const isAthletes = tab === 'athletes';
-  document.getElementById('tab-athletes-content').style.display = isAthletes ? '' : 'none';
-  document.getElementById('tab-coaches-content').style.display  = isAthletes ? 'none' : '';
-  document.getElementById('filter-bar').style.display           = isAthletes ? '' : 'none';
-  document.getElementById('gen-btn').style.display              = isAthletes && _allAthletes.length ? 'block' : 'none';
-
-  document.getElementById('tab-athletes-btn').classList.toggle('active', isAthletes);
-  document.getElementById('tab-coaches-btn').classList.toggle('active', !isAthletes);
+  const tabs = ['athletes','coaches','schedule','applications'];
+  tabs.forEach(t => {
+    const btn = document.getElementById(`tab-${t === 'applications' ? 'apps' : t}-btn`);
+    const content = document.getElementById(`tab-${t === 'applications' ? 'apps' : t}-content`);
+    const active = t === tab;
+    if (btn) btn.classList.toggle('active', active);
+    if (content) content.style.display = active ? '' : 'none';
+  });
+  document.getElementById('filter-bar').style.display = tab === 'athletes' ? '' : 'none';
+  document.getElementById('gen-btn').style.display    = tab === 'athletes' && _allAthletes.length ? 'block' : 'none';
 }
 
 // ── Call Prep toggle ──────────────────────────────────────────────────────────
@@ -1693,13 +1992,14 @@ async function load() {
   document.getElementById('refresh-btn').disabled = true;
 
   try {
-    const [weekly, sessions, body, nutrition, athleteDb, targets] = await Promise.all([
+    const [weekly, sessions, body, nutrition, athleteDb, targets, planning, applications] = await Promise.all([
       fetchDB(DB.weekly), fetchDB(DB.sessions), fetchDB(DB.body),
       fetchDB(DB.nutrition), fetchDB(DB.athletes), fetchDB(DB.targets),
+      fetchDB(DB.planning), fetchDB(DB.applications),
     ]);
 
-    const { athletes, coaches } = buildAll(weekly, sessions, body, nutrition, athleteDb, targets);
-    render({ athletes, coaches });
+    const { athletes, coaches } = buildAll(weekly, sessions, body, nutrition, athleteDb, targets, planning, applications);
+    render({ athletes, coaches, applications });
 
     document.getElementById('loading').style.display = 'none';
     document.getElementById('content').style.display = 'block';
