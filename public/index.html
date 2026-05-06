@@ -465,7 +465,16 @@ header{background:#0a0a0a;padding:0 18px;height:50px;display:flex;align-items:ce
 .wd-session.run .wd-sess-cat{color:var(--run)}
 .wd-session.str .wd-sess-cat{color:var(--str)}
 .wd-sess-name{font-size:13px;font-weight:600;color:var(--text);margin-bottom:3px;line-height:1.4}
-.wd-sess-log{font-family:var(--mono);font-size:10px;color:var(--muted);line-height:1.5;white-space:pre-wrap;word-break:break-word}
+.wd-sess-log{font-family:var(--mono);font-size:10px;color:var(--muted);line-height:1.5}
+.wd-ex-list{display:flex;flex-direction:column;gap:2px;margin-top:4px}
+.wd-ex-row{display:flex;align-items:baseline;gap:8px;min-height:20px}
+.wd-ex-name{font-family:var(--mono);font-size:9px;color:var(--muted);width:160px;flex-shrink:0;line-height:1.4;padding-top:1px;text-transform:capitalize}
+.wd-ex-sets{display:flex;flex-wrap:wrap;gap:3px}
+.wd-ex-set{font-family:var(--mono);font-size:9px;background:var(--surface2);border:1px solid var(--border);padding:1px 6px;border-radius:4px;color:var(--text);white-space:nowrap;line-height:1.5}
+.wd-session.run .wd-ex-set{background:#fff7ed;border-color:#fde68a;color:var(--run)}
+.wd-run-stats{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+.wd-run-stat{font-family:var(--mono);font-size:10px;color:var(--muted)}
+.wd-run-stat strong{color:var(--text);font-size:11px}
 .wd-sess-notes{font-size:11px;color:var(--muted);font-style:italic;margin-top:3px;line-height:1.4}
 .wd-body-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 .wd-nutr-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
@@ -937,9 +946,10 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [
       sessionMap[k] = { ...r, _d: ds, _cat, _isRun, _isStr, _exercises: [] };
     }
     // Accumulate each exercise's log line into _exercises
+    // Note: the Exercise Log field from Make.com already starts with "ExerciseName: Set 1:…"
+    // so we push it directly — no need to prepend the name again.
     const exLine = r['Exercise Log'] || r.exerciseLog || '';
-    const exName = (r.Name || '').split('—').slice(1, -1).join('—').trim();
-    if (exLine) sessionMap[k]._exercises.push(exName ? `${exName}: ${exLine}` : exLine);
+    if (exLine) sessionMap[k]._exercises.push(exLine);
   });
   // Flatten merged sessions into athlete maps
   Object.values(sessionMap).forEach(s => {
@@ -1542,6 +1552,49 @@ function buildCallPrep(a) {
   return { wins, issues, ask };
 }
 
+// ── Exercise log renderer ─────────────────────────────────────────────────────
+// Strength log format: "ExerciseName: Set 1: 40kg × 12reps | Set 2: 65kg × 10reps\n..."
+// Run log format:      "Distance: 13km | Duration: 96min | Pace: 6:40 | RPE: 6.5/10 | Feel: 😐"
+function renderExerciseLog(logStr, isRun) {
+  if (!logStr) return '';
+  if (isRun) {
+    // Parse flat key:value pairs separated by |
+    const parts = logStr.split('|').map(s => s.trim()).filter(Boolean);
+    const stats = parts.map(p => {
+      const ci = p.indexOf(':');
+      if (ci === -1) return p ? `<span class="wd-run-stat">${esc(p)}</span>` : '';
+      const k = p.substring(0, ci).trim();
+      const v = p.substring(ci + 1).trim();
+      return v ? `<span class="wd-run-stat"><strong>${esc(v)}</strong> ${esc(k).toLowerCase()}</span>` : '';
+    }).filter(Boolean).join('');
+    return stats ? `<div class="wd-run-stats">${stats}</div>` : '';
+  }
+  // Strength: one exercise per line, format "ExName: Set 1: Xkg × Yreps | Set 2: ..."
+  const rows = logStr.split('\n').map(line => {
+    line = line.trim();
+    if (!line) return '';
+    const colonSet = line.indexOf(': Set ');
+    if (colonSet === -1) {
+      // Fallback: no sets detected — just show the raw line
+      return `<div class="wd-ex-row"><span class="wd-ex-name" style="width:auto">${esc(line)}</span></div>`;
+    }
+    const exName = line.substring(0, colonSet).trim();
+    const setsStr = line.substring(colonSet + 2); // "Set 1: Xkg × Yreps | Set 2: ..."
+    const setBadges = setsStr.split('|').map(s => {
+      const m = s.trim().match(/Set\s*\d+:\s*(.+)/);
+      const val = m ? m[1].trim() : s.trim();
+      // Compact: "40kg × 12reps" → "40×12"
+      const compact = val.replace(/\s*×\s*/g, '×').replace('reps', '');
+      return compact ? `<span class="wd-ex-set">${esc(compact)}</span>` : '';
+    }).filter(Boolean).join('');
+    return `<div class="wd-ex-row">
+      <span class="wd-ex-name">${esc(exName)}</span>
+      <span class="wd-ex-sets">${setBadges}</span>
+    </div>`;
+  }).filter(Boolean).join('');
+  return rows ? `<div class="wd-ex-list">${rows}</div>` : '';
+}
+
 // ── Full-page Card (clean reading layout for screen-sharing) ─────────────────
 function buildFPCard(a) {
   const w = a.weekly;
@@ -1784,14 +1837,15 @@ function buildFPCard(a) {
           const isStr = s._isStr;
           const cls = isRun ? 'run' : isStr ? 'str' : 'other';
           const catLabel = isRun ? 'Run' : isStr ? 'Lift' : esc(s._cat || '');
-          // Session name: try Session field, then parse from Name "Athlete — Session — Date"
+          // Session name: use Session field (e.g. "Upper A", "🔥 3×3km Tempo")
           const rawName = s.Session || (s.Name || '').split('—').slice(1, -1).join('—').trim() || '';
           const exLog = s['Exercise Log'] || s.exerciseLog || s['Exercises'] || '';
           const notes = s.Notes || s.notes || '';
+          const logHtml = renderExerciseLog(exLog, isRun);
           return `<div class="wd-session ${cls}">
             <div class="wd-sess-cat">${catLabel}</div>
             ${rawName ? `<div class="wd-sess-name">${esc(rawName)}</div>` : ''}
-            ${exLog ? `<div class="wd-sess-log">${esc(exLog)}</div>` : ''}
+            ${logHtml}
             ${notes ? `<div class="wd-sess-notes">${esc(notes)}</div>` : ''}
           </div>`;
         }).join('');
