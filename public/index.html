@@ -449,6 +449,33 @@ header{background:#0a0a0a;padding:0 18px;height:50px;display:flex;align-items:ce
 .week-badge{background:rgba(245,158,11,.18)!important;border-color:rgba(245,158,11,.35)!important}
 .wk-num{color:var(--amber)!important}
 
+/* ── Week detail (day-by-day timeline in FP card) ── */
+.wd-timeline{display:flex;flex-direction:column;gap:0;margin:0 -24px}
+.wd-row{display:flex;gap:0;border-top:1px solid var(--border);padding:12px 24px}
+.wd-row:first-child{border-top:none}
+.wd-row.empty{opacity:.45}
+.wd-date{font-family:var(--mono);font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;width:80px;flex-shrink:0;padding-top:2px;line-height:1.4}
+.wd-rest{font-family:var(--mono);font-size:9px;color:var(--dim);font-style:italic;padding-top:2px}
+.wd-day-content{flex:1;display:flex;flex-direction:column;gap:8px}
+.wd-session{border-radius:8px;padding:10px 12px}
+.wd-session.run{background:#fff7ed;border-left:3px solid var(--run)}
+.wd-session.str{background:#eff6ff;border-left:3px solid var(--str)}
+.wd-session.other{background:var(--surface2);border-left:3px solid var(--border-mid)}
+.wd-sess-cat{font-family:var(--mono);font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px}
+.wd-session.run .wd-sess-cat{color:var(--run)}
+.wd-session.str .wd-sess-cat{color:var(--str)}
+.wd-sess-name{font-size:13px;font-weight:600;color:var(--text);margin-bottom:3px;line-height:1.4}
+.wd-sess-log{font-family:var(--mono);font-size:10px;color:var(--muted);line-height:1.5}
+.wd-sess-notes{font-size:11px;color:var(--muted);font-style:italic;margin-top:3px;line-height:1.4}
+.wd-body-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.wd-nutr-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.wd-metric{font-family:var(--mono);font-size:10px;color:var(--muted);background:var(--surface2);padding:3px 8px;border-radius:20px;white-space:nowrap}
+.wd-metric strong{color:var(--text)}
+.wd-metric.nutr{background:var(--amber-bg);color:var(--amber-text)}
+.wd-metric.nutr strong{color:var(--amber-text)}
+.wd-metric.body-lbl{font-size:8px;text-transform:uppercase;letter-spacing:.06em;opacity:.6;padding:2px 6px}
+.wd-metric.nutr-lbl{font-size:8px;text-transform:uppercase;letter-spacing:.06em;opacity:.6;padding:2px 6px;background:transparent}
+
 /* Responsive ── */
 @media(max-width:600px){
   .filter-bar{top:82px}
@@ -458,6 +485,10 @@ header{background:#0a0a0a;padding:0 18px;height:50px;display:flex;align-items:ce
   .sched-grid{grid-template-columns:1fr}
   .apps-grid{grid-template-columns:1fr}
   .search-input{width:100%}
+  .fpc-train-pair{grid-template-columns:1fr}
+  .fpc-body-nutr{grid-template-columns:1fr}
+  .fpc-scores{grid-template-columns:repeat(3,1fr)}
+  .wd-date{width:60px}
 }
 </style>
 </head>
@@ -870,14 +901,20 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [
 
   // Sessions — keep 21 days so prev-week sessions are always available
   // for the "Week in Progress" prev-week fallback at the start of a new week
+  // _cat normalises the session category regardless of which field Make.com writes to:
+  //   coaches-side Notion may use "Session Category", while the athlete run-log webhook
+  //   writes "type":"Run" which Make.com may land in a field called "Type" or "type".
   const seen = new Set();
   sessions.forEach(r => {
     const id = sid(r);
     if (!id || !map[id]) return;
     const ds = ((r.Date || r['Submitted At'] || r._createdTime || '')).split('T')[0];
     if (!ds || new Date(ds) < c21) return;
-    const k = `${id}|${r.Session || ''}|${r['Session Category'] || ''}|${ds}`;
-    if (!seen.has(k)) { seen.add(k); map[id].sessions.push({ ...r, _d: ds }); }
+    const _cat = (r['Session Category'] || r.Type || r.type || '').trim();
+    const _isRun = _cat === 'Running' || _cat === 'Run';
+    const _isStr = _cat === 'Strength' || _cat === 'Lift';
+    const k = `${id}|${r.Session || ''}|${_cat}|${ds}`;
+    if (!seen.has(k)) { seen.add(k); map[id].sessions.push({ ...r, _d: ds, _cat, _isRun, _isStr }); }
   });
 
   // Derive stats
@@ -905,13 +942,13 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [
     };
 
     const s7 = a.sessions.filter(s => new Date(s._d) >= c7);
-    const runS = s7.filter(s => s['Session Category'] === 'Running' || s['Session Category'] === 'Run');
-    const strS = s7.filter(s => s['Session Category'] === 'Strength');
+    const runS = s7.filter(s => s._isRun);
+    const strS = s7.filter(s => s._isStr);
 
     // Current-week sessions (Mon → now) — resets each Monday regardless of check-in
     const sCurr = a.sessions.filter(s => new Date(s._d) >= currentWeekStart);
-    const currRunS = sCurr.filter(s => s['Session Category'] === 'Running' || s['Session Category'] === 'Run');
-    const currStrS = sCurr.filter(s => s['Session Category'] === 'Strength');
+    const currRunS = sCurr.filter(s => s._isRun);
+    const currStrS = sCurr.filter(s => s._isStr);
 
     // Previous calendar week sessions (Mon–Sun before currentWeekStart)
     // Used to show activity when an athlete hasn't checked in yet at the start of a new week
@@ -921,8 +958,8 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [
       const d = new Date(s._d);
       return d >= prevWeekStart && d < currentWeekStart;
     });
-    const prevRunS = sPrev.filter(s => s['Session Category'] === 'Running' || s['Session Category'] === 'Run');
-    const prevStrS = sPrev.filter(s => s['Session Category'] === 'Strength');
+    const prevRunS = sPrev.filter(s => s._isRun);
+    const prevStrS = sPrev.filter(s => s._isStr);
 
     // Compliance
     const w = a.weekly;
@@ -1674,6 +1711,103 @@ function buildFPCard(a) {
     ? `<div class="${bodyHtml && nutrHtml ? 'fpc-body-nutr' : ''}" style="${bodyHtml && nutrHtml ? '' : 'margin-bottom:16px'}">${bodyHtml}${nutrHtml}</div>`
     : '';
 
+  // ── Day-by-day week detail ────────────────────────────────────────────────
+  let weekDetailHtml = '';
+  {
+    // Build a list of days from Mon of current week up to today (inclusive)
+    const days = [];
+    const todayStr = localDateStr(new Date());
+    const weekStartStr = localDateStr(currentWeekStart);
+    for (let d = new Date(currentWeekStart); localDateStr(d) <= todayStr; d.setDate(d.getDate() + 1)) {
+      days.push(localDateStr(new Date(d)));
+    }
+
+    if (days.length) {
+      const dayRows = days.map(dateStr => {
+        const dt = new Date(dateStr + 'T12:00:00');
+        const dayLabel = dt.toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' });
+
+        // Sessions for this day
+        const daySessions = a.sessions.filter(s => s._d === dateStr);
+
+        // Body log for this day
+        const dayBody = a.body.find(r => (r['date:Date:start'] || r.Date || '').split('T')[0] === dateStr);
+
+        // Nutrition log for this day
+        const dayNutr = a.nutrition.find(r => (r['date:Date:start'] || r.Date || '').split('T')[0] === dateStr);
+
+        const hasData = daySessions.length > 0 || dayBody || dayNutr;
+
+        if (!hasData) {
+          return `<div class="wd-row empty">
+            <div class="wd-date">${dayLabel}</div>
+            <div class="wd-rest">No data logged</div>
+          </div>`;
+        }
+
+        // Sessions
+        const sessHtml = daySessions.map(s => {
+          const isRun = s._isRun;
+          const isStr = s._isStr;
+          const cls = isRun ? 'run' : isStr ? 'str' : 'other';
+          const catLabel = isRun ? 'Run' : isStr ? 'Lift' : esc(s._cat || '');
+          // Session name: try Session field, then parse from Name "Athlete — Session — Date"
+          const rawName = s.Session || (s.Name || '').split('—').slice(1, -1).join('—').trim() || '';
+          const exLog = s['Exercise Log'] || s.exerciseLog || s['Exercises'] || '';
+          const notes = s.Notes || s.notes || '';
+          return `<div class="wd-session ${cls}">
+            <div class="wd-sess-cat">${catLabel}</div>
+            ${rawName ? `<div class="wd-sess-name">${esc(rawName)}</div>` : ''}
+            ${exLog ? `<div class="wd-sess-log">${esc(exLog)}</div>` : ''}
+            ${notes ? `<div class="wd-sess-notes">${esc(notes)}</div>` : ''}
+          </div>`;
+        }).join('');
+
+        // Body metrics
+        let bodyRowHtml = '';
+        if (dayBody) {
+          const bParts = [
+            dayBody.Weight       ? `<span class="wd-metric"><strong>${esc(dayBody.Weight)}</strong> kg</span>` : '',
+            dayBody['Sleep Score'] !== undefined && dayBody['Sleep Score'] !== null
+              ? `<span class="wd-metric">💤 <strong>${esc(dayBody['Sleep Score'])}</strong> sleep</span>` : '',
+            dayBody.Energy       ? `<span class="wd-metric">⚡ <strong>${esc(dayBody.Energy)}</strong> energy</span>` : '',
+            dayBody.Stress       ? `<span class="wd-metric">🧠 <strong>${esc(dayBody.Stress)}</strong> stress</span>` : '',
+            dayBody.Soreness     ? `<span class="wd-metric">💪 <strong>${esc(dayBody.Soreness)}</strong> sore</span>` : '',
+          ].filter(Boolean).join('');
+          if (bParts) bodyRowHtml = `<div class="wd-body-row">
+            <span class="wd-metric body-lbl">Body</span>${bParts}</div>`;
+        }
+
+        // Nutrition metrics
+        let nutrRowHtml = '';
+        if (dayNutr) {
+          const nParts = [
+            dayNutr.Calories ? `<span class="wd-metric nutr"><strong>${esc(dayNutr.Calories)}</strong> kcal</span>` : '',
+            dayNutr.Protein  ? `<span class="wd-metric nutr"><strong>${esc(dayNutr.Protein)}g</strong> P</span>` : '',
+            dayNutr.Carbs    ? `<span class="wd-metric nutr"><strong>${esc(dayNutr.Carbs)}g</strong> C</span>` : '',
+            dayNutr.Fats     ? `<span class="wd-metric nutr"><strong>${esc(dayNutr.Fats)}g</strong> F</span>` : '',
+          ].filter(Boolean).join('');
+          if (nParts) nutrRowHtml = `<div class="wd-nutr-row">
+            <span class="wd-metric nutr-lbl">Nutr</span>${nParts}</div>`;
+        }
+
+        return `<div class="wd-row">
+          <div class="wd-date">${dayLabel}</div>
+          <div class="wd-day-content">
+            ${sessHtml}
+            ${bodyRowHtml}
+            ${nutrRowHtml}
+          </div>
+        </div>`;
+      });
+
+      weekDetailHtml = `<div class="fpc-section">
+        <div class="fpc-section-title">This Week — Day by Day · ${weekStartStr} → ${todayStr}</div>
+        <div class="wd-timeline">${dayRows.join('')}</div>
+      </div>`;
+    }
+  }
+
   // Call Prep (always expanded)
   const callPrep = buildCallPrep(a);
   const savedNote = callNotes[a.id] || '';
@@ -1711,6 +1845,7 @@ function buildFPCard(a) {
     ${wipHtml}
     ${scoresHtml}
     ${trainingHtml}
+    ${weekDetailHtml}
     ${bodyNutrPart}
     ${callPrepHtml}
   </div>`;
