@@ -465,7 +465,7 @@ header{background:#0a0a0a;padding:0 18px;height:50px;display:flex;align-items:ce
 .wd-session.run .wd-sess-cat{color:var(--run)}
 .wd-session.str .wd-sess-cat{color:var(--str)}
 .wd-sess-name{font-size:13px;font-weight:600;color:var(--text);margin-bottom:3px;line-height:1.4}
-.wd-sess-log{font-family:var(--mono);font-size:10px;color:var(--muted);line-height:1.5}
+.wd-sess-log{font-family:var(--mono);font-size:10px;color:var(--muted);line-height:1.5;white-space:pre-wrap;word-break:break-word}
 .wd-sess-notes{font-size:11px;color:var(--muted);font-style:italic;margin-top:3px;line-height:1.4}
 .wd-body-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 .wd-nutr-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
@@ -899,22 +899,55 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [
     if (d && new Date(d) >= c14) map[id].nutrition.push(r);
   });
 
+  // ── Session date parser ──────────────────────────────────────────────────────
+  // Make.com writes the Date field as "DD/MM/YYYY HH:MM" (Australian format).
+  // JS new Date() treats the leading segment as MM (American), so "04/05/2026"
+  // becomes April 5 instead of May 4 — placing it outside the 21-day window and
+  // silently dropping the entry. We detect this format and swap DD↔MM first.
+  function parseSessionDate(raw) {
+    if (!raw) return null;
+    const s = String(raw).trim();
+    // DD/MM/YYYY HH:MM  — the Make.com format
+    const ddmm = s.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+    if (ddmm) return `${ddmm[3]}-${ddmm[2]}-${ddmm[1]}`; // → YYYY-MM-DD
+    // ISO / fallback — split on T and take the date part
+    return s.split('T')[0];
+  }
+
   // Sessions — keep 21 days so prev-week sessions are always available
   // for the "Week in Progress" prev-week fallback at the start of a new week
   // _cat normalises the session category regardless of which field Make.com writes to:
   //   coaches-side Notion may use "Session Category", while the athlete run-log webhook
   //   writes "type":"Run" which Make.com may land in a field called "Type" or "type".
-  const seen = new Set();
+  // Each Notion row is one exercise. We merge them into one session entry per
+  // athlete+sessionName+category+date, concatenating the Exercise Log lines so
+  // the FP card shows the full workout rather than just the first exercise.
+  const sessionMap = {}; // key → merged session entry
   sessions.forEach(r => {
     const id = sid(r);
     if (!id || !map[id]) return;
-    const ds = ((r.Date || r['Submitted At'] || r._createdTime || '')).split('T')[0];
+    const ds = parseSessionDate(r.Date) || parseSessionDate(r['Submitted At']) || parseSessionDate(r._createdTime);
     if (!ds || new Date(ds) < c21) return;
     const _cat = (r['Session Category'] || r.Type || r.type || '').trim();
     const _isRun = _cat === 'Running' || _cat === 'Run';
     const _isStr = _cat === 'Strength' || _cat === 'Lift';
-    const k = `${id}|${r.Session || ''}|${_cat}|${ds}`;
-    if (!seen.has(k)) { seen.add(k); map[id].sessions.push({ ...r, _d: ds, _cat, _isRun, _isStr }); }
+    const sessionName = r.Session || '';
+    const k = `${id}|${sessionName}|${_cat}|${ds}`;
+    if (!sessionMap[k]) {
+      sessionMap[k] = { ...r, _d: ds, _cat, _isRun, _isStr, _exercises: [] };
+    }
+    // Accumulate each exercise's log line into _exercises
+    const exLine = r['Exercise Log'] || r.exerciseLog || '';
+    const exName = (r.Name || '').split('—').slice(1, -1).join('—').trim();
+    if (exLine) sessionMap[k]._exercises.push(exName ? `${exName}: ${exLine}` : exLine);
+  });
+  // Flatten merged sessions into athlete maps
+  Object.values(sessionMap).forEach(s => {
+    const id = sid(s);
+    if (!id || !map[id]) return;
+    // Build a combined Exercise Log from all accumulated lines
+    s['Exercise Log'] = s._exercises.join('\n');
+    map[id].sessions.push(s);
   });
 
   // Derive stats
