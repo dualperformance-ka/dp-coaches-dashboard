@@ -1704,7 +1704,7 @@ function buildCard(a) {
           const weeksBehind = Math.round(
             (new Date(currentWeekEnd) - new Date(submittedEnd)) / (7 * 86400000)
           );
-          dataWeekNum = Math.max(1, a.weekNum - weeksBehind);
+          dataWeekNum = Math.max(0, a.weekNum - weeksBehind);
         }
         const label = dataWeekNum === null ? 'Training'
           : dataWeekNum === 0 ? 'Discovery Week Training'
@@ -2162,7 +2162,7 @@ function buildFPCard(a) {
       const weeksBehind = Math.round(
         (new Date(currentWeekEnd) - new Date(submittedEnd)) / (7 * 86400000)
       );
-      dataWeekNum = Math.max(1, a.weekNum - weeksBehind);
+      dataWeekNum = Math.max(0, a.weekNum - weeksBehind);
     }
     const trainingLabel = dataWeekNum === null ? 'Training'
       : dataWeekNum === 0 ? 'Discovery Week Training'
