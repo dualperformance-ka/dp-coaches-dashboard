@@ -1243,7 +1243,7 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [
   // Weekly — keep latest per athlete
   const wl = {};
   weekly.forEach(r => {
-    const id = nid(r.Name);
+    const id = nid((r.Name || '').split('\u2014')[0].split('--')[0].trim());
     if (!id || !r['Week Ending']) return;
     if (!wl[id] || r['Week Ending'] > wl[id]['Week Ending']) wl[id] = r;
   });
@@ -2117,24 +2117,6 @@ function buildFPCard(a) {
         <div class="fpc-sess"><div class="fpc-sess-num run">${rCount}</div><div class="fpc-sess-lbl">Run Sessions</div></div>
         <div class="fpc-sess"><div class="fpc-sess-num str">${sCount}</div><div class="fpc-sess-lbl">Strength Sessions</div></div>
       </div>
-      ${a.currRunS.length > 0 ? (() => {
-        const _rLogs = a.currRunS.map(s => {
-          const log = s['Exercise Log'] || '';
-          const dist = (log.match(/Distance:\s*([\d.]+\s*km)/i)||[])[1] || '';
-          const dur  = (log.match(/Duration:\s*([\d]+)\s*min/i)||[])[1] || '';
-          const pace = (log.match(/Pace:\s*([0-9:]+)/i)||[])[1] || '';
-          const rpe  = (log.match(/RPE:\s*([\d.]+)/i)||[])[1] || '';
-          const feel = (log.match(/Feel:\s*(\S+)/i)||[])[1] || '';
-          const name = s.Session || s.Name || s.title || 'Run';
-          const parts = [dist, pace ? pace+'/km' : '', dur ? dur+'min' : '', rpe ? 'RPE '+rpe : '', feel].filter(Boolean).join(' \u00b7 ');
-          return '<div style="display:flex;justify-content:space-between;align-items:baseline;padding:3px 0;border-bottom:1px solid rgba(239,107,64,.1)">'
-            + '<span style="font-family:var(--mono);font-size:9px;font-weight:700;color:var(--run);text-transform:uppercase;letter-spacing:.05em">' + esc(name) + '</span>'
-            + '<span style="font-family:var(--mono);font-size:9px;color:var(--muted)">' + (esc(parts)||'\u2014') + '</span>'
-            + '</div>';
-        }).join('');
-        return '<div style="margin-top:10px;padding:8px 12px;background:rgba(239,107,64,.06);border-radius:8px;border:1px solid rgba(239,107,64,.14)">' + _rLogs + '</div>';
-      })() : ''}
-
       ${noThisWeek && !showPrev ? `<div style="font-family:var(--mono);font-size:10px;color:var(--dim);margin-top:12px">No sessions logged yet this week</div>` : ''}
       ${showPrev ? `<div style="font-family:var(--mono);font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;margin-top:16px;margin-bottom:10px">Last week's sessions</div>
         <div class="fpc-sess-row">
@@ -2218,17 +2200,48 @@ function buildFPCard(a) {
     const bLast = [...a.body].sort((x, y) =>
       (y['date:Date:start'] || y.Date || '') > (x['date:Date:start'] || x.Date || '') ? 1 : -1)[0];
     const bn = bLast?.Notes;
-    bodyHtml = `<div class="fpc-section" style="margin-bottom:0">
-      <div class="fpc-section-title">Body — 7-day avg</div>
-      ${a.bAvg.wt !== undefined ? `<div class="fpc-weight">${esc(a.bAvg.wt)}<span class="fpc-weight-unit">kg</span></div>
-      <div class="fpc-weight-date">${fmtDate(a.bAvg.wtd)}</div>` : ''}
-      <div class="fpc-metric-grid">
-        ${[{l:'Sleep',v:a.bAvg.sleep},{l:'Energy',v:a.bAvg.energy},{l:'Stress',v:a.bAvg.stress},{l:'Soreness',v:a.bAvg.soreness}].map(m =>
-          `<div class="fpc-metric"><div class="fpc-metric-val">${m.v !== null ? m.v : '—'}</div><div class="fpc-metric-lbl">${m.l}</div></div>`
-        ).join('')}
-      </div>
-      ${bn ? `<div class="fpc-bnote">${esc(bn)}</div>` : ''}
-    </div>`;
+    // Build weight trend sparkline SVG
+    const _wtSeries = buildTimeseries(a.body, 'date:Date:start', 'Weight', 28);
+    const _wtPts = _wtSeries.filter(p => p.value !== null);
+    let _sparkSvg = '';
+    if (_wtPts.length >= 2) {
+      const _W = 220, _H = 44, _pad = 4;
+      const _vals = _wtPts.map(p => p.value);
+      const _minV = Math.min(..._vals), _maxV = Math.max(..._vals);
+      const _rng = _maxV - _minV || 1;
+      const _xStep = (_W - _pad * 2) / (_wtPts.length - 1);
+      const _pts = _wtPts.map((p, i) => {
+        const x = _pad + i * _xStep;
+        const y = _pad + (_H - _pad * 2) * (1 - (p.value - _minV) / _rng);
+        return x.toFixed(1) + ',' + y.toFixed(1);
+      }).join(' ');
+      const _last = _wtPts[_wtPts.length - 1];
+      const _prev = _wtPts[0];
+      const _diff = (_last.value - _prev.value).toFixed(1);
+      const _diffTxt = (_diff > 0 ? '+' : '') + _diff + ' kg';
+      const _diffCol = Math.abs(_diff) < 0.3 ? '#9ca3af' : (_diff < 0 ? '#22c55e' : '#ef4444');
+      _sparkSvg = '<div style="margin-bottom:10px">'
+        + '<div style="display:flex;align-items:baseline;gap:10px;margin-bottom:4px">'
+        + '<span style="font-size:36px;font-weight:900;line-height:1;letter-spacing:-.02em">' + esc(String(_last.value)) + '</span>'
+        + '<span style="font-family:var(--mono);font-size:11px;color:var(--dim)">kg</span>'
+        + '<span style="font-family:var(--mono);font-size:10px;font-weight:700;color:' + _diffCol + ';margin-left:4px">' + _diffTxt + ' (28d)</span>'
+        + '</div>'
+        + '<svg viewBox="0 0 ' + _W + ' ' + _H + '" width="100%" height="' + _H + '" style="display:block;overflow:visible">'
+        + '<polyline points="' + _pts + '" fill="none" stroke="var(--str)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'
+        + '<circle cx="' + (_pad + (_wtPts.length - 1) * _xStep).toFixed(1) + '" cy="' + (_pad + (_H - _pad * 2) * (1 - (_last.value - _minV) / _rng)).toFixed(1) + '" r="3.5" fill="var(--str)"/>'
+        + '</svg>'
+        + '</div>';
+    }
+    bodyHtml = '<div class="fpc-section" style="margin-bottom:0">'
+      + '<div class="fpc-section-title">Body</div>'
+      + (a.bAvg.wt !== undefined ? _sparkSvg || ('<div class="fpc-weight">' + esc(String(a.bAvg.wt)) + '<span class="fpc-weight-unit">kg</span></div><div class="fpc-weight-date">' + fmtDate(a.bAvg.wtd) + '</div>') : '')
+      + '<div class="fpc-metric-grid">'
+      + [{l:'Sleep',v:a.bAvg.sleep},{l:'Energy',v:a.bAvg.energy},{l:'Stress',v:a.bAvg.stress},{l:'Soreness',v:a.bAvg.soreness}].map(m =>
+          '<div class="fpc-metric"><div class="fpc-metric-val">' + (m.v !== null ? m.v : '—') + '</div><div class="fpc-metric-lbl">' + m.l + '</div></div>'
+        ).join('')
+      + '</div>'
+      + (bn ? '<div class="fpc-bnote">' + esc(bn) + '</div>' : '')
+      + '</div>';
   }
 
   // Nutrition
@@ -2478,7 +2491,12 @@ function buildFPCard(a) {
           <div class="trend-card-delta ${dirCls}">${deltaTxt}</div>
         </div>
         ${trendSVG(series, c.color)}
-        <div class="trend-card-foot">14d · ${valid.length} entries</div>
+        <div class="trend-card-foot">${(() => {
+          const vdates = valid.map(p => p.date).sort();
+          if (vdates.length < 2) return valid.length + ' entry';
+          const fmt = d => { const [,m,dy] = d.split('-'); const mn = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][+m-1]; return dy.replace(/^0/,'') + ' ' + mn; };
+          return fmt(vdates[0]) + ' – ' + fmt(vdates[vdates.length-1]) + ' · ' + valid.length + ' entries';
+        })()}</div>
       </div>`;
     }).filter(Boolean).join('');
     if (cardsHtml) {
