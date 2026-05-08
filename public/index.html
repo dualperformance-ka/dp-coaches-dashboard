@@ -2126,14 +2126,15 @@ function buildFPCard(a) {
           const rpe  = (log.match(/RPE:\s*([\d.]+)/i)||[])[1] || '';
           const feel = (log.match(/Feel:\s*(\S+)/i)||[])[1] || '';
           const name = s.Session || s.Name || s.title || 'Run';
-          const parts = [dist, pace ? pace+'/km' : '', dur ? dur+'min' : '', rpe ? 'RPE '+rpe : '', feel].filter(Boolean).join(' · ');
-          return \`<div style="display:flex;justify-content:space-between;align-items:baseline;padding:3px 0;border-bottom:1px solid rgba(239,107,64,.1)">
-            <span style="font-family:var(--mono);font-size:9px;font-weight:700;color:var(--run);text-transform:uppercase;letter-spacing:.05em">\${esc(name)}</span>
-            <span style="font-family:var(--mono);font-size:9px;color:var(--muted)">\${esc(parts)||'—'}</span>
-          </div>\`;
+          const parts = [dist, pace ? pace+'/km' : '', dur ? dur+'min' : '', rpe ? 'RPE '+rpe : '', feel].filter(Boolean).join(' \u00b7 ');
+          return '<div style="display:flex;justify-content:space-between;align-items:baseline;padding:3px 0;border-bottom:1px solid rgba(239,107,64,.1)">'
+            + '<span style="font-family:var(--mono);font-size:9px;font-weight:700;color:var(--run);text-transform:uppercase;letter-spacing:.05em">' + esc(name) + '</span>'
+            + '<span style="font-family:var(--mono);font-size:9px;color:var(--muted)">' + (esc(parts)||'\u2014') + '</span>'
+            + '</div>';
         }).join('');
-        return \`<div style="margin-top:10px;padding:8px 12px;background:rgba(239,107,64,.06);border-radius:8px;border:1px solid rgba(239,107,64,.14)">\${_rLogs}</div>\`;
+        return '<div style="margin-top:10px;padding:8px 12px;background:rgba(239,107,64,.06);border-radius:8px;border:1px solid rgba(239,107,64,.14)">' + _rLogs + '</div>';
       })() : ''}
+
       ${noThisWeek && !showPrev ? `<div style="font-family:var(--mono);font-size:10px;color:var(--dim);margin-top:12px">No sessions logged yet this week</div>` : ''}
       ${showPrev ? `<div style="font-family:var(--mono);font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;margin-top:16px;margin-bottom:10px">Last week's sessions</div>
         <div class="fpc-sess-row">
