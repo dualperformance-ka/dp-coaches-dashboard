@@ -1624,8 +1624,22 @@ function buildCard(a) {
   // how far into the week they are — separate from last week's completed data.
   let weekInProgress = '';
   if (!a.hasCurrentCheckin) {
-    const rCount  = a.currRunS.length;
-    const sCount  = a.currStrS.length;
+    // Count completed planned sessions from athlete portal (ticked circles)
+    const _RUN_PT = new Set(['Run','Tempo','Speed','Long Run','Easy Effort','race','Recovery','Run + Strength']);
+    const _STR_PT = new Set(['Strength','Lift','Run + Strength']);
+    const _planRun = (a.thisWeekPlan||[]).filter(r => {
+      const st = (r['Status '] || r['Status'] || '').trim();
+      const ty = (r['Session Type'] || r['SessionType'] || '').trim();
+      return st === 'Completed' && _RUN_PT.has(ty);
+    }).length;
+    const _planStr = (a.thisWeekPlan||[]).filter(r => {
+      const st = (r['Status '] || r['Status'] || '').trim();
+      const ty = (r['Session Type'] || r['SessionType'] || '').trim();
+      return st === 'Completed' && _STR_PT.has(ty);
+    }).length;
+    // Use max of quality-data submissions vs portal ticks (no double-counting)
+    const rCount  = Math.max(a.currRunS.length, _planRun);
+    const sCount  = Math.max(a.currStrS.length, _planStr);
     const prCount = a.prevRunS.length;
     const psCount = a.prevStrS.length;
     const noThisWeek = rCount === 0 && sCount === 0;
@@ -2077,8 +2091,22 @@ function buildFPCard(a) {
   // Week-in-progress
   let wipHtml = '';
   if (!a.hasCurrentCheckin) {
-    const rCount  = a.currRunS.length;
-    const sCount  = a.currStrS.length;
+    // Count completed planned sessions from athlete portal (ticked circles)
+    const _RUN_PT = new Set(['Run','Tempo','Speed','Long Run','Easy Effort','race','Recovery','Run + Strength']);
+    const _STR_PT = new Set(['Strength','Lift','Run + Strength']);
+    const _planRun = (a.thisWeekPlan||[]).filter(r => {
+      const st = (r['Status '] || r['Status'] || '').trim();
+      const ty = (r['Session Type'] || r['SessionType'] || '').trim();
+      return st === 'Completed' && _RUN_PT.has(ty);
+    }).length;
+    const _planStr = (a.thisWeekPlan||[]).filter(r => {
+      const st = (r['Status '] || r['Status'] || '').trim();
+      const ty = (r['Session Type'] || r['SessionType'] || '').trim();
+      return st === 'Completed' && _STR_PT.has(ty);
+    }).length;
+    // Use max of quality-data submissions vs portal ticks (no double-counting)
+    const rCount  = Math.max(a.currRunS.length, _planRun);
+    const sCount  = Math.max(a.currStrS.length, _planStr);
     const prCount = a.prevRunS.length;
     const psCount = a.prevStrS.length;
     const noThisWeek = rCount === 0 && sCount === 0;
@@ -2089,6 +2117,23 @@ function buildFPCard(a) {
         <div class="fpc-sess"><div class="fpc-sess-num run">${rCount}</div><div class="fpc-sess-lbl">Run Sessions</div></div>
         <div class="fpc-sess"><div class="fpc-sess-num str">${sCount}</div><div class="fpc-sess-lbl">Strength Sessions</div></div>
       </div>
+      ${a.currRunS.length > 0 ? (() => {
+        const _rLogs = a.currRunS.map(s => {
+          const log = s['Exercise Log'] || '';
+          const dist = (log.match(/Distance:\s*([\d.]+\s*km)/i)||[])[1] || '';
+          const dur  = (log.match(/Duration:\s*([\d]+)\s*min/i)||[])[1] || '';
+          const pace = (log.match(/Pace:\s*([0-9:]+)/i)||[])[1] || '';
+          const rpe  = (log.match(/RPE:\s*([\d.]+)/i)||[])[1] || '';
+          const feel = (log.match(/Feel:\s*(\S+)/i)||[])[1] || '';
+          const name = s.Session || s.Name || s.title || 'Run';
+          const parts = [dist, pace ? pace+'/km' : '', dur ? dur+'min' : '', rpe ? 'RPE '+rpe : '', feel].filter(Boolean).join(' · ');
+          return \`<div style="display:flex;justify-content:space-between;align-items:baseline;padding:3px 0;border-bottom:1px solid rgba(239,107,64,.1)">
+            <span style="font-family:var(--mono);font-size:9px;font-weight:700;color:var(--run);text-transform:uppercase;letter-spacing:.05em">\${esc(name)}</span>
+            <span style="font-family:var(--mono);font-size:9px;color:var(--muted)">\${esc(parts)||'—'}</span>
+          </div>\`;
+        }).join('');
+        return \`<div style="margin-top:10px;padding:8px 12px;background:rgba(239,107,64,.06);border-radius:8px;border:1px solid rgba(239,107,64,.14)">\${_rLogs}</div>\`;
+      })() : ''}
       ${noThisWeek && !showPrev ? `<div style="font-family:var(--mono);font-size:10px;color:var(--dim);margin-top:12px">No sessions logged yet this week</div>` : ''}
       ${showPrev ? `<div style="font-family:var(--mono);font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;margin-top:16px;margin-bottom:10px">Last week's sessions</div>
         <div class="fpc-sess-row">
