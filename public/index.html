@@ -476,6 +476,28 @@ header{background:#0a0a0a;padding:0 18px;height:62px;display:flex;align-items:ce
 .sched-session-name{font-size:11px;color:var(--muted);line-height:1.4;flex:1}
 .sched-status-icon{font-size:11px;flex-shrink:0}
 
+/* ── Sync Health tab ── */
+.sync-section{max-width:1400px;margin:0 auto;padding:14px 14px 40px}
+.sync-intro{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:13px 18px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.sync-intro-title{font-family:var(--mono);font-size:9px;font-weight:800;color:var(--text);text-transform:uppercase;letter-spacing:.12em}
+.sync-intro-sub{font-size:12px;color:var(--muted);margin-top:3px}
+.sync-score-row{display:flex;gap:8px;flex-wrap:wrap}
+.sync-score{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:7px 10px;min-width:76px}
+.sync-score-num{font-size:18px;font-weight:900;line-height:1}
+.sync-score-num.good{color:var(--ok)}.sync-score-num.warn{color:var(--warn)}.sync-score-num.bad{color:var(--alert)}
+.sync-score-lbl{font-family:var(--mono);font-size:7px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;margin-top:3px}
+.sync-table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:auto}
+.sync-table{width:100%;border-collapse:collapse;min-width:980px}
+.sync-table th{position:sticky;top:0;background:#0a0a0a;color:rgba(255,255,255,.65);font-family:var(--mono);font-size:8px;text-transform:uppercase;letter-spacing:.1em;text-align:left;padding:9px 10px;white-space:nowrap}
+.sync-table td{border-top:1px solid var(--border);padding:9px 10px;font-size:12px;color:var(--muted);vertical-align:middle;white-space:nowrap}
+.sync-table tr.bad td{background:#fff7f7}.sync-table tr.warn td{background:#fffaf0}
+.sync-name{font-family:var(--cond);font-size:20px;font-weight:900;letter-spacing:.05em;text-transform:uppercase;color:var(--text)}
+.sync-pill{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;border-radius:20px;padding:3px 8px;border:1px solid}
+.sync-pill.good{background:var(--green-bg);border-color:var(--green-border);color:var(--green-text)}
+.sync-pill.warn{background:var(--amber-bg);border-color:var(--amber-border);color:var(--amber-text)}
+.sync-pill.bad{background:var(--red-bg);border-color:var(--red-border);color:var(--red-text)}
+.sync-muted{font-family:var(--mono);font-size:10px;color:var(--dim)}
+
 /* ── Applications tab ── */
 .apps-section{max-width:1400px;margin:0 auto;padding:14px 14px 40px}
 .apps-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:11px}
@@ -671,6 +693,9 @@ header{background:#0a0a0a;padding:0 18px;height:62px;display:flex;align-items:ce
   <button class="tab" id="tab-schedule-btn" onclick="switchTab('schedule')">
     Schedule <span class="tab-badge" id="tab-sched-count">—</span>
   </button>
+  <button class="tab" id="tab-sync-btn" onclick="switchTab('sync')">
+    Sync <span class="tab-badge" id="tab-sync-count">—</span>
+  </button>
   <button class="tab" id="tab-apps-btn" onclick="switchTab('applications')">
     Pipeline <span class="tab-badge" id="tab-apps-count">—</span>
   </button>
@@ -728,6 +753,39 @@ header{background:#0a0a0a;padding:0 18px;height:62px;display:flex;align-items:ce
   <div class="sched-section">
     <div class="sched-intro" id="sched-intro">Week ending <span id="sched-week-end">—</span> · Planned sessions for all athletes</div>
     <div class="sched-grid" id="sched-grid"></div>
+  </div>
+</div>
+
+<!-- SYNC HEALTH TAB -->
+<div id="tab-sync-content" style="display:none">
+  <div class="sync-section">
+    <div class="sync-intro">
+      <div>
+        <div class="sync-intro-title">Athlete Data Sync Health</div>
+        <div class="sync-intro-sub">Checks whether each athlete ID is matching across master profile, weekly check-in, daily tracking, sessions, planning, and targets.</div>
+      </div>
+      <div class="sync-score-row" id="sync-score-row"></div>
+    </div>
+    <div class="sync-table-wrap">
+      <table class="sync-table">
+        <thead>
+          <tr>
+            <th>Athlete</th>
+            <th>Status</th>
+            <th>Master</th>
+            <th>Start Date</th>
+            <th>Weekly</th>
+            <th>Body 14d</th>
+            <th>Nutrition 14d</th>
+            <th>Sessions 21d</th>
+            <th>Plan This Week</th>
+            <th>Target</th>
+            <th>Issue</th>
+          </tr>
+        </thead>
+        <tbody id="sync-table-body"></tbody>
+      </table>
+    </div>
   </div>
 </div>
 
@@ -1236,6 +1294,11 @@ async function fetchDB(dbId) {
 function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [], planning = [], applications = []) {
   const c21 = dago(21), c14 = dago(14), c7 = dago(7);
   const map = {};
+  const masterIds = new Set();
+  const bodyCounts = {};
+  const nutritionCounts = {};
+  const sessionCounts = {};
+  const planCounts = {};
 
   function ens(id) {
     if (!id || id.length < 2) return;
@@ -1246,6 +1309,7 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [
   athleteDb.forEach(r => {
     const code = nid(r.Code || r.Athlete);
     const sd = r['date:Start Date:start'] || r['Start Date'];
+    if (code) masterIds.add(code);
     if (code && sd) startDates[code] = sd;
   });
 
@@ -1306,7 +1370,10 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [
     if (!id) return;
     ens(id);
     const d = r['date:Date:start'] || r.Date;
-    if (d && new Date(d) >= c14) map[id].body.push(r);
+    if (d && new Date(d) >= c14) {
+      bodyCounts[id] = (bodyCounts[id] || 0) + 1;
+      map[id].body.push(r);
+    }
   });
 
   // Nutrition (14d)
@@ -1315,7 +1382,10 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [
     if (!id) return;
     ens(id);
     const d = r['date:Date:start'] || r.Date;
-    if (d && new Date(d) >= c14) map[id].nutrition.push(r);
+    if (d && new Date(d) >= c14) {
+      nutritionCounts[id] = (nutritionCounts[id] || 0) + 1;
+      map[id].nutrition.push(r);
+    }
   });
 
   // ── Session date parser ──────────────────────────────────────────────────────
@@ -1344,9 +1414,11 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [
   const sessionMap = {}; // key → merged session entry
   sessions.forEach(r => {
     const id = sid(r);
-    if (!id || !map[id]) return;
+    if (!id) return;
     const ds = parseSessionDate(r.Date) || parseSessionDate(r['Submitted At']) || parseSessionDate(r._createdTime);
     if (!ds || new Date(ds) < c21) return;
+    sessionCounts[id] = (sessionCounts[id] || 0) + 1;
+    if (!map[id]) return;
     const _cat = (r['Session Category'] || r.Type || r.type || '').trim();
     const _isRun = _cat === 'Running' || _cat === 'Run';
     const _isStr = _cat === 'Strength' || _cat === 'Lift';
@@ -1368,6 +1440,17 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [
     // Build a combined Exercise Log from all accumulated lines
     s['Exercise Log'] = s._exercises.join('\n');
     map[id].sessions.push(s);
+  });
+
+  planning.forEach(r => {
+    const id = getPlanningAthleteId(r);
+    if (!id) return;
+    const d = r['date:Planned Date:start'] || r['Planned Date'] || '';
+    if (!d) return;
+    const dt = new Date(d);
+    if (dt >= currentWeekStart && dt <= new Date(currentWeekEnd + 'T23:59:59')) {
+      planCounts[id] = (planCounts[id] || 0) + 1;
+    }
   });
 
   // Derive stats
@@ -1549,8 +1632,61 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [
 
   const coaches  = all.filter(a => a.isCoach);
   const athletes = all.filter(a => !a.isCoach).sort((a, b) => b.alertScore - a.alertScore);
+  const syncAudit = buildSyncAudit({
+    masterIds, startDates, wl, targetMap, bodyCounts, nutritionCounts,
+    sessionCounts, planCounts, calcWeekNum,
+  });
 
-  return { athletes, coaches };
+  return { athletes, coaches, syncAudit };
+}
+
+function buildSyncAudit(ctx) {
+  const ids = new Set([
+    ...ctx.masterIds,
+    ...Object.keys(ctx.wl),
+    ...Object.keys(ctx.bodyCounts),
+    ...Object.keys(ctx.nutritionCounts),
+    ...Object.keys(ctx.sessionCounts),
+    ...Object.keys(ctx.planCounts),
+    ...Object.keys(ctx.targetMap),
+  ]);
+
+  return [...ids]
+    .filter(id => id && !COACHES.has(id))
+    .sort((a, b) => a.localeCompare(b))
+    .map(id => {
+      const weekNum = ctx.calcWeekNum(id);
+      const weekLabel = weekNum !== null ? `Week ${weekNum}` : null;
+      const target = weekLabel && ctx.targetMap[id] ? ctx.targetMap[id][weekLabel] : null;
+      const hasMaster = ctx.masterIds.has(id);
+      const hasStart = !!ctx.startDates[id];
+      const hasWeekly = !!ctx.wl[id];
+      const body14 = ctx.bodyCounts[id] || 0;
+      const nutrition14 = ctx.nutritionCounts[id] || 0;
+      const sessions21 = ctx.sessionCounts[id] || 0;
+      const planThisWeek = ctx.planCounts[id] || 0;
+
+      const issues = [];
+      if (!hasMaster) issues.push('Missing from athlete master DB');
+      if (!hasStart) issues.push('Missing Start Date');
+      if (!hasWeekly) issues.push('No weekly check-in');
+      if (!body14) issues.push('No body tracking in 14d');
+      if (!nutrition14) issues.push('No nutrition tracking in 14d');
+      if (!target) issues.push(weekLabel ? `No ${weekLabel} target` : 'No target week');
+      if (!planThisWeek) issues.push('No plan this week');
+
+      const severity = !hasMaster || !hasStart || !hasWeekly ? 'bad'
+        : issues.length ? 'warn'
+        : 'good';
+
+      return {
+        id, severity, issues,
+        hasMaster, hasStart, hasWeekly,
+        weeklyDate: ctx.wl[id]?.['Week Ending'] || null,
+        body14, nutrition14, sessions21, planThisWeek,
+        weekLabel, hasTarget: !!target,
+      };
+    });
 }
 
 // ── Render athletes ───────────────────────────────────────────────────────────
@@ -1558,13 +1694,15 @@ let _allAthletes = [];
 let _coaches = [];
 let _allApplications = [];
 let _dataHealth = null;
+let _syncAudit = [];
 let _statusFilter = 'all';
 
-function render({ athletes, coaches, applications = [], dataHealth = null }) {
+function render({ athletes, coaches, applications = [], dataHealth = null, syncAudit = [] }) {
   _allAthletes     = athletes;
   _coaches         = coaches;
   _allApplications = applications;
   _dataHealth      = dataHealth;
+  _syncAudit       = syncAudit;
 
   // Tab badges
   const alertCount = athletes.filter(a => a.actions?.severity === 'red').length;
@@ -1575,6 +1713,7 @@ function render({ athletes, coaches, applications = [], dataHealth = null }) {
   const totalPlan = athletes.reduce((s,a)=>s+(a.thisWeekPlan||[]).length,0);
   document.getElementById('tab-sched-count').textContent = totalPlan || '—';
   document.getElementById('tab-apps-count').textContent  = applications.length || '—';
+  document.getElementById('tab-sync-count').textContent  = syncAudit.filter(r => r.severity !== 'good').length || '✓';
   document.getElementById('sched-week-end').textContent  = fmtDate(currentWeekEnd);
 
   renderCommandCenter(athletes, applications, dataHealth);
@@ -1582,6 +1721,7 @@ function render({ athletes, coaches, applications = [], dataHealth = null }) {
   renderGrid(athletes);
   renderCoaches(coaches);
   renderSchedule(athletes);
+  renderSyncAudit(syncAudit);
   renderApplications(applications);
 
   document.getElementById('gen-btn').style.display = 'block';
@@ -2953,6 +3093,50 @@ function renderSchedule(athletes) {
   }).join('');
 }
 
+function renderSyncAudit(rows) {
+  const body = document.getElementById('sync-table-body');
+  const score = document.getElementById('sync-score-row');
+  if (!body || !score) return;
+
+  const good = rows.filter(r => r.severity === 'good').length;
+  const warn = rows.filter(r => r.severity === 'warn').length;
+  const bad = rows.filter(r => r.severity === 'bad').length;
+
+  score.innerHTML = `
+    <div class="sync-score"><div class="sync-score-num">${rows.length}</div><div class="sync-score-lbl">Athletes</div></div>
+    <div class="sync-score"><div class="sync-score-num good">${good}</div><div class="sync-score-lbl">Healthy</div></div>
+    <div class="sync-score"><div class="sync-score-num warn">${warn}</div><div class="sync-score-lbl">Partial</div></div>
+    <div class="sync-score"><div class="sync-score-num bad">${bad}</div><div class="sync-score-lbl">Broken</div></div>`;
+
+  if (!rows.length) {
+    body.innerHTML = `<tr><td colspan="11"><div class="sync-muted">No athlete IDs found across the connected databases.</div></td></tr>`;
+    return;
+  }
+
+  const pill = (ok, yes = 'Yes', no = 'No') =>
+    `<span class="sync-pill ${ok ? 'good' : 'bad'}">${ok ? yes : no}</span>`;
+  const countPill = (n, warnAtZero = true) =>
+    `<span class="sync-pill ${n ? 'good' : warnAtZero ? 'warn' : 'good'}">${n}</span>`;
+
+  body.innerHTML = rows.map(r => {
+    const statusLabel = r.severity === 'good' ? 'Healthy' : r.severity === 'warn' ? 'Partial' : 'Broken';
+    const issue = r.issues.length ? r.issues.slice(0, 3).join(' · ') : 'All expected links found';
+    return `<tr class="${r.severity}">
+      <td><div class="sync-name">${esc(r.id)}</div></td>
+      <td><span class="sync-pill ${r.severity}">${statusLabel}</span></td>
+      <td>${pill(r.hasMaster)}</td>
+      <td>${pill(r.hasStart, 'Found', 'Missing')}</td>
+      <td>${r.hasWeekly ? `<span class="sync-pill good">${fmtDate(r.weeklyDate)}</span>` : `<span class="sync-pill bad">Missing</span>`}</td>
+      <td>${countPill(r.body14)}</td>
+      <td>${countPill(r.nutrition14)}</td>
+      <td>${countPill(r.sessions21, false)}</td>
+      <td>${countPill(r.planThisWeek)}</td>
+      <td>${r.hasTarget ? `<span class="sync-pill good">${esc(r.weekLabel || 'Found')}</span>` : `<span class="sync-pill warn">Missing</span>`}</td>
+      <td><span class="sync-muted">${esc(issue)}</span></td>
+    </tr>`;
+  }).join('');
+}
+
 // ── renderApplications ────────────────────────────────────────────────────────
 function renderApplications(apps) {
   const grid = document.getElementById('apps-grid');
@@ -2990,7 +3174,7 @@ function renderApplications(apps) {
 
 // ── Tab switching ─────────────────────────────────────────────────────────────
 function switchTab(tab) {
-  const tabs = ['athletes','coaches','schedule','applications'];
+  const tabs = ['athletes','coaches','schedule','sync','applications'];
   tabs.forEach(t => {
     const btn = document.getElementById(`tab-${t === 'applications' ? 'apps' : t}-btn`);
     const content = document.getElementById(`tab-${t === 'applications' ? 'apps' : t}-content`);
@@ -3031,7 +3215,7 @@ async function load() {
       fetchDB(DB.planning), fetchDB(DB.applications),
     ]);
 
-    const { athletes, coaches } = buildAll(weekly, sessions, body, nutrition, athleteDb, targets, planning, applications);
+    const { athletes, coaches, syncAudit } = buildAll(weekly, sessions, body, nutrition, athleteDb, targets, planning, applications);
     const dataHealth = {
       weekly: weekly.length,
       sessions: sessions.length,
@@ -3043,7 +3227,7 @@ async function load() {
       applications: applications.length,
       loadedAt: new Date(),
     };
-    render({ athletes, coaches, applications, dataHealth });
+    render({ athletes, coaches, applications, dataHealth, syncAudit });
 
     document.getElementById('loading').style.display = 'none';
     document.getElementById('content').style.display = 'block';
