@@ -1,0 +1,3443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DP Coaches Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800;900&family=Barlow:ital,wght@0,400;0,500;0,600;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f4f3f0;--surface:#fff;--surface2:#f0ede8;
+  --border:rgba(0,0,0,.08);--border-mid:rgba(0,0,0,.14);
+  --text:#0a0a0a;--muted:#5a5a5a;--dim:#999;
+  --run:#b45309;--str:#1e3a8a;
+  --amber:#f59e0b;--amber-dim:#fcd34d;
+  --ok:#15803d;--warn:#d97706;--alert:#dc2626;
+  --mono:'DM Mono','SF Mono','Fira Code',monospace;
+  --sans:'Barlow',system-ui,sans-serif;
+  --cond:'Barlow Condensed','Arial Narrow',sans-serif;
+  --green-bg:#f0fdf4;--green-border:#86efac;--green-text:#15803d;
+  --amber-bg:#fffbeb;--amber-border:#fcd34d;--amber-text:#92400e;
+  --red-bg:#fef2f2;--red-border:#fca5a5;--red-text:#991b1b;
+  --coach-bg:#f0f4ff;--coach-border:#a5b4fc;--coach-text:#3730a3;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;line-height:1.5}
+
+/* ── Header ── */
+header{background:#0a0a0a;padding:0 18px;height:62px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;gap:12px;border-bottom:1px solid rgba(255,255,255,.06)}
+.logo-block{display:flex;align-items:center;gap:14px;flex-shrink:0}
+.logo-mark{height:36px;width:auto;display:block}
+.logo-text{display:flex;flex-direction:column;line-height:1;gap:2px}
+.logo{font-size:15px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;white-space:nowrap;line-height:1}
+.logo .d{color:#fff}.logo .p{color:rgba(255,255,255,.32)}
+.coach-pill{display:inline-flex;align-items:center;gap:6px;background:linear-gradient(90deg,#dc2626 0%,#991b1b 100%);color:#fff;font-family:var(--mono);font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;padding:3px 9px 3px 7px;border-radius:4px;width:fit-content;box-shadow:0 1px 0 rgba(255,255,255,.1) inset}
+.coach-pill::before{content:'';width:5px;height:5px;border-radius:50%;background:#fff;box-shadow:0 0 6px rgba(255,255,255,.6)}
+.h-mid{display:none}
+.h-right{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.updated{font-family:var(--mono);font-size:9px;color:rgba(255,255,255,.32);white-space:nowrap}
+.coach-select{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);color:#fff;font-family:var(--mono);font-size:10px;padding:5px 10px 5px 8px;border-radius:6px;cursor:pointer;outline:none;letter-spacing:.04em}
+.coach-select:hover{background:rgba(255,255,255,.1)}
+.coach-select option{background:#0a0a0a;color:#fff}
+.refresh-btn{background:transparent;border:1px solid rgba(255,255,255,.18);color:rgba(255,255,255,.55);font-family:var(--mono);font-size:10px;padding:5px 12px;border-radius:6px;cursor:pointer;text-transform:uppercase;letter-spacing:.06em;transition:all .15s}
+.refresh-btn:hover{border-color:rgba(255,255,255,.4);color:#fff}
+.refresh-btn:disabled{opacity:.4;cursor:not-allowed}
+
+/* ── Tab Bar (raised for taller header) ── */
+.tab-bar{background:#0a0a0a;border-bottom:1px solid rgba(255,255,255,.08);padding:0 18px;display:flex;align-items:flex-end;gap:2px;position:sticky;top:62px;z-index:99}
+.tab{background:transparent;border:none;border-bottom:2px solid transparent;color:rgba(255,255,255,.35);font-family:var(--mono);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;padding:10px 16px 9px;cursor:pointer;transition:all .15s;white-space:nowrap;display:flex;align-items:center;gap:6px}
+.tab:hover{color:rgba(255,255,255,.65)}
+.tab.active{color:#fff;border-bottom-color:#fff}
+.tab-badge{background:rgba(255,255,255,.12);border-radius:20px;padding:1px 7px;font-size:9px;min-width:20px;text-align:center}
+.tab.active .tab-badge{background:rgba(255,255,255,.22)}
+.tab-badge.red{background:rgba(220,38,38,.5);color:#fca5a5}
+
+/* ── Filter Bar ── */
+.filter-bar{background:var(--surface);border-bottom:1px solid var(--border);padding:8px 18px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;position:sticky;top:94px;z-index:98}
+.search-input{border:1px solid var(--border-mid);border-radius:7px;padding:6px 12px;font-family:var(--mono);font-size:11px;color:var(--text);background:var(--surface);outline:none;min-width:180px;transition:border .15s}
+.search-input:focus{border-color:rgba(0,0,0,.3)}
+.search-input::placeholder{color:var(--dim)}
+.sf-group{display:flex;gap:4px;align-items:center}
+.sf{background:transparent;border:1px solid var(--border-mid);border-radius:20px;padding:4px 12px;font-family:var(--mono);font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;cursor:pointer;color:var(--muted);transition:all .15s}
+.sf:hover{border-color:rgba(0,0,0,.25);color:var(--text)}
+.sf.active{background:#0a0a0a;border-color:#0a0a0a;color:#fff}
+.sf.sf-red.active{background:var(--alert);border-color:var(--alert);color:#fff}
+.sf.sf-amber.active{background:var(--warn);border-color:var(--warn);color:#fff}
+.sf.sf-green.active{background:var(--ok);border-color:var(--ok);color:#fff}
+.sort-select{border:1px solid var(--border-mid);border-radius:7px;padding:5px 10px;font-family:var(--mono);font-size:10px;color:var(--muted);background:var(--surface);cursor:pointer;outline:none}
+.filter-divider{width:1px;height:22px;background:var(--border-mid)}
+.filter-label{font-family:var(--mono);font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;white-space:nowrap}
+
+/* ── Layout ── */
+.main{padding:14px 14px 40px;max-width:1400px;margin:0 auto}
+
+/* ── Summary bar ── */
+.summary-bar{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+.sum-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 16px;min-width:100px}
+.sum-num{font-size:24px;font-weight:800;letter-spacing:-.01em;line-height:1;margin-bottom:1px}
+.sum-num.red{color:var(--alert)}.sum-num.grn{color:var(--ok)}.sum-num.run-c{color:var(--run)}.sum-num.str-c{color:var(--str)}
+.sum-lbl{font-family:var(--mono);font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em}
+
+/* ── Command centre ── */
+.command-center{display:grid;grid-template-columns:minmax(280px,1.1fr) minmax(260px,.9fr);gap:12px;margin-bottom:14px}
+.cc-panel{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden}
+.cc-hero{background:#0a0a0a;color:#fff;padding:16px 18px;display:flex;align-items:flex-start;justify-content:space-between;gap:18px}
+.cc-kicker{font-family:var(--mono);font-size:9px;color:rgba(255,255,255,.42);text-transform:uppercase;letter-spacing:.14em;margin-bottom:5px}
+.cc-title{font-family:var(--cond);font-size:34px;font-weight:900;line-height:.95;text-transform:uppercase;letter-spacing:.04em}
+.cc-sub{font-size:12px;color:rgba(255,255,255,.62);margin-top:8px;max-width:560px;line-height:1.45}
+.cc-score{display:grid;grid-template-columns:repeat(3,72px);gap:7px;flex-shrink:0}
+.cc-score-card{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.13);border-radius:9px;padding:9px 7px;text-align:center}
+.cc-score-num{font-size:26px;font-weight:900;line-height:1}
+.cc-score-num.red{color:#fca5a5}.cc-score-num.amber{color:#fcd34d}.cc-score-num.green{color:#86efac}
+.cc-score-lbl{font-family:var(--mono);font-size:7px;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:.1em;margin-top:4px}
+.cc-body{display:grid;grid-template-columns:1fr 1fr;gap:0;border-top:1px solid var(--border)}
+.cc-list{padding:13px 15px;border-right:1px solid var(--border);min-height:170px}
+.cc-list:last-child{border-right:none}
+.cc-list-title{font-family:var(--mono);font-size:9px;font-weight:800;color:var(--dim);text-transform:uppercase;letter-spacing:.12em;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.cc-list-count{font-size:9px;color:var(--muted);background:var(--surface2);border-radius:20px;padding:2px 7px}
+.cc-athlete{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)}
+.cc-athlete[type="button"]{background:transparent;border:0;border-bottom:1px solid var(--border);width:100%;text-align:left;cursor:pointer;font:inherit}
+.cc-athlete:last-child{border-bottom:none}
+.cc-athlete-name{font-family:var(--cond);font-size:18px;font-weight:900;line-height:1;text-transform:uppercase;letter-spacing:.05em;color:var(--text)}
+.cc-athlete-reason{font-size:11px;color:var(--muted);line-height:1.35;margin-top:2px}
+.cc-chip{font-family:var(--mono);font-size:8px;text-transform:uppercase;letter-spacing:.08em;border-radius:20px;padding:3px 7px;white-space:nowrap}
+.cc-chip.red{background:var(--red-bg);color:var(--red-text);border:1px solid var(--red-border)}
+.cc-chip.amber{background:var(--amber-bg);color:var(--amber-text);border:1px solid var(--amber-border)}
+.cc-empty{font-family:var(--mono);font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;padding:16px 0}
+.cc-side{display:flex;flex-direction:column}
+.cc-side-head{padding:14px 16px 11px;border-bottom:1px solid var(--border)}
+.cc-side-title{font-family:var(--mono);font-size:9px;font-weight:800;color:var(--dim);text-transform:uppercase;letter-spacing:.12em}
+.cc-side-sub{font-size:12px;color:var(--muted);margin-top:4px}
+.cc-actions{padding:12px 16px;display:flex;flex-direction:column;gap:8px;border-bottom:1px solid var(--border)}
+.cc-action{display:grid;grid-template-columns:20px 1fr;gap:8px;align-items:flex-start}
+.cc-action-idx{font-family:var(--mono);font-size:9px;color:#fff;background:#0a0a0a;border-radius:5px;width:20px;height:20px;display:flex;align-items:center;justify-content:center}
+.cc-action-text{font-size:12px;color:var(--text);line-height:1.4}
+.cc-health{padding:12px 16px;display:grid;grid-template-columns:repeat(2,1fr);gap:8px;background:var(--surface2)}
+.cc-health-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 10px}
+.cc-health-lbl{font-family:var(--mono);font-size:7px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em}
+.cc-health-val{font-size:16px;font-weight:800;line-height:1.1;margin-top:2px}
+.cc-health-val.good{color:var(--ok)}.cc-health-val.warn{color:var(--warn)}.cc-health-val.bad{color:var(--alert)}
+
+/* ── States ── */
+.state-box{text-align:center;padding:60px 20px}
+.dots{display:flex;gap:6px;justify-content:center;margin-bottom:12px}
+.dot{width:7px;height:7px;border-radius:50%;background:#ccc;animation:blink 1.2s infinite}
+.dot:nth-child(2){animation-delay:.2s}.dot:nth-child(3){animation-delay:.4s}
+@keyframes blink{0%,100%{opacity:.2}50%{opacity:1}}
+.state-txt{font-family:var(--mono);font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em}
+
+/* ── Grid ── */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:11px}
+
+/* ── Card ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;display:flex;flex-direction:column;transition:box-shadow .15s}
+.card:hover{box-shadow:0 4px 18px rgba(0,0,0,.08)}
+.card.red{border-color:rgba(220,38,38,.35)}.card.yellow{border-color:rgba(217,119,6,.3)}
+.card.hidden{display:none}
+.card-head{background:#0a0a0a;padding:11px 14px 10px}
+.aname{font-family:var(--cond);font-size:26px;font-weight:900;letter-spacing:.05em;text-transform:uppercase;color:#fff;line-height:1}
+.ameta{font-family:var(--mono);font-size:8px;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:.08em;margin-top:3px}
+.ameta.nocheckin{color:rgba(248,113,113,.6)}
+.flags{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.fp{font-family:var(--mono);font-size:8px;padding:2px 7px;border-radius:20px;text-transform:uppercase;letter-spacing:.04em}
+.fp.red{background:rgba(248,113,113,.18);color:#fca5a5;border:1px solid rgba(248,113,113,.3)}
+.fp.yellow{background:rgba(251,191,36,.15);color:#f59e0b;border:1px solid rgba(251,191,36,.28)}
+.fp.green{background:rgba(74,222,128,.12);color:#059669;border:1px solid rgba(74,222,128,.22)}
+
+/* ── Scores row ── */
+.scores{display:flex;border-bottom:1px solid var(--border)}
+.sc{flex:1;padding:8px 3px;text-align:center;border-right:1px solid var(--border)}.sc:last-child{border-right:none}
+.sc-lbl{font-family:var(--mono);font-size:7px;color:var(--dim);text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px}
+.sc-val{font-size:17px;font-weight:800;line-height:1}
+.sc-val.good{color:var(--ok)}.sc-val.mid{color:var(--warn)}.sc-val.bad{color:var(--alert)}.sc-val.n{color:var(--text)}
+
+/* ── Compliance bar ── */
+.compliance-row{display:flex;align-items:center;gap:8px;padding:8px 13px 4px;border-bottom:1px solid var(--border)}
+.comp-lbl{font-family:var(--mono);font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;white-space:nowrap}
+.comp-track{flex:1;height:5px;background:rgba(0,0,0,.07);border-radius:3px;overflow:hidden}
+.comp-fill{height:100%;border-radius:3px;transition:width .3s}
+.comp-fill.good{background:var(--ok)}.comp-fill.mid{background:var(--warn)}.comp-fill.bad{background:var(--alert)}
+.comp-pct{font-family:var(--mono);font-size:10px;font-weight:700;min-width:28px;text-align:right}
+.comp-pct.good{color:var(--ok)}.comp-pct.mid{color:var(--warn)}.comp-pct.bad{color:var(--alert)}
+
+/* ── Sections ── */
+.sec{padding:10px 13px;border-bottom:1px solid var(--border)}.sec:last-child{border-bottom:none}
+.sec-ttl{font-family:var(--mono);font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.1em;margin-bottom:7px}
+
+/* ── Training ── */
+.tpair{display:flex;gap:7px}
+.tb{flex:1;background:var(--surface2);border-radius:8px;padding:8px 9px}
+.tt{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;margin-bottom:3px}
+.tt.run{color:var(--run)}.tt.str{color:var(--str)}
+.ts{font-family:var(--mono);font-size:9px;color:var(--muted);line-height:1.6}
+.ts strong{color:var(--text)}
+.pbar{height:3px;background:rgba(0,0,0,.08);border-radius:2px;overflow:hidden;margin:4px 0}
+.pfill{height:100%;border-radius:2px}.pfill.run{background:var(--run)}.pfill.str{background:var(--str)}
+.nl{font-size:11px;color:var(--muted);line-height:1.4;margin-top:3px}
+.nl-lbl{font-family:var(--mono);font-size:7px;color:var(--dim);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:1px}
+.nl.red{color:var(--alert)}
+.testim{font-size:11px;color:var(--muted);font-style:italic;line-height:1.4;padding:6px 9px;background:var(--surface2);border-radius:6px;border-left:2px solid rgba(0,0,0,.1);margin-top:6px}
+.impact{font-size:11px;color:#92400e;margin-top:5px;padding:4px 8px;background:#fffbeb;border-radius:5px;border-left:2px solid var(--warn)}
+
+/* ── Body ── */
+.body-grid{display:flex;align-items:flex-start;gap:14px}
+.wnum{font-size:26px;font-weight:800;line-height:1;letter-spacing:-.01em}
+.wunit{font-family:var(--mono);font-size:9px;color:var(--dim);margin-left:2px}
+.wdate{font-family:var(--mono);font-size:8px;color:var(--dim);margin-top:2px}
+.bmet{flex:1;display:flex;gap:8px}
+.bm{flex:1;text-align:center}
+.bm-lbl{font-family:var(--mono);font-size:7px;color:var(--dim);text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px}
+.bm-val{font-size:15px;font-weight:700}
+.bnote{font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:6px;border-left:2px solid var(--alert);padding-left:6px;line-height:1.4}
+
+/* ── Nutrition ── */
+.mrow{display:flex;gap:6px}
+.mc{flex:1;background:var(--surface2);border-radius:6px;padding:6px 8px;text-align:center}
+.mc-lbl{font-family:var(--mono);font-size:7px;color:var(--dim);text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px}
+.mc-val{font-size:15px;font-weight:700;line-height:1}
+.mc-unit{font-family:var(--mono);font-size:8px;color:var(--dim)}
+
+/* ── Week badge ── */
+.card-head-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.week-badge{text-align:center;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);border-radius:8px;padding:5px 12px;flex-shrink:0}
+.wk-num{font-size:24px;font-weight:900;color:#fff;line-height:1;letter-spacing:-.01em}
+.wk-lbl{font-family:var(--mono);font-size:7px;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:.12em;margin-top:2px}
+
+/* ── Session count (no weekly) ── */
+.sess-row{display:flex;gap:8px;margin-bottom:4px}
+.scard{background:var(--surface2);border-radius:7px;padding:7px 11px;text-align:center}
+.snum{font-size:20px;font-weight:800;line-height:1}.snum.run-c{color:var(--run)}.snum.str-c{color:var(--str)}
+.slbl{font-family:var(--mono);font-size:7px;color:var(--dim);text-transform:uppercase;letter-spacing:.05em;margin-top:2px}
+
+/* ── Call Prep ── */
+.call-prep{border-top:2px solid #0a0a0a}
+.cp-header{background:#0a0a0a;padding:8px 13px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none}
+.cp-title{font-family:var(--mono);font-size:9px;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:.12em;display:flex;align-items:center;gap:7px}
+.cp-icon{font-size:11px}
+.cp-toggle{font-family:var(--mono);font-size:9px;color:rgba(255,255,255,.35);transition:transform .2s}
+.cp-toggle.open{transform:rotate(180deg)}
+.cp-body{padding:11px 13px;display:flex;flex-direction:column;gap:9px}
+.cp-block{}
+.cp-block-lbl{font-family:var(--mono);font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px;display:flex;align-items:center;gap:5px}
+.cp-block-lbl.win{color:var(--ok)}
+.cp-block-lbl.issue{color:var(--alert)}
+.cp-block-lbl.ask{color:var(--str)}
+.cp-block-lbl.note-lbl{color:var(--dim)}
+.cp-items{display:flex;flex-direction:column;gap:3px}
+.cp-item{font-size:11px;color:var(--muted);line-height:1.5;padding-left:14px;position:relative}
+.cp-item::before{position:absolute;left:0;font-size:10px}
+.cp-item.win::before{content:'✓';color:var(--ok)}
+.cp-item.issue::before{content:'⚠';color:var(--alert)}
+.cp-item.ask::before{content:'→';color:var(--str)}
+.cp-item em{font-style:italic;color:var(--dim)}
+.cp-none{font-family:var(--mono);font-size:9px;color:var(--dim);font-style:italic}
+.cp-note{width:100%;border:1px solid var(--border-mid);border-radius:6px;padding:7px 10px;font-family:var(--sans);font-size:11px;color:var(--text);background:var(--surface2);resize:vertical;min-height:52px;outline:none;transition:border .15s;line-height:1.45}
+.cp-note:focus{border-color:rgba(0,0,0,.3);background:var(--surface)}
+.cp-note::placeholder{color:var(--dim)}
+
+/* ── AI analysis ── */
+.gen-btn{background:#0a0a0a;border:1px solid rgba(255,255,255,.25);color:#fff;font-family:var(--mono);font-size:10px;padding:5px 14px;border-radius:6px;cursor:pointer;text-transform:uppercase;letter-spacing:.06em;transition:all .15s;white-space:nowrap}
+.gen-btn:hover{background:#222;border-color:rgba(255,255,255,.5)}
+.gen-btn:disabled{opacity:.4;cursor:not-allowed}
+.gen-btn.loading{background:#1a327a;border-color:#3b5bdb;color:#bfdbfe}
+
+.squad-brief{background:#0a0a0a;color:#fff;border-radius:12px;padding:16px 18px;margin-bottom:14px;display:none}
+.squad-brief.visible{display:block}
+.sb-title{font-family:var(--mono);font-size:9px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.12em;margin-bottom:8px}
+.sb-text{font-size:13px;color:rgba(255,255,255,.82);line-height:1.6}
+
+.ai-sec{padding:11px 13px;border-top:1px solid var(--border)}
+.ai-status-badge{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;padding:3px 10px;border-radius:20px;margin-bottom:8px}
+.ai-status-badge.GREEN{background:var(--green-bg);color:var(--green-text);border:1px solid var(--green-border)}
+.ai-status-badge.AMBER{background:var(--amber-bg);color:var(--amber-text);border:1px solid var(--amber-border)}
+.ai-status-badge.RED{background:var(--red-bg);color:var(--red-text);border:1px solid var(--red-border)}
+.ai-status-badge::before{content:'●';font-size:8px}
+
+.ai-flags{display:flex;flex-direction:column;gap:3px;margin-bottom:8px}
+.ai-flag{font-family:var(--mono);font-size:9px;color:var(--muted);padding-left:10px;position:relative;line-height:1.5}
+.ai-flag::before{content:'—';position:absolute;left:0;color:var(--dim)}
+
+.ai-rec{font-size:12px;color:var(--text);line-height:1.55;padding:9px 11px;background:var(--surface2);border-radius:7px;border-left:3px solid #0a0a0a}
+
+.ai-loading{font-family:var(--mono);font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;padding:8px 0;display:flex;align-items:center;gap:6px}
+.ai-loading-dot{width:5px;height:5px;border-radius:50%;background:var(--dim);animation:blink 1.2s infinite}
+.ai-loading-dot:nth-child(2){animation-delay:.2s}.ai-loading-dot:nth-child(3){animation-delay:.4s}
+
+/* ── Coaches Tab ── */
+.coaches-section{max-width:1400px;margin:0 auto;padding:14px 14px 40px}
+.coaches-intro{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 18px;margin-bottom:18px;display:flex;align-items:center;gap:12px}
+.coaches-intro-icon{font-size:22px}
+.coaches-intro-text{font-size:13px;color:var(--muted)}
+.coaches-intro-text strong{color:var(--text)}
+.coaches-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:14px}
+
+.coach-card{background:var(--surface);border:1px solid var(--coach-border);border-radius:14px;overflow:hidden}
+.coach-card-head{background:linear-gradient(135deg,#1e3a8a 0%,#1e40af 100%);padding:14px 16px 12px}
+.coach-card-head-top{display:flex;justify-content:space-between;align-items:flex-start}
+.coach-name-row{display:flex;align-items:center;gap:10px}
+.coach-name{font-size:26px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;color:#fff;line-height:1}
+.coach-badge{font-family:var(--mono);font-size:7px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;padding:3px 8px;border-radius:20px;background:rgba(255,255,255,.18);color:rgba(255,255,255,.9);border:1px solid rgba(255,255,255,.3);align-self:center}
+.coach-meta{font-family:var(--mono);font-size:8px;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:.08em;margin-top:4px}
+.coach-wk-badge{text-align:center;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);border-radius:8px;padding:5px 14px}
+.coach-wk-num{font-size:26px;font-weight:900;color:#fff;line-height:1;letter-spacing:-.01em}
+.coach-wk-lbl{font-family:var(--mono);font-size:7px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.12em;margin-top:2px}
+
+.coach-scores{display:flex;border-bottom:1px solid var(--border)}
+.coach-scores .sc{flex:1;padding:9px 3px;text-align:center;border-right:1px solid var(--border)}
+.coach-scores .sc:last-child{border-right:none}
+
+.coach-training{padding:12px 14px;border-bottom:1px solid var(--border)}
+.coach-training-lbl{font-family:var(--mono);font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px}
+
+.coach-body-row{display:flex;gap:8px;padding:12px 14px;border-bottom:1px solid var(--border)}
+.coach-body-item{flex:1;background:var(--coach-bg);border-radius:7px;padding:8px 10px;text-align:center}
+.coach-body-item-val{font-size:18px;font-weight:800;color:var(--coach-text);line-height:1}
+.coach-body-item-lbl{font-family:var(--mono);font-size:7px;color:var(--dim);text-transform:uppercase;letter-spacing:.05em;margin-top:2px}
+
+.coach-notes{padding:12px 14px}
+.coach-notes-lbl{font-family:var(--mono);font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px}
+.coach-quote{font-size:12px;color:var(--muted);font-style:italic;line-height:1.5;padding:7px 10px;background:var(--surface2);border-radius:7px;border-left:2px solid var(--coach-border)}
+
+.coach-no-data{padding:30px;text-align:center}
+.coach-no-data-txt{font-family:var(--mono);font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em}
+
+/* ── No results ── */
+.no-results{text-align:center;padding:50px 20px}
+.no-results-txt{font-family:var(--mono);font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em}
+
+/* ── Full-page overlay ── */
+#fp-overlay{position:fixed;inset:0;background:var(--bg);z-index:300;overflow-y:auto;display:none}
+.fp-topbar{background:#0a0a0a;padding:0 20px;height:50px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10;gap:12px}
+.fp-back{background:transparent;border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.65);font-family:var(--mono);font-size:10px;padding:6px 14px;border-radius:6px;cursor:pointer;text-transform:uppercase;letter-spacing:.07em;transition:all .15s}
+.fp-back:hover{color:#fff;border-color:rgba(255,255,255,.5)}
+.fp-nav{display:flex;align-items:center;gap:8px}
+.fp-nav-btn{background:transparent;border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.45);font-family:var(--mono);font-size:10px;padding:5px 14px;border-radius:6px;cursor:pointer;text-transform:uppercase;letter-spacing:.06em;transition:all .15s}
+.fp-nav-btn:hover:not([disabled]){color:#fff;border-color:rgba(255,255,255,.45)}
+.fp-nav-btn[disabled]{opacity:.2;cursor:not-allowed}
+.fp-idx{font-family:var(--mono);font-size:9px;color:rgba(255,255,255,.28);min-width:40px;text-align:center}
+.fp-hint{font-family:var(--mono);font-size:8px;color:rgba(255,255,255,.18);text-transform:uppercase;letter-spacing:.08em}
+.fp-body{max-width:900px;margin:0 auto;padding:22px 18px 60px}
+
+/* ── Full-page card: clean layout ── */
+.fpc-hero{background:#0a0a0a;border-radius:16px;padding:28px 30px 24px;margin-bottom:18px}
+.fpc-hero-top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
+.fpc-name{font-family:var(--cond);font-size:52px;font-weight:900;letter-spacing:.04em;text-transform:uppercase;color:#fff;line-height:1}
+.fpc-meta{font-family:var(--mono);font-size:11px;color:rgba(255,255,255,.4);margin-top:8px;letter-spacing:.05em}
+.fpc-meta.stale{color:rgba(248,113,113,.7)}
+.fpc-week-badge{text-align:center;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:12px;padding:12px 24px;flex-shrink:0}
+.fpc-week-num{font-size:44px;font-weight:900;color:#fff;line-height:1;letter-spacing:-.01em}
+.fpc-week-lbl{font-family:var(--mono);font-size:9px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.14em;margin-top:4px}
+.fpc-flags{display:flex;gap:6px;flex-wrap:wrap;margin-top:16px}
+
+.fpc-banner{border-radius:12px;padding:14px 18px;margin-bottom:18px;display:flex;align-items:flex-start;gap:12px}
+.fpc-banner.stale{background:#fef2f2;border:1px solid rgba(220,38,38,.2)}
+.fpc-banner.lastweek{background:#f0f9ff;border:1px solid rgba(14,165,233,.18)}
+.fpc-banner-icon{font-size:18px;flex-shrink:0;line-height:1.3}
+.fpc-banner-title{font-family:var(--mono);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-bottom:3px}
+.fpc-banner-title.stale{color:#991b1b}
+.fpc-banner-title.lastweek{color:#0369a1}
+.fpc-banner-sub{font-family:var(--mono);font-size:10px;color:#6b7280}
+
+.fpc-section{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:22px 24px;margin-bottom:16px}
+.fpc-section-title{font-family:var(--mono);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.14em;color:var(--dim);margin-bottom:18px}
+
+.fpc-scores{display:grid;grid-template-columns:repeat(6,1fr);gap:0;border-top:1px solid var(--border);margin:0 -24px}
+.fpc-score{text-align:center;padding:18px 8px;border-right:1px solid var(--border)}
+.fpc-score:last-child{border-right:none}
+.fpc-score-lbl{font-family:var(--mono);font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px}
+.fpc-score-val{font-size:38px;font-weight:900;line-height:1;letter-spacing:-.02em}
+.fpc-score-val.good{color:var(--ok)}.fpc-score-val.mid{color:var(--warn)}.fpc-score-val.bad{color:var(--alert)}.fpc-score-val.n{color:var(--text)}
+
+.fpc-wip{background:#f0f4ff;border:1px solid rgba(30,58,138,.12);border-radius:14px;padding:20px 24px;margin-bottom:16px}
+.fpc-wip-title{font-family:var(--mono);font-size:9px;font-weight:700;color:var(--str);text-transform:uppercase;letter-spacing:.1em;margin-bottom:16px}
+.fpc-sess-row{display:flex;gap:14px}
+.fpc-sess{background:#fff;border:1px solid rgba(30,58,138,.14);border-radius:10px;padding:16px 24px;text-align:center}
+.fpc-sess-num{font-size:44px;font-weight:900;line-height:1}
+.fpc-sess-num.run{color:var(--run)}.fpc-sess-num.str{color:var(--str)}
+.fpc-sess-lbl{font-family:var(--mono);font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;margin-top:6px}
+
+.fpc-train-pair{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.fpc-train-block{background:var(--surface2);border-radius:10px;padding:18px 20px}
+.fpc-train-label{font-size:14px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;margin-bottom:12px}
+.fpc-train-label.run{color:var(--run)}.fpc-train-label.str{color:var(--str)}
+.fpc-train-stat{font-family:var(--mono);font-size:12px;color:var(--muted);margin-bottom:4px;line-height:1.5}
+.fpc-train-stat strong{color:var(--text);font-size:15px}
+.fpc-pbar{height:4px;background:rgba(0,0,0,.08);border-radius:2px;overflow:hidden;margin:10px 0}
+.fpc-pfill{height:100%;border-radius:2px}.fpc-pfill.run{background:var(--run)}.fpc-pfill.str{background:var(--str)}
+.fpc-train-note{font-size:12px;line-height:1.55;margin-top:10px;padding:9px 11px;border-radius:7px}
+.fpc-train-note.bad{color:var(--alert);background:#fef2f2;border-left:3px solid var(--alert)}
+.fpc-train-note.good{color:var(--ok);background:#f0fdf4;border-left:3px solid var(--ok)}
+.fpc-testim{font-size:14px;color:var(--muted);font-style:italic;line-height:1.65;padding:16px 18px;background:var(--surface2);border-radius:10px;border-left:3px solid rgba(0,0,0,.12);margin-top:18px}
+.fpc-impact{font-size:13px;color:#92400e;margin-top:14px;padding:12px 16px;background:#fffbeb;border-radius:9px;border-left:3px solid var(--warn)}
+
+.fpc-body-nutr{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px}
+.fpc-body-nutr .fpc-section{margin-bottom:0}
+.fpc-metric-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.fpc-metric{background:var(--surface2);border-radius:9px;padding:14px;text-align:center}
+.fpc-metric-val{font-size:30px;font-weight:800;line-height:1;color:var(--text)}
+.fpc-metric-lbl{font-family:var(--mono);font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;margin-top:6px}
+.fpc-weight{font-size:46px;font-weight:900;line-height:1;letter-spacing:-.02em;margin-bottom:2px}
+.fpc-weight-unit{font-family:var(--mono);font-size:13px;color:var(--dim);margin-left:3px}
+.fpc-weight-date{font-family:var(--mono);font-size:9px;color:var(--dim);margin-bottom:16px}
+.fpc-bnote{font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:14px;border-left:2px solid var(--alert);padding-left:10px;line-height:1.5}
+
+.fpc-nutr-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.fpc-nutr-cell{background:var(--surface2);border-radius:9px;padding:14px;text-align:center}
+.fpc-nutr-val{font-size:28px;font-weight:800;line-height:1}
+.fpc-nutr-unit{font-family:var(--mono);font-size:10px;color:var(--dim)}
+.fpc-nutr-lbl{font-family:var(--mono);font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;margin-top:6px}
+.fpc-target{background:var(--coach-bg);border:1px solid var(--coach-border);border-radius:9px;padding:14px 16px}
+.fpc-target-lbl{font-family:var(--mono);font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px}
+.fpc-target-vals{display:flex;gap:12px;flex-wrap:wrap}
+.fpc-target-val{font-family:var(--mono);font-size:11px;color:var(--coach-text)}
+.fpc-target-val strong{font-size:14px}
+
+.fpc-cp{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden}
+.fpc-cp-head{background:#0a0a0a;padding:16px 22px;display:flex;align-items:center;gap:10px}
+.fpc-cp-head-title{font-family:var(--mono);font-size:10px;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:.14em}
+.fpc-cp-body{padding:22px 24px;display:flex;flex-direction:column;gap:20px}
+.fpc-cp-section-lbl{font-family:var(--mono);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.fpc-cp-section-lbl.win{color:var(--ok)}.fpc-cp-section-lbl.issue{color:var(--alert)}.fpc-cp-section-lbl.ask{color:var(--str)}.fpc-cp-section-lbl.note{color:var(--dim)}
+.fpc-cp-items{display:flex;flex-direction:column;gap:8px}
+.fpc-cp-item{font-size:13px;line-height:1.6;color:var(--muted);padding-left:22px;position:relative}
+.fpc-cp-item::before{position:absolute;left:0;font-size:12px}
+.fpc-cp-item.win::before{content:'✓';color:var(--ok)}
+.fpc-cp-item.issue::before{content:'⚠';color:var(--alert)}
+.fpc-cp-item.ask::before{content:'→';color:var(--str)}
+.fpc-cp-none{font-family:var(--mono);font-size:11px;color:var(--dim);font-style:italic}
+.fpc-note{width:100%;border:1px solid var(--border-mid);border-radius:8px;padding:12px 14px;font-family:var(--sans);font-size:13px;color:var(--text);background:var(--surface2);resize:vertical;min-height:80px;outline:none;transition:border .15s;line-height:1.5}
+.fpc-note:focus{border-color:rgba(0,0,0,.3);background:var(--surface)}
+.fpc-note::placeholder{color:var(--dim)}
+
+/* Expand button on grid cards */
+.fp-open-btn{background:transparent;border:1px solid rgba(255,255,255,.18);color:rgba(255,255,255,.38);font-family:var(--mono);font-size:9px;padding:4px 10px;border-radius:5px;cursor:pointer;text-transform:uppercase;letter-spacing:.06em;transition:all .15s;white-space:nowrap;align-self:flex-start;flex-shrink:0}
+.fp-open-btn:hover{color:#fff;border-color:rgba(255,255,255,.55)}
+
+/* ── Session badges ── */
+.sched-badges{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.sbadge{display:inline-flex;align-items:center;gap:4px;font-family:var(--mono);font-size:9px;font-weight:500;padding:3px 8px;border-radius:20px;border:1px solid;letter-spacing:.04em;white-space:nowrap}
+.sbadge .sdot{width:5px;height:5px;border-radius:50%;flex-shrink:0}
+.sbadge.planned{opacity:.65}
+.sbadge.completed{opacity:1}
+.sbadge.missed{opacity:.55;text-decoration:line-through}
+.sbadge.sick{opacity:.45;font-style:italic}
+.sbadge-tempo{background:#fff7ed;color:#c2410c;border-color:#fed7aa}.sbadge-tempo .sdot{background:#f97316}
+.sbadge-speed{background:#fef2f2;color:#b91c1c;border-color:#fecaca}.sbadge-speed .sdot{background:#ef4444}
+.sbadge-longrun{background:#fdf4ff;color:#7e22ce;border-color:#e9d5ff}.sbadge-longrun .sdot{background:#a855f7}
+.sbadge-strength{background:#eff6ff;color:#1e40af;border-color:#bfdbfe}.sbadge-strength .sdot{background:#3b82f6}
+.sbadge-runstr{background:#f5f3ff;color:#5b21b6;border-color:#ddd6fe}.sbadge-runstr .sdot{background:#8b5cf6}
+.sbadge-rest{background:#f9fafb;color:#4b5563;border-color:#e5e7eb}.sbadge-rest .sdot{background:#9ca3af}
+.sbadge-recovery{background:#f0fdfa;color:#0f766e;border-color:#99f6e4}.sbadge-recovery .sdot{background:#14b8a6}
+.sbadge-easy{background:#f0fdf4;color:#15803d;border-color:#bbf7d0}.sbadge-easy .sdot{background:#22c55e}
+.sbadge-optional{background:#fafafa;color:#6b7280;border-color:#e5e5e5}.sbadge-optional .sdot{background:#d1d5db}
+.sbadge-race{background:#fff1f2;color:#9f1239;border-color:#fda4af}.sbadge-race .sdot{background:#f43f5e}
+.sbadge-run{background:#fff7ed;color:#92400e;border-color:#fde68a}.sbadge-run .sdot{background:#f59e0b}
+.sbadge-default{background:#f4f3f0;color:#5a5a5a;border-color:#d1d5db}.sbadge-default .sdot{background:#9ca3af}
+.sbadge-status{font-family:var(--mono);font-size:8px;margin-left:2px;opacity:.8}
+
+/* ── Recovery score ── */
+.recovery-row{display:flex;align-items:center;gap:10px;padding:8px 13px;border-bottom:1px solid var(--border);background:linear-gradient(90deg,rgba(245,158,11,.04) 0%,transparent 60%)}
+.recovery-lbl{font-family:var(--mono);font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;white-space:nowrap}
+.recovery-score{font-size:20px;font-weight:800;line-height:1;letter-spacing:-.01em;font-family:var(--cond)}
+.recovery-score.good{color:var(--ok)}.recovery-score.mid{color:var(--warn)}.recovery-score.bad{color:var(--alert)}.recovery-score.n{color:var(--text)}
+.recovery-bar-wrap{flex:1;height:4px;background:rgba(0,0,0,.07);border-radius:2px;overflow:hidden}
+.recovery-bar{height:100%;border-radius:2px;transition:width .3s}
+.recovery-bar.good{background:var(--ok)}.recovery-bar.mid{background:var(--warn)}.recovery-bar.bad{background:var(--alert)}
+
+/* ── This week's plan section ── */
+.plan-sec{padding:9px 13px;border-bottom:1px solid var(--border);background:var(--surface2)}
+.plan-sec-ttl{font-family:var(--mono);font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px;display:flex;align-items:center;gap:5px}
+.plan-sec-comp{font-family:var(--mono);font-size:9px;font-weight:700;margin-left:auto}
+.plan-sec-comp.good{color:var(--ok)}.plan-sec-comp.mid{color:var(--warn)}.plan-sec-comp.bad{color:var(--alert)}
+
+/* ── Macro compliance bars ── */
+.macro-bar-row{display:flex;flex-direction:column;gap:4px;margin-top:6px}
+.macro-bar-item{display:flex;align-items:center;gap:6px}
+.macro-bar-lbl{font-family:var(--mono);font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.05em;width:34px;flex-shrink:0}
+.macro-bar-track{flex:1;height:4px;background:rgba(0,0,0,.07);border-radius:2px;overflow:hidden;position:relative}
+.macro-bar-fill{height:100%;border-radius:2px;transition:width .3s;background:var(--amber)}
+.macro-bar-fill.over{background:var(--alert)}
+.macro-bar-val{font-family:var(--mono);font-size:9px;color:var(--muted);min-width:38px;text-align:right}
+
+/* ── Schedule tab ── */
+.sched-section{max-width:1400px;margin:0 auto;padding:14px 14px 40px}
+.sched-intro{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 18px;margin-bottom:14px;font-family:var(--mono);font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em}
+.sched-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:11px}
+.sched-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.sched-card-head{background:#0a0a0a;padding:10px 14px}
+.sched-card-name{font-family:var(--cond);font-size:20px;font-weight:900;letter-spacing:.05em;text-transform:uppercase;color:#fff;line-height:1}
+.sched-card-meta{font-family:var(--mono);font-size:8px;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.08em;margin-top:2px}
+.sched-card-body{padding:10px 13px}
+.sched-session-row{display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)}
+.sched-session-row:last-child{border-bottom:none}
+.sched-date{font-family:var(--mono);font-size:9px;color:var(--dim);white-space:nowrap;min-width:40px;padding-top:2px}
+.sched-session-name{font-size:11px;color:var(--muted);line-height:1.4;flex:1}
+.sched-status-icon{font-size:11px;flex-shrink:0}
+
+/* ── Sync Health tab ── */
+.sync-section{max-width:1400px;margin:0 auto;padding:14px 14px 40px}
+.sync-intro{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:13px 18px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.sync-intro-title{font-family:var(--mono);font-size:9px;font-weight:800;color:var(--text);text-transform:uppercase;letter-spacing:.12em}
+.sync-intro-sub{font-size:12px;color:var(--muted);margin-top:3px}
+.sync-score-row{display:flex;gap:8px;flex-wrap:wrap}
+.sync-score{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:7px 10px;min-width:76px}
+.sync-score-num{font-size:18px;font-weight:900;line-height:1}
+.sync-score-num.good{color:var(--ok)}.sync-score-num.warn{color:var(--warn)}.sync-score-num.bad{color:var(--alert)}
+.sync-score-lbl{font-family:var(--mono);font-size:7px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;margin-top:3px}
+.sync-table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:auto}
+.sync-table{width:100%;border-collapse:collapse;min-width:980px}
+.sync-table th{position:sticky;top:0;background:#0a0a0a;color:rgba(255,255,255,.65);font-family:var(--mono);font-size:8px;text-transform:uppercase;letter-spacing:.1em;text-align:left;padding:9px 10px;white-space:nowrap}
+.sync-table td{border-top:1px solid var(--border);padding:9px 10px;font-size:12px;color:var(--muted);vertical-align:middle;white-space:nowrap}
+.sync-table tr.bad td{background:#fff7f7}.sync-table tr.warn td{background:#fffaf0}
+.sync-name{font-family:var(--cond);font-size:20px;font-weight:900;letter-spacing:.05em;text-transform:uppercase;color:var(--text)}
+.sync-pill{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;border-radius:20px;padding:3px 8px;border:1px solid}
+.sync-pill.good{background:var(--green-bg);border-color:var(--green-border);color:var(--green-text)}
+.sync-pill.warn{background:var(--amber-bg);border-color:var(--amber-border);color:var(--amber-text)}
+.sync-pill.bad{background:var(--red-bg);border-color:var(--red-border);color:var(--red-text)}
+.sync-muted{font-family:var(--mono);font-size:10px;color:var(--dim)}
+
+/* ── Applications tab ── */
+.apps-section{max-width:1400px;margin:0 auto;padding:14px 14px 40px}
+.apps-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:11px}
+.app-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.app-card-head{background:#0a0a0a;padding:11px 14px 10px}
+.app-name{font-family:var(--cond);font-size:22px;font-weight:900;letter-spacing:.05em;text-transform:uppercase;color:#fff;line-height:1}
+.app-meta{font-family:var(--mono);font-size:8px;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.08em;margin-top:3px}
+.app-body{padding:12px 14px}
+.app-field{margin-bottom:8px}
+.app-field-lbl{font-family:var(--mono);font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px}
+.app-field-val{font-size:12px;color:var(--muted);line-height:1.45}
+.app-field-val.strong{color:var(--text);font-weight:600}
+.app-status{display:inline-block;font-family:var(--mono);font-size:8px;padding:2px 8px;border-radius:20px;text-transform:uppercase;letter-spacing:.06em;font-weight:700;margin-top:2px}
+.app-status.new{background:var(--amber-bg);color:var(--amber-text);border:1px solid var(--amber-border)}
+.app-status.accepted{background:var(--green-bg);color:var(--green-text);border:1px solid var(--green-border)}
+.app-status.rejected{background:var(--red-bg);color:var(--red-text);border:1px solid var(--red-border)}
+
+/* ── Amber accent on week badge ── */
+.week-badge{background:rgba(245,158,11,.18)!important;border-color:rgba(245,158,11,.35)!important}
+.wk-num{color:var(--amber)!important}
+
+/* ── Week detail (day-by-day timeline in FP card) ── */
+.wd-timeline{display:flex;flex-direction:column;gap:0;margin:0 -24px}
+.wd-row{display:flex;gap:0;border-top:1px solid var(--border);padding:12px 24px}
+.wd-row:first-child{border-top:none}
+.wd-row.empty{opacity:.45}
+.wd-date{font-family:var(--mono);font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;width:80px;flex-shrink:0;padding-top:2px;line-height:1.4}
+.wd-rest{font-family:var(--mono);font-size:9px;color:var(--dim);font-style:italic;padding-top:2px}
+.wd-day-content{flex:1;display:flex;flex-direction:column;gap:8px}
+.wd-session{border-radius:8px;padding:10px 12px}
+.wd-session.run{background:#fff7ed;border-left:3px solid var(--run)}
+.wd-session.str{background:#eff6ff;border-left:3px solid var(--str)}
+.wd-session.other{background:var(--surface2);border-left:3px solid var(--border-mid)}
+.wd-sess-cat{font-family:var(--mono);font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px}
+.wd-session.run .wd-sess-cat{color:var(--run)}
+.wd-session.str .wd-sess-cat{color:var(--str)}
+.wd-sess-name{font-size:13px;font-weight:600;color:var(--text);margin-bottom:3px;line-height:1.4}
+.wd-sess-log{font-family:var(--mono);font-size:10px;color:var(--muted);line-height:1.5}
+.wd-ex-list{display:flex;flex-direction:column;gap:2px;margin-top:4px}
+.wd-ex-row{display:flex;align-items:baseline;gap:8px;min-height:20px}
+.wd-ex-name{font-family:var(--mono);font-size:9px;color:var(--muted);width:160px;flex-shrink:0;line-height:1.4;padding-top:1px;text-transform:capitalize}
+.wd-ex-sets{display:flex;flex-wrap:wrap;gap:3px}
+.wd-ex-set{font-family:var(--mono);font-size:9px;background:var(--surface2);border:1px solid var(--border);padding:1px 6px;border-radius:4px;color:var(--text);white-space:nowrap;line-height:1.5}
+.wd-session.run .wd-ex-set{background:#fff7ed;border-color:#fde68a;color:var(--run)}
+.wd-run-stats{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+.wd-run-stat{font-family:var(--mono);font-size:10px;color:var(--muted)}
+.wd-run-stat strong{color:var(--text);font-size:11px}
+.wd-sess-notes{font-size:11px;color:var(--muted);font-style:italic;margin-top:3px;line-height:1.4}
+.wd-body-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.wd-nutr-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.wd-metric{font-family:var(--mono);font-size:10px;color:var(--muted);background:var(--surface2);padding:3px 8px;border-radius:20px;white-space:nowrap}
+.wd-metric strong{color:var(--text)}
+.wd-metric.nutr{background:var(--amber-bg);color:var(--amber-text)}
+.wd-metric.nutr strong{color:var(--amber-text)}
+.wd-metric.body-lbl{font-size:8px;text-transform:uppercase;letter-spacing:.06em;opacity:.6;padding:2px 6px}
+.wd-metric.nutr-lbl{font-size:8px;text-transform:uppercase;letter-spacing:.06em;opacity:.6;padding:2px 6px;background:transparent}
+
+/* Responsive ── */
+@media(max-width:600px){
+  header{height:54px;padding:0 12px;gap:8px}
+  .logo-mark{height:28px}
+  .logo{font-size:12px;letter-spacing:.08em}
+  .coach-pill{font-size:7px;padding:2px 6px 2px 4px;letter-spacing:.08em}
+  .coach-pill::before{width:4px;height:4px}
+  .updated{display:none}
+  .coach-select{font-size:9px;padding:4px 6px}
+  .refresh-btn{font-size:0;padding:5px 8px}
+  .refresh-btn::before{content:'↻';font-size:12px}
+  .tab-bar{top:54px}
+  .filter-bar{top:86px}
+  .grid{grid-template-columns:1fr}
+  .command-center{grid-template-columns:1fr}
+  .cc-hero{flex-direction:column}
+  .cc-score{grid-template-columns:repeat(3,1fr);width:100%}
+  .cc-body{grid-template-columns:1fr}
+  .cc-list{border-right:none;border-bottom:1px solid var(--border)}
+  .cc-health{grid-template-columns:1fr}
+  .coaches-grid{grid-template-columns:1fr}
+  .sched-grid{grid-template-columns:1fr}
+  .apps-grid{grid-template-columns:1fr}
+  .search-input{width:100%}
+  .fpc-train-pair{grid-template-columns:1fr}
+  .fpc-body-nutr{grid-template-columns:1fr}
+  .fpc-scores{grid-template-columns:repeat(3,1fr)}
+  .wd-date{width:60px}
+}
+
+/* ── Action Required Ribbon (squad card + full-page) ── */
+.action-ribbon{background:linear-gradient(90deg,#fef2f2 0%,#fff 100%);border-left:3px solid var(--alert);padding:8px 12px;margin:0;font-family:var(--mono);font-size:9px;color:#991b1b;line-height:1.5;letter-spacing:.02em;text-transform:uppercase}
+.action-ribbon.amber{background:linear-gradient(90deg,#fffbeb 0%,#fff 100%);border-left-color:var(--warn);color:#92400e}
+.action-ribbon-title{font-weight:800;letter-spacing:.08em;margin-bottom:3px;font-size:8px}
+.action-ribbon-list{font-weight:500;text-transform:none;letter-spacing:0;font-size:10px;color:#0a0a0a}
+.action-ribbon-list span{display:inline-block;margin-right:10px}
+.action-ribbon-list span::before{content:'• ';color:var(--alert);font-weight:900}
+.action-ribbon.amber .action-ribbon-list span::before{color:var(--warn)}
+
+/* ── Squad card sparkline strip ── */
+.spark-strip{display:flex;gap:8px;padding:10px 14px 12px;background:var(--surface2);border-top:1px solid var(--border)}
+.spark-cell{flex:1;text-align:center;min-width:0}
+.spark-cell-lbl{font-family:var(--mono);font-size:7px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px}
+.spark-cell-val{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--text);line-height:1;margin-bottom:3px}
+.spark-cell-val.up{color:var(--ok)}.spark-cell-val.dn{color:var(--alert)}.spark-cell-val.flat{color:var(--muted)}
+.spark-svg{width:100%;height:18px;display:block}
+
+/* ── PR section ── */
+.fpc-pr-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-top:6px}
+.fpc-pr{background:linear-gradient(135deg,#1e3a8a 0%,#312e81 100%);border-radius:10px;padding:14px 16px;color:#fff;position:relative;overflow:hidden}
+.fpc-pr::before{content:'PR';position:absolute;top:8px;right:10px;font-family:var(--mono);font-size:8px;font-weight:900;letter-spacing:.1em;color:rgba(255,255,255,.35)}
+.fpc-pr-ex{font-family:var(--cond);font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;line-height:1.1;margin-bottom:6px;padding-right:24px}
+.fpc-pr-val{font-size:24px;font-weight:900;letter-spacing:-.01em;line-height:1}
+.fpc-pr-val span{font-size:12px;font-weight:600;opacity:.7;margin-left:2px}
+.fpc-pr-prev{font-family:var(--mono);font-size:9px;color:rgba(255,255,255,.55);margin-top:4px}
+.fpc-pr-prev .delta{color:#86efac;font-weight:700}
+.fpc-pr-date{font-family:var(--mono);font-size:8px;color:rgba(255,255,255,.4);margin-top:6px;letter-spacing:.05em;text-transform:uppercase}
+.no-pr{font-family:var(--mono);font-size:10px;color:var(--dim);text-align:center;padding:14px 0}
+
+/* ── Daily nutrition timeline ── */
+.daily-nutr-wrap{margin-top:6px}
+.daily-nutr-legend{display:flex;gap:14px;margin-bottom:10px;font-family:var(--mono);font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.daily-nutr-legend span{display:flex;align-items:center;gap:5px}
+.daily-nutr-legend .swatch{width:10px;height:10px;border-radius:2px;display:inline-block}
+.daily-nutr-grid{display:flex;gap:4px;align-items:flex-end;height:140px;padding-bottom:18px;border-bottom:1px solid var(--border);position:relative}
+.daily-nutr-tgt-line{position:absolute;left:0;right:0;border-top:1.5px dashed rgba(220,38,38,.4);pointer-events:none}
+.daily-nutr-tgt-lbl{position:absolute;right:0;font-family:var(--mono);font-size:8px;color:#991b1b;background:#fff;padding:0 4px;font-weight:700;letter-spacing:.06em;transform:translateY(-50%)}
+.dnb{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;min-width:0;position:relative;height:100%;cursor:default}
+.dnb-bar{width:80%;background:linear-gradient(180deg,#86efac 0%,#15803d 100%);border-radius:3px 3px 0 0;min-height:1px;transition:opacity .15s;position:relative}
+.dnb.under .dnb-bar{background:linear-gradient(180deg,#fcd34d 0%,#d97706 100%)}
+.dnb.over .dnb-bar{background:linear-gradient(180deg,#fca5a5 0%,#dc2626 100%)}
+.dnb.empty .dnb-bar{background:rgba(0,0,0,.06)}
+.dnb-val{font-family:var(--mono);font-size:8px;color:var(--muted);margin-bottom:3px;font-weight:700;white-space:nowrap}
+.dnb-day{font-family:var(--mono);font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.04em;position:absolute;bottom:-15px;left:0;right:0;text-align:center}
+.dnb-day.today{color:var(--text);font-weight:800}
+.dnb:hover .dnb-bar{opacity:.7}
+.dnb-tip{position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);background:#0a0a0a;color:#fff;font-family:var(--mono);font-size:9px;padding:5px 8px;border-radius:5px;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .15s;z-index:5}
+.dnb:hover .dnb-tip{opacity:1}
+
+/* ── Trend section (sparklines large) ── */
+.trend-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-top:6px}
+.trend-card{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 14px}
+.trend-card-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
+.trend-card-lbl{font-family:var(--mono);font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;font-weight:700}
+.trend-card-now{font-size:22px;font-weight:900;letter-spacing:-.02em;line-height:1}
+.trend-card-now span{font-size:10px;font-weight:600;color:var(--muted);margin-left:2px}
+.trend-card-delta{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.04em}
+.trend-card-delta.up{color:var(--ok)}.trend-card-delta.dn{color:var(--alert)}.trend-card-delta.flat{color:var(--muted)}
+.trend-svg{width:100%;height:42px;display:block}
+.trend-card-foot{font-family:var(--mono);font-size:8px;color:var(--dim);margin-top:6px;text-transform:uppercase;letter-spacing:.06em}
+
+/* ── Progress photos ── */
+.progress-photo-panel{min-height:140px}
+.progress-photo-state{font-family:var(--mono);font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;padding:10px 0}
+.progress-photo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.progress-photo{display:block;background:var(--surface2);border:1px solid var(--border);border-radius:10px;overflow:hidden;text-decoration:none;color:inherit}
+.progress-photo img{width:100%;aspect-ratio:3/4;object-fit:cover;display:block;background:var(--surface2)}
+.progress-photo-meta{padding:8px 10px}
+.progress-photo-type{font-family:var(--mono);font-size:9px;font-weight:800;color:var(--text);text-transform:uppercase;letter-spacing:.08em}
+.progress-photo-date{font-family:var(--mono);font-size:8px;color:var(--dim);margin-top:3px}
+</style>
+</head>
+<body>
+
+<!-- ── Full-page athlete view ── -->
+<div id="fp-overlay">
+  <div class="fp-topbar">
+    <button class="fp-back" onclick="hideFP()">← Back to Squad</button>
+    <div class="fp-nav">
+      <button class="fp-nav-btn" id="fp-prev" onclick="fpNav(-1)">← Prev</button>
+      <span class="fp-idx" id="fp-idx"></span>
+      <button class="fp-nav-btn" id="fp-next" onclick="fpNav(1)">Next →</button>
+    </div>
+    <span class="fp-hint">Esc to close · ← → to navigate</span>
+  </div>
+  <div class="fp-body" id="fp-body"></div>
+</div>
+
+<header>
+  <div class="logo-block">
+    <img class="logo-mark" src="data:image/png;base64,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" alt="DP">
+    <div class="logo-text">
+      <div class="logo"><span class="d">DUAL</span> <span class="p">PERFORMANCE</span></div>
+      <div class="coach-pill">Coaches Dashboard · Internal</div>
+    </div>
+  </div>
+  <div class="h-right">
+    <select class="coach-select" id="coach-select" title="Logged in as">
+      <option value="">Coach: Select</option>
+      <option value="KARL">KARL</option>
+      <option value="ALEX">ALEX</option>
+    </select>
+    <span class="updated" id="updated"></span>
+    <button class="refresh-btn" id="refresh-btn">↻ Refresh</button>
+    <button class="gen-btn" id="gen-btn" style="display:none">✦ AI Summaries</button>
+  </div>
+</header>
+
+<div class="tab-bar">
+  <button class="tab active" id="tab-athletes-btn" onclick="switchTab('athletes')">
+    Athletes <span class="tab-badge" id="tab-ath-count">—</span>
+  </button>
+  <button class="tab" id="tab-coaches-btn" onclick="switchTab('coaches')">
+    Coaches <span class="tab-badge">2</span>
+  </button>
+  <button class="tab" id="tab-schedule-btn" onclick="switchTab('schedule')">
+    Schedule <span class="tab-badge" id="tab-sched-count">—</span>
+  </button>
+  <button class="tab" id="tab-sync-btn" onclick="switchTab('sync')">
+    Sync <span class="tab-badge" id="tab-sync-count">—</span>
+  </button>
+  <button class="tab" id="tab-apps-btn" onclick="switchTab('applications')">
+    Pipeline <span class="tab-badge" id="tab-apps-count">—</span>
+  </button>
+</div>
+
+<!-- Filter bar (athletes only) -->
+<div class="filter-bar" id="filter-bar">
+  <input type="text" class="search-input" id="search-input" placeholder="Search athlete…" oninput="applyFilters()">
+  <div class="filter-divider"></div>
+  <span class="filter-label">Status:</span>
+  <div class="sf-group">
+    <button class="sf active" data-status="all" onclick="setStatusFilter(this,'all')">All</button>
+    <button class="sf sf-red" data-status="red" onclick="setStatusFilter(this,'red')">⚠ Alert</button>
+    <button class="sf sf-amber" data-status="amber" onclick="setStatusFilter(this,'amber')">Watch</button>
+    <button class="sf sf-green" data-status="green" onclick="setStatusFilter(this,'green')">On Track</button>
+  </div>
+  <div class="filter-divider"></div>
+  <select class="sort-select" id="sort-select" onchange="applyFilters()">
+    <option value="alert">Sort: Needs Attention</option>
+    <option value="name">Sort: Name A–Z</option>
+    <option value="week">Sort: Program Week</option>
+    <option value="compliance">Sort: Compliance</option>
+    <option value="checkin">Sort: Last Check-in</option>
+  </select>
+</div>
+
+<!-- ATHLETES TAB -->
+<div id="tab-athletes-content">
+  <div class="main">
+    <div id="loading" class="state-box">
+      <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+      <div class="state-txt">Loading athlete data…</div>
+    </div>
+    <div id="err" class="state-box" style="display:none">
+      <div class="state-txt" style="color:var(--alert)" id="err-msg"></div>
+      <button class="refresh-btn" style="color:#0a0a0a;border-color:#ccc;margin-top:14px" onclick="load()">↻ Retry</button>
+    </div>
+    <div id="content" style="display:none">
+      <div id="command-center"></div>
+      <div class="squad-brief" id="squad-brief">
+        <div class="sb-title">⬡ Squad Brief — AI Coaching Summary</div>
+        <div class="sb-text" id="squad-brief-text"></div>
+      </div>
+      <div class="summary-bar" id="sum-bar"></div>
+      <div class="grid" id="grid"></div>
+      <div class="no-results" id="no-results" style="display:none">
+        <div class="no-results-txt">No athletes match this filter</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SCHEDULE TAB -->
+<div id="tab-schedule-content" style="display:none">
+  <div class="sched-section">
+    <div class="sched-intro" id="sched-intro">Week ending <span id="sched-week-end">—</span> · Planned sessions for all athletes</div>
+    <div class="sched-grid" id="sched-grid"></div>
+  </div>
+</div>
+
+<!-- SYNC HEALTH TAB -->
+<div id="tab-sync-content" style="display:none">
+  <div class="sync-section">
+    <div class="sync-intro">
+      <div>
+        <div class="sync-intro-title">Athlete Data Sync Health</div>
+        <div class="sync-intro-sub">Checks whether each athlete ID is matching across master profile, weekly check-in, daily tracking, sessions, planning, and targets.</div>
+      </div>
+      <div class="sync-score-row" id="sync-score-row"></div>
+    </div>
+    <div class="sync-table-wrap">
+      <table class="sync-table">
+        <thead>
+          <tr>
+            <th>Athlete</th>
+            <th>Status</th>
+            <th>Master</th>
+            <th>Start Date</th>
+            <th>Weekly</th>
+            <th>Body 14d</th>
+            <th>Nutrition 14d</th>
+            <th>Sessions 21d</th>
+            <th>Plan This Week</th>
+            <th>Target</th>
+            <th>Issue</th>
+          </tr>
+        </thead>
+        <tbody id="sync-table-body"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- APPLICATIONS TAB -->
+<div id="tab-apps-content" style="display:none">
+  <div class="apps-section">
+    <div class="apps-grid" id="apps-grid">
+      <div class="state-box"><div class="state-txt">Loading applications…</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- COACHES TAB -->
+<div id="tab-coaches-content" style="display:none">
+  <div class="coaches-section">
+    <div class="coaches-intro">
+      <div class="coaches-intro-icon">🎯</div>
+      <div class="coaches-intro-text">
+        <strong>Coaching Team</strong> — Karl &amp; Alex's own training data.
+        This tab tracks your personal check-ins separate from the athlete roster.
+      </div>
+    </div>
+    <div id="coaches-loading" class="state-box" style="display:none">
+      <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+      <div class="state-txt">Loading coach data…</div>
+    </div>
+    <div class="coaches-grid" id="coaches-grid"></div>
+  </div>
+</div>
+
+<script>
+// ── Config ───────────────────────────────────────────────────────────────────
+const DB = {
+  weekly:       '33e5a96c-c70b-8049-b696-d22e5920e0ee',
+  sessions:     '1c55a96c-c70b-825b-9bdf-819abea4ef7c',
+  body:         '3405a96c-c70b-80a4-b1b9-cf5b9c236f18',
+  nutrition:    '3405a96c-c70b-804b-aa9c-f165f2d2e0e9',
+  athletes:     '4a25a96c-c70b-82ff-a679-0139eaa8b458',
+  targets:      '3405a96c-c70b-80de-9221-c2a40653277c',
+  planning:     '0b85a96c-c70b-8368-98fd-013e0e15c4f2',
+  applications: '33f5a96c-c70b-8008-ac37-e11d3b48d8c1',
+};
+
+// ── Session type → badge class mapping ───────────────────────────────────────
+const ST_CLASS = {
+  'Tempo':'tempo','Speed':'speed','Long Run':'longrun',
+  'Strength':'strength','Run + Strength':'runstr',
+  'Rest':'rest','Recovery':'recovery','Easy Effort':'easy',
+  'Optional':'optional','race':'race','Run':'run',
+  'Weekly KM Total':'optional',
+};
+const ST_LABEL = {
+  'Long Run':'Long Run','Run + Strength':'Run+Str','Easy Effort':'Easy',
+  'Weekly KM Total':'KM Total','race':'Race',
+};
+function stClass(t){ return ST_CLASS[t] || 'default'; }
+function stLabel(t){ return ST_LABEL[t] || t || 'Session'; }
+
+function sessionBadgeHTML(sessionType, status, sessionName) {
+  const cls = stClass(sessionType);
+  const lbl = stLabel(sessionType);
+  const statusCls = (status||'planned').trim().toLowerCase().replace(/\s+/g,'');
+  const statusIcon = statusCls==='completed'?'✓':statusCls==='missed'?'✗':statusCls==='sick'?'🤒':'→';
+  const title = sessionName ? `${sessionName} (${sessionType||''})` : (sessionType||'Session');
+  return `<span class="sbadge sbadge-${cls} ${statusCls}" title="${esc(title)}"><span class="sdot"></span>${esc(lbl)} <span class="sbadge-status">${statusIcon}</span></span>`;
+}
+
+// ── Recovery score (composite 0–10) ─────────────────────────────────────────
+function calcRecoveryScore(w) {
+  if (!w) return null;
+  const vals = [];
+  const sleep = parseFloat(w['Sleep hrs']); if (!isNaN(sleep)) vals.push(Math.min(10, (sleep/8)*10));
+  const energy = parseFloat(w['Energy /10']); if (!isNaN(energy)) vals.push(energy);
+  const stress = parseFloat(w['Stress']); if (!isNaN(stress)) vals.push(10-stress);
+  const soreness = parseFloat(w['Soreness /10']); if (!isNaN(soreness)) vals.push(10-soreness);
+  if (!vals.length) return null;
+  return Math.round((vals.reduce((a,b)=>a+b,0)/vals.length)*10)/10;
+}
+
+// ── Extract athlete ID from a planning schedule row ──────────────────────────
+// The Athlete field comes back as a relation — could be a name string, JSON array, or comma-list
+function getPlanningAthleteId(r) {
+  const a = r['Athlete'] || r['athlete'];
+  if (!a) return null;
+  const s = String(a).trim();
+  if (s.startsWith('[')) {
+    try { const p=JSON.parse(s); return nid(Array.isArray(p)?String(p[0]):String(p)); } catch{}
+  }
+  return nid(s.split(',')[0].trim());
+}
+
+// Name aliases — maps any variant to the canonical athlete ID used everywhere
+const ALIASES = { 'JACOB TUAZON': 'JACOB', 'BRYAN GOH': 'BRYAN' };
+
+// Coaches are filtered OUT of the athletes grid and shown on the Coaches tab
+const COACHES = new Set(['KARL', 'ALEX']);
+
+// ── Legacy athletes: no discovery week ───────────────────────────────────────
+// These athletes started on Week 1 directly (no Week 0 discovery week).
+// Their week formula is: floor(days/7) + 1  →  Week 1 on Day 0.
+// New athletes all go through a Week 0 discovery week, so their formula is
+// floor(days/7)  →  Week 0 on Day 0, Week 1 on Day 7.
+const NO_DISCOVERY = new Set(['JACOB', 'KHANG']);
+
+// ── Week anchors — fallback ONLY for athletes without a Notion Start Date ─────
+// { ID: { week: N, endDate: 'YYYY-MM-DD' } }
+// 'week' = the week number whose Sunday was 'endDate'.
+// calcWeekNum() auto-advances from this anchor each Monday.
+// Add an entry here only if an athlete is missing a Start Date in Notion.
+// Remove the entry once the Start Date is set — Notion Start Date takes priority.
+const WEEK_OVERRIDES = {};
+// JACOB and KHANG both have Start Dates in Notion — overrides removed.
+
+// Local call notes per athlete. This keeps the coaching workflow usable across
+// refreshes until notes are moved into Supabase/Notion as a shared backend field.
+const callNotes = (() => {
+  try { return JSON.parse(localStorage.getItem('dp_call_notes') || '{}'); }
+  catch { return {}; }
+})();
+
+// ── Local date helper (avoids UTC-shift bug with toISOString) ─────────────────
+function localDateStr(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const n = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${n}`;
+}
+
+// ── Current week ending (same for ALL athletes) ───────────────────────────────
+// Weeks run Mon–Sun. Week resets on Monday.
+// "Current week ending" = the COMING Sunday (or today if today IS Sunday).
+// Examples:
+//   Mon 4 May  → week ends Sun 10 May  (new week just started, reset)
+//   Thu 7 May  → week ends Sun 10 May
+//   Sun 10 May → week ends Sun 10 May  (last day of this week)
+// Bug fixed: use localDateStr() not toISOString() — ISO converts to UTC which
+// shifts the date back by 10–11 hours in AEST and gives the wrong day.
+// Start of the current Mon–Sun week (local time, same timezone-safe approach)
+const currentWeekStart = (() => {
+  const today = new Date();
+  const day = today.getDay();               // 0=Sun, 1=Mon … 6=Sat
+  const daysToMonday = day === 0 ? 6 : day - 1;
+  const monday = new Date(today);
+  monday.setDate(today.getDate() - daysToMonday);
+  monday.setHours(0, 0, 0, 0);
+  return monday;
+})();
+
+const currentWeekEnd = (() => {
+  const today = new Date();
+  const day = today.getDay();               // 0=Sun, 1=Mon … 6=Sat
+  const daysUntilSunday = day === 0 ? 0 : 7 - day;
+  const sunday = new Date(today);
+  sunday.setDate(today.getDate() + daysUntilSunday);
+  return localDateStr(sunday);
+})();
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+function nid(s) {
+  if (!s) return null;
+  const u = s.toUpperCase().trim();
+  return ALIASES[u] || u;
+}
+function sid(r) {
+  const code = r['Athlete Code'];
+  if (code) return nid(code);
+  const name = (r.Name || '').split('—')[0].trim();
+  return name ? nid(name) : null;
+}
+function avg(arr, k) {
+  const v = arr.map(r => parseFloat(r[k])).filter(x => !isNaN(x));
+  return v.length ? (v.reduce((a, b) => a + b, 0) / v.length).toFixed(1) : null;
+}
+function dago(n) { const d = new Date(); d.setDate(d.getDate() - n); return d; }
+function dagoStr(n) { return localDateStr(dago(n)); } // timezone-safe date string
+function scoreClass(v, inv) {
+  const n = parseFloat(v);
+  if (isNaN(n)) return 'n';
+  if (inv) return n >= 8 ? 'bad' : n >= 6 ? 'mid' : 'good';
+  return n >= 7.5 ? 'good' : n >= 5 ? 'mid' : 'bad';
+}
+function esc(s) {
+  return String(s || '')
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+function fmtDate(s) {
+  if (!s) return '';
+  const [y, m, d] = String(s).split('T')[0].split('-');
+  if (!y || !m || !d) return s;
+  return `${d}-${m}-${y}`;
+}
+function isBad(v) {
+  return v && !['n/a', '', 'none', 'nope', 'nothing', 'no', '-'].includes((v || '').toLowerCase().trim());
+}
+function daysAgo(dateStr) {
+  if (!dateStr) return null;
+  const diff = Math.floor((Date.now() - new Date(dateStr)) / 86400000);
+  return diff;
+}
+
+// ── Parse a single Exercise Log line into best set (max load) ────────────────
+// Format: "ExName: Set 1: Xkg × Yreps | Set 2: Xkg × Yreps | ..."
+// Returns { exercise, weight, reps, e1rm } for the heaviest weight set.
+// Excludes bodyweight/cardio rows where no kg is parsed.
+function parseExerciseLine(line) {
+  if (!line) return null;
+  const colonSet = line.indexOf(': Set ');
+  if (colonSet === -1) return null;
+  const exName = line.substring(0, colonSet).trim();
+  if (!exName) return null;
+  const setsStr = line.substring(colonSet + 2);
+  const sets = setsStr.split('|').map(s => s.trim()).filter(Boolean);
+  let best = null;
+  sets.forEach(s => {
+    const m = s.match(/Set\s*\d+:\s*([\d.]+)\s*kg\s*[×x]\s*(\d+)/i);
+    if (!m) return;
+    const w = parseFloat(m[1]);
+    const r = parseInt(m[2]);
+    if (isNaN(w) || isNaN(r) || w <= 0) return;
+    // Epley 1RM estimate — used to compare different rep ranges fairly
+    const e1rm = w * (1 + r / 30);
+    if (!best || e1rm > best.e1rm) {
+      best = { weight: w, reps: r, e1rm };
+    }
+  });
+  if (!best) return null;
+  return { exercise: exName, ...best };
+}
+
+// ── Detect PRs across an athlete's session history ───────────────────────────
+// Walks all sessions chronologically per exercise. A PR is logged when a session's
+// best e1rm exceeds the previous best for that exercise. Returns recent PRs
+// (last 21 days) sorted newest first, plus the all-time bests for reference.
+function detectPRs(sessions) {
+  const events = [];
+  // Sort sessions oldest → newest
+  const sorted = [...sessions]
+    .filter(s => s._isStr)
+    .sort((a, b) => (a._d || '').localeCompare(b._d || ''));
+  const bestPerEx = {}; // { exName: { weight, reps, e1rm, date } }
+  sorted.forEach(s => {
+    const log = s['Exercise Log'] || '';
+    const lines = log.split('\n').map(l => l.trim()).filter(Boolean);
+    // Group by exercise within this session — multiple lines for same ex possible
+    const sessionBest = {};
+    lines.forEach(line => {
+      const p = parseExerciseLine(line);
+      if (!p) return;
+      const k = p.exercise.toLowerCase();
+      if (!sessionBest[k] || p.e1rm > sessionBest[k].e1rm) sessionBest[k] = p;
+    });
+    Object.entries(sessionBest).forEach(([k, p]) => {
+      const prev = bestPerEx[k];
+      if (!prev || p.e1rm > prev.e1rm + 0.5) { // 0.5kg tolerance to avoid noise
+        events.push({
+          exercise: p.exercise,
+          weight: p.weight,
+          reps: p.reps,
+          e1rm: p.e1rm,
+          date: s._d,
+          prev: prev ? { weight: prev.weight, reps: prev.reps, e1rm: prev.e1rm } : null,
+        });
+        bestPerEx[k] = { ...p, date: s._d };
+      }
+    });
+  });
+  const c21 = dago(21);
+  const recent = events
+    .filter(e => new Date(e.date) >= c21)
+    .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  return { recent, allTime: bestPerEx };
+}
+
+// ── Build a 14-day timeseries from rows with a date+value ────────────────────
+// Returns array of { date: 'YYYY-MM-DD', value: number|null } length=14, oldest→newest
+function buildTimeseries(rows, dateKey, valueKey, days = 14) {
+  const map = {};
+  rows.forEach(r => {
+    const raw = r[dateKey] || r[dateKey === 'date:Date:start' ? 'Date' : dateKey];
+    if (!raw) return;
+    const d = String(raw).split('T')[0];
+    const v = parseFloat(r[valueKey]);
+    if (isNaN(v)) return;
+    // Last write wins for same day
+    map[d] = v;
+  });
+  const series = [];
+  for (let i = days - 1; i >= 0; i--) {
+    const d = dagoStr(i);
+    series.push({ date: d, value: map[d] !== undefined ? map[d] : null });
+  }
+  return series;
+}
+
+// ── Trend delta: compare last 3-day avg vs previous 3-day avg ────────────────
+function trendDelta(series, inv = false) {
+  const vals = series.map(p => p.value).filter(v => v !== null);
+  if (vals.length < 4) return { delta: null, dir: 'flat', pct: null };
+  const recent = vals.slice(-3);
+  const prior = vals.slice(-6, -3);
+  if (!recent.length || !prior.length) return { delta: null, dir: 'flat', pct: null };
+  const rAvg = recent.reduce((a, b) => a + b, 0) / recent.length;
+  const pAvg = prior.reduce((a, b) => a + b, 0) / prior.length;
+  const delta = rAvg - pAvg;
+  const pct = pAvg !== 0 ? (delta / pAvg) * 100 : null;
+  // dir is "good"/"bad" interpretation — for inv (stress, soreness) lower is good
+  let dir = 'flat';
+  if (Math.abs(delta) < 0.15) dir = 'flat';
+  else if (inv) dir = delta < 0 ? 'up' : 'dn';
+  else dir = delta > 0 ? 'up' : 'dn';
+  return { delta, dir, pct, recentAvg: rAvg };
+}
+
+// ── Mini sparkline SVG ───────────────────────────────────────────────────────
+function sparkSVG(series, color = '#0a0a0a', height = 18) {
+  const w = 100, h = height;
+  const vals = series.map(p => p.value);
+  const valid = vals.filter(v => v !== null);
+  if (valid.length < 2) return `<svg class="spark-svg" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"></svg>`;
+  const min = Math.min(...valid), max = Math.max(...valid);
+  const range = max - min || 1;
+  const stepX = w / (series.length - 1);
+  const points = series.map((p, i) => {
+    if (p.value === null) return null;
+    const x = i * stepX;
+    const y = h - ((p.value - min) / range) * (h - 2) - 1;
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  });
+  // Build path skipping null gaps
+  let path = '';
+  let pen = 'M';
+  points.forEach(pt => {
+    if (pt === null) { pen = 'M'; return; }
+    path += `${pen}${pt} `;
+    pen = 'L';
+  });
+  return `<svg class="spark-svg" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
+    <path d="${path}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+  </svg>`;
+}
+
+// ── Larger trend SVG with area fill ──────────────────────────────────────────
+function trendSVG(series, color = '#0a0a0a', height = 42) {
+  const w = 200, h = height;
+  const vals = series.map(p => p.value);
+  const valid = vals.filter(v => v !== null);
+  if (valid.length < 2) return `<svg class="trend-svg" viewBox="0 0 ${w} ${h}"></svg>`;
+  const min = Math.min(...valid), max = Math.max(...valid);
+  const range = max - min || 1;
+  const stepX = w / (series.length - 1);
+  // Build segments to skip nulls
+  const segments = [];
+  let cur = [];
+  series.forEach((p, i) => {
+    if (p.value === null) {
+      if (cur.length) segments.push(cur);
+      cur = [];
+    } else {
+      const x = i * stepX;
+      const y = h - ((p.value - min) / range) * (h - 4) - 2;
+      cur.push([x, y]);
+    }
+  });
+  if (cur.length) segments.push(cur);
+  const linePath = segments.map(seg =>
+    seg.map(([x, y], i) => `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`).join(' ')
+  ).join(' ');
+  const areaPath = segments.map(seg => {
+    if (!seg.length) return '';
+    const start = `M${seg[0][0].toFixed(1)},${h}`;
+    const line = seg.map(([x, y]) => `L${x.toFixed(1)},${y.toFixed(1)}`).join(' ');
+    const end = `L${seg[seg.length - 1][0].toFixed(1)},${h}Z`;
+    return `${start} ${line} ${end}`;
+  }).join(' ');
+  return `<svg class="trend-svg" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
+    <path d="${areaPath}" fill="${color}" opacity="0.08"/>
+    <path d="${linePath}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+  </svg>`;
+}
+
+// ── Build prioritised "Action Required" list ────────────────────────────────
+// Returns { critical: [str], watch: [str], severity: 'red'|'amber'|null }
+function buildActionList(a) {
+  const critical = [];
+  const watch = [];
+  const w = a.weekly;
+
+  // Niggles: red flag
+  if (w) {
+    const runNig = w['Run Niggles'] || '';
+    const liftNig = w['Lifts Niggles'] || '';
+    if (isBad(runNig) && /pain|injur|strain|physio|tear/i.test(runNig)) {
+      critical.push(`Run niggle: ${runNig.trim().slice(0, 60)}`);
+    } else if (isBad(runNig)) {
+      watch.push(`Run niggle: ${runNig.trim().slice(0, 60)}`);
+    }
+    if (isBad(liftNig) && /pain|injur|strain|physio|tear/i.test(liftNig)) {
+      critical.push(`Lift niggle: ${liftNig.trim().slice(0, 60)}`);
+    } else if (isBad(liftNig)) {
+      watch.push(`Lift niggle: ${liftNig.trim().slice(0, 60)}`);
+    }
+    const st = parseInt(w.Stress);
+    if (st >= 8) critical.push(`Stress ${st}/10 — manage load this week`);
+    else if (st >= 6) watch.push(`Stress ${st}/10`);
+    const mo = parseInt(w.Motivation);
+    if (mo && mo <= 4) critical.push(`Motivation ${mo}/10 — check in personally`);
+    else if (mo && mo <= 5) watch.push(`Motivation ${mo}/10`);
+  }
+
+  // Sleep trend: declining over 7d
+  const sleepSeries = buildTimeseries(a.body, 'date:Date:start', 'Sleep Score', 7);
+  const sleepValid = sleepSeries.map(p => p.value).filter(v => v !== null);
+  if (sleepValid.length >= 4) {
+    const avgSleep = sleepValid.reduce((x, y) => x + y, 0) / sleepValid.length;
+    if (avgSleep < 5.5) critical.push(`Sleep avg ${avgSleep.toFixed(1)}/10 over 7d`);
+    else if (avgSleep < 6.5) watch.push(`Sleep avg ${avgSleep.toFixed(1)}/10`);
+  }
+
+  // Stale check-in: red if > 9 days since last check-in
+  if (a.isStale && w?.['Week Ending']) {
+    const dAgo = daysAgo(w['Week Ending']);
+    if (dAgo !== null && dAgo > 9) critical.push(`No check-in for ${dAgo}d`);
+  }
+
+  // Compliance shortfall
+  if (a.compliance !== null && w) {
+    const rp = parseInt(w['Run Planned']) || 0;
+    const rc = parseInt(w['Run Completed']) || 0;
+    const lp = parseInt(w['Lift Planned']) || 0;
+    const lc = parseInt(w['Lift Completed']) || 0;
+    if (a.compliance < 50) {
+      critical.push(`Compliance ${a.compliance}% (${rc + lc}/${rp + lp} sessions)`);
+    } else if (a.compliance < 70) {
+      watch.push(`Compliance ${a.compliance}%`);
+    }
+  }
+
+  // Nutrition vs target — under/over by 25%+ averaged 7d
+  if (a.target && a.nAvg.cal) {
+    const tCal = parseFloat(String(a.target.Calories || '').replace(/[^\d.]/g, ''));
+    const aCal = parseFloat(a.nAvg.cal);
+    if (tCal && aCal) {
+      const pct = ((aCal - tCal) / tCal) * 100;
+      if (pct < -25) critical.push(`Calories ${Math.round(pct)}% vs target — under-fuelling`);
+      else if (pct > 25) watch.push(`Calories ${Math.round(pct)}% vs target`);
+      else if (pct < -15) watch.push(`Calories ${Math.round(pct)}% vs target`);
+    }
+    // Protein
+    const tPro = parseFloat(String(a.target.Protein || '').replace(/[^\d.]/g, ''));
+    const aPro = parseFloat(a.nAvg.pro);
+    if (tPro && aPro && aPro < tPro * 0.75) {
+      watch.push(`Protein ${Math.round(aPro)}g vs ${Math.round(tPro)}g target`);
+    }
+  }
+
+  // Weight trend over 14 days for body composition
+  const wtSeries = buildTimeseries(a.body, 'date:Date:start', 'Weight', 14);
+  const wtValid = wtSeries.filter(p => p.value !== null);
+  if (wtValid.length >= 5) {
+    const first = wtValid[0].value;
+    const last = wtValid[wtValid.length - 1].value;
+    const change = last - first;
+    if (Math.abs(change) >= 1.5) {
+      watch.push(`Weight ${change > 0 ? '+' : ''}${change.toFixed(1)}kg over 14d`);
+    }
+  }
+
+  const severity = critical.length ? 'red' : watch.length ? 'amber' : null;
+  return { critical, watch, severity };
+}
+
+// ── Fetch (with full pagination) ──────────────────────────────────────────────
+// Notion caps each API response at 100 rows. Without pagination the sessions DB
+// (one row per exercise logged) only returns the first ~100 entries, which for
+// a busy squad means recent sessions are silently missing. This function keeps
+// requesting the next page until there is no more data.
+// Requires the /api/notion backend to:
+//   • Accept ?cursor=<next_cursor> and pass it to the Notion API as start_cursor
+//   • Return has_more (boolean) and next_cursor (string) from the Notion response
+async function fetchDB(dbId) {
+  const all = [];
+  let cursor = null;
+  let pages = 0;
+  const MAX_PAGES = 40; // safety cap — 40 × 100 = 4 000 rows max
+
+  do {
+    const url = cursor
+      ? `/api/notion?db=${dbId}&cursor=${encodeURIComponent(cursor)}`
+      : `/api/notion?db=${dbId}`;
+    const res = await fetch(url);
+    if (!res.ok) {
+      const e = await res.json().catch(() => ({}));
+      throw new Error(e.error || `HTTP ${res.status}`);
+    }
+    const data = await res.json();
+    all.push(...(data.results || []));
+    cursor = data.has_more ? data.next_cursor : null;
+    pages++;
+  } while (cursor && pages < MAX_PAGES);
+
+  return all;
+}
+
+// ── Build ─────────────────────────────────────────────────────────────────────
+function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [], planning = [], applications = []) {
+  const c21 = dago(21), c14 = dago(14), c7 = dago(7);
+  const map = {};
+  const masterIds = new Set();
+  const bodyCounts = {};
+  const nutritionCounts = {};
+  const sessionCounts = {};
+  const planCounts = {};
+
+  function ens(id) {
+    if (!id || id.length < 2) return;
+    if (!map[id]) map[id] = { id, weekly: null, body: [], nutrition: [], sessions: [] };
+  }
+
+  const startDates = {};
+  athleteDb.forEach(r => {
+    const code = nid(r.Code || r.Athlete);
+    const sd = r['date:Start Date:start'] || r['Start Date'];
+    if (code) masterIds.add(code);
+    if (code && sd) startDates[code] = sd;
+  });
+
+  // Build targets lookup: targetMap[athleteId][weekLabel] = row
+  // weekLabel matches exactly what calcWeekNum returns, e.g. 'Week 8' or 'Week 0'
+  const targetMap = {};
+  targets.forEach(r => {
+    const id = nid(r.Name);
+    if (!id) return;
+    if (!targetMap[id]) targetMap[id] = {};
+    const wk = (r.Week || '').trim(); // e.g. 'Week 8'
+    if (wk) targetMap[id][wk] = r;
+  });
+
+  function calcWeekNum(id) {
+    if (COACHES.has(id)) return null;
+
+    // Priority 1: Notion Start Date (most accurate — set this per athlete in Notion)
+    const sd = startDates[id];
+    if (sd) {
+      const diffDays = Math.floor((Date.now() - new Date(sd)) / 86400000);
+      // NO_DISCOVERY athletes started directly on Week 1 (no discovery week).
+      // Formula: floor(days/7) + 1  →  Day 0–6 = Week 1, Day 7–13 = Week 2 …
+      if (NO_DISCOVERY.has(id)) {
+        return Math.max(1, Math.floor(diffDays / 7) + 1);
+      }
+      // All other athletes go through a Week 0 discovery week.
+      // Formula: floor(days/7)  →  Day 0–6 = Week 0, Day 7–13 = Week 1 …
+      return Math.floor(diffDays / 7);
+    }
+
+    // Priority 2: Date-anchored override — fallback for athletes missing a Notion Start Date.
+    // anchor.week = the week number that ENDED on anchor.endDate (Sunday).
+    // Auto-advances each Monday without manual edits.
+    if (WEEK_OVERRIDES.hasOwnProperty(id)) {
+      const anchor = WEEK_OVERRIDES[id];
+      const weeksSinceAnchor = Math.round(
+        (new Date(currentWeekEnd) - new Date(anchor.endDate)) / (7 * 86400000)
+      );
+      return anchor.week + weeksSinceAnchor;
+    }
+
+    return null;
+  }
+
+  // Weekly — keep latest per athlete
+  const wl = {};
+  weekly.forEach(r => {
+    const id = nid((r.Name || '').split('\u2014')[0].split('--')[0].trim());
+    if (!id || !r['Week Ending']) return;
+    if (!wl[id] || r['Week Ending'] > wl[id]['Week Ending']) wl[id] = r;
+  });
+  Object.entries(wl).forEach(([id, r]) => { ens(id); map[id].weekly = r; });
+
+  // Body (14d)
+  body.forEach(r => {
+    const id = nid(r.AthleteID);
+    if (!id) return;
+    ens(id);
+    const d = r['date:Date:start'] || r.Date;
+    if (d && new Date(d) >= c14) {
+      bodyCounts[id] = (bodyCounts[id] || 0) + 1;
+      map[id].body.push(r);
+    }
+  });
+
+  // Nutrition (14d)
+  nutrition.forEach(r => {
+    const id = nid(r.AthleteID);
+    if (!id) return;
+    ens(id);
+    const d = r['date:Date:start'] || r.Date;
+    if (d && new Date(d) >= c14) {
+      nutritionCounts[id] = (nutritionCounts[id] || 0) + 1;
+      map[id].nutrition.push(r);
+    }
+  });
+
+  // ── Session date parser ──────────────────────────────────────────────────────
+  // Make.com writes the Date field as "DD/MM/YYYY HH:MM" (Australian format).
+  // JS new Date() treats the leading segment as MM (American), so "04/05/2026"
+  // becomes April 5 instead of May 4 — placing it outside the 21-day window and
+  // silently dropping the entry. We detect this format and swap DD↔MM first.
+  function parseSessionDate(raw) {
+    if (!raw) return null;
+    const s = String(raw).trim();
+    // DD/MM/YYYY HH:MM  — the Make.com format
+    const ddmm = s.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+    if (ddmm) return `${ddmm[3]}-${ddmm[2]}-${ddmm[1]}`; // → YYYY-MM-DD
+    // ISO / fallback — split on T and take the date part
+    return s.split('T')[0];
+  }
+
+  // Sessions — keep 21 days so prev-week sessions are always available
+  // for the "Week in Progress" prev-week fallback at the start of a new week
+  // _cat normalises the session category regardless of which field Make.com writes to:
+  //   coaches-side Notion may use "Session Category", while the athlete run-log webhook
+  //   writes "type":"Run" which Make.com may land in a field called "Type" or "type".
+  // Each Notion row is one exercise. We merge them into one session entry per
+  // athlete+sessionName+category+date, concatenating the Exercise Log lines so
+  // the FP card shows the full workout rather than just the first exercise.
+  const sessionMap = {}; // key → merged session entry
+  sessions.forEach(r => {
+    const id = sid(r);
+    if (!id) return;
+    const ds = parseSessionDate(r.Date) || parseSessionDate(r['Submitted At']) || parseSessionDate(r._createdTime);
+    if (!ds || new Date(ds) < c21) return;
+    sessionCounts[id] = (sessionCounts[id] || 0) + 1;
+    if (!map[id]) return;
+    const _cat = (r['Session Category'] || r.Type || r.type || '').trim();
+    const _isRun = _cat === 'Running' || _cat === 'Run';
+    const _isStr = _cat === 'Strength' || _cat === 'Lift';
+    const sessionName = r.Session || '';
+    const k = `${id}|${sessionName}|${_cat}|${ds}`;
+    if (!sessionMap[k]) {
+      sessionMap[k] = { ...r, _d: ds, _cat, _isRun, _isStr, _exercises: [] };
+    }
+    // Accumulate each exercise's log line into _exercises
+    // Note: the Exercise Log field from Make.com already starts with "ExerciseName: Set 1:…"
+    // so we push it directly — no need to prepend the name again.
+    const exLine = r['Exercise Log'] || r.exerciseLog || '';
+    if (exLine) sessionMap[k]._exercises.push(exLine);
+  });
+  // Flatten merged sessions into athlete maps
+  Object.values(sessionMap).forEach(s => {
+    const id = sid(s);
+    if (!id || !map[id]) return;
+    // Build a combined Exercise Log from all accumulated lines
+    s['Exercise Log'] = s._exercises.join('\n');
+    map[id].sessions.push(s);
+  });
+
+  planning.forEach(r => {
+    const id = getPlanningAthleteId(r);
+    if (!id) return;
+    const d = r['date:Planned Date:start'] || r['Planned Date'] || '';
+    if (!d) return;
+    const dt = new Date(d);
+    if (dt >= currentWeekStart && dt <= new Date(currentWeekEnd + 'T23:59:59')) {
+      planCounts[id] = (planCounts[id] || 0) + 1;
+    }
+  });
+
+  // Derive stats
+  const all = Object.values(map).map(a => {
+    const b7 = a.body.filter(r => new Date(r['date:Date:start'] || r.Date) >= c7);
+    const n7 = a.nutrition.filter(r => new Date(r['date:Date:start'] || r.Date) >= c7);
+    const bSorted = [...a.body].sort((x, y) =>
+      (y['date:Date:start'] || y.Date || '') > (x['date:Date:start'] || x.Date || '') ? 1 : -1);
+    const bLast = bSorted[0];
+
+    const bAvg = {
+      wt: bLast?.Weight,
+      wtd: bLast?.['date:Date:start'] || bLast?.Date,
+      sleep: avg(b7, 'Sleep Score'),
+      energy: avg(b7, 'Energy'),
+      stress: avg(b7, 'Stress'),
+      soreness: avg(b7, 'Soreness'),
+    };
+    const nAvg = {
+      cal: avg(n7, 'Calories'),
+      pro: avg(n7, 'Protein'),
+      carb: avg(n7, 'Carbs'),
+      fat: avg(n7, 'Fats'),
+      days: n7.length,
+    };
+
+    const s7 = a.sessions.filter(s => new Date(s._d) >= c7);
+    const runS = s7.filter(s => s._isRun);
+    const strS = s7.filter(s => s._isStr);
+
+    // Current-week sessions (Mon → now) — resets each Monday regardless of check-in
+    const sCurr = a.sessions.filter(s => new Date(s._d) >= currentWeekStart);
+    const currRunS = sCurr.filter(s => s._isRun);
+    const currStrS = sCurr.filter(s => s._isStr);
+
+    // Previous calendar week sessions (Mon–Sun before currentWeekStart)
+    // Used to show activity when an athlete hasn't checked in yet at the start of a new week
+    const prevWeekStart = new Date(currentWeekStart);
+    prevWeekStart.setDate(prevWeekStart.getDate() - 7);
+    const sPrev = a.sessions.filter(s => {
+      const d = new Date(s._d);
+      return d >= prevWeekStart && d < currentWeekStart;
+    });
+    const prevRunS = sPrev.filter(s => s._isRun);
+    const prevStrS = sPrev.filter(s => s._isStr);
+
+    // Compliance
+    const w = a.weekly;
+    const rp = parseInt(w?.['Run Planned']) || 0;
+    const rc = parseInt(w?.['Run Completed']) || 0;
+    const lp = parseInt(w?.['Lift Planned']) || 0;
+    const lc = parseInt(w?.['Lift Completed']) || 0;
+    const totalPlanned = rp + lp;
+    const totalDone = rc + lc;
+    const compliance = totalPlanned > 0 ? Math.round((totalDone / totalPlanned) * 100) : null;
+
+    // Flags
+    const flags = [];
+    if (w) {
+      const nig = ((w['Run Niggles'] || '') + ' ' + (w['Lifts Niggles'] || '')).toLowerCase();
+      if (['lingering', 'niggle', 'pain', 'tight', 'strain', 'physio', 'injury'].some(k => nig.includes(k)))
+        flags.push({ t: 'red', l: 'Niggle' });
+
+      const st = parseInt(w.Stress);
+      if (st >= 8) flags.push({ t: 'red', l: 'Stress ' + st });
+      else if (st >= 6) flags.push({ t: 'yellow', l: 'Stress ' + st });
+
+      const mo = parseInt(w.Motivation);
+      if (mo && mo <= 5) flags.push({ t: 'yellow', l: 'Low Motiv ' + mo });
+
+      if (rp > 0 && rc < rp) flags.push({ t: 'yellow', l: `Run ${rc}/${rp}` });
+      if (lp > 0 && lc < lp) flags.push({ t: 'yellow', l: `Lift ${lc}/${lp}` });
+
+      const rf = parseInt(w['Run Feel /10']);
+      if (rf >= 8) flags.push({ t: 'green', l: 'Run Feel ' + rf });
+    }
+
+    const recentBn = bSorted.slice(0, 3).map(b => (b.Notes || '').toLowerCase()).join(' ');
+    if (!flags.find(f => f.l === 'Niggle') &&
+        ['physio', 'niggle', 'pain', 'injury'].some(k => recentBn.includes(k)))
+      flags.push({ t: 'yellow', l: 'Body Note' });
+
+    const alertScore =
+      flags.filter(f => f.t === 'red').length * 10 +
+      flags.filter(f => f.t === 'yellow').length;
+
+    // Weeks reset on Monday for everyone.
+    // The expected week ending is always the MOST RECENT SUNDAY (same date for all athletes).
+    const wkNum = calcWeekNum(a.id);
+    const expectedWeekEnd = currentWeekEnd; // global, computed once at load time
+
+    const wkEnd = w?.['Week Ending'] || '';
+    const wkEndDate = wkEnd ? new Date(wkEnd) : null;
+
+    // Submitted for the CURRENT week (within ±3 days of coming Sunday)
+    const hasCurrentCheckin = !!wkEndDate && (() => {
+      const diff = Math.abs(wkEndDate - new Date(expectedWeekEnd)) / 86400000;
+      return diff <= 3;
+    })();
+
+    // Submitted for LAST week — within 8 days but doesn't match current week.
+    // e.g. athlete submitted Sunday May 3, today is Monday May 4 — show their data,
+    // just note it's last week's. Don't alarm the coaches.
+    const daysSinceSubmission = wkEndDate
+      ? Math.floor((Date.now() - wkEndDate) / 86400000)
+      : 999;
+    const hasLastWeekCheckin = !hasCurrentCheckin && daysSinceSubmission <= 8;
+
+    // Stale = genuinely missing — no submission for more than 8 days
+    const isStale = !hasCurrentCheckin && !hasLastWeekCheckin;
+
+    // hasRecent used for summary bar "Checked In" count
+    const hasRecent = hasCurrentCheckin || hasLastWeekCheckin;
+
+    // Prescribed macro target for the current week (from targets DB)
+    const weekLabel = wkNum !== null ? `Week ${wkNum}` : null;
+    const target = weekLabel && targetMap[a.id] ? (targetMap[a.id][weekLabel] || null) : null;
+
+    // Planning schedule: match rows to this athlete
+    const athletePlan = planning.filter(r => getPlanningAthleteId(r) === a.id);
+
+    // This week's planned sessions (Mon–Sun of current week)
+    const thisWeekPlan = athletePlan.filter(r => {
+      const d = r['date:Planned Date:start'] || r['Planned Date'] || '';
+      if (!d) return false;
+      const dt = new Date(d);
+      return dt >= currentWeekStart && dt <= new Date(currentWeekEnd + 'T23:59:59');
+    }).sort((a,b) => (a['date:Planned Date:start']||'') > (b['date:Planned Date:start']||'') ? 1 : -1);
+
+    // Schedule compliance from planning (last 28 days)
+    const c28 = dago(28);
+    const pastPlan = athletePlan.filter(r => {
+      const d = r['date:Planned Date:start'] || r['Planned Date'] || '';
+      return d && new Date(d) >= c28 && new Date(d) < currentWeekStart;
+    });
+    const planCompleted = pastPlan.filter(r => (r['Status '] || r['Status'] || '').trim() === 'Completed').length;
+    const planMissed = pastPlan.filter(r => (r['Status '] || r['Status'] || '').trim() === 'Missed').length;
+    const scheduleCompliance = (planCompleted + planMissed) > 0
+      ? Math.round((planCompleted / (planCompleted + planMissed)) * 100) : null;
+
+    // Recovery score from weekly check-in
+    const recoveryScore = calcRecoveryScore(w);
+
+    // ── PR detection from Exercise Log history ───────────────────────────────
+    const prs = detectPRs(a.sessions);
+
+    // ── 14-day trend timeseries ──────────────────────────────────────────────
+    const trends = {
+      sleep:    buildTimeseries(a.body, 'date:Date:start', 'Sleep Score', 14),
+      energy:   buildTimeseries(a.body, 'date:Date:start', 'Energy', 14),
+      stress:   buildTimeseries(a.body, 'date:Date:start', 'Stress', 14),
+      soreness: buildTimeseries(a.body, 'date:Date:start', 'Soreness', 14),
+      weight:   buildTimeseries(a.body, 'date:Date:start', 'Weight', 14),
+      calories: buildTimeseries(a.nutrition, 'date:Date:start', 'Calories', 14),
+      protein:  buildTimeseries(a.nutrition, 'date:Date:start', 'Protein', 14),
+    };
+
+    return {
+      ...a, bAvg, nAvg, runS, strS,
+      currRunS, currStrS,
+      prevRunS, prevStrS,
+      flags, alertScore,
+      hasRecent, hasCurrentCheckin, hasLastWeekCheckin, isStale,
+      expectedWeekEnd, compliance,
+      weekNum: wkNum,
+      target,
+      thisWeekPlan,
+      scheduleCompliance,
+      recoveryScore,
+      prs,
+      trends,
+      isCoach: COACHES.has(a.id),
+    };
+  });
+
+  // Build action list AFTER each athlete is fully assembled
+  // (buildActionList reads .compliance, .target, .body, etc.)
+  all.forEach(a => { a.actions = buildActionList(a); });
+
+  const coaches  = all.filter(a => a.isCoach);
+  const athletes = all.filter(a => !a.isCoach).sort((a, b) => b.alertScore - a.alertScore);
+  const syncAudit = buildSyncAudit({
+    masterIds, startDates, wl, targetMap, bodyCounts, nutritionCounts,
+    sessionCounts, planCounts, calcWeekNum,
+  });
+
+  return { athletes, coaches, syncAudit };
+}
+
+function buildSyncAudit(ctx) {
+  const ids = new Set([
+    ...ctx.masterIds,
+    ...Object.keys(ctx.wl),
+    ...Object.keys(ctx.bodyCounts),
+    ...Object.keys(ctx.nutritionCounts),
+    ...Object.keys(ctx.sessionCounts),
+    ...Object.keys(ctx.planCounts),
+    ...Object.keys(ctx.targetMap),
+  ]);
+
+  return [...ids]
+    .filter(id => id && !COACHES.has(id))
+    .sort((a, b) => a.localeCompare(b))
+    .map(id => {
+      const weekNum = ctx.calcWeekNum(id);
+      const weekLabel = weekNum !== null ? `Week ${weekNum}` : null;
+      const target = weekLabel && ctx.targetMap[id] ? ctx.targetMap[id][weekLabel] : null;
+      const hasMaster = ctx.masterIds.has(id);
+      const hasStart = !!ctx.startDates[id];
+      const hasWeekly = !!ctx.wl[id];
+      const body14 = ctx.bodyCounts[id] || 0;
+      const nutrition14 = ctx.nutritionCounts[id] || 0;
+      const sessions21 = ctx.sessionCounts[id] || 0;
+      const planThisWeek = ctx.planCounts[id] || 0;
+
+      const issues = [];
+      if (!hasMaster) issues.push('Missing from athlete master DB');
+      if (!hasStart) issues.push('Missing Start Date');
+      if (!hasWeekly) issues.push('No weekly check-in');
+      if (!body14) issues.push('No body tracking in 14d');
+      if (!nutrition14) issues.push('No nutrition tracking in 14d');
+      if (!target) issues.push(weekLabel ? `No ${weekLabel} target` : 'No target week');
+      if (!planThisWeek) issues.push('No plan this week');
+
+      const severity = !hasMaster || !hasStart || !hasWeekly ? 'bad'
+        : issues.length ? 'warn'
+        : 'good';
+
+      return {
+        id, severity, issues,
+        hasMaster, hasStart, hasWeekly,
+        weeklyDate: ctx.wl[id]?.['Week Ending'] || null,
+        body14, nutrition14, sessions21, planThisWeek,
+        weekLabel, hasTarget: !!target,
+      };
+    });
+}
+
+// ── Render athletes ───────────────────────────────────────────────────────────
+let _allAthletes = [];
+let _coaches = [];
+let _allApplications = [];
+let _dataHealth = null;
+let _syncAudit = [];
+let _statusFilter = 'all';
+
+function render({ athletes, coaches, applications = [], dataHealth = null, syncAudit = [] }) {
+  _allAthletes     = athletes;
+  _coaches         = coaches;
+  _allApplications = applications;
+  _dataHealth      = dataHealth;
+  _syncAudit       = syncAudit;
+
+  // Tab badges
+  const alertCount = athletes.filter(a => a.actions?.severity === 'red').length;
+  const badge = document.getElementById('tab-ath-count');
+  badge.textContent = athletes.length;
+  if (alertCount > 0) badge.classList.add('red'); else badge.classList.remove('red');
+
+  const totalPlan = athletes.reduce((s,a)=>s+(a.thisWeekPlan||[]).length,0);
+  document.getElementById('tab-sched-count').textContent = totalPlan || '—';
+  document.getElementById('tab-apps-count').textContent  = applications.length || '—';
+  document.getElementById('tab-sync-count').textContent  = syncAudit.filter(r => r.severity !== 'good').length || '✓';
+  document.getElementById('sched-week-end').textContent  = fmtDate(currentWeekEnd);
+
+  renderCommandCenter(athletes, applications, dataHealth);
+  renderSummary(athletes);
+  renderGrid(athletes);
+  renderCoaches(coaches);
+  renderSchedule(athletes);
+  renderSyncAudit(syncAudit);
+  renderApplications(applications);
+
+  document.getElementById('gen-btn').style.display = 'block';
+  document.getElementById('squad-brief').classList.remove('visible');
+}
+
+function renderSummary(ath) {
+  const alertN   = ath.filter(a => a.actions?.severity === 'red').length;
+  const watchN   = ath.filter(a => a.actions?.severity === 'amber').length;
+  const checkedIn = ath.filter(a => a.hasCurrentCheckin || a.hasRecent).length;
+  const totalKm  = ath.reduce((s, a) => {
+    const k = parseFloat(a.weekly?.['Weekly Run KM'] || 0);
+    return s + (isNaN(k) ? 0 : k);
+  }, 0);
+  const compList = ath.filter(a => a.compliance !== null).map(a => a.compliance);
+  const avgComp  = compList.length
+    ? Math.round(compList.reduce((a, b) => a + b, 0) / compList.length)
+    : null;
+  // PRs across the squad in last 7 days
+  const c7 = dago(7);
+  const prs7 = ath.reduce((s, a) => {
+    if (!a.prs?.recent) return s;
+    return s + a.prs.recent.filter(pr => new Date(pr.date) >= c7).length;
+  }, 0);
+
+  document.getElementById('sum-bar').innerHTML = `
+    <div class="sum-card"><div class="sum-num">${ath.length}</div><div class="sum-lbl">Athletes</div></div>
+    <div class="sum-card"><div class="sum-num ${alertN ? 'red' : 'grn'}">${alertN}</div><div class="sum-lbl">Action Required</div></div>
+    <div class="sum-card"><div class="sum-num">${watchN}</div><div class="sum-lbl">Watch List</div></div>
+    <div class="sum-card"><div class="sum-num grn">${checkedIn}</div><div class="sum-lbl">Checked In</div></div>
+    <div class="sum-card"><div class="sum-num str-c">${prs7}</div><div class="sum-lbl">PRs (7d)</div></div>
+    <div class="sum-card"><div class="sum-num run-c">${totalKm.toFixed(0)}</div><div class="sum-lbl">Squad KM (14d)</div></div>
+    ${avgComp !== null ? `<div class="sum-card"><div class="sum-num ${avgComp >= 80 ? 'grn' : avgComp >= 60 ? '' : 'red'}">${avgComp}%</div><div class="sum-lbl">Avg Compliance</div></div>` : ''}`;
+}
+
+function renderCommandCenter(ath, apps = [], health = null) {
+  const el = document.getElementById('command-center');
+  if (!el) return;
+
+  const red = ath.filter(a => a.actions?.severity === 'red');
+  const amber = ath.filter(a => a.actions?.severity === 'amber');
+  const missing = ath.filter(a => a.isStale || (!a.weekly && !a.body.length));
+  const checkedIn = ath.filter(a => a.hasCurrentCheckin || a.hasRecent).length;
+  const coverage = ath.length ? Math.round((checkedIn / ath.length) * 100) : 0;
+  const avgRecoveryVals = ath.map(a => a.recoveryScore).filter(v => v !== null && !isNaN(v));
+  const avgRecovery = avgRecoveryVals.length
+    ? (avgRecoveryVals.reduce((s, v) => s + v, 0) / avgRecoveryVals.length).toFixed(1)
+    : null;
+
+  const priorityRows = [...red, ...amber].slice(0, 6).map(a => {
+    const reason = [...(a.actions?.critical || []), ...(a.actions?.watch || [])][0] || 'Review this athlete';
+    const sev = a.actions?.severity === 'red' ? 'red' : 'amber';
+    return `<button class="cc-athlete" type="button" onclick="showFP('${esc(a.id)}')">
+      <div>
+        <div class="cc-athlete-name">${esc(a.id)}</div>
+        <div class="cc-athlete-reason">${esc(reason)}</div>
+      </div>
+      <span class="cc-chip ${sev}">${sev === 'red' ? 'Act' : 'Watch'}</span>
+    </button>`;
+  }).join('');
+
+  const missingRows = missing.slice(0, 5).map(a => {
+    const last = a.weekly?.['Week Ending'] ? `Last ${fmtDate(a.weekly['Week Ending'])}` : 'No check-in data';
+    return `<button class="cc-athlete" type="button" onclick="showFP('${esc(a.id)}')">
+      <div>
+        <div class="cc-athlete-name">${esc(a.id)}</div>
+        <div class="cc-athlete-reason">${esc(last)}</div>
+      </div>
+      <span class="cc-chip red">Missing</span>
+    </button>`;
+  }).join('');
+
+  const topActions = buildCoachActions(ath, apps);
+  const healthCards = buildHealthCards(health, ath, apps);
+
+  el.innerHTML = `<div class="command-center">
+    <section class="cc-panel">
+      <div class="cc-hero">
+        <div>
+          <div class="cc-kicker">Coaching Command Center</div>
+          <div class="cc-title">This Week's Priorities</div>
+          <div class="cc-sub">Start here before opening individual cards. The roster is sorted by risk, but this panel pulls the real coaching work into one place.</div>
+        </div>
+        <div class="cc-score">
+          <div class="cc-score-card"><div class="cc-score-num red">${red.length}</div><div class="cc-score-lbl">Act</div></div>
+          <div class="cc-score-card"><div class="cc-score-num amber">${amber.length}</div><div class="cc-score-lbl">Watch</div></div>
+          <div class="cc-score-card"><div class="cc-score-num green">${coverage}%</div><div class="cc-score-lbl">Check-ins</div></div>
+        </div>
+      </div>
+      <div class="cc-body">
+        <div class="cc-list">
+          <div class="cc-list-title">Highest Priority <span class="cc-list-count">${red.length + amber.length}</span></div>
+          ${priorityRows || `<div class="cc-empty">No priority athletes right now</div>`}
+        </div>
+        <div class="cc-list">
+          <div class="cc-list-title">Missing / Stale <span class="cc-list-count">${missing.length}</span></div>
+          ${missingRows || `<div class="cc-empty">Everyone has recent data</div>`}
+        </div>
+      </div>
+    </section>
+    <aside class="cc-panel cc-side">
+      <div class="cc-side-head">
+        <div class="cc-side-title">Coach Next Actions</div>
+        <div class="cc-side-sub">${avgRecovery ? `Squad recovery avg ${avgRecovery}/10` : 'Recovery average unavailable'} · ${apps.length} pipeline lead${apps.length === 1 ? '' : 's'}</div>
+      </div>
+      <div class="cc-actions">
+        ${topActions.map((t, i) => `<div class="cc-action">
+          <div class="cc-action-idx">${i + 1}</div>
+          <div class="cc-action-text">${esc(t)}</div>
+        </div>`).join('')}
+      </div>
+      <div class="cc-health">${healthCards}</div>
+    </aside>
+  </div>`;
+}
+
+function buildCoachActions(ath, apps) {
+  const actions = [];
+  const red = ath.filter(a => a.actions?.severity === 'red');
+  const injury = ath.filter(a => {
+    const txt = `${a.weekly?.['Run Niggles'] || ''} ${a.weekly?.['Lifts Niggles'] || ''}`;
+    return /pain|injur|strain|physio|tear|niggle/i.test(txt);
+  });
+  const stale = ath.filter(a => a.isStale);
+  const lowFuel = ath.filter(a => (a.actions?.critical || []).some(t => /calorie|under-fuelling/i.test(t)));
+  const lowCompliance = ath.filter(a => a.compliance !== null && a.compliance < 70);
+  const newApps = apps.filter(r => !String(r['Current Status'] || '').toLowerCase().includes('reject'));
+
+  if (red.length) actions.push(`Contact ${red.slice(0, 3).map(a => a.id).join(', ')} before programming changes.`);
+  if (injury.length) actions.push(`Review niggle/injury notes for ${injury.slice(0, 3).map(a => a.id).join(', ')}.`);
+  if (stale.length) actions.push(`Chase check-ins from ${stale.slice(0, 4).map(a => a.id).join(', ')}.`);
+  if (lowFuel.length) actions.push(`Check fuelling with ${lowFuel.slice(0, 3).map(a => a.id).join(', ')} before increasing load.`);
+  if (lowCompliance.length) actions.push(`Audit missed sessions for ${lowCompliance.slice(0, 3).map(a => a.id).join(', ')}.`);
+  if (newApps.length) actions.push(`Triage ${newApps.length} active pipeline lead${newApps.length === 1 ? '' : 's'}.`);
+  if (!actions.length) actions.push('No urgent issues: use the schedule tab to confirm this week is loaded correctly.');
+
+  return actions.slice(0, 5);
+}
+
+function buildHealthCards(health, ath, apps) {
+  const rows = [
+    { label: 'Athletes', value: ath.length, cls: ath.length ? 'good' : 'bad' },
+    { label: 'Weekly', value: health?.weekly ?? '—', cls: health?.weekly ? 'good' : 'warn' },
+    { label: 'Sessions', value: health?.sessions ?? '—', cls: health?.sessions ? 'good' : 'warn' },
+    { label: 'Pipeline', value: apps.length, cls: apps.length ? 'good' : '' },
+  ];
+  return rows.map(r => `<div class="cc-health-card">
+    <div class="cc-health-lbl">${esc(r.label)}</div>
+    <div class="cc-health-val ${r.cls || ''}">${esc(r.value)}</div>
+  </div>`).join('');
+}
+
+function renderGrid(ath) {
+  document.getElementById('grid').innerHTML = ath.map(buildCard).join('');
+}
+
+function renderCoaches(coaches) {
+  const grid = document.getElementById('coaches-grid');
+  if (!coaches.length) {
+    grid.innerHTML = `<div class="coach-no-data"><div class="coach-no-data-txt">No coach data found for Karl or Alex</div></div>`;
+    return;
+  }
+  // Always show Karl first, then Alex, then others
+  const ordered = [
+    ...coaches.filter(c => c.id === 'KARL'),
+    ...coaches.filter(c => c.id === 'ALEX'),
+    ...coaches.filter(c => c.id !== 'KARL' && c.id !== 'ALEX'),
+  ];
+  grid.innerHTML = ordered.map(buildCoachCard).join('');
+}
+
+// ── Athlete Card ──────────────────────────────────────────────────────────────
+function buildCard(a) {
+  const w = a.weekly;
+  const hW = !!w?.Name;
+  const hR = a.flags.some(f => f.t === 'red');
+  const hY = !hR && a.flags.some(f => f.t === 'yellow');
+  const bcls = hR ? 'red' : hY ? 'yellow' : '';
+  const fps = a.flags.map(f => `<span class="fp ${f.t}">${esc(f.l)}</span>`).join('');
+
+  // Scores
+  let scores = '';
+  if (hW) {
+    const sx = [
+      { l: 'Energy',  v: w['Energy /10'],             inv: false },
+      { l: 'Sleep',   v: w['Sleep hrs'],               inv: false },
+      { l: 'Sore',    v: w['Soreness /10'],            inv: true  },
+      { l: 'Stress',  v: w['Stress'],                  inv: true  },
+      { l: 'Motiv',   v: w['Motivation'],              inv: false },
+      { l: 'Nutr',    v: w['Nutrition Adherence /10'], inv: false },
+    ];
+    scores = `<div class="scores">${sx.map(x =>
+      `<div class="sc"><div class="sc-lbl">${esc(x.l)}</div><div class="sc-val ${scoreClass(x.v, x.inv)}">${esc(x.v) || '—'}</div></div>`
+    ).join('')}</div>`;
+  }
+
+  // Compliance bar
+  let compBar = '';
+  if (a.compliance !== null) {
+    const cc = a.compliance >= 90 ? 'good' : a.compliance >= 70 ? 'mid' : 'bad';
+    compBar = `<div class="compliance-row">
+      <span class="comp-lbl">Compliance</span>
+      <div class="comp-track"><div class="comp-fill ${cc}" style="width:${a.compliance}%"></div></div>
+      <span class="comp-pct ${cc}">${a.compliance}%</span>
+    </div>`;
+  }
+
+  // ── Week-in-progress section ──────────────────────────────────────────────────
+  // For athletes who haven't submitted this week's check-in, show current-week
+  // live session counts (resets to 0 on Monday). This makes it immediately clear
+  // how far into the week they are — separate from last week's completed data.
+  let weekInProgress = '';
+  if (!a.hasCurrentCheckin) {
+    // Count completed planned sessions from athlete portal (ticked circles)
+    const _RUN_PT = new Set(['Run','Tempo','Speed','Long Run','Easy Effort','race','Recovery','Run + Strength']);
+    const _STR_PT = new Set(['Strength','Lift','Run + Strength']);
+    const _planRun = (a.thisWeekPlan||[]).filter(r => {
+      const st = (r['Status '] || r['Status'] || '').trim();
+      const ty = (r['Session Type'] || r['SessionType'] || '').trim();
+      return st === 'Completed' && _RUN_PT.has(ty);
+    }).length;
+    const _planStr = (a.thisWeekPlan||[]).filter(r => {
+      const st = (r['Status '] || r['Status'] || '').trim();
+      const ty = (r['Session Type'] || r['SessionType'] || '').trim();
+      return st === 'Completed' && _STR_PT.has(ty);
+    }).length;
+    // Use max of quality-data submissions vs portal ticks (no double-counting)
+    const rCount  = Math.max(a.currRunS.length, _planRun);
+    const sCount  = Math.max(a.currStrS.length, _planStr);
+    const prCount = a.prevRunS.length;
+    const psCount = a.prevStrS.length;
+    const noThisWeek = rCount === 0 && sCount === 0;
+    // Show previous week's session counts when there are no sessions yet this week
+    // (common on Monday morning before anyone logs a session for the new week)
+    const showPrev = noThisWeek && (prCount > 0 || psCount > 0);
+    weekInProgress = `<div class="sec" style="background:var(--surface2);border-color:rgba(0,0,0,.06)">
+      <div class="sec-ttl" style="color:var(--str)">📍 Week ${a.weekNum ?? ''} In Progress — ends ${fmtDate(a.expectedWeekEnd)}</div>
+      <div class="sess-row" style="margin-bottom:${noThisWeek && !showPrev ? 0 : 4}px">
+        <div class="scard"><div class="snum run-c">${rCount}</div><div class="slbl">Run</div></div>
+        <div class="scard"><div class="snum str-c">${sCount}</div><div class="slbl">Strength</div></div>
+      </div>
+      ${noThisWeek && !showPrev ? `<div style="font-family:var(--mono);font-size:9px;color:var(--dim);margin-top:4px">No sessions logged yet this week</div>` : ''}
+      ${showPrev ? `<div style="font-family:var(--mono);font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;margin-top:6px;margin-bottom:3px">Last week's sessions</div>
+        <div class="sess-row">
+          <div class="scard" style="opacity:.65"><div class="snum run-c">${prCount}</div><div class="slbl">Run</div></div>
+          <div class="scard" style="opacity:.65"><div class="snum str-c">${psCount}</div><div class="slbl">Strength</div></div>
+        </div>` : ''}
+    </div>`;
+  }
+
+  // Stale banner: BIG warning only for genuinely missing athletes (>8 days)
+  // Last-week submitters get a soft note — they submitted, new week just started
+  let staleBanner = '';
+  if (hW && a.isStale) {
+    staleBanner = `<div class="sec" style="background:#fef2f2;border-color:rgba(220,38,38,.18)">
+        <div style="display:flex;align-items:center;gap:7px">
+          <span style="font-size:13px">🚨</span>
+          <div>
+            <div style="font-family:var(--mono);font-size:9px;font-weight:700;color:#991b1b;text-transform:uppercase;letter-spacing:.08em">No check-in submitted this week</div>
+            <div style="font-family:var(--mono);font-size:9px;color:#b91c1c;margin-top:1px">Showing last submission — week ending ${fmtDate(w['Week Ending'])}</div>
+          </div>
+        </div>
+      </div>`;
+  } else if (hW && a.hasLastWeekCheckin) {
+    staleBanner = `<div class="sec" style="background:#f0f9ff;border-color:rgba(14,165,233,.15)">
+        <div style="display:flex;align-items:center;gap:7px">
+          <span style="font-size:12px">📅</span>
+          <div>
+            <div style="font-family:var(--mono);font-size:9px;font-weight:700;color:#0369a1;text-transform:uppercase;letter-spacing:.08em">Last week's check-in</div>
+            <div style="font-family:var(--mono);font-size:9px;color:#0284c7;margin-top:1px">Submitted ${fmtDate(w['Week Ending'])} · new week ends ${fmtDate(a.expectedWeekEnd)}</div>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  // Training
+  let training = '';
+  if (hW) {
+    const rp = parseInt(w['Run Planned']) || 0, rc = parseInt(w['Run Completed']) || 0;
+    const lp = parseInt(w['Lift Planned']) || 0, lc = parseInt(w['Lift Completed']) || 0;
+    const rPct = rp > 0 ? Math.min(100, Math.round(rc / rp * 100)) : 0;
+    const lPct = lp > 0 ? Math.min(100, Math.round(lc / lp * 100)) : 0;
+
+    training = `<div class="sec">
+      <div class="sec-ttl">${(() => {
+        // Show the week the submitted data actually belongs to, not the current week.
+        // dataWeekNum = current week minus however many weeks behind the check-in is.
+        const submittedEnd = w['Week Ending'];
+        let dataWeekNum = a.weekNum;
+        if (a.weekNum !== null && submittedEnd) {
+          const weeksBehind = Math.round(
+            (new Date(currentWeekEnd) - new Date(submittedEnd)) / (7 * 86400000)
+          );
+          dataWeekNum = Math.max(0, a.weekNum - weeksBehind);
+        }
+        const label = dataWeekNum === null ? 'Training'
+          : dataWeekNum === 0 ? 'Discovery Week Training'
+          : `Wk ${dataWeekNum} Training`;
+        return `${label} — ending ${fmtDate(submittedEnd) || '?'}`;
+      })()}</div>
+      <div class="tpair">
+        <div class="tb">
+          <div class="tt run">Run</div>
+          <div class="ts"><strong>${rc}/${rp}</strong> sessions · <strong>${esc(w['Weekly Run KM'] || '—')} km</strong></div>
+          <div class="pbar"><div class="pfill run" style="width:${rPct}%"></div></div>
+          <div class="ts">Feel: <strong>${esc(w['Run Feel /10'] || '—')}/10</strong></div>
+          ${isBad(w['Run Niggles']) ? `<div class="nl red"><span class="nl-lbl">⚠ Niggle</span>${esc(w['Run Niggles'])}</div>` : ''}
+          ${w['Runs Wins'] && w['Runs Wins'] !== 'n/a' ? `<div class="nl"><span class="nl-lbl">✓ Win</span>${esc(w['Runs Wins'])}</div>` : ''}
+        </div>
+        <div class="tb">
+          <div class="tt str">Lift</div>
+          <div class="ts"><strong>${lc}/${lp}</strong> sessions</div>
+          <div class="pbar"><div class="pfill str" style="width:${lPct}%"></div></div>
+          <div class="ts">Feel: <strong>${esc(w['Lift Feel /10'] || '—')}/10</strong></div>
+          ${isBad(w['Lifts Niggles']) ? `<div class="nl red"><span class="nl-lbl">⚠ Niggle</span>${esc(w['Lifts Niggles'])}</div>` : ''}
+          ${w['Lift Wins'] && w['Lift Wins'] !== 'n/a' ? `<div class="nl"><span class="nl-lbl">✓ Win</span>${esc(w['Lift Wins'])}</div>` : ''}
+        </div>
+      </div>
+      ${w['Testimonial'] ? `<div class="testim">"${esc(w['Testimonial'])}"</div>` : ''}
+      ${w['Upcoming Impact'] && w['Upcoming Impact'] !== 'n/a' ? `<div class="impact">⚡ ${esc(w['Upcoming Impact'])}</div>` : ''}
+    </div>`;
+  }
+
+  // Body
+  let bodyHtml = '';
+  if (a.bAvg.wt !== undefined || a.bAvg.sleep !== null) {
+    const bLast = [...a.body].sort((x, y) =>
+      (y['date:Date:start'] || y.Date || '') > (x['date:Date:start'] || x.Date || '') ? 1 : -1)[0];
+    const bn = bLast?.Notes;
+    bodyHtml = `<div class="sec">
+      <div class="sec-ttl">Body — 7-day avg</div>
+      <div class="body-grid">
+        ${a.bAvg.wt !== undefined ? `<div><div class="wnum">${esc(a.bAvg.wt)}<span class="wunit">kg</span></div><div class="wdate">${fmtDate(a.bAvg.wtd)}</div></div>` : ''}
+        <div class="bmet">
+          ${[{l:'Sleep',v:a.bAvg.sleep},{l:'Energy',v:a.bAvg.energy},{l:'Stress',v:a.bAvg.stress},{l:'Sore',v:a.bAvg.soreness}].map(m =>
+            `<div class="bm"><div class="bm-lbl">${m.l}</div><div class="bm-val">${m.v !== null ? m.v : '—'}</div></div>`).join('')}
+        </div>
+      </div>
+      ${bn ? `<div class="bnote">${esc(bn)}</div>` : ''}
+    </div>`;
+  }
+
+  // Nutrition — actual 7d avg + prescribed target for the current week
+  let nutrHtml = '';
+  if (a.nAvg.cal !== null || a.target) {
+    const t = a.target;
+    // Strip 'g' suffix from target values for display
+    const tCal  = t?.Calories ? String(t.Calories).replace(/[^\d.]/g,'') : null;
+    const tPro  = t?.Protein  ? String(t.Protein).replace(/[^\d.]/g,'')  : null;
+    const tCarb = t?.Carbs    ? String(t.Carbs).replace(/[^\d.]/g,'')    : null;
+    const tFat  = t?.Fats     ? String(t.Fats).replace(/[^\d.]/g,'')     : null;
+    const tKM   = t?.['Weekly KM Target'] ? String(t['Weekly KM Target']) : null;
+    const hasTarget = tCal || tPro || tCarb || tFat;
+
+    nutrHtml = `<div class="sec">
+      <div class="sec-ttl">Nutrition${a.nAvg.cal !== null ? ` — ${a.nAvg.days}d avg` : ''}</div>
+      ${a.nAvg.cal !== null ? `<div class="mrow" style="margin-bottom:${hasTarget?'6':'0'}px">
+        <div class="mc"><div class="mc-lbl">Calories</div><div class="mc-val">${a.nAvg.cal || '—'}</div></div>
+        <div class="mc"><div class="mc-lbl">Protein</div><div class="mc-val">${a.nAvg.pro || '—'}<span class="mc-unit">g</span></div></div>
+        <div class="mc"><div class="mc-lbl">Carbs</div><div class="mc-val">${a.nAvg.carb || '—'}<span class="mc-unit">g</span></div></div>
+        <div class="mc"><div class="mc-lbl">Fats</div><div class="mc-val">${a.nAvg.fat || '—'}<span class="mc-unit">g</span></div></div>
+      </div>` : ''}
+      ${hasTarget ? `<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:5px 8px;background:var(--coach-bg);border-radius:6px;border:1px solid var(--coach-border)">
+        <span style="font-family:var(--mono);font-size:7px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;white-space:nowrap">Wk ${a.weekNum ?? ''} Target →</span>
+        ${tCal  ? `<span style="font-family:var(--mono);font-size:9px;color:var(--coach-text)"><strong>${tCal}</strong> kcal</span>` : ''}
+        ${tPro  ? `<span style="font-family:var(--mono);font-size:9px;color:var(--coach-text)"><strong>${tPro}g</strong> P</span>` : ''}
+        ${tCarb ? `<span style="font-family:var(--mono);font-size:9px;color:var(--coach-text)"><strong>${tCarb}g</strong> C</span>` : ''}
+        ${tFat  ? `<span style="font-family:var(--mono);font-size:9px;color:var(--coach-text)"><strong>${tFat}g</strong> F</span>` : ''}
+        ${tKM   ? `<span style="font-family:var(--mono);font-size:9px;color:var(--run)"><strong>${tKM} km</strong> run</span>` : ''}
+      </div>` : ''}
+    </div>`;
+  }
+
+  // Session count (no weekly)
+  let sessHtml = '';
+  if (!hW && (a.runS.length || a.strS.length)) {
+    sessHtml = `<div class="sec">
+      <div class="sec-ttl">Sessions (7 days)</div>
+      <div class="sess-row">
+        <div class="scard"><div class="snum run-c">${a.runS.length}</div><div class="slbl">Run</div></div>
+        <div class="scard"><div class="snum str-c">${a.strS.length}</div><div class="slbl">Strength</div></div>
+      </div>
+    </div>`;
+  }
+
+  // Recovery score row
+  let recoveryHtml = '';
+  if (a.recoveryScore !== null) {
+    const rc = a.recoveryScore >= 7.5 ? 'good' : a.recoveryScore >= 5 ? 'mid' : 'bad';
+    const pct = Math.round((a.recoveryScore/10)*100);
+    recoveryHtml = `<div class="recovery-row">
+      <span class="recovery-lbl">Recovery</span>
+      <span class="recovery-score ${rc}">${a.recoveryScore}</span>
+      <div class="recovery-bar-wrap"><div class="recovery-bar ${rc}" style="width:${pct}%"></div></div>
+    </div>`;
+  }
+
+  // This week's plan
+  let planHtml = '';
+  if (a.thisWeekPlan && a.thisWeekPlan.length) {
+    const badges = a.thisWeekPlan.slice(0, 7).map(r =>
+      sessionBadgeHTML(r['Session Type'] || r['SessionType'], r['Status '] || r['Status'], r.Session)
+    ).join('');
+    const extra = a.thisWeekPlan.length > 7 ? `<span class="sbadge sbadge-default">+${a.thisWeekPlan.length-7}</span>` : '';
+    const comp = a.scheduleCompliance;
+    const cc = comp !== null ? (comp>=80?'good':comp>=60?'mid':'bad') : '';
+    planHtml = `<div class="plan-sec">
+      <div class="plan-sec-ttl">📅 This Week's Plan${comp!==null?`<span class="plan-sec-comp ${cc}">${comp}%</span>`:''}</div>
+      <div class="sched-badges">${badges}${extra}</div>
+    </div>`;
+  }
+
+  // Call Prep
+  const callPrep = buildCallPrep(a);
+  const cpId = `cp-${a.id.replace(/\s+/g,'-')}`;
+  const savedNote = callNotes[a.id] || '';
+  const callPrepHtml = `
+    <div class="call-prep">
+      <div class="cp-header" onclick="toggleCallPrep('${cpId}')">
+        <div class="cp-title"><span class="cp-icon">📋</span> Call Prep</div>
+        <span class="cp-toggle" id="${cpId}-toggle">▼</span>
+      </div>
+      <div class="cp-body" id="${cpId}">
+        ${callPrep.wins.length ? `
+          <div class="cp-block">
+            <div class="cp-block-lbl win">✓ Open With (Wins)</div>
+            <div class="cp-items">${callPrep.wins.map(t => `<div class="cp-item win">${esc(t)}</div>`).join('')}</div>
+          </div>` : ''}
+        ${callPrep.issues.length ? `
+          <div class="cp-block">
+            <div class="cp-block-lbl issue">⚠ Address</div>
+            <div class="cp-items">${callPrep.issues.map(t => `<div class="cp-item issue">${esc(t)}</div>`).join('')}</div>
+          </div>` : ''}
+        ${callPrep.ask.length ? `
+          <div class="cp-block">
+            <div class="cp-block-lbl ask">→ Ask / Follow Up</div>
+            <div class="cp-items">${callPrep.ask.map(t => `<div class="cp-item ask">${esc(t)}</div>`).join('')}</div>
+          </div>` : ''}
+        ${!callPrep.wins.length && !callPrep.issues.length && !callPrep.ask.length ? `<div class="cp-none">No check-in data to prep from yet.</div>` : ''}
+        <div class="cp-block">
+          <div class="cp-block-lbl note-lbl">📝 Call Notes</div>
+          <textarea class="cp-note" placeholder="Notes for this call…" onchange="saveNote('${a.id}', this.value)">${esc(savedNote)}</textarea>
+        </div>
+      </div>
+    </div>`;
+
+  // Card header: always anchored to the same expected week end for all athletes.
+  // Three states:
+  //  1. hasCurrentCheckin  → "Week ending DD-MM"           (normal, this week's data)
+  //  2. hasLastWeekCheckin → "Last wk · wk ends DD-MM"     (soft amber — submitted recently but new week started)
+  //  3. isStale            → "No check-in · wk ends DD-MM · last DD-MM"  (red warning)
+  let metaText;
+  const wkEndDisplay = fmtDate(a.expectedWeekEnd);
+  if (a.hasCurrentCheckin) {
+    metaText = `Week ending ${wkEndDisplay}`;
+  } else if (a.hasLastWeekCheckin && hW) {
+    metaText = `Submitted ${fmtDate(w['Week Ending'])} · wk ends ${wkEndDisplay}`;
+  } else if (hW) {
+    const lastStr = ` · last ${fmtDate(w['Week Ending'])}`;
+    metaText = `No check-in — wk ends ${wkEndDisplay}${lastStr}`;
+  } else {
+    metaText = a.body.length ? 'Daily tracking only' : 'No recent data';
+  }
+
+  // ── Action Required Ribbon ────────────────────────────────────────────────
+  let actionRibbonHtml = '';
+  if (a.actions && a.actions.severity) {
+    const list = [...a.actions.critical, ...a.actions.watch.slice(0, 2)].slice(0, 3);
+    if (list.length) {
+      actionRibbonHtml = `<div class="action-ribbon ${a.actions.severity === 'amber' ? 'amber' : ''}">
+        <div class="action-ribbon-title">${a.actions.severity === 'red' ? '⚠ Action Required' : '⚠ Watch List'}</div>
+        <div class="action-ribbon-list">${list.map(t => `<span>${esc(t)}</span>`).join('')}</div>
+      </div>`;
+    }
+  }
+
+  // ── Sparkline strip: 7-day glance at recovery vitals ──────────────────────
+  let sparkStripHtml = '';
+  if (a.trends) {
+    const cells = [
+      { key: 'sleep',    lbl: 'Sleep',  inv: false, color: '#3b82f6', unit: '/10' },
+      { key: 'stress',   lbl: 'Stress', inv: true,  color: '#dc2626', unit: '/10' },
+      { key: 'energy',   lbl: 'Energy', inv: false, color: '#f59e0b', unit: '/10' },
+      { key: 'weight',   lbl: 'Weight', inv: false, color: '#0a0a0a', unit: 'kg' },
+    ];
+    const cellsHtml = cells.map(c => {
+      const series = a.trends[c.key] || [];
+      const t = trendDelta(series, c.inv);
+      const last = [...series].reverse().find(p => p.value !== null);
+      const lastVal = last ? (Number.isInteger(last.value) ? last.value : last.value.toFixed(1)) : '—';
+      const arrow = t.dir === 'up' ? '↑' : t.dir === 'dn' ? '↓' : '→';
+      const dirCls = t.dir === 'up' ? 'up' : t.dir === 'dn' ? 'dn' : 'flat';
+      return `<div class="spark-cell">
+        <div class="spark-cell-lbl">${esc(c.lbl)}</div>
+        <div class="spark-cell-val ${dirCls}">${arrow} ${lastVal}</div>
+        ${sparkSVG(series, c.color)}
+      </div>`;
+    }).join('');
+    sparkStripHtml = `<div class="spark-strip">${cellsHtml}</div>`;
+  }
+
+  return `<div class="card ${bcls}" data-card="${esc(a.id)}" data-alert="${a.alertScore}" data-name="${esc(a.id)}" data-week="${a.weekNum ?? 0}" data-compliance="${a.compliance ?? 0}" data-checkin="${w?.['Week Ending'] || ''}">
+    <div class="card-head">
+      <div class="card-head-top">
+        <div>
+          <div class="aname">${esc(a.id)}</div>
+          <div class="ameta ${a.isStale ? 'nocheckin' : ''}">${metaText}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">
+          <button class="fp-open-btn" onclick="showFP('${esc(a.id)}')">⤢ Full Page</button>
+          ${a.weekNum !== null ? `<div class="week-badge"><div class="wk-num">${a.weekNum}</div><div class="wk-lbl">${a.weekNum === 0 ? 'Discovery' : 'Week'}</div></div>` : ''}
+        </div>
+      </div>
+      ${a.flags.length ? `<div class="flags">${fps}</div>` : ''}
+    </div>
+    ${actionRibbonHtml}
+    ${sparkStripHtml}
+    ${weekInProgress}${staleBanner}${recoveryHtml}${planHtml}${compBar}${scores}${training}${bodyHtml}${nutrHtml}${sessHtml}
+    <div class="ai-sec"></div>
+    ${callPrepHtml}
+  </div>`;
+}
+
+// ── Call Prep Builder ─────────────────────────────────────────────────────────
+function buildCallPrep(a) {
+  const w = a.weekly;
+  const wins = [], issues = [], ask = [];
+
+  if (w) {
+    // Wins
+    if (w['Runs Wins'] && isBad(w['Runs Wins'])) wins.push('Running: ' + w['Runs Wins']);
+    if (w['Lift Wins'] && isBad(w['Lift Wins'])) wins.push('Lifting: ' + w['Lift Wins']);
+    if (w['Testimonial'] && isBad(w['Testimonial'])) wins.push(`"${w['Testimonial']}"`);
+
+    const rf = parseInt(w['Run Feel /10']);
+    const lf = parseInt(w['Lift Feel /10']);
+    if (rf >= 8) wins.push(`Strong run feel this week (${rf}/10)`);
+    if (lf >= 8) wins.push(`Strong lift feel this week (${lf}/10)`);
+
+    const energy = parseInt(w['Energy /10']);
+    if (energy >= 8) wins.push(`High energy (${energy}/10)`);
+
+    // Issues
+    if (isBad(w['Run Niggles'])) issues.push('Run niggle: ' + w['Run Niggles']);
+    if (isBad(w['Lifts Niggles'])) issues.push('Lift niggle: ' + w['Lifts Niggles']);
+
+    const stress = parseInt(w['Stress']);
+    if (stress >= 8) issues.push(`High stress score (${stress}/10) — check in on life load`);
+    else if (stress >= 6) issues.push(`Elevated stress (${stress}/10)`);
+
+    const motiv = parseInt(w['Motivation']);
+    if (motiv && motiv <= 4) issues.push(`Low motivation (${motiv}/10) — explore why`);
+    else if (motiv && motiv <= 6) issues.push(`Below-average motivation (${motiv}/10)`);
+
+    const rp = parseInt(w['Run Planned']) || 0, rc = parseInt(w['Run Completed']) || 0;
+    const lp = parseInt(w['Lift Planned']) || 0, lc = parseInt(w['Lift Completed']) || 0;
+    if (rp > 0 && rc < rp) issues.push(`Missed ${rp - rc} of ${rp} planned runs`);
+    if (lp > 0 && lc < lp) issues.push(`Missed ${lp - lc} of ${lp} planned lifts`);
+
+    const nutrAdh = parseInt(w['Nutrition Adherence /10']);
+    if (nutrAdh && nutrAdh <= 5) issues.push(`Low nutrition adherence (${nutrAdh}/10)`);
+
+    // Ask / Follow-up
+    if (isBad(w['Upcoming Impact'])) ask.push('Upcoming impact: ' + w['Upcoming Impact']);
+    if (isBad(w['Social Event Upcoming'])) ask.push('Social event coming up: ' + w['Social Event Upcoming']);
+    if (isBad(w['Fuelling'])) ask.push('Fuelling note: ' + w['Fuelling']);
+    if (isBad(w['Notes'])) ask.push('Their notes: ' + w['Notes']);
+  }
+
+  // From body notes
+  if (a.body.length) {
+    const bSorted = [...a.body].sort((x, y) =>
+      (y['date:Date:start'] || y.Date || '') > (x['date:Date:start'] || x.Date || '') ? 1 : -1);
+    const bn = bSorted[0]?.Notes;
+    if (isBad(bn) && !ask.some(i => i.includes(bn))) ask.push('Recent body note: ' + bn);
+  }
+
+  return { wins, issues, ask };
+}
+
+// ── Exercise log renderer ─────────────────────────────────────────────────────
+// Strength log format: "ExerciseName: Set 1: 40kg × 12reps | Set 2: 65kg × 10reps\n..."
+// Run log format:      "Distance: 13km | Duration: 96min | Pace: 6:40 | RPE: 6.5/10 | Feel: 😐"
+function renderExerciseLog(logStr, isRun) {
+  if (!logStr) return '';
+  if (isRun) {
+    // Parse flat key:value pairs separated by |
+    const parts = logStr.split('|').map(s => s.trim()).filter(Boolean);
+    const stats = parts.map(p => {
+      const ci = p.indexOf(':');
+      if (ci === -1) return p ? `<span class="wd-run-stat">${esc(p)}</span>` : '';
+      const k = p.substring(0, ci).trim();
+      const v = p.substring(ci + 1).trim();
+      return v ? `<span class="wd-run-stat"><strong>${esc(v)}</strong> ${esc(k).toLowerCase()}</span>` : '';
+    }).filter(Boolean).join('');
+    return stats ? `<div class="wd-run-stats">${stats}</div>` : '';
+  }
+  // Strength: one exercise per line, format "ExName: Set 1: Xkg × Yreps | Set 2: ..."
+  const rows = logStr.split('\n').map(line => {
+    line = line.trim();
+    if (!line) return '';
+    const colonSet = line.indexOf(': Set ');
+    if (colonSet === -1) {
+      // Fallback: no sets detected — just show the raw line
+      return `<div class="wd-ex-row"><span class="wd-ex-name" style="width:auto">${esc(line)}</span></div>`;
+    }
+    const exName = line.substring(0, colonSet).trim();
+    const setsStr = line.substring(colonSet + 2); // "Set 1: Xkg × Yreps | Set 2: ..."
+    const setBadges = setsStr.split('|').map(s => {
+      const m = s.trim().match(/Set\s*\d+:\s*(.+)/);
+      const val = m ? m[1].trim() : s.trim();
+      // Compact: "40kg × 12reps" → "40×12"
+      const compact = val.replace(/\s*×\s*/g, '×').replace('reps', '');
+      return compact ? `<span class="wd-ex-set">${esc(compact)}</span>` : '';
+    }).filter(Boolean).join('');
+    return `<div class="wd-ex-row">
+      <span class="wd-ex-name">${esc(exName)}</span>
+      <span class="wd-ex-sets">${setBadges}</span>
+    </div>`;
+  }).filter(Boolean).join('');
+  return rows ? `<div class="wd-ex-list">${rows}</div>` : '';
+}
+
+// ── Full-page Card (clean reading layout for screen-sharing) ─────────────────
+function buildFPCard(a) {
+  const w = a.weekly;
+  const hW = !!w?.Name;
+  const fps = a.flags.map(f => `<span class="fp ${f.t}">${esc(f.l)}</span>`).join('');
+
+  // Meta text (same logic as buildCard)
+  let metaText;
+  const wkEndDisplay = fmtDate(a.expectedWeekEnd);
+  if (a.hasCurrentCheckin) {
+    metaText = `Week ending ${wkEndDisplay}`;
+  } else if (a.hasLastWeekCheckin && hW) {
+    metaText = `Submitted ${fmtDate(w['Week Ending'])} · wk ends ${wkEndDisplay}`;
+  } else if (hW) {
+    metaText = `No check-in — wk ends ${wkEndDisplay} · last ${fmtDate(w['Week Ending'])}`;
+  } else {
+    metaText = a.body.length ? 'Daily tracking only' : 'No recent data';
+  }
+
+  // Hero
+  const hero = `<div class="fpc-hero">
+    <div class="fpc-hero-top">
+      <div>
+        <div class="fpc-name">${esc(a.id)}</div>
+        <div class="fpc-meta ${a.isStale ? 'stale' : ''}">${metaText}</div>
+      </div>
+      ${a.weekNum !== null ? `<div class="fpc-week-badge">
+        <div class="fpc-week-num">${a.weekNum}</div>
+        <div class="fpc-week-lbl">${a.weekNum === 0 ? 'Discovery' : 'Week'}</div>
+      </div>` : ''}
+    </div>
+    ${a.flags.length ? `<div class="fpc-flags">${fps}</div>` : ''}
+  </div>`;
+
+  // Banner
+  let banner = '';
+  if (hW && a.isStale) {
+    banner = `<div class="fpc-banner stale">
+      <div class="fpc-banner-icon">🚨</div>
+      <div>
+        <div class="fpc-banner-title stale">No check-in submitted this week</div>
+        <div class="fpc-banner-sub">Showing last submission — week ending ${fmtDate(w['Week Ending'])}</div>
+      </div>
+    </div>`;
+  } else if (hW && a.hasLastWeekCheckin) {
+    banner = `<div class="fpc-banner lastweek">
+      <div class="fpc-banner-icon">📅</div>
+      <div>
+        <div class="fpc-banner-title lastweek">Last week's check-in</div>
+        <div class="fpc-banner-sub">Submitted ${fmtDate(w['Week Ending'])} · new week ends ${fmtDate(a.expectedWeekEnd)}</div>
+      </div>
+    </div>`;
+  }
+
+  // Week-in-progress
+  let wipHtml = '';
+  if (!a.hasCurrentCheckin) {
+    // Count completed planned sessions from athlete portal (ticked circles)
+    const _RUN_PT = new Set(['Run','Tempo','Speed','Long Run','Easy Effort','race','Recovery','Run + Strength']);
+    const _STR_PT = new Set(['Strength','Lift','Run + Strength']);
+    const _planRun = (a.thisWeekPlan||[]).filter(r => {
+      const st = (r['Status '] || r['Status'] || '').trim();
+      const ty = (r['Session Type'] || r['SessionType'] || '').trim();
+      return st === 'Completed' && _RUN_PT.has(ty);
+    }).length;
+    const _planStr = (a.thisWeekPlan||[]).filter(r => {
+      const st = (r['Status '] || r['Status'] || '').trim();
+      const ty = (r['Session Type'] || r['SessionType'] || '').trim();
+      return st === 'Completed' && _STR_PT.has(ty);
+    }).length;
+    // Use max of quality-data submissions vs portal ticks (no double-counting)
+    const rCount  = Math.max(a.currRunS.length, _planRun);
+    const sCount  = Math.max(a.currStrS.length, _planStr);
+    const prCount = a.prevRunS.length;
+    const psCount = a.prevStrS.length;
+    const noThisWeek = rCount === 0 && sCount === 0;
+    const showPrev = noThisWeek && (prCount > 0 || psCount > 0);
+    wipHtml = `<div class="fpc-wip">
+      <div class="fpc-wip-title">📍 Week ${a.weekNum ?? ''} In Progress — ends ${fmtDate(a.expectedWeekEnd)}</div>
+      <div class="fpc-sess-row">
+        <div class="fpc-sess"><div class="fpc-sess-num run">${rCount}</div><div class="fpc-sess-lbl">Run Sessions</div></div>
+        <div class="fpc-sess"><div class="fpc-sess-num str">${sCount}</div><div class="fpc-sess-lbl">Strength Sessions</div></div>
+      </div>
+      ${noThisWeek && !showPrev ? `<div style="font-family:var(--mono);font-size:10px;color:var(--dim);margin-top:12px">No sessions logged yet this week</div>` : ''}
+      ${showPrev ? `<div style="font-family:var(--mono);font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;margin-top:16px;margin-bottom:10px">Last week's sessions</div>
+        <div class="fpc-sess-row">
+          <div class="fpc-sess" style="opacity:.65"><div class="fpc-sess-num run">${prCount}</div><div class="fpc-sess-lbl">Run Sessions</div></div>
+          <div class="fpc-sess" style="opacity:.65"><div class="fpc-sess-num str">${psCount}</div><div class="fpc-sess-lbl">Strength Sessions</div></div>
+        </div>` : ''}
+    </div>`;
+  }
+
+  // Scores
+  let scoresHtml = '';
+  if (hW) {
+    const sx = [
+      { l: 'Energy',  v: w['Energy /10'],             inv: false },
+      { l: 'Sleep',   v: w['Sleep hrs'],               inv: false },
+      { l: 'Sore',    v: w['Soreness /10'],            inv: true  },
+      { l: 'Stress',  v: w['Stress'],                  inv: true  },
+      { l: 'Motiv',   v: w['Motivation'],              inv: false },
+      { l: 'Nutr',    v: w['Nutrition Adherence /10'], inv: false },
+    ];
+    scoresHtml = `<div class="fpc-section" style="padding-bottom:0">
+      <div class="fpc-section-title">Weekly Check-in Scores</div>
+      <div class="fpc-scores">
+        ${sx.map(x => `<div class="fpc-score">
+          <div class="fpc-score-lbl">${esc(x.l)}</div>
+          <div class="fpc-score-val ${scoreClass(x.v, x.inv)}">${esc(x.v) || '—'}</div>
+        </div>`).join('')}
+      </div>
+    </div>`;
+  }
+
+  // Training
+  let trainingHtml = '';
+  if (hW) {
+    const rp = parseInt(w['Run Planned']) || 0, rc = parseInt(w['Run Completed']) || 0;
+    const lp = parseInt(w['Lift Planned']) || 0, lc = parseInt(w['Lift Completed']) || 0;
+    const rPct = rp > 0 ? Math.min(100, Math.round(rc / rp * 100)) : 0;
+    const lPct = lp > 0 ? Math.min(100, Math.round(lc / lp * 100)) : 0;
+
+    const submittedEnd = w['Week Ending'];
+    let dataWeekNum = a.weekNum;
+    if (a.weekNum !== null && submittedEnd) {
+      const weeksBehind = Math.round(
+        (new Date(currentWeekEnd) - new Date(submittedEnd)) / (7 * 86400000)
+      );
+      dataWeekNum = Math.max(0, a.weekNum - weeksBehind);
+    }
+    const trainingLabel = dataWeekNum === null ? 'Training'
+      : dataWeekNum === 0 ? 'Discovery Week Training'
+      : `Week ${dataWeekNum} Training`;
+
+    trainingHtml = `<div class="fpc-section">
+      <div class="fpc-section-title">${trainingLabel} — ending ${fmtDate(submittedEnd) || '?'}</div>
+      <div class="fpc-train-pair">
+        <div class="fpc-train-block">
+          <div class="fpc-train-label run">Run</div>
+          <div class="fpc-train-stat"><strong>${rc}/${rp}</strong> sessions</div>
+          <div class="fpc-train-stat"><strong>${esc(w['Weekly Run KM'] || '—')} km</strong> this week</div>
+          <div class="fpc-pbar"><div class="fpc-pfill run" style="width:${rPct}%"></div></div>
+          <div class="fpc-train-stat">Feel: <strong>${esc(w['Run Feel /10'] || '—')}/10</strong></div>
+          ${isBad(w['Run Niggles']) ? `<div class="fpc-train-note bad">⚠ ${esc(w['Run Niggles'])}</div>` : ''}
+          ${w['Runs Wins'] && w['Runs Wins'] !== 'n/a' ? `<div class="fpc-train-note good">✓ ${esc(w['Runs Wins'])}</div>` : ''}
+        </div>
+        <div class="fpc-train-block">
+          <div class="fpc-train-label str">Lift</div>
+          <div class="fpc-train-stat"><strong>${lc}/${lp}</strong> sessions</div>
+          <div class="fpc-pbar"><div class="fpc-pfill str" style="width:${lPct}%"></div></div>
+          <div class="fpc-train-stat">Feel: <strong>${esc(w['Lift Feel /10'] || '—')}/10</strong></div>
+          ${isBad(w['Lifts Niggles']) ? `<div class="fpc-train-note bad">⚠ ${esc(w['Lifts Niggles'])}</div>` : ''}
+          ${w['Lift Wins'] && w['Lift Wins'] !== 'n/a' ? `<div class="fpc-train-note good">✓ ${esc(w['Lift Wins'])}</div>` : ''}
+        </div>
+      </div>
+      ${w['Testimonial'] ? `<div class="fpc-testim">"${esc(w['Testimonial'])}"</div>` : ''}
+      ${w['Upcoming Impact'] && w['Upcoming Impact'] !== 'n/a' ? `<div class="fpc-impact">⚡ ${esc(w['Upcoming Impact'])}</div>` : ''}
+    </div>`;
+  }
+
+  // Body
+  let bodyHtml = '';
+  if (a.bAvg.wt !== undefined || a.bAvg.sleep !== null) {
+    const bLast = [...a.body].sort((x, y) =>
+      (y['date:Date:start'] || y.Date || '') > (x['date:Date:start'] || x.Date || '') ? 1 : -1)[0];
+    const bn = bLast?.Notes;
+    // Build weight trend sparkline SVG
+    const _wtSeries = buildTimeseries(a.body, 'date:Date:start', 'Weight', 28);
+    const _wtPts = _wtSeries.filter(p => p.value !== null);
+    let _sparkSvg = '';
+    if (_wtPts.length >= 2) {
+      const _W = 220, _H = 44, _pad = 4;
+      const _vals = _wtPts.map(p => p.value);
+      const _minV = Math.min(..._vals), _maxV = Math.max(..._vals);
+      const _rng = _maxV - _minV || 1;
+      const _xStep = (_W - _pad * 2) / (_wtPts.length - 1);
+      const _pts = _wtPts.map((p, i) => {
+        const x = _pad + i * _xStep;
+        const y = _pad + (_H - _pad * 2) * (1 - (p.value - _minV) / _rng);
+        return x.toFixed(1) + ',' + y.toFixed(1);
+      }).join(' ');
+      const _last = _wtPts[_wtPts.length - 1];
+      const _prev = _wtPts[0];
+      const _diff = (_last.value - _prev.value).toFixed(1);
+      const _diffTxt = (_diff > 0 ? '+' : '') + _diff + ' kg';
+      const _diffCol = Math.abs(_diff) < 0.3 ? '#9ca3af' : (_diff < 0 ? '#22c55e' : '#ef4444');
+      _sparkSvg = '<div style="margin-bottom:10px">'
+        + '<div style="display:flex;align-items:baseline;gap:10px;margin-bottom:4px">'
+        + '<span style="font-size:36px;font-weight:900;line-height:1;letter-spacing:-.02em">' + esc(String(_last.value)) + '</span>'
+        + '<span style="font-family:var(--mono);font-size:11px;color:var(--dim)">kg</span>'
+        + '<span style="font-family:var(--mono);font-size:10px;font-weight:700;color:' + _diffCol + ';margin-left:4px">' + _diffTxt + ' (28d)</span>'
+        + '</div>'
+        + '<svg viewBox="0 0 ' + _W + ' ' + _H + '" width="100%" height="' + _H + '" style="display:block;overflow:visible">'
+        + '<polyline points="' + _pts + '" fill="none" stroke="var(--str)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'
+        + '<circle cx="' + (_pad + (_wtPts.length - 1) * _xStep).toFixed(1) + '" cy="' + (_pad + (_H - _pad * 2) * (1 - (_last.value - _minV) / _rng)).toFixed(1) + '" r="3.5" fill="var(--str)"/>'
+        + '</svg>'
+        + '</div>';
+    }
+    bodyHtml = '<div class="fpc-section" style="margin-bottom:0">'
+      + '<div class="fpc-section-title">Body</div>'
+      + (a.bAvg.wt !== undefined ? _sparkSvg || ('<div class="fpc-weight">' + esc(String(a.bAvg.wt)) + '<span class="fpc-weight-unit">kg</span></div><div class="fpc-weight-date">' + fmtDate(a.bAvg.wtd) + '</div>') : '')
+      + '<div class="fpc-metric-grid">'
+      + [{l:'Sleep',v:a.bAvg.sleep},{l:'Energy',v:a.bAvg.energy},{l:'Stress',v:a.bAvg.stress},{l:'Soreness',v:a.bAvg.soreness}].map(m =>
+          '<div class="fpc-metric"><div class="fpc-metric-val">' + (m.v !== null ? m.v : '—') + '</div><div class="fpc-metric-lbl">' + m.l + '</div></div>'
+        ).join('')
+      + '</div>'
+      + (bn ? '<div class="fpc-bnote">' + esc(bn) + '</div>' : '')
+      + '</div>';
+  }
+
+  // Nutrition
+  let nutrHtml = '';
+  if (a.nAvg.cal !== null || a.target) {
+    const t = a.target;
+    const tCal  = t?.Calories ? String(t.Calories).replace(/[^\d.]/g,'') : null;
+    const tPro  = t?.Protein  ? String(t.Protein).replace(/[^\d.]/g,'')  : null;
+    const tCarb = t?.Carbs    ? String(t.Carbs).replace(/[^\d.]/g,'')    : null;
+    const tFat  = t?.Fats     ? String(t.Fats).replace(/[^\d.]/g,'')     : null;
+    const tKM   = t?.['Weekly KM Target'] ? String(t['Weekly KM Target']) : null;
+    const hasTarget = tCal || tPro || tCarb || tFat;
+
+    nutrHtml = `<div class="fpc-section" style="margin-bottom:0">
+      <div class="fpc-section-title">Nutrition${a.nAvg.cal !== null ? ` — ${a.nAvg.days}d avg` : ''}</div>
+      ${a.nAvg.cal !== null ? `<div class="fpc-nutr-row">
+        <div class="fpc-nutr-cell"><div class="fpc-nutr-val">${a.nAvg.cal || '—'}</div><div class="fpc-nutr-lbl">Calories</div></div>
+        <div class="fpc-nutr-cell"><div class="fpc-nutr-val">${a.nAvg.pro || '—'}<span class="fpc-nutr-unit">g</span></div><div class="fpc-nutr-lbl">Protein</div></div>
+        <div class="fpc-nutr-cell"><div class="fpc-nutr-val">${a.nAvg.carb || '—'}<span class="fpc-nutr-unit">g</span></div><div class="fpc-nutr-lbl">Carbs</div></div>
+        <div class="fpc-nutr-cell"><div class="fpc-nutr-val">${a.nAvg.fat || '—'}<span class="fpc-nutr-unit">g</span></div><div class="fpc-nutr-lbl">Fats</div></div>
+      </div>` : ''}
+      ${hasTarget ? `<div class="fpc-target">
+        <div class="fpc-target-lbl">Week ${a.weekNum ?? ''} Prescribed Target</div>
+        <div class="fpc-target-vals">
+          ${tCal  ? `<span class="fpc-target-val"><strong>${tCal}</strong> kcal</span>` : ''}
+          ${tPro  ? `<span class="fpc-target-val"><strong>${tPro}g</strong> protein</span>` : ''}
+          ${tCarb ? `<span class="fpc-target-val"><strong>${tCarb}g</strong> carbs</span>` : ''}
+          ${tFat  ? `<span class="fpc-target-val"><strong>${tFat}g</strong> fat</span>` : ''}
+          ${tKM   ? `<span class="fpc-target-val" style="color:var(--run)"><strong>${tKM} km</strong> run target</span>` : ''}
+        </div>
+      </div>` : ''}
+    </div>`;
+  }
+
+  // Body + Nutrition combined row (or separate if only one exists)
+  const bodyNutrPart = (bodyHtml || nutrHtml)
+    ? `<div class="${bodyHtml && nutrHtml ? 'fpc-body-nutr' : ''}" style="${bodyHtml && nutrHtml ? '' : 'margin-bottom:16px'}">${bodyHtml}${nutrHtml}</div>`
+    : '';
+
+  // ── Day-by-day week detail ────────────────────────────────────────────────
+  let weekDetailHtml = '';
+  {
+    // Build a list of days from Mon of current week up to today (inclusive)
+    const days = [];
+    const todayStr = localDateStr(new Date());
+    const weekStartStr = localDateStr(currentWeekStart);
+    for (let d = new Date(currentWeekStart); localDateStr(d) <= todayStr; d.setDate(d.getDate() + 1)) {
+      days.push(localDateStr(new Date(d)));
+    }
+
+    if (days.length) {
+      const dayRows = days.map(dateStr => {
+        const dt = new Date(dateStr + 'T12:00:00');
+        const dayLabel = dt.toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' });
+
+        // Sessions for this day
+        const daySessions = a.sessions.filter(s => s._d === dateStr);
+
+        // Body log for this day
+        const dayBody = a.body.find(r => (r['date:Date:start'] || r.Date || '').split('T')[0] === dateStr);
+
+        // Nutrition log for this day
+        const dayNutr = a.nutrition.find(r => (r['date:Date:start'] || r.Date || '').split('T')[0] === dateStr);
+
+        const hasData = daySessions.length > 0 || dayBody || dayNutr;
+
+        if (!hasData) {
+          return `<div class="wd-row empty">
+            <div class="wd-date">${dayLabel}</div>
+            <div class="wd-rest">No data logged</div>
+          </div>`;
+        }
+
+        // Sessions
+        const sessHtml = daySessions.map(s => {
+          const isRun = s._isRun;
+          const isStr = s._isStr;
+          const cls = isRun ? 'run' : isStr ? 'str' : 'other';
+          const catLabel = isRun ? 'Run' : isStr ? 'Lift' : esc(s._cat || '');
+          // Session name: use Session field (e.g. "Upper A", "🔥 3×3km Tempo")
+          const rawName = s.Session || (s.Name || '').split('—').slice(1, -1).join('—').trim() || '';
+          const exLog = s['Exercise Log'] || s.exerciseLog || s['Exercises'] || '';
+          const notes = s.Notes || s.notes || '';
+          const logHtml = renderExerciseLog(exLog, isRun);
+          return `<div class="wd-session ${cls}">
+            <div class="wd-sess-cat">${catLabel}</div>
+            ${rawName ? `<div class="wd-sess-name">${esc(rawName)}</div>` : ''}
+            ${logHtml}
+            ${notes ? `<div class="wd-sess-notes">${esc(notes)}</div>` : ''}
+          </div>`;
+        }).join('');
+
+        // Body metrics
+        let bodyRowHtml = '';
+        if (dayBody) {
+          const bParts = [
+            dayBody.Weight       ? `<span class="wd-metric"><strong>${esc(dayBody.Weight)}</strong> kg</span>` : '',
+            dayBody['Sleep Score'] !== undefined && dayBody['Sleep Score'] !== null
+              ? `<span class="wd-metric">💤 <strong>${esc(dayBody['Sleep Score'])}</strong> sleep</span>` : '',
+            dayBody.Energy       ? `<span class="wd-metric">⚡ <strong>${esc(dayBody.Energy)}</strong> energy</span>` : '',
+            dayBody.Stress       ? `<span class="wd-metric">🧠 <strong>${esc(dayBody.Stress)}</strong> stress</span>` : '',
+            dayBody.Soreness     ? `<span class="wd-metric">💪 <strong>${esc(dayBody.Soreness)}</strong> sore</span>` : '',
+          ].filter(Boolean).join('');
+          if (bParts) bodyRowHtml = `<div class="wd-body-row">
+            <span class="wd-metric body-lbl">Body</span>${bParts}</div>`;
+        }
+
+        // Nutrition metrics
+        let nutrRowHtml = '';
+        if (dayNutr) {
+          const nParts = [
+            dayNutr.Calories ? `<span class="wd-metric nutr"><strong>${esc(dayNutr.Calories)}</strong> kcal</span>` : '',
+            dayNutr.Protein  ? `<span class="wd-metric nutr"><strong>${esc(dayNutr.Protein)}g</strong> P</span>` : '',
+            dayNutr.Carbs    ? `<span class="wd-metric nutr"><strong>${esc(dayNutr.Carbs)}g</strong> C</span>` : '',
+            dayNutr.Fats     ? `<span class="wd-metric nutr"><strong>${esc(dayNutr.Fats)}g</strong> F</span>` : '',
+          ].filter(Boolean).join('');
+          if (nParts) nutrRowHtml = `<div class="wd-nutr-row">
+            <span class="wd-metric nutr-lbl">Nutr</span>${nParts}</div>`;
+        }
+
+        return `<div class="wd-row">
+          <div class="wd-date">${dayLabel}</div>
+          <div class="wd-day-content">
+            ${sessHtml}
+            ${bodyRowHtml}
+            ${nutrRowHtml}
+          </div>
+        </div>`;
+      });
+
+      weekDetailHtml = `<div class="fpc-section">
+        <div class="fpc-section-title">This Week — Day by Day · ${weekStartStr} → ${todayStr}</div>
+        <div class="wd-timeline">${dayRows.join('')}</div>
+      </div>`;
+    }
+  }
+
+  // Call Prep (always expanded)
+  const callPrep = buildCallPrep(a);
+  const savedNote = callNotes[a.id] || '';
+  const cpId = `fcp-${a.id.replace(/\s+/g,'-')}`;
+  const callPrepHtml = `<div class="fpc-cp">
+    <div class="fpc-cp-head">
+      <span style="font-size:14px">📋</span>
+      <div class="fpc-cp-head-title">Call Prep</div>
+    </div>
+    <div class="fpc-cp-body" id="${cpId}">
+      ${callPrep.wins.length ? `<div>
+        <div class="fpc-cp-section-lbl win">✓ Open With (Wins)</div>
+        <div class="fpc-cp-items">${callPrep.wins.map(t => `<div class="fpc-cp-item win">${esc(t)}</div>`).join('')}</div>
+      </div>` : ''}
+      ${callPrep.issues.length ? `<div>
+        <div class="fpc-cp-section-lbl issue">⚠ Address</div>
+        <div class="fpc-cp-items">${callPrep.issues.map(t => `<div class="fpc-cp-item issue">${esc(t)}</div>`).join('')}</div>
+      </div>` : ''}
+      ${callPrep.ask.length ? `<div>
+        <div class="fpc-cp-section-lbl ask">→ Ask / Follow Up</div>
+        <div class="fpc-cp-items">${callPrep.ask.map(t => `<div class="fpc-cp-item ask">${esc(t)}</div>`).join('')}</div>
+      </div>` : ''}
+      ${!callPrep.wins.length && !callPrep.issues.length && !callPrep.ask.length
+        ? `<div class="fpc-cp-none">No check-in data to prep from yet.</div>` : ''}
+      <div>
+        <div class="fpc-cp-section-lbl note">📝 Call Notes</div>
+        <textarea class="fpc-note" placeholder="Notes for this call…" onchange="saveNote('${esc(a.id)}', this.value)">${esc(savedNote)}</textarea>
+      </div>
+    </div>
+  </div>`;
+
+  // ── Action Required ribbon (full-page) ──────────────────────────────────
+  let fpActionHtml = '';
+  if (a.actions && a.actions.severity) {
+    const allActions = [...a.actions.critical, ...a.actions.watch];
+    if (allActions.length) {
+      fpActionHtml = `<div class="fpc-section" style="padding:18px 24px;background:${a.actions.severity === 'red' ? '#fef2f2' : '#fffbeb'};border-color:${a.actions.severity === 'red' ? 'rgba(220,38,38,.25)' : 'rgba(217,119,6,.25)'}">
+        <div class="fpc-section-title" style="color:${a.actions.severity === 'red' ? '#991b1b' : '#92400e'};margin-bottom:12px">${a.actions.severity === 'red' ? '⚠ Action Required' : '⚠ Watch List'}</div>
+        ${a.actions.critical.length ? `<div style="margin-bottom:${a.actions.watch.length ? '10px' : '0'}">
+          ${a.actions.critical.map(t => `<div style="font-family:var(--mono);font-size:11px;color:#991b1b;padding:4px 0;display:flex;align-items:flex-start;gap:8px">
+            <span style="color:var(--alert);font-weight:900">●</span><span>${esc(t)}</span>
+          </div>`).join('')}
+        </div>` : ''}
+        ${a.actions.watch.length ? `<div>
+          ${a.actions.watch.map(t => `<div style="font-family:var(--mono);font-size:10px;color:#92400e;padding:3px 0;display:flex;align-items:flex-start;gap:8px">
+            <span style="color:var(--warn)">●</span><span>${esc(t)}</span>
+          </div>`).join('')}
+        </div>` : ''}
+      </div>`;
+    }
+  }
+
+  // ── Strength PRs (last 21 days) ──────────────────────────────────────────
+  let prsHtml = '';
+  if (a.prs && a.prs.recent && a.prs.recent.length) {
+    const prCards = a.prs.recent.slice(0, 8).map(pr => {
+      const dt = new Date(pr.date + 'T12:00:00');
+      const dLabel = dt.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
+      const prevHtml = pr.prev
+        ? `<div class="fpc-pr-prev"><span class="delta">+${(pr.weight - pr.prev.weight).toFixed(1)}kg</span> from ${pr.prev.weight}×${pr.prev.reps}</div>`
+        : `<div class="fpc-pr-prev"><span class="delta">First logged lift</span></div>`;
+      return `<div class="fpc-pr">
+        <div class="fpc-pr-ex">${esc(pr.exercise)}</div>
+        <div class="fpc-pr-val">${pr.weight}<span>kg</span> × ${pr.reps}</div>
+        ${prevHtml}
+        <div class="fpc-pr-date">${dLabel}</div>
+      </div>`;
+    }).join('');
+    prsHtml = `<div class="fpc-section">
+      <div class="fpc-section-title">🏆 Recent PRs — last 21 days (${a.prs.recent.length})</div>
+      <div class="fpc-pr-grid">${prCards}</div>
+    </div>`;
+  } else if (a.sessions.filter(s => s._isStr).length > 0) {
+    // Has strength sessions but no PRs detected
+    prsHtml = `<div class="fpc-section">
+      <div class="fpc-section-title">🏆 Recent PRs</div>
+      <div class="no-pr">No PRs in the last 21 days — pushing volume not load</div>
+    </div>`;
+  }
+
+  // ── Trend grid: 14-day sleep / stress / energy / weight / calories ──────
+  let trendsHtml = '';
+  if (a.trends) {
+    const cards = [
+      { key: 'sleep',    lbl: 'Sleep',    inv: false, color: '#3b82f6', unit: '/10' },
+      { key: 'stress',   lbl: 'Stress',   inv: true,  color: '#dc2626', unit: '/10' },
+      { key: 'energy',   lbl: 'Energy',   inv: false, color: '#f59e0b', unit: '/10' },
+      { key: 'soreness', lbl: 'Soreness', inv: true,  color: '#ea580c', unit: '/10' },
+      { key: 'weight',   lbl: 'Weight',   inv: false, color: '#0a0a0a', unit: 'kg' },
+      { key: 'calories', lbl: 'Calories', inv: false, color: '#15803d', unit: 'kcal' },
+    ];
+    const cardsHtml = cards.map(c => {
+      const series = a.trends[c.key] || [];
+      const t = trendDelta(series, c.inv);
+      const valid = series.filter(p => p.value !== null);
+      if (!valid.length) return '';
+      const last = [...series].reverse().find(p => p.value !== null);
+      const lastVal = last ? (Number.isInteger(last.value) ? last.value : last.value.toFixed(1)) : '—';
+      const arrow = t.dir === 'up' ? '↑' : t.dir === 'dn' ? '↓' : '→';
+      const dirCls = t.dir === 'up' ? 'up' : t.dir === 'dn' ? 'dn' : 'flat';
+      const deltaTxt = t.delta !== null
+        ? `${arrow} ${t.delta > 0 ? '+' : ''}${t.delta.toFixed(1)}${c.unit === 'kg' ? 'kg' : c.unit === 'kcal' ? '' : ''}`
+        : '';
+      return `<div class="trend-card">
+        <div class="trend-card-head">
+          <div>
+            <div class="trend-card-lbl">${esc(c.lbl)}</div>
+            <div class="trend-card-now">${lastVal}<span>${esc(c.unit)}</span></div>
+          </div>
+          <div class="trend-card-delta ${dirCls}">${deltaTxt}</div>
+        </div>
+        ${trendSVG(series, c.color)}
+        <div class="trend-card-foot">${(() => {
+          const vdates = valid.map(p => p.date).sort();
+          if (vdates.length < 2) return valid.length + ' entry';
+          const fmt = d => { const [,m,dy] = d.split('-'); const mn = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][+m-1]; return dy.replace(/^0/,'') + ' ' + mn; };
+          return fmt(vdates[0]) + ' – ' + fmt(vdates[vdates.length-1]) + ' · ' + valid.length + ' entries';
+        })()}</div>
+      </div>`;
+    }).filter(Boolean).join('');
+    if (cardsHtml) {
+      trendsHtml = `<div class="fpc-section">
+        <div class="fpc-section-title">📈 14-Day Trends</div>
+        <div class="trend-grid">${cardsHtml}</div>
+      </div>`;
+    }
+  }
+
+  // ── Daily Nutrition vs Target — 14 days ──────────────────────────────────
+  let dailyNutrHtml = '';
+  if (a.trends && a.trends.calories && a.target) {
+    const tCalRaw = String(a.target.Calories || '').replace(/[^\d.]/g, '');
+    const tCal = parseFloat(tCalRaw);
+    const series = a.trends.calories;
+    const valid = series.filter(p => p.value !== null);
+    if (tCal && valid.length) {
+      // Determine y-axis max — 1.4× target or actual max, whichever larger
+      const dataMax = Math.max(...valid.map(p => p.value));
+      const yMax = Math.max(tCal * 1.4, dataMax * 1.05);
+      const targetY = ((yMax - tCal) / yMax) * 100; // % from top
+      const todayStr = localDateStr(new Date());
+
+      const bars = series.map(p => {
+        const dt = new Date(p.date + 'T12:00:00');
+        const dayLbl = dt.toLocaleDateString('en-AU', { weekday: 'short' }).slice(0, 1) +
+                       dt.toLocaleDateString('en-AU', { day: 'numeric' });
+        const isToday = p.date === todayStr;
+        if (p.value === null) {
+          return `<div class="dnb empty">
+            <div class="dnb-bar" style="height:0%"></div>
+            <div class="dnb-day ${isToday ? 'today' : ''}">${esc(dayLbl)}</div>
+          </div>`;
+        }
+        const pct = (p.value / yMax) * 100;
+        const ratio = p.value / tCal;
+        let cls = '';
+        if (ratio < 0.8) cls = 'under';
+        else if (ratio > 1.15) cls = 'over';
+        return `<div class="dnb ${cls}">
+          <div class="dnb-tip">${Math.round(p.value)} kcal · ${Math.round(ratio * 100)}% of target</div>
+          <div class="dnb-bar" style="height:${pct.toFixed(1)}%"></div>
+          <div class="dnb-day ${isToday ? 'today' : ''}">${esc(dayLbl)}</div>
+        </div>`;
+      }).join('');
+
+      dailyNutrHtml = `<div class="fpc-section">
+        <div class="fpc-section-title">🍽 Daily Nutrition vs Target — ${Math.round(tCal)} kcal/day</div>
+        <div class="daily-nutr-wrap">
+          <div class="daily-nutr-legend">
+            <span><span class="swatch" style="background:linear-gradient(180deg,#86efac,#15803d)"></span>On Target</span>
+            <span><span class="swatch" style="background:linear-gradient(180deg,#fcd34d,#d97706)"></span>Under (&lt;80%)</span>
+            <span><span class="swatch" style="background:linear-gradient(180deg,#fca5a5,#dc2626)"></span>Over (&gt;115%)</span>
+            <span><span class="swatch" style="background:rgba(0,0,0,.06)"></span>No log</span>
+          </div>
+          <div class="daily-nutr-grid">
+            <div class="daily-nutr-tgt-line" style="top:${targetY}%"></div>
+            <div class="daily-nutr-tgt-lbl" style="top:${targetY}%">TARGET</div>
+            ${bars}
+          </div>
+        </div>
+      </div>`;
+    }
+  }
+
+  const progressPhotosHtml = `<div class="fpc-section progress-photo-panel">
+    <div class="fpc-section-title">Progress Photos — Week ${a.weekNum ?? '—'}</div>
+    <div class="progress-photo-state" data-progress-photos="${esc(a.id)}">Loading progress photos…</div>
+  </div>`;
+
+  return `<div>
+    ${hero}
+    ${banner}
+    ${fpActionHtml}
+    ${wipHtml}
+    ${prsHtml}
+    ${scoresHtml}
+    ${trainingHtml}
+    ${trendsHtml}
+    ${progressPhotosHtml}
+    ${dailyNutrHtml}
+    ${weekDetailHtml}
+    ${bodyNutrPart}
+    ${callPrepHtml}
+  </div>`;
+}
+function buildCoachCard(a) {
+  const w = a.weekly;
+  const hW = !!w?.Name;
+
+  // Scores
+  let scores = '';
+  if (hW) {
+    const sx = [
+      { l: 'Energy',  v: w['Energy /10'],             inv: false },
+      { l: 'Sleep',   v: w['Sleep hrs'],               inv: false },
+      { l: 'Sore',    v: w['Soreness /10'],            inv: true  },
+      { l: 'Stress',  v: w['Stress'],                  inv: true  },
+      { l: 'Motiv',   v: w['Motivation'],              inv: false },
+      { l: 'Nutr',    v: w['Nutrition Adherence /10'], inv: false },
+    ];
+    scores = `<div class="coach-scores">${sx.map(x =>
+      `<div class="sc"><div class="sc-lbl">${esc(x.l)}</div><div class="sc-val ${scoreClass(x.v, x.inv)}">${esc(x.v) || '—'}</div></div>`
+    ).join('')}</div>`;
+  }
+
+  // Training
+  let trainingHtml = '';
+  if (hW) {
+    const rp = parseInt(w['Run Planned']) || 0, rc = parseInt(w['Run Completed']) || 0;
+    const lp = parseInt(w['Lift Planned']) || 0, lc = parseInt(w['Lift Completed']) || 0;
+    const rPct = rp > 0 ? Math.min(100, Math.round(rc / rp * 100)) : 0;
+    const lPct = lp > 0 ? Math.min(100, Math.round(lc / lp * 100)) : 0;
+
+    trainingHtml = `<div class="coach-training">
+      <div class="coach-training-lbl">Training — week ending ${fmtDate(w['Week Ending']) || '?'}</div>
+      <div class="tpair">
+        <div class="tb">
+          <div class="tt run">Run</div>
+          <div class="ts"><strong>${rc}/${rp}</strong> sessions · <strong>${esc(w['Weekly Run KM'] || '—')} km</strong></div>
+          <div class="pbar"><div class="pfill run" style="width:${rPct}%"></div></div>
+          <div class="ts">Feel: <strong>${esc(w['Run Feel /10'] || '—')}/10</strong></div>
+          ${isBad(w['Run Niggles']) ? `<div class="nl red"><span class="nl-lbl">⚠ Niggle</span>${esc(w['Run Niggles'])}</div>` : ''}
+          ${w['Runs Wins'] && w['Runs Wins'] !== 'n/a' ? `<div class="nl"><span class="nl-lbl">✓ Win</span>${esc(w['Runs Wins'])}</div>` : ''}
+        </div>
+        <div class="tb">
+          <div class="tt str">Lift</div>
+          <div class="ts"><strong>${lc}/${lp}</strong> sessions</div>
+          <div class="pbar"><div class="pfill str" style="width:${lPct}%"></div></div>
+          <div class="ts">Feel: <strong>${esc(w['Lift Feel /10'] || '—')}/10</strong></div>
+          ${isBad(w['Lifts Niggles']) ? `<div class="nl red"><span class="nl-lbl">⚠ Niggle</span>${esc(w['Lifts Niggles'])}</div>` : ''}
+          ${w['Lift Wins'] && w['Lift Wins'] !== 'n/a' ? `<div class="nl"><span class="nl-lbl">✓ Win</span>${esc(w['Lift Wins'])}</div>` : ''}
+        </div>
+      </div>
+      ${w['Testimonial'] ? `<div class="testim">"${esc(w['Testimonial'])}"</div>` : ''}
+      ${w['Upcoming Impact'] && w['Upcoming Impact'] !== 'n/a' ? `<div class="impact">⚡ ${esc(w['Upcoming Impact'])}</div>` : ''}
+    </div>`;
+  }
+
+  // Body
+  let bodyHtml = '';
+  if (a.bAvg.wt !== undefined || a.bAvg.sleep !== null) {
+    const items = [
+      { l: 'Weight', v: a.bAvg.wt !== undefined ? a.bAvg.wt + ' kg' : null },
+      { l: 'Sleep',  v: a.bAvg.sleep },
+      { l: 'Energy', v: a.bAvg.energy },
+      { l: 'Stress', v: a.bAvg.stress },
+    ].filter(i => i.v !== null);
+    if (items.length) {
+      bodyHtml = `<div class="coach-body-row">${items.map(i =>
+        `<div class="coach-body-item"><div class="coach-body-item-val">${esc(i.v)}</div><div class="coach-body-item-lbl">${esc(i.l)}</div></div>`
+      ).join('')}</div>`;
+    }
+  }
+
+  // Notes
+  let notesHtml = '';
+  if (hW && w['Notes'] && isBad(w['Notes'])) {
+    notesHtml = `<div class="coach-notes">
+      <div class="coach-notes-lbl">Notes</div>
+      <div class="coach-quote">${esc(w['Notes'])}</div>
+    </div>`;
+  }
+
+  const noData = !hW && !a.bAvg.wt && !a.bAvg.sleep;
+  const metaTxt = hW
+    ? `Week ending ${fmtDate(w['Week Ending'])}`
+    : a.body.length ? 'Daily tracking only' : 'No check-in data yet';
+
+  return `<div class="coach-card">
+    <div class="coach-card-head">
+      <div class="coach-card-head-top">
+        <div>
+          <div class="coach-name-row">
+            <div class="coach-name">${esc(a.id)}</div>
+            <div class="coach-badge">Coach</div>
+          </div>
+          <div class="coach-meta">${metaTxt}</div>
+        </div>
+        ${a.compliance !== null ? `<div class="coach-wk-badge"><div class="coach-wk-num">${a.compliance}%</div><div class="coach-wk-lbl">Compliance</div></div>` : ''}
+      </div>
+    </div>
+    ${scores}
+    ${trainingHtml}
+    ${bodyHtml}
+    ${notesHtml}
+    ${noData ? `<div class="coach-no-data"><div class="coach-no-data-txt">No recent data found</div></div>` : ''}
+  </div>`;
+}
+
+// ── Filters ───────────────────────────────────────────────────────────────────
+function setStatusFilter(btn, status) {
+  _statusFilter = status;
+  document.querySelectorAll('.sf').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  applyFilters();
+}
+
+function applyFilters() {
+  const query = (document.getElementById('search-input')?.value || '').toLowerCase().trim();
+  const sortBy = document.getElementById('sort-select')?.value || 'alert';
+
+  let visible = _allAthletes;
+
+  // Status filter — uses action severity (the unified red/amber model)
+  if (_statusFilter === 'red') {
+    visible = visible.filter(a => a.actions?.severity === 'red');
+  } else if (_statusFilter === 'amber') {
+    visible = visible.filter(a => a.actions?.severity === 'amber');
+  } else if (_statusFilter === 'green') {
+    visible = visible.filter(a => !a.actions?.severity);
+  }
+
+  // Search
+  if (query) {
+    visible = visible.filter(a => a.id.toLowerCase().includes(query));
+  }
+
+  // Sort
+  if (sortBy === 'name') {
+    visible = [...visible].sort((a, b) => a.id.localeCompare(b.id));
+  } else if (sortBy === 'week') {
+    visible = [...visible].sort((a, b) => (b.weekNum ?? -1) - (a.weekNum ?? -1));
+  } else if (sortBy === 'compliance') {
+    visible = [...visible].sort((a, b) => (b.compliance ?? -1) - (a.compliance ?? -1));
+  } else if (sortBy === 'checkin') {
+    visible = [...visible].sort((a, b) => {
+      const da = a.weekly?.['Week Ending'] || '';
+      const db = b.weekly?.['Week Ending'] || '';
+      return db.localeCompare(da);
+    });
+  } else {
+    visible = [...visible].sort((a, b) => b.alertScore - a.alertScore);
+  }
+
+  // Show/hide cards
+  const cards = document.querySelectorAll('#grid .card');
+  const visibleIds = new Set(visible.map(a => a.id));
+  cards.forEach(card => {
+    const id = card.getAttribute('data-card');
+    card.classList.toggle('hidden', !visibleIds.has(id));
+  });
+
+  // Sort DOM order
+  const grid = document.getElementById('grid');
+  visible.forEach(a => {
+    const card = grid.querySelector(`[data-card="${a.id}"]`);
+    if (card) grid.appendChild(card);
+  });
+
+  // No-results message
+  document.getElementById('no-results').style.display = visible.length === 0 ? 'block' : 'none';
+}
+
+// ── renderSchedule ────────────────────────────────────────────────────────────
+function renderSchedule(athletes) {
+  const grid = document.getElementById('sched-grid');
+  if (!grid) return;
+  const withPlan = athletes.filter(a => a.thisWeekPlan && a.thisWeekPlan.length > 0);
+  if (!withPlan.length) {
+    grid.innerHTML = `<div style="font-family:var(--mono);font-size:11px;color:var(--dim);padding:20px 0;text-transform:uppercase;letter-spacing:.08em">No planning data for this week</div>`;
+    return;
+  }
+  grid.innerHTML = withPlan.map(a => {
+    const rows = a.thisWeekPlan.map(r => {
+      const d = r['date:Planned Date:start'] || r['Planned Date'] || '';
+      const dateStr = d ? fmtDate(d.split('T')[0]) : '—';
+      const status = (r['Status '] || r['Status'] || 'planned').trim().toLowerCase();
+      const statusIcon = status==='completed'?'✓':status==='missed'?'✗':status==='sick'?'🤒':'→';
+      const badge = sessionBadgeHTML(r['Session Type'], r['Status ']||r['Status'], r.Session);
+      const name = r.Session || r['Session Type'] || 'Session';
+      return `<div class="sched-session-row">
+        <span class="sched-date">${dateStr}</span>
+        ${badge}
+        <span class="sched-session-name">${esc(name)}</span>
+        <span class="sched-status-icon">${statusIcon}</span>
+      </div>`;
+    }).join('');
+    const comp = a.scheduleCompliance;
+    const compStr = comp!==null ? ` · ${comp}% compliant` : '';
+    return `<div class="sched-card">
+      <div class="sched-card-head">
+        <div class="sched-card-name">${esc(a.id)}</div>
+        <div class="sched-card-meta">Week ${a.weekNum ?? '—'} · ${a.thisWeekPlan.length} session${a.thisWeekPlan.length!==1?'s':''}${compStr}</div>
+      </div>
+      <div class="sched-card-body">${rows}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderSyncAudit(rows) {
+  const body = document.getElementById('sync-table-body');
+  const score = document.getElementById('sync-score-row');
+  if (!body || !score) return;
+
+  const good = rows.filter(r => r.severity === 'good').length;
+  const warn = rows.filter(r => r.severity === 'warn').length;
+  const bad = rows.filter(r => r.severity === 'bad').length;
+
+  score.innerHTML = `
+    <div class="sync-score"><div class="sync-score-num">${rows.length}</div><div class="sync-score-lbl">Athletes</div></div>
+    <div class="sync-score"><div class="sync-score-num good">${good}</div><div class="sync-score-lbl">Healthy</div></div>
+    <div class="sync-score"><div class="sync-score-num warn">${warn}</div><div class="sync-score-lbl">Partial</div></div>
+    <div class="sync-score"><div class="sync-score-num bad">${bad}</div><div class="sync-score-lbl">Broken</div></div>`;
+
+  if (!rows.length) {
+    body.innerHTML = `<tr><td colspan="11"><div class="sync-muted">No athlete IDs found across the connected databases.</div></td></tr>`;
+    return;
+  }
+
+  const pill = (ok, yes = 'Yes', no = 'No') =>
+    `<span class="sync-pill ${ok ? 'good' : 'bad'}">${ok ? yes : no}</span>`;
+  const countPill = (n, warnAtZero = true) =>
+    `<span class="sync-pill ${n ? 'good' : warnAtZero ? 'warn' : 'good'}">${n}</span>`;
+
+  body.innerHTML = rows.map(r => {
+    const statusLabel = r.severity === 'good' ? 'Healthy' : r.severity === 'warn' ? 'Partial' : 'Broken';
+    const issue = r.issues.length ? r.issues.slice(0, 3).join(' · ') : 'All expected links found';
+    return `<tr class="${r.severity}">
+      <td><div class="sync-name">${esc(r.id)}</div></td>
+      <td><span class="sync-pill ${r.severity}">${statusLabel}</span></td>
+      <td>${pill(r.hasMaster)}</td>
+      <td>${pill(r.hasStart, 'Found', 'Missing')}</td>
+      <td>${r.hasWeekly ? `<span class="sync-pill good">${fmtDate(r.weeklyDate)}</span>` : `<span class="sync-pill bad">Missing</span>`}</td>
+      <td>${countPill(r.body14)}</td>
+      <td>${countPill(r.nutrition14)}</td>
+      <td>${countPill(r.sessions21, false)}</td>
+      <td>${countPill(r.planThisWeek)}</td>
+      <td>${r.hasTarget ? `<span class="sync-pill good">${esc(r.weekLabel || 'Found')}</span>` : `<span class="sync-pill warn">Missing</span>`}</td>
+      <td><span class="sync-muted">${esc(issue)}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+// ── renderApplications ────────────────────────────────────────────────────────
+function renderApplications(apps) {
+  const grid = document.getElementById('apps-grid');
+  if (!grid) return;
+  if (!apps || !apps.length) {
+    grid.innerHTML = `<div style="font-family:var(--mono);font-size:11px;color:var(--dim);padding:20px 0;text-transform:uppercase;letter-spacing:.08em">No applications found</div>`;
+    return;
+  }
+  grid.innerHTML = apps.map(r => {
+    const name      = r.Name || r['name'] || 'Unknown';
+    const age       = r.Age ? `${r.Age} yrs` : '';
+    const occ       = r.Occupation || '';
+    const goal      = r['Three Month Goal'] || '';
+    const barrier   = r['Biggest Barrier'] || '';
+    const daysWk    = r['Days Per Week'] || '';
+    const status    = r['Current Status'] || '';
+    const injuries  = r.Injuries || '';
+    const submitted = r['date:Submitted at:start'] || r['Submitted at'] || '';
+    const statusCls = status.toLowerCase().includes('accept') ? 'accepted' : status.toLowerCase().includes('reject') ? 'rejected' : 'new';
+    return `<div class="app-card">
+      <div class="app-card-head">
+        <div class="app-name">${esc(name)}</div>
+        <div class="app-meta">${[age, occ, submitted ? `Applied ${fmtDate(submitted.split('T')[0])}` : ''].filter(Boolean).join(' · ')}</div>
+      </div>
+      <div class="app-body">
+        ${status ? `<div class="app-field"><span class="app-status ${statusCls}">${esc(status)}</span></div>` : ''}
+        ${goal ? `<div class="app-field"><div class="app-field-lbl">3-Month Goal</div><div class="app-field-val strong">${esc(goal)}</div></div>` : ''}
+        ${barrier ? `<div class="app-field"><div class="app-field-lbl">Biggest Barrier</div><div class="app-field-val">${esc(barrier)}</div></div>` : ''}
+        ${daysWk ? `<div class="app-field"><div class="app-field-lbl">Days / Week</div><div class="app-field-val">${esc(daysWk)}</div></div>` : ''}
+        ${injuries && isBad(injuries) ? `<div class="app-field"><div class="app-field-lbl">Injuries / History</div><div class="app-field-val">${esc(injuries)}</div></div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── Tab switching ─────────────────────────────────────────────────────────────
+function switchTab(tab) {
+  const tabs = ['athletes','coaches','schedule','sync','applications'];
+  tabs.forEach(t => {
+    const btn = document.getElementById(`tab-${t === 'applications' ? 'apps' : t}-btn`);
+    const content = document.getElementById(`tab-${t === 'applications' ? 'apps' : t}-content`);
+    const active = t === tab;
+    if (btn) btn.classList.toggle('active', active);
+    if (content) content.style.display = active ? '' : 'none';
+  });
+  document.getElementById('filter-bar').style.display = tab === 'athletes' ? '' : 'none';
+  document.getElementById('gen-btn').style.display    = tab === 'athletes' && _allAthletes.length ? 'block' : 'none';
+}
+
+// ── Call Prep toggle ──────────────────────────────────────────────────────────
+function toggleCallPrep(id) {
+  const body = document.getElementById(id);
+  const toggle = document.getElementById(id + '-toggle');
+  if (!body) return;
+  const isOpen = body.style.display !== 'none';
+  body.style.display = isOpen ? 'none' : '';
+  toggle.classList.toggle('open', !isOpen);
+}
+
+function saveNote(athleteId, value) {
+  callNotes[athleteId] = value;
+  try { localStorage.setItem('dp_call_notes', JSON.stringify(callNotes)); } catch {}
+}
+
+// ── Main load ─────────────────────────────────────────────────────────────────
+async function load() {
+  document.getElementById('loading').style.display = 'block';
+  document.getElementById('content').style.display = 'none';
+  document.getElementById('err').style.display = 'none';
+  document.getElementById('refresh-btn').disabled = true;
+
+  try {
+    const [weekly, sessions, body, nutrition, athleteDb, targets, planning, applications] = await Promise.all([
+      fetchDB(DB.weekly), fetchDB(DB.sessions), fetchDB(DB.body),
+      fetchDB(DB.nutrition), fetchDB(DB.athletes), fetchDB(DB.targets),
+      fetchDB(DB.planning), fetchDB(DB.applications),
+    ]);
+
+    const { athletes, coaches, syncAudit } = buildAll(weekly, sessions, body, nutrition, athleteDb, targets, planning, applications);
+    const dataHealth = {
+      weekly: weekly.length,
+      sessions: sessions.length,
+      body: body.length,
+      nutrition: nutrition.length,
+      athleteDb: athleteDb.length,
+      targets: targets.length,
+      planning: planning.length,
+      applications: applications.length,
+      loadedAt: new Date(),
+    };
+    render({ athletes, coaches, applications, dataHealth, syncAudit });
+
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('content').style.display = 'block';
+    document.getElementById('updated').textContent =
+      'Updated ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  } catch (e) {
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('err').style.display = 'block';
+    document.getElementById('err-msg').textContent = 'Error: ' + e.message;
+  } finally {
+    document.getElementById('refresh-btn').disabled = false;
+  }
+}
+
+// ── AI Analysis ───────────────────────────────────────────────────────────────
+let _lastAthletes = [];
+
+async function generateAI() {
+  if (!_allAthletes.length) return;
+  const btn = document.getElementById('gen-btn');
+  btn.disabled = true;
+  btn.classList.add('loading');
+  btn.textContent = '✦ Analysing…';
+
+  document.querySelectorAll('.ai-sec').forEach(sec => {
+    sec.innerHTML = `<div class="ai-loading">
+      <div class="ai-loading-dot"></div><div class="ai-loading-dot"></div><div class="ai-loading-dot"></div>
+      <span>Generating analysis…</span>
+    </div>`;
+  });
+
+  try {
+    const payload = _allAthletes
+      .filter(a => a.weekly || a.bAvg?.wt != null)
+      .map(a => ({ id: a.id, weekly: a.weekly, bAvg: a.bAvg, nAvg: a.nAvg }));
+
+    const res = await fetch('/api/analyse', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ athletes: payload }),
+    });
+    if (!res.ok) {
+      const e = await res.json().catch(() => ({}));
+      throw new Error(e.error || `HTTP ${res.status}`);
+    }
+
+    const { analyses, squadBrief } = await res.json();
+
+    analyses.forEach(analysis => {
+      const sec = document.querySelector(`[data-card="${analysis.id}"] .ai-sec`);
+      if (!sec) return;
+      sec.innerHTML = `
+        <div class="ai-status-badge ${analysis.status}">${analysis.status}</div>
+        <div class="ai-flags">${(analysis.flags || []).map(f => `<div class="ai-flag">${esc(f)}</div>`).join('')}</div>
+        <div class="ai-rec">${esc(analysis.recommendation)}</div>`;
+    });
+
+    if (squadBrief) {
+      document.getElementById('squad-brief-text').textContent = squadBrief;
+      document.getElementById('squad-brief').classList.add('visible');
+    }
+    btn.textContent = '✦ Regenerate';
+  } catch (e) {
+    document.querySelectorAll('.ai-sec').forEach(sec => {
+      sec.innerHTML = `<div class="ai-loading" style="color:var(--alert)">${esc(e.message)}</div>`;
+    });
+    btn.textContent = '✦ Retry';
+  } finally {
+    btn.disabled = false;
+    btn.classList.remove('loading');
+  }
+}
+
+// ── Full-page view ────────────────────────────────────────────────────────────
+let _fpOrder = [];   // athlete IDs in nav order (mirrors visible grid cards)
+let _fpIdx   = 0;
+
+function showFP(id) {
+  // Build nav order from whatever is currently visible in the grid
+  const cards = [...document.querySelectorAll('#grid .card:not(.hidden)')];
+  _fpOrder = cards.map(c => c.getAttribute('data-card'));
+  // If the id isn't in the visible list (e.g. called from a coach card), just show it alone
+  if (!_fpOrder.includes(id)) _fpOrder = [id];
+  _fpIdx = Math.max(0, _fpOrder.indexOf(id));
+  _drawFP();
+  document.getElementById('fp-overlay').style.display = 'block';
+  document.body.style.overflow = 'hidden';
+}
+
+function hideFP() {
+  document.getElementById('fp-overlay').style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+function fpNav(dir) {
+  _fpIdx = Math.max(0, Math.min(_fpOrder.length - 1, _fpIdx + dir));
+  _drawFP();
+}
+
+function _drawFP() {
+  const id = _fpOrder[_fpIdx];
+  const a  = _allAthletes.find(x => x.id === id) || _coaches.find(x => x.id === id);
+  if (!a) return;
+
+  document.getElementById('fp-body').innerHTML = buildFPCard(a);
+  document.getElementById('fp-overlay').scrollTop = 0;
+  loadProgressPhotos(a);
+
+  // Restore saved note (fpc-note textarea uses onchange so pre-fill here)
+  const ta = document.querySelector('#fp-body textarea.fpc-note');
+  if (ta && callNotes[a.id]) ta.value = callNotes[a.id];
+
+  // Nav controls
+  document.getElementById('fp-prev').disabled = _fpIdx === 0;
+  document.getElementById('fp-next').disabled = _fpIdx === _fpOrder.length - 1;
+  document.getElementById('fp-idx').textContent =
+    _fpOrder.length > 1 ? `${_fpIdx + 1} / ${_fpOrder.length}` : '';
+}
+
+async function loadProgressPhotos(a) {
+  const target = document.querySelector(`[data-progress-photos="${a.id}"]`);
+  if (!target) return;
+  if (a.weekNum === null || a.weekNum === undefined) {
+    target.textContent = 'Week number unavailable — cannot match photos yet.';
+    return;
+  }
+
+  try {
+    const url = `/api/progress-photos?athlete=${encodeURIComponent(a.id)}&week=${encodeURIComponent(a.weekNum)}`;
+    const res = await fetch(url);
+    if (!res.ok) {
+      const e = await res.json().catch(() => ({}));
+      throw new Error(e.error || `HTTP ${res.status}`);
+    }
+    const data = await res.json();
+    const photos = data.photos || [];
+    if (!photos.length) {
+      target.textContent = `No photos found at dp_progress/${a.id.toLowerCase()}/week${a.weekNum}`;
+      return;
+    }
+    target.outerHTML = `<div class="progress-photo-grid">
+      ${photos.map(p => `<a class="progress-photo" href="${esc(p.url)}" target="_blank" rel="noopener">
+        <img src="${esc(p.thumbUrl || p.url)}" alt="${esc(a.id)} ${esc(p.type)} progress photo" loading="lazy">
+        <div class="progress-photo-meta">
+          <div class="progress-photo-type">${esc(p.type)}</div>
+          <div class="progress-photo-date">${p.createdAt ? fmtDate(String(p.createdAt).split('T')[0]) : esc(p.publicId)}</div>
+        </div>
+      </a>`).join('')}
+    </div>`;
+  } catch (e) {
+    target.textContent = `Progress photos unavailable: ${e.message}`;
+  }
+}
+
+// Keyboard shortcuts: Escape = close, ←→ = navigate
+document.addEventListener('keydown', e => {
+  const overlay = document.getElementById('fp-overlay');
+  if (overlay.style.display === 'none') return;
+  if (e.key === 'Escape') hideFP();
+  if (e.key === 'ArrowLeft'  && _fpIdx > 0)                  fpNav(-1);
+  if (e.key === 'ArrowRight' && _fpIdx < _fpOrder.length - 1) fpNav(1);
+});
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', load);
+document.getElementById('refresh-btn').addEventListener('click', load);
+document.getElementById('gen-btn').addEventListener('click', generateAI);
+
+// Coach selector — persists across sessions, shows "Coach: KARL" once chosen
+(() => {
+  const sel = document.getElementById('coach-select');
+  if (!sel) return;
+  const saved = localStorage.getItem('dp_coach') || '';
+  if (saved) sel.value = saved;
+  // Update the displayed text on the select to show the chosen coach
+  const updateLabel = () => {
+    const v = sel.value;
+    if (v) {
+      // Replace placeholder with "Coach: NAME"
+      const ph = sel.querySelector('option[value=""]');
+      if (ph) ph.textContent = 'Coach: Select';
+    }
+  };
+  updateLabel();
+  sel.addEventListener('change', e => {
+    const v = e.target.value;
+    if (v) {
+      localStorage.setItem('dp_coach', v);
+    } else {
+      localStorage.removeItem('dp_coach');
+    }
+    updateLabel();
+  });
+})();
+</script>
+</body>
+</html>

@@ -3,6 +3,9 @@
   "functions": {
     "api/notion.js": {
       "maxDuration": 15
+    },
+    "api/progress-photos.js": {
+      "maxDuration": 15
     }
   }
 }
