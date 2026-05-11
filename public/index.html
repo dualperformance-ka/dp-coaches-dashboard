@@ -80,6 +80,46 @@ header{background:#0a0a0a;padding:0 18px;height:62px;display:flex;align-items:ce
 .sum-num.red{color:var(--alert)}.sum-num.grn{color:var(--ok)}.sum-num.run-c{color:var(--run)}.sum-num.str-c{color:var(--str)}
 .sum-lbl{font-family:var(--mono);font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em}
 
+/* ── Command centre ── */
+.command-center{display:grid;grid-template-columns:minmax(280px,1.1fr) minmax(260px,.9fr);gap:12px;margin-bottom:14px}
+.cc-panel{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden}
+.cc-hero{background:#0a0a0a;color:#fff;padding:16px 18px;display:flex;align-items:flex-start;justify-content:space-between;gap:18px}
+.cc-kicker{font-family:var(--mono);font-size:9px;color:rgba(255,255,255,.42);text-transform:uppercase;letter-spacing:.14em;margin-bottom:5px}
+.cc-title{font-family:var(--cond);font-size:34px;font-weight:900;line-height:.95;text-transform:uppercase;letter-spacing:.04em}
+.cc-sub{font-size:12px;color:rgba(255,255,255,.62);margin-top:8px;max-width:560px;line-height:1.45}
+.cc-score{display:grid;grid-template-columns:repeat(3,72px);gap:7px;flex-shrink:0}
+.cc-score-card{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.13);border-radius:9px;padding:9px 7px;text-align:center}
+.cc-score-num{font-size:26px;font-weight:900;line-height:1}
+.cc-score-num.red{color:#fca5a5}.cc-score-num.amber{color:#fcd34d}.cc-score-num.green{color:#86efac}
+.cc-score-lbl{font-family:var(--mono);font-size:7px;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:.1em;margin-top:4px}
+.cc-body{display:grid;grid-template-columns:1fr 1fr;gap:0;border-top:1px solid var(--border)}
+.cc-list{padding:13px 15px;border-right:1px solid var(--border);min-height:170px}
+.cc-list:last-child{border-right:none}
+.cc-list-title{font-family:var(--mono);font-size:9px;font-weight:800;color:var(--dim);text-transform:uppercase;letter-spacing:.12em;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.cc-list-count{font-size:9px;color:var(--muted);background:var(--surface2);border-radius:20px;padding:2px 7px}
+.cc-athlete{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)}
+.cc-athlete[type="button"]{background:transparent;border:0;border-bottom:1px solid var(--border);width:100%;text-align:left;cursor:pointer;font:inherit}
+.cc-athlete:last-child{border-bottom:none}
+.cc-athlete-name{font-family:var(--cond);font-size:18px;font-weight:900;line-height:1;text-transform:uppercase;letter-spacing:.05em;color:var(--text)}
+.cc-athlete-reason{font-size:11px;color:var(--muted);line-height:1.35;margin-top:2px}
+.cc-chip{font-family:var(--mono);font-size:8px;text-transform:uppercase;letter-spacing:.08em;border-radius:20px;padding:3px 7px;white-space:nowrap}
+.cc-chip.red{background:var(--red-bg);color:var(--red-text);border:1px solid var(--red-border)}
+.cc-chip.amber{background:var(--amber-bg);color:var(--amber-text);border:1px solid var(--amber-border)}
+.cc-empty{font-family:var(--mono);font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;padding:16px 0}
+.cc-side{display:flex;flex-direction:column}
+.cc-side-head{padding:14px 16px 11px;border-bottom:1px solid var(--border)}
+.cc-side-title{font-family:var(--mono);font-size:9px;font-weight:800;color:var(--dim);text-transform:uppercase;letter-spacing:.12em}
+.cc-side-sub{font-size:12px;color:var(--muted);margin-top:4px}
+.cc-actions{padding:12px 16px;display:flex;flex-direction:column;gap:8px;border-bottom:1px solid var(--border)}
+.cc-action{display:grid;grid-template-columns:20px 1fr;gap:8px;align-items:flex-start}
+.cc-action-idx{font-family:var(--mono);font-size:9px;color:#fff;background:#0a0a0a;border-radius:5px;width:20px;height:20px;display:flex;align-items:center;justify-content:center}
+.cc-action-text{font-size:12px;color:var(--text);line-height:1.4}
+.cc-health{padding:12px 16px;display:grid;grid-template-columns:repeat(2,1fr);gap:8px;background:var(--surface2)}
+.cc-health-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 10px}
+.cc-health-lbl{font-family:var(--mono);font-size:7px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em}
+.cc-health-val{font-size:16px;font-weight:800;line-height:1.1;margin-top:2px}
+.cc-health-val.good{color:var(--ok)}.cc-health-val.warn{color:var(--warn)}.cc-health-val.bad{color:var(--alert)}
+
 /* ── States ── */
 .state-box{text-align:center;padding:60px 20px}
 .dots{display:flex;gap:6px;justify-content:center;margin-bottom:12px}
@@ -507,6 +547,12 @@ header{background:#0a0a0a;padding:0 18px;height:62px;display:flex;align-items:ce
   .tab-bar{top:54px}
   .filter-bar{top:86px}
   .grid{grid-template-columns:1fr}
+  .command-center{grid-template-columns:1fr}
+  .cc-hero{flex-direction:column}
+  .cc-score{grid-template-columns:repeat(3,1fr);width:100%}
+  .cc-body{grid-template-columns:1fr}
+  .cc-list{border-right:none;border-bottom:1px solid var(--border)}
+  .cc-health{grid-template-columns:1fr}
   .coaches-grid{grid-template-columns:1fr}
   .sched-grid{grid-template-columns:1fr}
   .apps-grid{grid-template-columns:1fr}
@@ -663,6 +709,7 @@ header{background:#0a0a0a;padding:0 18px;height:62px;display:flex;align-items:ce
       <button class="refresh-btn" style="color:#0a0a0a;border-color:#ccc;margin-top:14px" onclick="load()">↻ Retry</button>
     </div>
     <div id="content" style="display:none">
+      <div id="command-center"></div>
       <div class="squad-brief" id="squad-brief">
         <div class="sb-title">⬡ Squad Brief — AI Coaching Summary</div>
         <div class="sb-text" id="squad-brief-text"></div>
@@ -794,8 +841,12 @@ const NO_DISCOVERY = new Set(['JACOB', 'KHANG']);
 const WEEK_OVERRIDES = {};
 // JACOB and KHANG both have Start Dates in Notion — overrides removed.
 
-// In-memory call notes per athlete
-const callNotes = {};
+// Local call notes per athlete. This keeps the coaching workflow usable across
+// refreshes until notes are moved into Supabase/Notion as a shared backend field.
+const callNotes = (() => {
+  try { return JSON.parse(localStorage.getItem('dp_call_notes') || '{}'); }
+  catch { return {}; }
+})();
 
 // ── Local date helper (avoids UTC-shift bug with toISOString) ─────────────────
 function localDateStr(d) {
@@ -1506,12 +1557,14 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [
 let _allAthletes = [];
 let _coaches = [];
 let _allApplications = [];
+let _dataHealth = null;
 let _statusFilter = 'all';
 
-function render({ athletes, coaches, applications = [] }) {
+function render({ athletes, coaches, applications = [], dataHealth = null }) {
   _allAthletes     = athletes;
   _coaches         = coaches;
   _allApplications = applications;
+  _dataHealth      = dataHealth;
 
   // Tab badges
   const alertCount = athletes.filter(a => a.actions?.severity === 'red').length;
@@ -1524,6 +1577,7 @@ function render({ athletes, coaches, applications = [] }) {
   document.getElementById('tab-apps-count').textContent  = applications.length || '—';
   document.getElementById('sched-week-end').textContent  = fmtDate(currentWeekEnd);
 
+  renderCommandCenter(athletes, applications, dataHealth);
   renderSummary(athletes);
   renderGrid(athletes);
   renderCoaches(coaches);
@@ -1561,6 +1615,123 @@ function renderSummary(ath) {
     <div class="sum-card"><div class="sum-num str-c">${prs7}</div><div class="sum-lbl">PRs (7d)</div></div>
     <div class="sum-card"><div class="sum-num run-c">${totalKm.toFixed(0)}</div><div class="sum-lbl">Squad KM (14d)</div></div>
     ${avgComp !== null ? `<div class="sum-card"><div class="sum-num ${avgComp >= 80 ? 'grn' : avgComp >= 60 ? '' : 'red'}">${avgComp}%</div><div class="sum-lbl">Avg Compliance</div></div>` : ''}`;
+}
+
+function renderCommandCenter(ath, apps = [], health = null) {
+  const el = document.getElementById('command-center');
+  if (!el) return;
+
+  const red = ath.filter(a => a.actions?.severity === 'red');
+  const amber = ath.filter(a => a.actions?.severity === 'amber');
+  const missing = ath.filter(a => a.isStale || (!a.weekly && !a.body.length));
+  const checkedIn = ath.filter(a => a.hasCurrentCheckin || a.hasRecent).length;
+  const coverage = ath.length ? Math.round((checkedIn / ath.length) * 100) : 0;
+  const avgRecoveryVals = ath.map(a => a.recoveryScore).filter(v => v !== null && !isNaN(v));
+  const avgRecovery = avgRecoveryVals.length
+    ? (avgRecoveryVals.reduce((s, v) => s + v, 0) / avgRecoveryVals.length).toFixed(1)
+    : null;
+
+  const priorityRows = [...red, ...amber].slice(0, 6).map(a => {
+    const reason = [...(a.actions?.critical || []), ...(a.actions?.watch || [])][0] || 'Review this athlete';
+    const sev = a.actions?.severity === 'red' ? 'red' : 'amber';
+    return `<button class="cc-athlete" type="button" onclick="showFP('${esc(a.id)}')">
+      <div>
+        <div class="cc-athlete-name">${esc(a.id)}</div>
+        <div class="cc-athlete-reason">${esc(reason)}</div>
+      </div>
+      <span class="cc-chip ${sev}">${sev === 'red' ? 'Act' : 'Watch'}</span>
+    </button>`;
+  }).join('');
+
+  const missingRows = missing.slice(0, 5).map(a => {
+    const last = a.weekly?.['Week Ending'] ? `Last ${fmtDate(a.weekly['Week Ending'])}` : 'No check-in data';
+    return `<button class="cc-athlete" type="button" onclick="showFP('${esc(a.id)}')">
+      <div>
+        <div class="cc-athlete-name">${esc(a.id)}</div>
+        <div class="cc-athlete-reason">${esc(last)}</div>
+      </div>
+      <span class="cc-chip red">Missing</span>
+    </button>`;
+  }).join('');
+
+  const topActions = buildCoachActions(ath, apps);
+  const healthCards = buildHealthCards(health, ath, apps);
+
+  el.innerHTML = `<div class="command-center">
+    <section class="cc-panel">
+      <div class="cc-hero">
+        <div>
+          <div class="cc-kicker">Coaching Command Center</div>
+          <div class="cc-title">This Week's Priorities</div>
+          <div class="cc-sub">Start here before opening individual cards. The roster is sorted by risk, but this panel pulls the real coaching work into one place.</div>
+        </div>
+        <div class="cc-score">
+          <div class="cc-score-card"><div class="cc-score-num red">${red.length}</div><div class="cc-score-lbl">Act</div></div>
+          <div class="cc-score-card"><div class="cc-score-num amber">${amber.length}</div><div class="cc-score-lbl">Watch</div></div>
+          <div class="cc-score-card"><div class="cc-score-num green">${coverage}%</div><div class="cc-score-lbl">Check-ins</div></div>
+        </div>
+      </div>
+      <div class="cc-body">
+        <div class="cc-list">
+          <div class="cc-list-title">Highest Priority <span class="cc-list-count">${red.length + amber.length}</span></div>
+          ${priorityRows || `<div class="cc-empty">No priority athletes right now</div>`}
+        </div>
+        <div class="cc-list">
+          <div class="cc-list-title">Missing / Stale <span class="cc-list-count">${missing.length}</span></div>
+          ${missingRows || `<div class="cc-empty">Everyone has recent data</div>`}
+        </div>
+      </div>
+    </section>
+    <aside class="cc-panel cc-side">
+      <div class="cc-side-head">
+        <div class="cc-side-title">Coach Next Actions</div>
+        <div class="cc-side-sub">${avgRecovery ? `Squad recovery avg ${avgRecovery}/10` : 'Recovery average unavailable'} · ${apps.length} pipeline lead${apps.length === 1 ? '' : 's'}</div>
+      </div>
+      <div class="cc-actions">
+        ${topActions.map((t, i) => `<div class="cc-action">
+          <div class="cc-action-idx">${i + 1}</div>
+          <div class="cc-action-text">${esc(t)}</div>
+        </div>`).join('')}
+      </div>
+      <div class="cc-health">${healthCards}</div>
+    </aside>
+  </div>`;
+}
+
+function buildCoachActions(ath, apps) {
+  const actions = [];
+  const red = ath.filter(a => a.actions?.severity === 'red');
+  const injury = ath.filter(a => {
+    const txt = `${a.weekly?.['Run Niggles'] || ''} ${a.weekly?.['Lifts Niggles'] || ''}`;
+    return /pain|injur|strain|physio|tear|niggle/i.test(txt);
+  });
+  const stale = ath.filter(a => a.isStale);
+  const lowFuel = ath.filter(a => (a.actions?.critical || []).some(t => /calorie|under-fuelling/i.test(t)));
+  const lowCompliance = ath.filter(a => a.compliance !== null && a.compliance < 70);
+  const newApps = apps.filter(r => !String(r['Current Status'] || '').toLowerCase().includes('reject'));
+
+  if (red.length) actions.push(`Contact ${red.slice(0, 3).map(a => a.id).join(', ')} before programming changes.`);
+  if (injury.length) actions.push(`Review niggle/injury notes for ${injury.slice(0, 3).map(a => a.id).join(', ')}.`);
+  if (stale.length) actions.push(`Chase check-ins from ${stale.slice(0, 4).map(a => a.id).join(', ')}.`);
+  if (lowFuel.length) actions.push(`Check fuelling with ${lowFuel.slice(0, 3).map(a => a.id).join(', ')} before increasing load.`);
+  if (lowCompliance.length) actions.push(`Audit missed sessions for ${lowCompliance.slice(0, 3).map(a => a.id).join(', ')}.`);
+  if (newApps.length) actions.push(`Triage ${newApps.length} active pipeline lead${newApps.length === 1 ? '' : 's'}.`);
+  if (!actions.length) actions.push('No urgent issues: use the schedule tab to confirm this week is loaded correctly.');
+
+  return actions.slice(0, 5);
+}
+
+function buildHealthCards(health, ath, apps) {
+  const rows = [
+    { label: 'Athletes', value: ath.length, cls: ath.length ? 'good' : 'bad' },
+    { label: 'Weekly', value: health?.weekly ?? '—', cls: health?.weekly ? 'good' : 'warn' },
+    { label: 'Sessions', value: health?.sessions ?? '—', cls: health?.sessions ? 'good' : 'warn' },
+    { label: 'Pipeline', value: apps.length, cls: apps.length ? 'good' : '' },
+  ];
+  return rows.map(r => `<div class="cc-health-card">
+    <div class="cc-health-lbl">${esc(r.label)}</div>
+    <div class="cc-health-val ${r.cls || ''}">${esc(r.value)}</div>
+  </div>`).join('');
 }
 
 function renderGrid(ath) {
@@ -2843,6 +3014,7 @@ function toggleCallPrep(id) {
 
 function saveNote(athleteId, value) {
   callNotes[athleteId] = value;
+  try { localStorage.setItem('dp_call_notes', JSON.stringify(callNotes)); } catch {}
 }
 
 // ── Main load ─────────────────────────────────────────────────────────────────
@@ -2860,7 +3032,18 @@ async function load() {
     ]);
 
     const { athletes, coaches } = buildAll(weekly, sessions, body, nutrition, athleteDb, targets, planning, applications);
-    render({ athletes, coaches, applications });
+    const dataHealth = {
+      weekly: weekly.length,
+      sessions: sessions.length,
+      body: body.length,
+      nutrition: nutrition.length,
+      athleteDb: athleteDb.length,
+      targets: targets.length,
+      planning: planning.length,
+      applications: applications.length,
+      loadedAt: new Date(),
+    };
+    render({ athletes, coaches, applications, dataHealth });
 
     document.getElementById('loading').style.display = 'none';
     document.getElementById('content').style.display = 'block';
