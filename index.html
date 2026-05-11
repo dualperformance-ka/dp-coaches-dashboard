@@ -655,6 +655,21 @@ header{background:#0a0a0a;padding:0 18px;height:62px;display:flex;align-items:ce
 .progress-photo-meta{padding:8px 10px}
 .progress-photo-type{font-family:var(--mono);font-size:9px;font-weight:800;color:var(--text);text-transform:uppercase;letter-spacing:.08em}
 .progress-photo-date{font-family:var(--mono);font-size:8px;color:var(--dim);margin-top:3px}
+
+/* ── Daily input ledger ── */
+.daily-ledger{display:flex;flex-direction:column;gap:8px}
+.daily-ledger-row{display:grid;grid-template-columns:86px 1fr 1fr;gap:10px;padding:10px 0;border-top:1px solid var(--border)}
+.daily-ledger-row:first-child{border-top:none;padding-top:0}
+.daily-ledger-date{font-family:var(--mono);font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;line-height:1.5;padding-top:3px}
+.daily-ledger-box{background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:10px 11px;min-height:64px}
+.daily-ledger-box.empty{opacity:.5}
+.daily-ledger-title{font-family:var(--mono);font-size:8px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:var(--dim);margin-bottom:7px}
+.daily-ledger-fields{display:flex;flex-wrap:wrap;gap:5px}
+.daily-ledger-field{font-family:var(--mono);font-size:10px;color:var(--muted);background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:3px 8px}
+.daily-ledger-field strong{color:var(--text)}
+.daily-ledger-note{font-size:11px;color:var(--muted);line-height:1.45;margin-top:8px;border-left:2px solid var(--border-mid);padding-left:8px}
+.daily-ledger-empty{font-family:var(--mono);font-size:10px;color:var(--dim);font-style:italic}
+@media(max-width:720px){.daily-ledger-row{grid-template-columns:1fr}.daily-ledger-date{padding-top:0}}
 </style>
 </head>
 <body>
@@ -2602,6 +2617,8 @@ function buildFPCard(a) {
     ? `<div class="${bodyHtml && nutrHtml ? 'fpc-body-nutr' : ''}" style="${bodyHtml && nutrHtml ? '' : 'margin-bottom:16px'}">${bodyHtml}${nutrHtml}</div>`
     : '';
 
+  const dailyInputsHtml = buildDailyInputsLedger(a);
+
   // ── Day-by-day week detail ────────────────────────────────────────────────
   let weekDetailHtml = '';
   {
@@ -2900,11 +2917,98 @@ function buildFPCard(a) {
     ${trendsHtml}
     ${progressPhotosHtml}
     ${dailyNutrHtml}
+    ${dailyInputsHtml}
     ${weekDetailHtml}
     ${bodyNutrPart}
     ${callPrepHtml}
   </div>`;
 }
+
+function pickFirst(row, keys) {
+  for (const key of keys) {
+    const val = row?.[key];
+    if (val !== undefined && val !== null && val !== '') return val;
+  }
+  return null;
+}
+
+function buildDailyInputsLedger(a) {
+  const days = [];
+  for (let i = 13; i >= 0; i--) days.push(dagoStr(i));
+
+  const rowForDate = (rows, dateStr) =>
+    rows.find(r => String(r['date:Date:start'] || r.Date || '').split('T')[0] === dateStr);
+
+  const bodyBox = row => {
+    if (!row) return `<div class="daily-ledger-box empty">
+      <div class="daily-ledger-title">Body</div>
+      <div class="daily-ledger-empty">No body check-in</div>
+    </div>`;
+
+    const fields = [
+      ['Weight', pickFirst(row, ['Weight']) ? `${pickFirst(row, ['Weight'])} kg` : null],
+      ['Sleep', pickFirst(row, ['Sleep Score', 'Sleep'])],
+      ['Energy', pickFirst(row, ['Energy'])],
+      ['Stress', pickFirst(row, ['Stress'])],
+      ['Soreness', pickFirst(row, ['Soreness'])],
+      ['Steps', pickFirst(row, ['Steps'])],
+    ].filter(([, v]) => v !== null && v !== undefined && v !== '');
+
+    const notes = pickFirst(row, ['Notes', 'Note', 'Body Notes']);
+    return `<div class="daily-ledger-box">
+      <div class="daily-ledger-title">Body</div>
+      <div class="daily-ledger-fields">${fields.length
+        ? fields.map(([k, v]) => `<span class="daily-ledger-field"><strong>${esc(v)}</strong> ${esc(k)}</span>`).join('')
+        : `<span class="daily-ledger-empty">No metric fields found</span>`}
+      </div>
+      ${isBad(notes) ? `<div class="daily-ledger-note">${esc(notes)}</div>` : ''}
+    </div>`;
+  };
+
+  const nutritionBox = row => {
+    if (!row) return `<div class="daily-ledger-box empty">
+      <div class="daily-ledger-title">Nutrition</div>
+      <div class="daily-ledger-empty">No nutrition input</div>
+    </div>`;
+
+    const fields = [
+      ['Calories', pickFirst(row, ['Calories']) ? `${pickFirst(row, ['Calories'])} kcal` : null],
+      ['Protein', pickFirst(row, ['Protein']) ? `${pickFirst(row, ['Protein'])}g` : null],
+      ['Carbs', pickFirst(row, ['Carbs']) ? `${pickFirst(row, ['Carbs'])}g` : null],
+      ['Fats', pickFirst(row, ['Fats']) ? `${pickFirst(row, ['Fats'])}g` : null],
+      ['Water', pickFirst(row, ['Water', 'Water Intake'])],
+      ['Adherence', pickFirst(row, ['Adherence', 'Nutrition Adherence'])],
+    ].filter(([, v]) => v !== null && v !== undefined && v !== '');
+
+    const notes = pickFirst(row, ['Notes', 'Note', 'Nutrition Notes', 'Meals', 'Comments']);
+    return `<div class="daily-ledger-box">
+      <div class="daily-ledger-title">Nutrition</div>
+      <div class="daily-ledger-fields">${fields.length
+        ? fields.map(([k, v]) => `<span class="daily-ledger-field"><strong>${esc(v)}</strong> ${esc(k)}</span>`).join('')
+        : `<span class="daily-ledger-empty">No macro fields found</span>`}
+      </div>
+      ${isBad(notes) ? `<div class="daily-ledger-note">${esc(notes)}</div>` : ''}
+    </div>`;
+  };
+
+  const rows = days.map(dateStr => {
+    const dt = new Date(dateStr + 'T12:00:00');
+    const dayLabel = dt.toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' });
+    const body = rowForDate(a.body, dateStr);
+    const nutrition = rowForDate(a.nutrition, dateStr);
+    return `<div class="daily-ledger-row">
+      <div class="daily-ledger-date">${dayLabel}</div>
+      ${bodyBox(body)}
+      ${nutritionBox(nutrition)}
+    </div>`;
+  }).join('');
+
+  return `<div class="fpc-section">
+    <div class="fpc-section-title">Daily Inputs — Body + Nutrition · Last 14 Days</div>
+    <div class="daily-ledger">${rows}</div>
+  </div>`;
+}
+
 function buildCoachCard(a) {
   const w = a.weekly;
   const hW = !!w?.Name;
