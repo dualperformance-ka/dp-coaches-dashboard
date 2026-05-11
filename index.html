@@ -670,6 +670,15 @@ header{background:#0a0a0a;padding:0 18px;height:62px;display:flex;align-items:ce
 .daily-ledger-note{font-size:11px;color:var(--muted);line-height:1.45;margin-top:8px;border-left:2px solid var(--border-mid);padding-left:8px}
 .daily-ledger-empty{font-family:var(--mono);font-size:10px;color:var(--dim);font-style:italic}
 @media(max-width:720px){.daily-ledger-row{grid-template-columns:1fr}.daily-ledger-date{padding-top:0}}
+.week-jump{display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:10px 14px;margin-bottom:14px}
+.week-jump-title{font-family:var(--mono);font-size:9px;font-weight:800;color:var(--dim);text-transform:uppercase;letter-spacing:.12em}
+.week-jump-main{font-family:var(--cond);font-size:22px;font-weight:900;text-transform:uppercase;letter-spacing:.05em;line-height:1;margin-top:2px}
+.week-jump-sub{font-family:var(--mono);font-size:9px;color:var(--dim);margin-top:3px}
+.week-jump-controls{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.week-jump-btn{background:#0a0a0a;border:1px solid #0a0a0a;color:#fff;font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.08em;border-radius:6px;padding:7px 10px;cursor:pointer}
+.week-jump-btn.secondary{background:transparent;color:var(--muted);border-color:var(--border-mid)}
+.week-jump-btn:disabled{opacity:.35;cursor:not-allowed}
+@media(max-width:720px){.week-jump{align-items:flex-start;flex-direction:column}.week-jump-controls{justify-content:flex-start}}
 </style>
 </head>
 <body>
@@ -1317,7 +1326,7 @@ async function fetchDB(dbId) {
 
 // ── Build ─────────────────────────────────────────────────────────────────────
 function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [], planning = [], applications = []) {
-  const c21 = dago(21), c14 = dago(14), c7 = dago(7);
+  const c90 = dago(90), c7 = dago(7);
   const map = {};
   const masterIds = new Set();
   const bodyCounts = {};
@@ -1380,34 +1389,38 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [
     return null;
   }
 
-  // Weekly — keep latest per athlete
+  // Weekly — keep latest per athlete, plus history for previous-week review
   const wl = {};
+  const wh = {};
   weekly.forEach(r => {
     const id = nid((r.Name || '').split('\u2014')[0].split('--')[0].trim());
     if (!id || !r['Week Ending']) return;
+    if (!wh[id]) wh[id] = [];
+    wh[id].push(r);
     if (!wl[id] || r['Week Ending'] > wl[id]['Week Ending']) wl[id] = r;
   });
+  Object.values(wh).forEach(rows => rows.sort((a, b) => (b['Week Ending'] || '').localeCompare(a['Week Ending'] || '')));
   Object.entries(wl).forEach(([id, r]) => { ens(id); map[id].weekly = r; });
 
-  // Body (14d)
+  // Body (90d) — enough history to review previous blocks in the full-page view
   body.forEach(r => {
     const id = nid(r.AthleteID);
     if (!id) return;
     ens(id);
     const d = r['date:Date:start'] || r.Date;
-    if (d && new Date(d) >= c14) {
+    if (d && new Date(d) >= c90) {
       bodyCounts[id] = (bodyCounts[id] || 0) + 1;
       map[id].body.push(r);
     }
   });
 
-  // Nutrition (14d)
+  // Nutrition (90d)
   nutrition.forEach(r => {
     const id = nid(r.AthleteID);
     if (!id) return;
     ens(id);
     const d = r['date:Date:start'] || r.Date;
-    if (d && new Date(d) >= c14) {
+    if (d && new Date(d) >= c90) {
       nutritionCounts[id] = (nutritionCounts[id] || 0) + 1;
       map[id].nutrition.push(r);
     }
@@ -1441,7 +1454,7 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [
     const id = sid(r);
     if (!id) return;
     const ds = parseSessionDate(r.Date) || parseSessionDate(r['Submitted At']) || parseSessionDate(r._createdTime);
-    if (!ds || new Date(ds) < c21) return;
+    if (!ds || new Date(ds) < c90) return;
     sessionCounts[id] = (sessionCounts[id] || 0) + 1;
     if (!map[id]) return;
     const _cat = (r['Session Category'] || r.Type || r.type || '').trim();
@@ -1642,6 +1655,9 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [
       expectedWeekEnd, compliance,
       weekNum: wkNum,
       target,
+      targetByWeek: targetMap[a.id] || {},
+      weeklies: wh[a.id] || [],
+      allPlan: athletePlan,
       thisWeekPlan,
       scheduleCompliance,
       recoveryScore,
@@ -2371,15 +2387,65 @@ function renderExerciseLog(logStr, isRun) {
 }
 
 // ── Full-page Card (clean reading layout for screen-sharing) ─────────────────
-function buildFPCard(a) {
-  const w = a.weekly;
+function addDays(date, days) {
+  const d = new Date(date);
+  d.setDate(d.getDate() + days);
+  return d;
+}
+
+function getSelectedWeekContext(a, weekOffset = 0) {
+  const weekStart = addDays(currentWeekStart, weekOffset * 7);
+  const weekEnd = addDays(weekStart, 6);
+  const weekStartStr = localDateStr(weekStart);
+  const weekEndStr = localDateStr(weekEnd);
+  const selectedWeekNum = a.weekNum !== null && a.weekNum !== undefined
+    ? Math.max(0, a.weekNum + weekOffset)
+    : null;
+  const weekLabel = selectedWeekNum !== null ? `Week ${selectedWeekNum}` : null;
+  const weekly = (a.weeklies || []).find(r => {
+    const end = r['Week Ending'];
+    return end && Math.abs(new Date(end) - new Date(weekEndStr)) / 86400000 <= 3;
+  }) || null;
+  const target = weekLabel && a.targetByWeek ? (a.targetByWeek[weekLabel] || null) : null;
+  const plan = (a.allPlan || []).filter(r => {
+    const d = r['date:Planned Date:start'] || r['Planned Date'] || '';
+    if (!d) return false;
+    const dt = new Date(d);
+    return dt >= weekStart && dt <= new Date(weekEndStr + 'T23:59:59');
+  }).sort((a,b) => (a['date:Planned Date:start']||'') > (b['date:Planned Date:start']||'') ? 1 : -1);
+
+  return { weekOffset, weekStart, weekEnd, weekStartStr, weekEndStr, selectedWeekNum, weekLabel, weekly, target, plan };
+}
+
+function buildWeekJump(a, ctx) {
+  return `<div class="week-jump">
+    <div>
+      <div class="week-jump-title">Review Week</div>
+      <div class="week-jump-main">${ctx.weekLabel || 'Selected Week'}</div>
+      <div class="week-jump-sub">${fmtDate(ctx.weekStartStr)} → ${fmtDate(ctx.weekEndStr)}${ctx.weekOffset === 0 ? ' · current' : ''}</div>
+    </div>
+    <div class="week-jump-controls">
+      <button class="week-jump-btn secondary" onclick="fpWeekNav(-1)">← Previous Week</button>
+      <button class="week-jump-btn secondary" onclick="fpWeekNav(1)" ${ctx.weekOffset >= 0 ? 'disabled' : ''}>Next Week →</button>
+      <button class="week-jump-btn" onclick="fpWeekReset()" ${ctx.weekOffset === 0 ? 'disabled' : ''}>Current Week</button>
+    </div>
+  </div>`;
+}
+
+function buildFPCard(a, weekOffset = 0) {
+  const ctx = getSelectedWeekContext(a, weekOffset);
+  const w = ctx.weekly || (weekOffset === 0 ? a.weekly : null);
   const hW = !!w?.Name;
   const fps = a.flags.map(f => `<span class="fp ${f.t}">${esc(f.l)}</span>`).join('');
 
   // Meta text (same logic as buildCard)
   let metaText;
-  const wkEndDisplay = fmtDate(a.expectedWeekEnd);
-  if (a.hasCurrentCheckin) {
+  const wkEndDisplay = fmtDate(ctx.weekEndStr);
+  if (ctx.weekly) {
+    metaText = `Viewing ${ctx.weekLabel || 'week'} · check-in ${fmtDate(w['Week Ending'])}`;
+  } else if (ctx.weekOffset < 0) {
+    metaText = `Viewing ${ctx.weekLabel || 'previous week'} · no weekly check-in found`;
+  } else if (a.hasCurrentCheckin) {
     metaText = `Week ending ${wkEndDisplay}`;
   } else if (a.hasLastWeekCheckin && hW) {
     metaText = `Submitted ${fmtDate(w['Week Ending'])} · wk ends ${wkEndDisplay}`;
@@ -2396,9 +2462,9 @@ function buildFPCard(a) {
         <div class="fpc-name">${esc(a.id)}</div>
         <div class="fpc-meta ${a.isStale ? 'stale' : ''}">${metaText}</div>
       </div>
-      ${a.weekNum !== null ? `<div class="fpc-week-badge">
-        <div class="fpc-week-num">${a.weekNum}</div>
-        <div class="fpc-week-lbl">${a.weekNum === 0 ? 'Discovery' : 'Week'}</div>
+      ${ctx.selectedWeekNum !== null ? `<div class="fpc-week-badge">
+        <div class="fpc-week-num">${ctx.selectedWeekNum}</div>
+        <div class="fpc-week-lbl">${ctx.selectedWeekNum === 0 ? 'Discovery' : 'Week'}</div>
       </div>` : ''}
     </div>
     ${a.flags.length ? `<div class="fpc-flags">${fps}</div>` : ''}
@@ -2419,14 +2485,14 @@ function buildFPCard(a) {
       <div class="fpc-banner-icon">📅</div>
       <div>
         <div class="fpc-banner-title lastweek">Last week's check-in</div>
-        <div class="fpc-banner-sub">Submitted ${fmtDate(w['Week Ending'])} · new week ends ${fmtDate(a.expectedWeekEnd)}</div>
+        <div class="fpc-banner-sub">Submitted ${fmtDate(w['Week Ending'])} · selected week ends ${fmtDate(ctx.weekEndStr)}</div>
       </div>
     </div>`;
   }
 
   // Week-in-progress
   let wipHtml = '';
-  if (!a.hasCurrentCheckin) {
+  if (!a.hasCurrentCheckin && ctx.weekOffset === 0) {
     // Count completed planned sessions from athlete portal (ticked circles)
     const _RUN_PT = new Set(['Run','Tempo','Speed','Long Run','Easy Effort','race','Recovery','Run + Strength']);
     const _STR_PT = new Set(['Strength','Lift','Run + Strength']);
@@ -2493,12 +2559,12 @@ function buildFPCard(a) {
     const lPct = lp > 0 ? Math.min(100, Math.round(lc / lp * 100)) : 0;
 
     const submittedEnd = w['Week Ending'];
-    let dataWeekNum = a.weekNum;
-    if (a.weekNum !== null && submittedEnd) {
+    let dataWeekNum = ctx.selectedWeekNum;
+    if (dataWeekNum !== null && submittedEnd && !ctx.weekly) {
       const weeksBehind = Math.round(
-        (new Date(currentWeekEnd) - new Date(submittedEnd)) / (7 * 86400000)
+        (new Date(ctx.weekEndStr) - new Date(submittedEnd)) / (7 * 86400000)
       );
-      dataWeekNum = Math.max(0, a.weekNum - weeksBehind);
+      dataWeekNum = Math.max(0, dataWeekNum - weeksBehind);
     }
     const trainingLabel = dataWeekNum === null ? 'Training'
       : dataWeekNum === 0 ? 'Discovery Week Training'
@@ -2582,8 +2648,8 @@ function buildFPCard(a) {
 
   // Nutrition
   let nutrHtml = '';
-  if (a.nAvg.cal !== null || a.target) {
-    const t = a.target;
+  if (a.nAvg.cal !== null || ctx.target || a.target) {
+    const t = ctx.target || a.target;
     const tCal  = t?.Calories ? String(t.Calories).replace(/[^\d.]/g,'') : null;
     const tPro  = t?.Protein  ? String(t.Protein).replace(/[^\d.]/g,'')  : null;
     const tCarb = t?.Carbs    ? String(t.Carbs).replace(/[^\d.]/g,'')    : null;
@@ -2600,7 +2666,7 @@ function buildFPCard(a) {
         <div class="fpc-nutr-cell"><div class="fpc-nutr-val">${a.nAvg.fat || '—'}<span class="fpc-nutr-unit">g</span></div><div class="fpc-nutr-lbl">Fats</div></div>
       </div>` : ''}
       ${hasTarget ? `<div class="fpc-target">
-        <div class="fpc-target-lbl">Week ${a.weekNum ?? ''} Prescribed Target</div>
+        <div class="fpc-target-lbl">${ctx.weekLabel || 'Selected Week'} Prescribed Target</div>
         <div class="fpc-target-vals">
           ${tCal  ? `<span class="fpc-target-val"><strong>${tCal}</strong> kcal</span>` : ''}
           ${tPro  ? `<span class="fpc-target-val"><strong>${tPro}g</strong> protein</span>` : ''}
@@ -2617,16 +2683,16 @@ function buildFPCard(a) {
     ? `<div class="${bodyHtml && nutrHtml ? 'fpc-body-nutr' : ''}" style="${bodyHtml && nutrHtml ? '' : 'margin-bottom:16px'}">${bodyHtml}${nutrHtml}</div>`
     : '';
 
-  const dailyInputsHtml = buildDailyInputsLedger(a);
+  const dailyInputsHtml = buildDailyInputsLedger(a, ctx);
 
   // ── Day-by-day week detail ────────────────────────────────────────────────
   let weekDetailHtml = '';
   {
     // Build a list of days from Mon of current week up to today (inclusive)
     const days = [];
-    const todayStr = localDateStr(new Date());
-    const weekStartStr = localDateStr(currentWeekStart);
-    for (let d = new Date(currentWeekStart); localDateStr(d) <= todayStr; d.setDate(d.getDate() + 1)) {
+    const todayStr = ctx.weekOffset === 0 ? localDateStr(new Date()) : ctx.weekEndStr;
+    const weekStartStr = ctx.weekStartStr;
+    for (let d = new Date(ctx.weekStart); localDateStr(d) <= todayStr; d.setDate(d.getDate() + 1)) {
       days.push(localDateStr(new Date(d)));
     }
 
@@ -2847,8 +2913,8 @@ function buildFPCard(a) {
 
   // ── Daily Nutrition vs Target — 14 days ──────────────────────────────────
   let dailyNutrHtml = '';
-  if (a.trends && a.trends.calories && a.target) {
-    const tCalRaw = String(a.target.Calories || '').replace(/[^\d.]/g, '');
+  if (ctx.weekOffset === 0 && a.trends && a.trends.calories && (ctx.target || a.target)) {
+    const tCalRaw = String((ctx.target || a.target).Calories || '').replace(/[^\d.]/g, '');
     const tCal = parseFloat(tCalRaw);
     const series = a.trends.calories;
     const valid = series.filter(p => p.value !== null);
@@ -2902,11 +2968,12 @@ function buildFPCard(a) {
   }
 
   const progressPhotosHtml = `<div class="fpc-section progress-photo-panel">
-    <div class="fpc-section-title">Progress Photos — Week ${a.weekNum ?? '—'}</div>
+    <div class="fpc-section-title">Progress Photos — ${ctx.weekLabel || 'Selected Week'}</div>
     <div class="progress-photo-state" data-progress-photos="${esc(a.id)}">Loading progress photos…</div>
   </div>`;
 
   return `<div>
+    ${buildWeekJump(a, ctx)}
     ${hero}
     ${banner}
     ${fpActionHtml}
@@ -2932,9 +2999,11 @@ function pickFirst(row, keys) {
   return null;
 }
 
-function buildDailyInputsLedger(a) {
+function buildDailyInputsLedger(a, ctx = getSelectedWeekContext(a, 0)) {
   const days = [];
-  for (let i = 13; i >= 0; i--) days.push(dagoStr(i));
+  for (let d = new Date(ctx.weekStart); localDateStr(d) <= ctx.weekEndStr; d.setDate(d.getDate() + 1)) {
+    days.push(localDateStr(new Date(d)));
+  }
 
   const rowForDate = (rows, dateStr) =>
     rows.find(r => String(r['date:Date:start'] || r.Date || '').split('T')[0] === dateStr);
@@ -3004,7 +3073,7 @@ function buildDailyInputsLedger(a) {
   }).join('');
 
   return `<div class="fpc-section">
-    <div class="fpc-section-title">Daily Inputs — Body + Nutrition · Last 14 Days</div>
+    <div class="fpc-section-title">Daily Inputs — Body + Nutrition · ${ctx.weekLabel || 'Selected Week'}</div>
     <div class="daily-ledger">${rows}</div>
   </div>`;
 }
@@ -3424,6 +3493,7 @@ async function generateAI() {
 // ── Full-page view ────────────────────────────────────────────────────────────
 let _fpOrder = [];   // athlete IDs in nav order (mirrors visible grid cards)
 let _fpIdx   = 0;
+let _fpWeekOffset = 0;
 
 function showFP(id) {
   // Build nav order from whatever is currently visible in the grid
@@ -3432,6 +3502,7 @@ function showFP(id) {
   // If the id isn't in the visible list (e.g. called from a coach card), just show it alone
   if (!_fpOrder.includes(id)) _fpOrder = [id];
   _fpIdx = Math.max(0, _fpOrder.indexOf(id));
+  _fpWeekOffset = 0;
   _drawFP();
   document.getElementById('fp-overlay').style.display = 'block';
   document.body.style.overflow = 'hidden';
@@ -3444,6 +3515,17 @@ function hideFP() {
 
 function fpNav(dir) {
   _fpIdx = Math.max(0, Math.min(_fpOrder.length - 1, _fpIdx + dir));
+  _fpWeekOffset = 0;
+  _drawFP();
+}
+
+function fpWeekNav(dir) {
+  _fpWeekOffset = Math.min(0, _fpWeekOffset + dir);
+  _drawFP();
+}
+
+function fpWeekReset() {
+  _fpWeekOffset = 0;
   _drawFP();
 }
 
@@ -3452,9 +3534,9 @@ function _drawFP() {
   const a  = _allAthletes.find(x => x.id === id) || _coaches.find(x => x.id === id);
   if (!a) return;
 
-  document.getElementById('fp-body').innerHTML = buildFPCard(a);
+  document.getElementById('fp-body').innerHTML = buildFPCard(a, _fpWeekOffset);
   document.getElementById('fp-overlay').scrollTop = 0;
-  loadProgressPhotos(a);
+  loadProgressPhotos(a, _fpWeekOffset);
 
   // Restore saved note (fpc-note textarea uses onchange so pre-fill here)
   const ta = document.querySelector('#fp-body textarea.fpc-note');
@@ -3467,16 +3549,17 @@ function _drawFP() {
     _fpOrder.length > 1 ? `${_fpIdx + 1} / ${_fpOrder.length}` : '';
 }
 
-async function loadProgressPhotos(a) {
+async function loadProgressPhotos(a, weekOffset = 0) {
   const target = document.querySelector(`[data-progress-photos="${a.id}"]`);
   if (!target) return;
-  if (a.weekNum === null || a.weekNum === undefined) {
+  const ctx = getSelectedWeekContext(a, weekOffset);
+  if (ctx.selectedWeekNum === null || ctx.selectedWeekNum === undefined) {
     target.textContent = 'Week number unavailable — cannot match photos yet.';
     return;
   }
 
   try {
-    const url = `/api/progress-photos?athlete=${encodeURIComponent(a.id)}&week=${encodeURIComponent(a.weekNum)}`;
+    const url = `/api/progress-photos?athlete=${encodeURIComponent(a.id)}&week=${encodeURIComponent(ctx.selectedWeekNum)}`;
     const res = await fetch(url);
     if (!res.ok) {
       const e = await res.json().catch(() => ({}));
@@ -3485,7 +3568,7 @@ async function loadProgressPhotos(a) {
     const data = await res.json();
     const photos = data.photos || [];
     if (!photos.length) {
-      target.textContent = `No photos found at dp_progress/${a.id.toLowerCase()}/week${a.weekNum}`;
+      target.textContent = `No photos found at dp_progress/${a.id.toLowerCase()}/week${ctx.selectedWeekNum}`;
       return;
     }
     target.outerHTML = `<div class="progress-photo-grid">
