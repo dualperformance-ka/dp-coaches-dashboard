@@ -679,6 +679,55 @@ header{background:#0a0a0a;padding:0 18px;height:62px;display:flex;align-items:ce
 .week-jump-btn.secondary{background:transparent;color:var(--muted);border-color:var(--border-mid)}
 .week-jump-btn:disabled{opacity:.35;cursor:not-allowed}
 @media(max-width:720px){.week-jump{align-items:flex-start;flex-direction:column}.week-jump-controls{justify-content:flex-start}}
+
+/* ── Check-in History ── */
+.history-section{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:16px}
+.history-section-head{background:#0a0a0a;padding:16px 22px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none}
+.history-section-title{font-family:var(--mono);font-size:10px;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:.14em;display:flex;align-items:center;gap:8px}
+.history-count-badge{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);border-radius:20px;padding:2px 10px;font-size:9px}
+.history-toggle{font-family:var(--mono);font-size:9px;color:rgba(255,255,255,.4);transition:transform .2s}
+.history-toggle.open{transform:rotate(180deg)}
+.history-body{display:none;padding:0}
+.history-body.open{display:block}
+.history-week-card{border-bottom:1px solid var(--border)}
+.history-week-card:last-child{border-bottom:none}
+.history-week-head{background:var(--surface2);padding:12px 22px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;gap:12px;flex-wrap:wrap}
+.history-week-head:hover{background:#e8e5e0}
+.history-week-meta{display:flex;align-items:center;gap:14px;flex-wrap:wrap;flex:1;min-width:0}
+.history-week-label{font-family:var(--mono);font-size:10px;font-weight:700;color:var(--text);text-transform:uppercase;letter-spacing:.1em;white-space:nowrap}
+.history-week-date{font-family:var(--mono);font-size:9px;color:var(--dim);white-space:nowrap}
+.history-week-scores{display:flex;gap:10px;flex-wrap:wrap}
+.history-week-score{font-family:var(--mono);font-size:10px;color:var(--muted)}
+.history-week-score strong{font-size:12px}
+.history-week-score.good strong{color:var(--ok)}
+.history-week-score.mid strong{color:var(--warn)}
+.history-week-score.bad strong{color:var(--alert)}
+.history-week-caret{font-family:var(--mono);font-size:9px;color:var(--dim);transition:transform .2s;flex-shrink:0}
+.history-week-caret.open{transform:rotate(180deg)}
+.history-week-body{display:none;padding:20px 22px;border-top:1px solid var(--border)}
+.history-week-body.open{display:block}
+.history-scores-row{display:grid;grid-template-columns:repeat(6,1fr);gap:0;border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:14px}
+.history-score-cell{text-align:center;padding:12px 6px;border-right:1px solid var(--border)}
+.history-score-cell:last-child{border-right:none}
+.history-score-lbl{font-family:var(--mono);font-size:7px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+.history-score-val{font-size:22px;font-weight:900;line-height:1}
+.history-score-val.good{color:var(--ok)}.history-score-val.mid{color:var(--warn)}.history-score-val.bad{color:var(--alert)}.history-score-val.n{color:var(--text)}
+.history-train-pair{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.history-train-block{background:var(--surface2);border-radius:10px;padding:14px 16px}
+.history-train-label{font-size:13px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px}
+.history-train-label.run{color:var(--run)}.history-train-label.str{color:var(--str)}
+.history-train-stat{font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:3px;line-height:1.5}
+.history-train-stat strong{color:var(--text)}
+.history-pbar{height:3px;background:rgba(0,0,0,.08);border-radius:2px;overflow:hidden;margin:6px 0}
+.history-pfill{height:100%;border-radius:2px}.history-pfill.run{background:var(--run)}.history-pfill.str{background:var(--str)}
+.history-note{font-size:12px;line-height:1.5;margin-top:6px;padding:8px 10px;border-radius:7px}
+.history-note.bad{color:var(--alert);background:#fef2f2;border-left:3px solid var(--alert)}
+.history-note.good{color:var(--ok);background:#f0fdf4;border-left:3px solid var(--ok)}
+.history-social{font-family:var(--mono);font-size:11px;color:var(--muted);padding:8px 10px;background:var(--surface2);border-radius:7px;border-left:2px solid var(--border-mid);margin-top:10px}
+.history-testim{font-size:12px;color:var(--muted);font-style:italic;line-height:1.5;padding:12px 14px;background:var(--surface2);border-radius:9px;border-left:3px solid rgba(0,0,0,.1);margin-top:10px}
+.history-impact{font-size:12px;color:#92400e;margin-top:10px;padding:10px 14px;background:#fffbeb;border-radius:8px;border-left:3px solid var(--warn)}
+.history-empty{font-family:var(--mono);font-size:10px;color:var(--dim);text-align:center;padding:24px;text-transform:uppercase;letter-spacing:.08em}
+@media(max-width:600px){.history-train-pair{grid-template-columns:1fr}.history-scores-row{grid-template-columns:repeat(3,1fr)}}
 </style>
 </head>
 <body>
@@ -2386,6 +2435,133 @@ function renderExerciseLog(logStr, isRun) {
   return rows ? `<div class="wd-ex-list">${rows}</div>` : '';
 }
 
+// ── Check-in History Section ─────────────────────────────────────────────────
+function buildCheckinHistory(a, currentWeeklyId) {
+  const past = (a.weeklies || [])
+    .slice()
+    .sort((x, y) => (y['Week Ending'] || '').localeCompare(x['Week Ending'] || ''))
+    .filter(w => w._id !== currentWeeklyId && w.Name);
+
+  if (!past.length) {
+    return `<div class="history-section">
+      <div class="history-section-head" onclick="toggleHistory(this)">
+        <div class="history-section-title">📅 Check-in History <span class="history-count-badge">0 weeks</span></div>
+        <span class="history-toggle">▼</span>
+      </div>
+      <div class="history-body">
+        <div class="history-empty">No previous check-ins on record</div>
+      </div>
+    </div>`;
+  }
+
+  const weekCards = past.map((w, idx) => {
+    const weekEnd = w['Week Ending'] || '';
+    const rp = parseInt(w['Run Planned']) || 0, rc = parseInt(w['Run Completed']) || 0;
+    const lp = parseInt(w['Lift Planned']) || 0, lc = parseInt(w['Lift Completed']) || 0;
+    const rPct = rp > 0 ? Math.min(100, Math.round(rc / rp * 100)) : 0;
+    const lPct = lp > 0 ? Math.min(100, Math.round(lc / lp * 100)) : 0;
+
+    let wkLabel = 'Week —';
+    if (a.weekNum !== null && a.expectedWeekEnd && weekEnd) {
+      const weeksBehind = Math.round(
+        (new Date(a.expectedWeekEnd) - new Date(weekEnd)) / (7 * 86400000)
+      );
+      const wn = Math.max(0, a.weekNum - weeksBehind);
+      wkLabel = wn === 0 ? 'Discovery' : 'Week ' + wn;
+    }
+
+    const scores = [
+      { l: 'E', v: w['Energy /10'], inv: false },
+      { l: 'Sleep', v: w['Sleep hrs'], inv: false },
+      { l: 'Str', v: w['Stress'], inv: true },
+      { l: 'Sore', v: w['Soreness /10'], inv: true },
+    ].filter(s => s.v !== null && s.v !== undefined && s.v !== '');
+    const scoreBadges = scores.map(s =>
+      '<span class="history-week-score ' + scoreClass(s.v, s.inv) + '">' + esc(s.l) + ' <strong>' + esc(s.v) + '</strong></span>'
+    ).join('');
+
+    const sx = [
+      { l: 'Energy',  v: w['Energy /10'],             inv: false },
+      { l: 'Sleep',   v: w['Sleep hrs'],               inv: false },
+      { l: 'Sore',    v: w['Soreness /10'],            inv: true  },
+      { l: 'Stress',  v: w['Stress'],                  inv: true  },
+      { l: 'Motiv',   v: w['Motivation'],              inv: false },
+      { l: 'Nutr',    v: w['Nutrition Adherence /10'], inv: false },
+    ];
+    const scoresFullHtml = '<div class="history-scores-row">' +
+      sx.map(x => '<div class="history-score-cell"><div class="history-score-lbl">' + esc(x.l) + '</div>' +
+        '<div class="history-score-val ' + scoreClass(x.v, x.inv) + '">' +
+        (x.v !== null && x.v !== undefined && x.v !== '' ? esc(x.v) : '—') +
+        '</div></div>').join('') + '</div>';
+
+    const trainingHtml = '<div class="history-train-pair">' +
+      '<div class="history-train-block">' +
+        '<div class="history-train-label run">Run</div>' +
+        '<div class="history-train-stat"><strong>' + rc + '/' + rp + '</strong> sessions</div>' +
+        (w['Weekly Run KM'] ? '<div class="history-train-stat"><strong>' + esc(w['Weekly Run KM']) + ' km</strong> total</div>' : '') +
+        (rp > 0 ? '<div class="history-pbar"><div class="history-pfill run" style="width:' + rPct + '%"></div></div>' : '') +
+        (w['Run Feel /10'] ? '<div class="history-train-stat">Feel: <strong>' + esc(w['Run Feel /10']) + '/10</strong></div>' : '') +
+        (isBad(w['Run Niggles']) ? '<div class="history-note bad">⚠ ' + esc(w['Run Niggles']) + '</div>' : '') +
+        (w['Runs Wins'] && w['Runs Wins'] !== 'n/a' ? '<div class="history-note good">✓ ' + esc(w['Runs Wins']) + '</div>' : '') +
+      '</div>' +
+      '<div class="history-train-block">' +
+        '<div class="history-train-label str">Lift</div>' +
+        '<div class="history-train-stat"><strong>' + lc + '/' + lp + '</strong> sessions</div>' +
+        (lp > 0 ? '<div class="history-pbar"><div class="history-pfill str" style="width:' + lPct + '%"></div></div>' : '') +
+        (w['Lift Feel /10'] ? '<div class="history-train-stat">Feel: <strong>' + esc(w['Lift Feel /10']) + '/10</strong></div>' : '') +
+        (isBad(w['Lifts Niggles']) ? '<div class="history-note bad">⚠ ' + esc(w['Lifts Niggles']) + '</div>' : '') +
+        (w['Lift Wins'] && w['Lift Wins'] !== 'n/a' ? '<div class="history-note good">✓ ' + esc(w['Lift Wins']) + '</div>' : '') +
+      '</div>' +
+    '</div>';
+
+    const socialEating = w['Social Eating'] || '';
+    const upcomingImpact = w['Upcoming Impact'] || '';
+    const testimonial = w['Testimonial'] || '';
+    const extraHtml = [
+      (socialEating && socialEating !== 'n/a') ? '<div class="history-social">🍽 Social eating: ' + esc(socialEating) + '</div>' : '',
+      (upcomingImpact && upcomingImpact !== 'n/a') ? '<div class="history-impact">⚡ ' + esc(upcomingImpact) + '</div>' : '',
+      testimonial ? '<div class="history-testim">"' + esc(testimonial) + '"</div>' : '',
+    ].filter(Boolean).join('');
+
+    const uid = 'hw-' + a.id.replace(/\W/g, '-') + '-' + idx;
+    return '<div class="history-week-card">' +
+      '<div class="history-week-head" onclick="toggleHistoryWeek(\'' + uid + '\')">' +
+        '<div class="history-week-meta">' +
+          '<span class="history-week-label">' + esc(wkLabel) + '</span>' +
+          '<span class="history-week-date">w/e ' + fmtDate(weekEnd) + '</span>' +
+          '<div class="history-week-scores">' + scoreBadges + '</div>' +
+        '</div>' +
+        '<span class="history-week-caret" id="caret-' + uid + '">▼</span>' +
+      '</div>' +
+      '<div class="history-week-body" id="' + uid + '">' +
+        scoresFullHtml + trainingHtml + extraHtml +
+      '</div>' +
+    '</div>';
+  }).join('');
+
+  return '<div class="history-section">' +
+    '<div class="history-section-head" onclick="toggleHistory(this)">' +
+      '<div class="history-section-title">📅 Check-in History <span class="history-count-badge">' + past.length + ' week' + (past.length === 1 ? '' : 's') + '</span></div>' +
+      '<span class="history-toggle">▼</span>' +
+    '</div>' +
+    '<div class="history-body">' + weekCards + '</div>' +
+  '</div>';
+}
+
+function toggleHistory(headEl) {
+  const body = headEl.nextElementSibling;
+  const toggle = headEl.querySelector('.history-toggle');
+  body.classList.toggle('open');
+  toggle.classList.toggle('open');
+}
+
+function toggleHistoryWeek(uid) {
+  const body = document.getElementById(uid);
+  const caret = document.getElementById('caret-' + uid);
+  if (body) body.classList.toggle('open');
+  if (caret) caret.classList.toggle('open');
+}
+
 // ── Full-page Card (clean reading layout for screen-sharing) ─────────────────
 function addDays(date, days) {
   const d = new Date(date);
@@ -2987,6 +3163,7 @@ function buildFPCard(a, weekOffset = 0) {
     ${dailyInputsHtml}
     ${weekDetailHtml}
     ${bodyNutrPart}
+    ${buildCheckinHistory(a, w?._id || null)}
     ${callPrepHtml}
   </div>`;
 }
