@@ -679,6 +679,35 @@ header{background:#0a0a0a;padding:0 18px;height:62px;display:flex;align-items:ce
 .week-jump-btn.secondary{background:transparent;color:var(--muted);border-color:var(--border-mid)}
 .week-jump-btn:disabled{opacity:.35;cursor:not-allowed}
 @media(max-width:720px){.week-jump{align-items:flex-start;flex-direction:column}.week-jump-controls{justify-content:flex-start}}
+
+/* ── Coach Check-in Form ── */
+.coach-checkin{border-top:2px solid rgba(30,58,138,.4);background:#f0f4ff}
+.coach-checkin-header{background:linear-gradient(90deg,#1e3a8a 0%,#1e40af 100%);padding:10px 14px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none}
+.coach-checkin-title{font-family:var(--mono);font-size:9px;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:.12em;display:flex;align-items:center;gap:7px}
+.coach-checkin-toggle{font-family:var(--mono);font-size:9px;color:rgba(255,255,255,.45);transition:transform .2s}
+.coach-checkin-toggle.open{transform:rotate(180deg)}
+.coach-checkin-body{padding:14px;display:none;flex-direction:column;gap:12px}
+.coach-checkin-body.open{display:flex}
+.cci-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px}
+.cci-field{display:flex;flex-direction:column;gap:3px}
+.cci-label{font-family:var(--mono);font-size:7px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em}
+.cci-input{border:1px solid var(--border-mid);border-radius:6px;padding:5px 8px;font-family:var(--mono);font-size:11px;color:var(--text);background:var(--surface);outline:none;width:100%;transition:border .15s}
+.cci-input:focus{border-color:#3730a3}
+.cci-textarea{border:1px solid var(--border-mid);border-radius:6px;padding:6px 8px;font-family:var(--sans);font-size:11px;color:var(--text);background:var(--surface);outline:none;width:100%;resize:vertical;min-height:46px;line-height:1.4;transition:border .15s}
+.cci-textarea:focus{border-color:#3730a3}
+.cci-section-lbl{font-family:var(--mono);font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--coach-text);margin-bottom:2px}
+.cci-save-btn{background:linear-gradient(90deg,#1e3a8a 0%,#1e40af 100%);border:none;color:#fff;font-family:var(--mono);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;padding:8px 20px;border-radius:7px;cursor:pointer;transition:opacity .15s}
+.cci-save-btn:hover{opacity:.85}
+.cci-saved{font-family:var(--mono);font-size:9px;color:var(--ok);letter-spacing:.06em;text-transform:uppercase;display:none}
+.cci-saved.show{display:inline}
+.cci-week-lbl{font-family:var(--mono);font-size:9px;color:var(--coach-text);margin-bottom:6px;font-weight:700}
+.coach-history{padding:12px 14px;border-top:1px solid var(--coach-border)}
+.coach-history-lbl{font-family:var(--mono);font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px}
+.coach-history-row{display:flex;gap:6px;align-items:center;padding:5px 0;border-bottom:1px solid var(--border);font-family:var(--mono);font-size:9px;color:var(--muted)}
+.coach-history-row:last-child{border-bottom:none}
+.coach-history-date{color:var(--dim);min-width:80px}
+.coach-history-pills{display:flex;gap:4px;flex-wrap:wrap}
+.coach-history-pill{background:var(--coach-bg);color:var(--coach-text);border:1px solid var(--coach-border);border-radius:20px;padding:1px 7px;font-size:8px}
 </style>
 </head>
 <body>
@@ -861,6 +890,8 @@ const DB = {
   targets:      '3405a96c-c70b-80de-9221-c2a40653277c',
   planning:     '0b85a96c-c70b-8368-98fd-013e0e15c4f2',
   applications: '33f5a96c-c70b-8008-ac37-e11d3b48d8c1',
+  // Optional: dedicated coaches check-in Notion DB (leave empty string if using same weekly DB)
+  coachWeekly:  '',
 };
 
 // ── Session type → badge class mapping ───────────────────────────────────────
@@ -939,6 +970,56 @@ const callNotes = (() => {
   try { return JSON.parse(localStorage.getItem('dp_call_notes') || '{}'); }
   catch { return {}; }
 })();
+
+// ── Coach self-tracking data (localStorage, keyed by coachId + weekEnding) ──
+// Persists across refreshes. Data shape mirrors the weekly check-in DB fields.
+const coachStore = {
+  _key: 'dp_coach_data_v2',
+  _data: (() => {
+    try { return JSON.parse(localStorage.getItem('dp_coach_data_v2') || '{}'); }
+    catch { return {}; }
+  })(),
+  save() {
+    try { localStorage.setItem(this._key, JSON.stringify(this._data)); } catch {}
+  },
+  getEntry(coachId, weekEnding) {
+    return this._data[coachId + '__' + weekEnding] || null;
+  },
+  setEntry(coachId, weekEnding, data) {
+    this._data[coachId + '__' + weekEnding] = { ...data, coachId, weekEnding };
+    this.save();
+  },
+  getAllForCoach(coachId) {
+    return Object.values(this._data).filter(e => e.coachId === coachId)
+      .sort((a,b) => (b.weekEnding||'').localeCompare(a.weekEnding||''));
+  },
+  toWeeklyRow(entry) {
+    if (!entry) return null;
+    return {
+      Name: entry.coachId,
+      'Week Ending': entry.weekEnding,
+      'Energy /10':              String(entry.energy || ''),
+      'Sleep hrs':               String(entry.sleep || ''),
+      'Soreness /10':            String(entry.soreness || ''),
+      'Stress':                  String(entry.stress || ''),
+      'Motivation':              String(entry.motivation || ''),
+      'Nutrition Adherence /10': String(entry.nutrition || ''),
+      'Run Planned':             String(entry.runPlanned || ''),
+      'Run Completed':           String(entry.runCompleted || ''),
+      'Weekly Run KM':           String(entry.runKm || ''),
+      'Run Feel /10':            String(entry.runFeel || ''),
+      'Run Niggles':             entry.runNiggles || '',
+      'Runs Wins':               entry.runWins || '',
+      'Lift Planned':            String(entry.liftPlanned || ''),
+      'Lift Completed':          String(entry.liftCompleted || ''),
+      'Lift Feel /10':           String(entry.liftFeel || ''),
+      'Lifts Niggles':           entry.liftNiggles || '',
+      'Lift Wins':               entry.liftWins || '',
+      'Notes':                   entry.notes || '',
+      '_source': 'local',
+    };
+  },
+};
 
 // ── Local date helper (avoids UTC-shift bug with toISOString) ─────────────────
 function localDateStr(d) {
@@ -1671,8 +1752,25 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [
   // (buildActionList reads .compliance, .target, .body, etc.)
   all.forEach(a => { a.actions = buildActionList(a); });
 
-  const coaches  = all.filter(a => a.isCoach);
+  let coaches  = all.filter(a => a.isCoach);
   const athletes = all.filter(a => !a.isCoach).sort((a, b) => b.alertScore - a.alertScore);
+
+  // Guarantee KARL and ALEX always appear even if they have no Notion data at all.
+  // renderCoaches will inject localStorage entries if available.
+  for (const coachId of ['KARL', 'ALEX']) {
+    if (!coaches.find(c => c.id === coachId)) {
+      coaches.push({
+        id: coachId, weekly: null, body: [], nutrition: [], sessions: [],
+        bAvg: {}, nAvg: {}, runS: [], strS: [], currRunS: [], currStrS: [],
+        prevRunS: [], prevStrS: [], flags: [], alertScore: 0,
+        hasRecent: false, hasCurrentCheckin: false, hasLastWeekCheckin: false,
+        isStale: false, expectedWeekEnd: null, compliance: null,
+        weekNum: null, target: null, targetByWeek: {}, weeklies: [],
+        allPlan: [], thisWeekPlan: [], scheduleCompliance: null,
+        recoveryScore: null, prs: [], trends: {}, isCoach: true, actions: [],
+      });
+    }
+  }
   const syncAudit = buildSyncAudit({
     masterIds, startDates, wl, targetMap, bodyCounts, nutritionCounts,
     sessionCounts, planCounts, calcWeekNum,
@@ -1921,15 +2019,55 @@ function renderGrid(ath) {
 
 function renderCoaches(coaches) {
   const grid = document.getElementById('coaches-grid');
-  if (!coaches.length) {
+
+  // Inject any localStorage check-in data so the Coaches tab shows it
+  // even before the next full data refresh from Notion.
+  const now = new Date();
+  const day = now.getDay();
+  const sun = new Date(now);
+  sun.setDate(now.getDate() + (7 - day) % 7);
+  const currentWE = localDateStr(sun);
+
+  const enriched = coaches.map(c => {
+    const local = coachStore.getEntry(c.id, currentWE);
+    if (!local) return c;
+    // If no weekly data from Notion, use the localStorage entry
+    if (!c.weekly || !c.weekly.Name) {
+      const row = coachStore.toWeeklyRow(local);
+      // Recalculate compliance from local data
+      const rp = parseInt(row['Run Planned']) || 0;
+      const rc = parseInt(row['Run Completed']) || 0;
+      const lp = parseInt(row['Lift Planned']) || 0;
+      const lc = parseInt(row['Lift Completed']) || 0;
+      const total = rp + lp;
+      const done  = rc + lc;
+      const comp  = total > 0 ? Math.round(done / total * 100) : null;
+      return { ...c, weekly: row, compliance: comp };
+    }
+    // If existing weekly data is older, prefer local
+    if (c.weekly['Week Ending'] < currentWE || c.weekly['_source'] === 'local') {
+      const row = coachStore.toWeeklyRow(local);
+      const rp = parseInt(row['Run Planned']) || 0;
+      const rc = parseInt(row['Run Completed']) || 0;
+      const lp = parseInt(row['Lift Planned']) || 0;
+      const lc = parseInt(row['Lift Completed']) || 0;
+      const total = rp + lp;
+      const done  = rc + lc;
+      const comp  = total > 0 ? Math.round(done / total * 100) : null;
+      return { ...c, weekly: row, compliance: comp };
+    }
+    return c;
+  });
+
+  if (!enriched.length) {
     grid.innerHTML = `<div class="coach-no-data"><div class="coach-no-data-txt">No coach data found for Karl or Alex</div></div>`;
     return;
   }
   // Always show Karl first, then Alex, then others
   const ordered = [
-    ...coaches.filter(c => c.id === 'KARL'),
-    ...coaches.filter(c => c.id === 'ALEX'),
-    ...coaches.filter(c => c.id !== 'KARL' && c.id !== 'ALEX'),
+    ...enriched.filter(c => c.id === 'KARL'),
+    ...enriched.filter(c => c.id === 'ALEX'),
+    ...enriched.filter(c => c.id !== 'KARL' && c.id !== 'ALEX'),
   ];
   grid.innerHTML = ordered.map(buildCoachCard).join('');
 }
@@ -3157,11 +3295,37 @@ function buildCoachCard(a) {
   }
 
   const noData = !hW && !a.bAvg.wt && !a.bAvg.sleep;
+  const isLocalData = hW && w['_source'] === 'local';
   const metaTxt = hW
-    ? `Week ending ${fmtDate(w['Week Ending'])}`
+    ? `Week ending ${fmtDate(w['Week Ending'])}${isLocalData ? ' · Locally logged' : ''}`
     : a.body.length ? 'Daily tracking only' : 'No check-in data yet';
 
-  return `<div class="coach-card">
+  // Coach check-in form (collapsed by default)
+  const cardId = 'coach-' + a.id.toLowerCase();
+  const formHtml = buildCoachForm(a.id, cardId);
+
+  // Recent history pills
+  const historyRows = coachStore.getAllForCoach(a.id).slice(0, 5);
+  let historyHtml = '';
+  if (historyRows.length > 1) {
+    historyHtml = `<div class="coach-history">
+      <div class="coach-history-lbl">Recent weeks</div>
+      ${historyRows.map(e => {
+        const pills = [
+          e.energy ? `Energy ${e.energy}` : null,
+          e.runCompleted ? `Run ${e.runCompleted}/${e.runPlanned||'?'}` : null,
+          e.liftCompleted ? `Lift ${e.liftCompleted}/${e.liftPlanned||'?'}` : null,
+          e.runKm ? `${e.runKm}km` : null,
+        ].filter(Boolean);
+        return `<div class="coach-history-row">
+          <span class="coach-history-date">${fmtDate(e.weekEnding)}</span>
+          <div class="coach-history-pills">${pills.map(p => `<span class="coach-history-pill">${esc(p)}</span>`).join('')}</div>
+        </div>`;
+      }).join('')}
+    </div>`;
+  }
+
+  return `<div class="coach-card" id="${cardId}-card">
     <div class="coach-card-head">
       <div class="coach-card-head-top">
         <div>
@@ -3178,8 +3342,131 @@ function buildCoachCard(a) {
     ${trainingHtml}
     ${bodyHtml}
     ${notesHtml}
-    ${noData ? `<div class="coach-no-data"><div class="coach-no-data-txt">No recent data found</div></div>` : ''}
+    ${noData ? `<div class="coach-no-data"><div class="coach-no-data-txt">No check-in data — log below</div></div>` : ''}
+    ${historyHtml}
+    ${formHtml}
   </div>`;
+}
+
+// ── Build coach self-check-in form ────────────────────────────────────────────
+function buildCoachForm(coachId, cardId) {
+  const now = new Date();
+  const day = now.getDay();
+  const sun = new Date(now);
+  sun.setDate(now.getDate() + (7 - day) % 7);
+  const weekEnding = localDateStr(sun);
+  const existing = coachStore.getEntry(coachId, weekEnding) || {};
+
+  function val(k) { return existing[k] !== undefined ? ` value="${esc(String(existing[k]))}"` : ''; }
+  function tv(k)  { return existing[k] !== undefined ? esc(String(existing[k])) : ''; }
+
+  return `<div class="coach-checkin">
+    <div class="coach-checkin-header" onclick="toggleCoachForm('${cardId}')">
+      <div class="coach-checkin-title">✏ Log This Week · ends ${fmtDate(weekEnding)}</div>
+      <div class="coach-checkin-toggle" id="${cardId}-toggle">▾</div>
+    </div>
+    <div class="coach-checkin-body" id="${cardId}-form">
+      <div class="cci-section-lbl">Wellness scores (out of 10)</div>
+      <div class="cci-row">
+        <div class="cci-field"><label class="cci-label">Energy</label><input class="cci-input" type="number" min="1" max="10" step="0.5" id="${cardId}-energy" placeholder="7"${val('energy')}></div>
+        <div class="cci-field"><label class="cci-label">Sleep hrs</label><input class="cci-input" type="number" min="3" max="12" step="0.5" id="${cardId}-sleep" placeholder="7.5"${val('sleep')}></div>
+        <div class="cci-field"><label class="cci-label">Soreness</label><input class="cci-input" type="number" min="1" max="10" step="0.5" id="${cardId}-soreness" placeholder="3"${val('soreness')}></div>
+        <div class="cci-field"><label class="cci-label">Stress</label><input class="cci-input" type="number" min="1" max="10" step="0.5" id="${cardId}-stress" placeholder="4"${val('stress')}></div>
+        <div class="cci-field"><label class="cci-label">Motivation</label><input class="cci-input" type="number" min="1" max="10" step="0.5" id="${cardId}-motivation" placeholder="8"${val('motivation')}></div>
+        <div class="cci-field"><label class="cci-label">Nutrition</label><input class="cci-input" type="number" min="1" max="10" step="0.5" id="${cardId}-nutrition" placeholder="7"${val('nutrition')}></div>
+      </div>
+
+      <div class="cci-section-lbl" style="margin-top:4px">Running</div>
+      <div class="cci-row">
+        <div class="cci-field"><label class="cci-label">Planned</label><input class="cci-input" type="number" min="0" max="20" id="${cardId}-runPlanned" placeholder="4"${val('runPlanned')}></div>
+        <div class="cci-field"><label class="cci-label">Completed</label><input class="cci-input" type="number" min="0" max="20" id="${cardId}-runCompleted" placeholder="3"${val('runCompleted')}></div>
+        <div class="cci-field"><label class="cci-label">Total km</label><input class="cci-input" type="number" min="0" max="300" id="${cardId}-runKm" placeholder="55"${val('runKm')}></div>
+        <div class="cci-field"><label class="cci-label">Feel /10</label><input class="cci-input" type="number" min="1" max="10" step="0.5" id="${cardId}-runFeel" placeholder="7"${val('runFeel')}></div>
+      </div>
+      <div class="cci-row" style="grid-template-columns:1fr 1fr">
+        <div class="cci-field"><label class="cci-label">Run win</label><textarea class="cci-textarea" id="${cardId}-runWins" placeholder="Hit a new tempo PB...">${tv('runWins')}</textarea></div>
+        <div class="cci-field"><label class="cci-label">Run niggle</label><textarea class="cci-textarea" id="${cardId}-runNiggles" placeholder="Tight left calf...">${tv('runNiggles')}</textarea></div>
+      </div>
+
+      <div class="cci-section-lbl" style="margin-top:4px">Lifting</div>
+      <div class="cci-row">
+        <div class="cci-field"><label class="cci-label">Planned</label><input class="cci-input" type="number" min="0" max="20" id="${cardId}-liftPlanned" placeholder="3"${val('liftPlanned')}></div>
+        <div class="cci-field"><label class="cci-label">Completed</label><input class="cci-input" type="number" min="0" max="20" id="${cardId}-liftCompleted" placeholder="3"${val('liftCompleted')}></div>
+        <div class="cci-field"><label class="cci-label">Feel /10</label><input class="cci-input" type="number" min="1" max="10" step="0.5" id="${cardId}-liftFeel" placeholder="8"${val('liftFeel')}></div>
+      </div>
+      <div class="cci-row" style="grid-template-columns:1fr 1fr">
+        <div class="cci-field"><label class="cci-label">Lift win</label><textarea class="cci-textarea" id="${cardId}-liftWins" placeholder="New squat PR...">${tv('liftWins')}</textarea></div>
+        <div class="cci-field"><label class="cci-label">Lift niggle</label><textarea class="cci-textarea" id="${cardId}-liftNiggles" placeholder="Shoulder tweaked...">${tv('liftNiggles')}</textarea></div>
+      </div>
+
+      <div class="cci-field">
+        <label class="cci-label">Notes / upcoming impact</label>
+        <textarea class="cci-textarea" id="${cardId}-notes" placeholder="Night shifts this week...">${tv('notes')}</textarea>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:12px;margin-top:4px">
+        <button class="cci-save-btn" onclick="saveCoachEntry('${coachId}','${weekEnding}','${cardId}')">Save check-in</button>
+        <span class="cci-saved" id="${cardId}-saved">✓ Saved</span>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ── Coach form helpers ───────────────────────────────────────────────────────
+function toggleCoachForm(cardId) {
+  const body = document.getElementById(cardId + '-form');
+  const toggle = document.getElementById(cardId + '-toggle');
+  if (!body || !toggle) return;
+  const open = body.classList.toggle('open');
+  toggle.classList.toggle('open', open);
+}
+
+function saveCoachEntry(coachId, weekEnding, cardId) {
+  function gv(field) {
+    const el = document.getElementById(cardId + '-' + field);
+    return el ? el.value.trim() : '';
+  }
+  const entry = {
+    energy:        gv('energy'),
+    sleep:         gv('sleep'),
+    soreness:      gv('soreness'),
+    stress:        gv('stress'),
+    motivation:    gv('motivation'),
+    nutrition:     gv('nutrition'),
+    runPlanned:    gv('runPlanned'),
+    runCompleted:  gv('runCompleted'),
+    runKm:         gv('runKm'),
+    runFeel:       gv('runFeel'),
+    runWins:       gv('runWins'),
+    runNiggles:    gv('runNiggles'),
+    liftPlanned:   gv('liftPlanned'),
+    liftCompleted: gv('liftCompleted'),
+    liftFeel:      gv('liftFeel'),
+    liftWins:      gv('liftWins'),
+    liftNiggles:   gv('liftNiggles'),
+    notes:         gv('notes'),
+  };
+  coachStore.setEntry(coachId, weekEnding, entry);
+
+  // Show saved flash
+  const savedEl = document.getElementById(cardId + '-saved');
+  if (savedEl) {
+    savedEl.classList.add('show');
+    setTimeout(() => savedEl.classList.remove('show'), 2500);
+  }
+
+  // Re-render coaches tab with updated data (merge new row into existing data)
+  // We do this by triggering a lightweight re-render of just the coach card
+  const card = document.getElementById(cardId + '-card');
+  if (card && _coaches.length) {
+    renderCoaches(_coaches);
+    // Re-open the form after re-render
+    setTimeout(() => {
+      toggleCoachForm(cardId);
+      const s = document.getElementById(cardId + '-saved');
+      if (s) { s.classList.add('show'); setTimeout(() => s.classList.remove('show'), 2000); }
+    }, 50);
+  }
 }
 
 // ── Filters ───────────────────────────────────────────────────────────────────
@@ -3398,13 +3685,39 @@ async function load() {
   document.getElementById('refresh-btn').disabled = true;
 
   try {
-    const [weekly, sessions, body, nutrition, athleteDb, targets, planning, applications] = await Promise.all([
+    const [weekly, sessions, body, nutrition, athleteDb, targets, planning, applications, coachWeekly] = await Promise.all([
       fetchDB(DB.weekly), fetchDB(DB.sessions), fetchDB(DB.body),
       fetchDB(DB.nutrition), fetchDB(DB.athletes), fetchDB(DB.targets),
       fetchDB(DB.planning), fetchDB(DB.applications),
+      DB.coachWeekly ? fetchDB(DB.coachWeekly) : Promise.resolve([]),
     ]);
 
-    const { athletes, coaches, syncAudit } = buildAll(weekly, sessions, body, nutrition, athleteDb, targets, planning, applications);
+    // Merge coach weekly rows: Notion coachWeekly DB + localStorage entries
+    // localStorage entries are keyed by coachId + weekEnding and always take
+    // precedence over any Notion row for the same coach + week.
+    const coachWeeklyMerged = [...weekly, ...coachWeekly];
+    const currentWE = (() => {
+      const now = new Date();
+      const day = now.getDay();
+      const sun = new Date(now);
+      sun.setDate(now.getDate() + (7 - day) % 7);
+      return localDateStr(sun);
+    })();
+    for (const coachId of ['KARL', 'ALEX']) {
+      const local = coachStore.getEntry(coachId, currentWE);
+      if (local) {
+        const row = coachStore.toWeeklyRow(local);
+        // Remove any existing row for this coach+week from merged array so local wins
+        const idx = coachWeeklyMerged.findIndex(r => {
+          const id = (r.Name || '').toUpperCase().trim().split('—')[0].split('--')[0].trim();
+          return id === coachId && r['Week Ending'] === currentWE;
+        });
+        if (idx >= 0) coachWeeklyMerged.splice(idx, 1, row);
+        else coachWeeklyMerged.push(row);
+      }
+    }
+
+    const { athletes, coaches, syncAudit } = buildAll(coachWeeklyMerged, sessions, body, nutrition, athleteDb, targets, planning, applications);
     const dataHealth = {
       weekly: weekly.length,
       sessions: sessions.length,
