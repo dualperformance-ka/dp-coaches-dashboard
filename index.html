@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DP Coaches Dashboard</title>
+<title>DP Coaches Dashboard v2</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800;900&family=Barlow:ital,wght@0,400;0,500;0,600;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -680,6 +680,25 @@ header{background:#0a0a0a;padding:0 18px;height:62px;display:flex;align-items:ce
 .week-jump-btn:disabled{opacity:.35;cursor:not-allowed}
 @media(max-width:720px){.week-jump{align-items:flex-start;flex-direction:column}.week-jump-controls{justify-content:flex-start}}
 
+/* ── Weekly KM bar ── */
+.km-bar-row{display:flex;align-items:center;gap:8px;padding:6px 13px;border-bottom:1px solid var(--border)}
+.km-bar-lbl{font-family:var(--mono);font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;white-space:nowrap}
+.km-bar-track{flex:1;height:4px;background:rgba(0,0,0,.07);border-radius:2px;overflow:hidden}
+.km-bar-fill{height:100%;border-radius:2px;transition:width .4s}
+.km-bar-fill.good{background:var(--run)}.km-bar-fill.mid{background:var(--warn)}.km-bar-fill.bad{background:var(--alert)}
+.km-bar-val{font-family:var(--mono);font-size:10px;font-weight:700;min-width:28px;text-align:right}
+.km-bar-val.good{color:var(--run)}.km-bar-val.mid{color:var(--warn)}.km-bar-val.bad{color:var(--alert)}
+.km-bar-tgt{font-family:var(--mono);font-size:9px;color:var(--dim)}
+
+/* ── Card load animation ── */
+@keyframes cardIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.card{animation:cardIn .18s ease both}
+.card:nth-child(1){animation-delay:.02s}.card:nth-child(2){animation-delay:.04s}
+.card:nth-child(3){animation-delay:.06s}.card:nth-child(4){animation-delay:.08s}
+.card:nth-child(5){animation-delay:.1s}.card:nth-child(6){animation-delay:.12s}
+.card:nth-child(7){animation-delay:.14s}.card:nth-child(8){animation-delay:.16s}
+.card:hover{box-shadow:0 6px 24px rgba(0,0,0,.10);transform:translateY(-1px);transition:box-shadow .18s,transform .18s}
+
 /* ── Coach Check-in Form ── */
 .coach-checkin{border-top:2px solid rgba(30,58,138,.4);background:#f0f4ff}
 .coach-checkin-header{background:linear-gradient(90deg,#1e3a8a 0%,#1e40af 100%);padding:10px 14px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none}
@@ -731,7 +750,7 @@ header{background:#0a0a0a;padding:0 18px;height:62px;display:flex;align-items:ce
     <img class="logo-mark" src="data:image/png;base64,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" alt="DP">
     <div class="logo-text">
       <div class="logo"><span class="d">DUAL</span> <span class="p">PERFORMANCE</span></div>
-      <div class="coach-pill">Coaches Dashboard · Internal</div>
+      <div class="coach-pill">Coaches Dashboard · v2</div>
     </div>
   </div>
   <div class="h-right">
@@ -912,8 +931,9 @@ function stLabel(t){ return ST_LABEL[t] || t || 'Session'; }
 function sessionBadgeHTML(sessionType, status, sessionName) {
   const cls = stClass(sessionType);
   const lbl = stLabel(sessionType);
-  const statusCls = (status||'planned').trim().toLowerCase().replace(/\s+/g,'');
-  const statusIcon = statusCls==='completed'?'✓':statusCls==='missed'?'✗':statusCls==='sick'?'🤒':'→';
+  const rawStatus = (status||'planned').trim().toLowerCase();
+  const statusCls = rawStatus.replace(/\s+/g,'');
+  const statusIcon = statusCls==='completed'?'✓':statusCls==='missed'?'✗':statusCls==='sick'?'🤒':statusCls==='inprogress'?'◐':'→';
   const title = sessionName ? `${sessionName} (${sessionType||''})` : (sessionType||'Session');
   return `<span class="sbadge sbadge-${cls} ${statusCls}" title="${esc(title)}"><span class="sdot"></span>${esc(lbl)} <span class="sbadge-status">${statusIcon}</span></span>`;
 }
@@ -926,8 +946,27 @@ function calcRecoveryScore(w) {
   const energy = parseFloat(w['Energy /10']); if (!isNaN(energy)) vals.push(energy);
   const stress = parseFloat(w['Stress']); if (!isNaN(stress)) vals.push(10-stress);
   const soreness = parseFloat(w['Soreness /10']); if (!isNaN(soreness)) vals.push(10-soreness);
+  const motiv = parseFloat(w['Motivation']); if (!isNaN(motiv)) vals.push(motiv);
   if (!vals.length) return null;
   return Math.round((vals.reduce((a,b)=>a+b,0)/vals.length)*10)/10;
+}
+
+// ── Race countdown helper ────────────────────────────────────────────────────
+function raceCountdownDays(target) {
+  if (!target) return null;
+  const rd = target['Race Date'] || target['race_date'] || target['Race date'];
+  if (!rd) return null;
+  const raceDate = new Date(String(rd).split('T')[0]);
+  const today = new Date(); today.setHours(0,0,0,0);
+  const diff = Math.round((raceDate - today) / 86400000);
+  return diff >= 0 && diff <= 180 ? { days: diff, name: target['Race Name'] || target['Race'] || 'Race' } : null;
+}
+
+// ── isBad helper: returns true if a string has meaningful content ─────────────
+function isBad(s) {
+  if (!s) return false;
+  const t = String(s).trim().toLowerCase();
+  return t !== '' && t !== 'n/a' && t !== 'none' && t !== 'nil' && t !== '-' && t !== 'no';
 }
 
 // ── Extract athlete ID from a planning schedule row ──────────────────────────
@@ -1092,9 +1131,6 @@ function fmtDate(s) {
   const [y, m, d] = String(s).split('T')[0].split('-');
   if (!y || !m || !d) return s;
   return `${d}-${m}-${y}`;
-}
-function isBad(v) {
-  return v && !['n/a', '', 'none', 'nope', 'nothing', 'no', '-'].includes((v || '').toLowerCase().trim());
 }
 function daysAgo(dateStr) {
   if (!dateStr) return null;
@@ -1886,13 +1922,25 @@ function renderSummary(ath) {
     return s + a.prs.recent.filter(pr => new Date(pr.date) >= c7).length;
   }, 0);
 
+  const racingThisMonth = ath.filter(a => {
+    const r = raceCountdownDays(a.target);
+    return r && r.days <= 30;
+  }).length;
+
+  const avgRecovery = ath.map(a => a.recoveryScore).filter(v => v !== null && !isNaN(v));
+  const avgRecoveryVal = avgRecovery.length
+    ? (avgRecovery.reduce((s,v)=>s+v,0)/avgRecovery.length).toFixed(1)
+    : null;
+
   document.getElementById('sum-bar').innerHTML = `
     <div class="sum-card"><div class="sum-num">${ath.length}</div><div class="sum-lbl">Athletes</div></div>
     <div class="sum-card"><div class="sum-num ${alertN ? 'red' : 'grn'}">${alertN}</div><div class="sum-lbl">Action Required</div></div>
     <div class="sum-card"><div class="sum-num">${watchN}</div><div class="sum-lbl">Watch List</div></div>
     <div class="sum-card"><div class="sum-num grn">${checkedIn}</div><div class="sum-lbl">Checked In</div></div>
+    ${avgRecoveryVal !== null ? `<div class="sum-card"><div class="sum-num ${avgRecoveryVal>=7?'grn':avgRecoveryVal>=5?'':'red'}">${avgRecoveryVal}</div><div class="sum-lbl">Avg Recovery</div></div>` : ''}
     <div class="sum-card"><div class="sum-num str-c">${prs7}</div><div class="sum-lbl">PRs (7d)</div></div>
     <div class="sum-card"><div class="sum-num run-c">${totalKm.toFixed(0)}</div><div class="sum-lbl">Squad KM (14d)</div></div>
+    ${racingThisMonth ? `<div class="sum-card"><div class="sum-num" style="color:#dc2626">${racingThisMonth}</div><div class="sum-lbl">Racing 30d</div></div>` : ''}
     ${avgComp !== null ? `<div class="sum-card"><div class="sum-num ${avgComp >= 80 ? 'grn' : avgComp >= 60 ? '' : 'red'}">${avgComp}%</div><div class="sum-lbl">Avg Compliance</div></div>` : ''}`;
 }
 
@@ -2313,6 +2361,52 @@ function buildCard(a) {
     </div>`;
   }
 
+  // ── Race Countdown Chip ───────────────────────────────────────────────────
+  let raceChipHtml = '';
+  const race = raceCountdownDays(a.target);
+  if (race) {
+    const urgency = race.days <= 14 ? '#dc2626' : race.days <= 28 ? '#d97706' : '#15803d';
+    raceChipHtml = `<div style="display:flex;align-items:center;gap:8px;padding:6px 13px;border-bottom:1px solid var(--border);background:linear-gradient(90deg,rgba(220,38,38,.04) 0%,transparent 60%)">
+      <span style="width:6px;height:6px;border-radius:50%;background:${urgency};flex-shrink:0;display:inline-block"></span>
+      <span style="font-size:10px;font-weight:700;color:var(--text);flex:1">${esc(race.name)}</span>
+      <span style="font-family:var(--mono);font-size:10px;font-weight:700;color:${urgency}">${race.days === 0 ? 'Race Day!' : race.days + 'd out'}</span>
+    </div>`;
+  }
+
+  // ── Weekly KM bar ─────────────────────────────────────────────────────────
+  let kmBarHtml = '';
+  if (hW && w['Weekly Run KM']) {
+    const km = parseFloat(w['Weekly Run KM']);
+    const tKM = a.target ? parseFloat(String(a.target['Weekly KM Target'] || '').replace(/[^\d.]/g,'')) : 0;
+    if (!isNaN(km)) {
+      const pct = tKM > 0 ? Math.min(100, Math.round((km/tKM)*100)) : null;
+      const kmCls = pct !== null ? (pct>=90?'good':pct>=70?'mid':'bad') : 'mid';
+      kmBarHtml = `<div class="km-bar-row">
+        <span class="km-bar-lbl">Weekly KM</span>
+        <div class="km-bar-track"><div class="km-bar-fill ${kmCls}" style="width:${pct ?? 60}%"></div></div>
+        <span class="km-bar-val ${kmCls}">${km}</span>
+        ${tKM ? `<span class="km-bar-tgt">/ ${tKM}</span>` : ''}
+      </div>`;
+    }
+  }
+
+  // ── Nutrition signal on card (7d avg vs target) ───────────────────────────
+  let nutrSignalHtml = '';
+  if (a.nAvg.cal !== null && a.target) {
+    const tCal = parseFloat(String(a.target.Calories||'').replace(/[^\d.]/g,''));
+    const aCal = parseFloat(a.nAvg.cal);
+    if (tCal && aCal) {
+      const pct = Math.round((aCal/tCal)*100);
+      const cls = pct >= 85 && pct <= 115 ? 'good' : pct < 75 ? 'bad' : 'mid';
+      const lbl = pct < 75 ? 'Under-fuelling' : pct > 115 ? 'Over target' : 'On target';
+      nutrSignalHtml = `<div style="display:flex;align-items:center;gap:8px;padding:5px 13px;border-bottom:1px solid var(--border);background:var(--amber-bg)">
+        <span style="font-family:var(--mono);font-size:8px;color:var(--amber-text);text-transform:uppercase;letter-spacing:.07em">Avg Cals 7d</span>
+        <span style="font-family:var(--mono);font-size:10px;font-weight:700;color:var(--amber-text)">${Math.round(aCal)} kcal</span>
+        <span style="font-family:var(--mono);font-size:9px;color:var(--${cls==='good'?'ok':cls==='bad'?'alert':'warn'});margin-left:auto">${pct}% · ${lbl}</span>
+      </div>`;
+    }
+  }
+
   // Call Prep
   const callPrep = buildCallPrep(a);
   const cpId = `cp-${a.id.replace(/\s+/g,'-')}`;
@@ -2377,20 +2471,22 @@ function buildCard(a) {
     }
   }
 
-  // ── Sparkline strip: 7-day glance at recovery vitals ──────────────────────
+  // ── Sparkline strip: coach-glance at key trends ───────────────────────────
   let sparkStripHtml = '';
   if (a.trends) {
     const cells = [
-      { key: 'sleep',    lbl: 'Sleep',  inv: false, color: '#3b82f6', unit: '/10' },
-      { key: 'stress',   lbl: 'Stress', inv: true,  color: '#dc2626', unit: '/10' },
-      { key: 'energy',   lbl: 'Energy', inv: false, color: '#f59e0b', unit: '/10' },
-      { key: 'weight',   lbl: 'Weight', inv: false, color: '#0a0a0a', unit: 'kg' },
+      { key: 'sleep',    lbl: 'Sleep',    inv: false, color: '#3b82f6', unit: '/10' },
+      { key: 'stress',   lbl: 'Stress',   inv: true,  color: '#dc2626', unit: '/10' },
+      { key: 'energy',   lbl: 'Energy',   inv: false, color: '#f59e0b', unit: '/10' },
+      { key: 'calories', lbl: 'Cals',     inv: false, color: '#15803d', unit: 'kcal' },
     ];
     const cellsHtml = cells.map(c => {
       const series = a.trends[c.key] || [];
       const t = trendDelta(series, c.inv);
       const last = [...series].reverse().find(p => p.value !== null);
-      const lastVal = last ? (Number.isInteger(last.value) ? last.value : last.value.toFixed(1)) : '—';
+      const lastVal = last
+        ? (c.unit === 'kcal' ? Math.round(last.value).toLocaleString() : (Number.isInteger(last.value) ? last.value : last.value.toFixed(1)))
+        : '—';
       const arrow = t.dir === 'up' ? '↑' : t.dir === 'dn' ? '↓' : '→';
       const dirCls = t.dir === 'up' ? 'up' : t.dir === 'dn' ? 'dn' : 'flat';
       return `<div class="spark-cell">
@@ -2418,6 +2514,9 @@ function buildCard(a) {
     </div>
     ${actionRibbonHtml}
     ${sparkStripHtml}
+    ${raceChipHtml}
+    ${kmBarHtml}
+    ${nutrSignalHtml}
     ${weekInProgress}${staleBanner}${recoveryHtml}${planHtml}${compBar}${scores}${training}${bodyHtml}${nutrHtml}${sessHtml}
     <div class="ai-sec"></div>
     ${callPrepHtml}
@@ -2594,11 +2693,18 @@ function buildFPCard(a, weekOffset = 0) {
   }
 
   // Hero
+  const raceInfo = raceCountdownDays(a.target);
+  const raceHeroHtml = raceInfo ? `<div style="display:inline-flex;align-items:center;gap:6px;margin-top:10px;background:rgba(220,38,38,.12);border:1px solid rgba(220,38,38,.25);border-radius:6px;padding:4px 10px">
+    <span style="width:6px;height:6px;border-radius:50%;background:#fca5a5;flex-shrink:0;display:inline-block"></span>
+    <span style="font-family:var(--mono);font-size:9px;font-weight:700;color:#fca5a5;text-transform:uppercase;letter-spacing:.08em">${esc(raceInfo.name)} · ${raceInfo.days === 0 ? 'Race Day!' : raceInfo.days + ' days out'}</span>
+  </div>` : '';
+
   const hero = `<div class="fpc-hero">
     <div class="fpc-hero-top">
       <div>
         <div class="fpc-name">${esc(a.id)}</div>
         <div class="fpc-meta ${a.isStale ? 'stale' : ''}">${metaText}</div>
+        ${raceHeroHtml}
       </div>
       ${ctx.selectedWeekNum !== null ? `<div class="fpc-week-badge">
         <div class="fpc-week-num">${ctx.selectedWeekNum}</div>
@@ -2793,10 +2899,11 @@ function buildFPCard(a, weekOffset = 0) {
     const tCarb = t?.Carbs    ? String(t.Carbs).replace(/[^\d.]/g,'')    : null;
     const tFat  = t?.Fats     ? String(t.Fats).replace(/[^\d.]/g,'')     : null;
     const tKM   = t?.['Weekly KM Target'] ? String(t['Weekly KM Target']) : null;
+    const tRace = raceCountdownDays(t);
     const hasTarget = tCal || tPro || tCarb || tFat;
 
     nutrHtml = `<div class="fpc-section" style="margin-bottom:0">
-      <div class="fpc-section-title">Nutrition${a.nAvg.cal !== null ? ` — ${a.nAvg.days}d avg` : ''}</div>
+      <div class="fpc-section-title">Nutrition${a.nAvg.cal !== null ? ` — ${a.nAvg.days}d avg` : ''}${tRace ? ` · <span style="color:#dc2626;font-weight:700">${tRace.name} ${tRace.days}d out</span>` : ''}</div>
       ${a.nAvg.cal !== null ? `<div class="fpc-nutr-row">
         <div class="fpc-nutr-cell"><div class="fpc-nutr-val">${a.nAvg.cal || '—'}</div><div class="fpc-nutr-lbl">Calories</div></div>
         <div class="fpc-nutr-cell"><div class="fpc-nutr-val">${a.nAvg.pro || '—'}<span class="fpc-nutr-unit">g</span></div><div class="fpc-nutr-lbl">Protein</div></div>
