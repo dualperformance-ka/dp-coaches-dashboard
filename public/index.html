@@ -557,9 +557,21 @@ header{
 
 /* ── This week's plan ── */
 .plan-sec{padding:9px 13px;border-bottom:1px solid var(--border)}
-.plan-sec-ttl{font-family:var(--mono);font-size:8px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:7px;display:flex;align-items:center;gap:5px}
+.plan-sec-hdr{display:flex;align-items:center;gap:6px;margin-bottom:7px}
+.plan-sec-ttl{font-family:var(--mono);font-size:8px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em}
 .plan-sec-comp{font-family:var(--mono);font-size:9px;font-weight:700;margin-left:auto}
 .plan-sec-comp.good{color:var(--ok)}.plan-sec-comp.mid{color:var(--warn)}.plan-sec-comp.bad{color:var(--alert)}
+.plan-missed-badge{font-family:var(--mono);font-size:8px;font-weight:800;color:#fff;background:var(--alert);border-radius:3px;padding:2px 5px;letter-spacing:.04em;text-transform:uppercase}
+.plan-overdue-badge{font-family:var(--mono);font-size:8px;font-weight:800;color:#fff;background:var(--warn);border-radius:3px;padding:2px 5px;letter-spacing:.04em;text-transform:uppercase}
+.sched-grid{display:flex;flex-direction:column;gap:4px;margin-bottom:7px}
+.sched-day{display:flex;align-items:center;gap:8px;min-height:20px}
+.sched-day.today{background:rgba(249,115,22,.06);border-radius:5px;padding:2px 5px;margin:0 -5px}
+.sched-day-lbl{font-family:var(--mono);font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;min-width:26px;flex-shrink:0}
+.sched-day-lbl.past{color:var(--dim)}.sched-day-lbl.today-lbl{color:var(--run)}
+.sched-day-badges{display:flex;flex-wrap:wrap;gap:3px;flex:1}
+.sched-summary{display:flex;gap:10px;flex-wrap:wrap;padding-top:6px;border-top:1px solid var(--border)}
+.ss-item{font-family:var(--mono);font-size:9px;font-weight:700}
+.ss-done{color:var(--ok)}.ss-missed{color:var(--alert)}.ss-overdue{color:var(--warn)}.ss-left{color:var(--dim)}
 
 /* ── Weekly KM bar ── */
 .km-bar-row{display:flex;align-items:center;gap:8px;padding:8px 13px;border-bottom:1px solid var(--border);background:rgba(249,115,22,.05)}
@@ -1055,15 +1067,24 @@ function isBad(s) {
 }
 
 // ── Extract athlete ID from a planning schedule row ──────────────────────────
-// The Athlete field comes back as a relation — could be a name string, JSON array, or comma-list
+// Populated in buildAll() once the athlete DB rows are resolved.
+// Maps normalised Notion page IDs (no dashes, lowercase) → athlete code (e.g. 'JACOB')
+const notionIdToCode = {};
+
 function getPlanningAthleteId(r) {
   const a = r['Athlete'] || r['athlete'];
   if (!a) return null;
   const s = String(a).trim();
+  let rawId = null;
   if (s.startsWith('[')) {
-    try { const p=JSON.parse(s); return nid(Array.isArray(p)?String(p[0]):String(p)); } catch{}
+    try { const p=JSON.parse(s); rawId = Array.isArray(p)?String(p[0]):String(p); } catch{}
+  } else {
+    rawId = s.split(',')[0].trim();
   }
-  return nid(s.split(',')[0].trim());
+  if (!rawId) return null;
+  const cleanId = rawId.replace(/https?:\/\/[^\s/]+\//,'').replace(/-/g,'').toLowerCase();
+  if (notionIdToCode[cleanId]) return notionIdToCode[cleanId];
+  return nid(rawId);
 }
 
 // Name aliases — maps any variant to the canonical athlete ID used everywhere
@@ -1547,6 +1568,7 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [
     const sd = r['date:Start Date:start'] || r['Start Date'];
     if (code) masterIds.add(code);
     if (code && sd) startDates[code] = sd;
+    if (code && r._id) notionIdToCode[r._id.replace(/-/g,'').toLowerCase()] = code;
   });
 
   // Build targets lookup: targetMap[athleteId][weekLabel] = row
@@ -1831,6 +1853,18 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [
     const scheduleCompliance = (planCompleted + planMissed) > 0
       ? Math.round((planCompleted / (planCompleted + planMissed)) * 100) : null;
 
+    // Accountability: missed + past-due (planned but date already passed)
+    const _TODAY = new Date(); _TODAY.setHours(0,0,0,0);
+    const thisWeekMissed = thisWeekPlan.filter(r =>
+      (r['Status '] || r['Status'] || '').trim() === 'Missed').length;
+    const thisWeekPastDue = thisWeekPlan.filter(r => {
+      const st = (r['Status '] || r['Status'] || '').trim();
+      const d = r['date:Planned Date:start'] || r['Planned Date'] || '';
+      return st === 'Planned' && d && new Date(d) < _TODAY;
+    }).length;
+    if (thisWeekMissed > 0) flags.push({ t: 'red', l: `${thisWeekMissed} Missed` });
+    else if (thisWeekPastDue > 0) flags.push({ t: 'yellow', l: `${thisWeekPastDue} Overdue` });
+
     // Recovery score from weekly check-in
     const recoveryScore = calcRecoveryScore(w);
 
@@ -1861,6 +1895,8 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [
       weeklies: wh[a.id] || [],
       allPlan: athletePlan,
       thisWeekPlan,
+      thisWeekMissed,
+      thisWeekPastDue,
       scheduleCompliance,
       recoveryScore,
       prs,
@@ -1887,7 +1923,7 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [
         hasRecent: false, hasCurrentCheckin: false, hasLastWeekCheckin: false,
         isStale: false, expectedWeekEnd: null, compliance: null,
         weekNum: null, target: null, targetByWeek: {}, weeklies: [],
-        allPlan: [], thisWeekPlan: [], scheduleCompliance: null,
+        allPlan: [], thisWeekPlan: [], thisWeekMissed: 0, thisWeekPastDue: 0, scheduleCompliance: null,
         recoveryScore: null, prs: [], trends: {}, isCoach: true, actions: [],
       });
     }
@@ -2431,18 +2467,58 @@ function buildCard(a) {
     </div>`;
   }
 
-  // This week's plan
+  // This week's plan — day-by-day accountability grid
   let planHtml = '';
   if (a.thisWeekPlan && a.thisWeekPlan.length) {
-    const badges = a.thisWeekPlan.slice(0, 7).map(r =>
-      sessionBadgeHTML(r['Session Type'] || r['SessionType'], r['Status '] || r['Status'], r.Session)
-    ).join('');
-    const extra = a.thisWeekPlan.length > 7 ? `<span class="sbadge sbadge-default">+${a.thisWeekPlan.length-7}</span>` : '';
+    const _TDAY = new Date(); _TDAY.setHours(0,0,0,0);
+    const DAY_ABB = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    const dayMap = {};
+    a.thisWeekPlan.forEach(r => {
+      const d = r['date:Planned Date:start'] || r['Planned Date'] || '';
+      if (!d) return;
+      const idx = new Date(d).getDay();
+      if (!dayMap[idx]) dayMap[idx] = [];
+      dayMap[idx].push(r);
+    });
+    const ORDER = [1,2,3,4,5,6,0];
+    const rows = ORDER.map(idx => {
+      const sess = dayMap[idx];
+      if (!sess || !sess.length) return '';
+      const offset = idx === 0 ? 6 : idx - 1;
+      const dayDate = new Date(currentWeekStart);
+      dayDate.setDate(currentWeekStart.getDate() + offset);
+      const isToday = dayDate.getTime() === _TDAY.getTime();
+      const isPast  = dayDate < _TDAY;
+      const lblCls  = isToday ? 'today-lbl' : isPast ? 'past' : '';
+      const badges  = sess.map(r =>
+        sessionBadgeHTML(r['Session Type']||r['SessionType'], r['Status ']||r['Status'], r.Session)
+      ).join('');
+      return `<div class="sched-day${isToday?' today':''}"><span class="sched-day-lbl ${lblCls}">${DAY_ABB[idx]}</span><div class="sched-day-badges">${badges}</div></div>`;
+    }).join('');
+    const done      = a.thisWeekPlan.filter(r=>(r['Status ']||r['Status']||'').trim()==='Completed').length;
+    const missed    = a.thisWeekMissed  || 0;
+    const pastDue   = a.thisWeekPastDue || 0;
+    const remaining = a.thisWeekPlan.filter(r=>{
+      const st=(r['Status ']||r['Status']||'').trim();
+      const d=r['date:Planned Date:start']||r['Planned Date']||'';
+      return st==='Planned' && d && new Date(d) >= _TDAY;
+    }).length;
     const comp = a.scheduleCompliance;
-    const cc = comp !== null ? (comp>=80?'good':comp>=60?'mid':'bad') : '';
+    const cc   = comp!==null ? (comp>=80?'good':comp>=60?'mid':'bad') : '';
     planHtml = `<div class="plan-sec">
-      <div class="plan-sec-ttl">📅 This Week's Plan${comp!==null?`<span class="plan-sec-comp ${cc}">${comp}%</span>`:''}</div>
-      <div class="sched-badges">${badges}${extra}</div>
+      <div class="plan-sec-hdr">
+        <span class="plan-sec-ttl">📅 This Week</span>
+        ${missed>0  ? `<span class="plan-missed-badge">${missed} Missed</span>` : ''}
+        ${pastDue>0 && missed===0 ? `<span class="plan-overdue-badge">${pastDue} Overdue</span>` : ''}
+        ${comp!==null ? `<span class="plan-sec-comp ${cc}" style="margin-left:auto">${comp}% hist</span>` : ''}
+      </div>
+      <div class="sched-grid">${rows}</div>
+      <div class="sched-summary">
+        <span class="ss-item ss-done">✓ ${done} done</span>
+        ${missed   > 0 ? `<span class="ss-item ss-missed">✗ ${missed} missed</span>`      : ''}
+        ${pastDue  > 0 ? `<span class="ss-item ss-overdue">⚠ ${pastDue} past due</span>` : ''}
+        ${remaining> 0 ? `<span class="ss-item ss-left">→ ${remaining} left</span>`       : ''}
+      </div>
     </div>`;
   }
 
