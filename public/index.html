@@ -12,7 +12,7 @@
   /* ── Premium dark surfaces ── */
   --bg:#0d0d0f;
   --surface:#16161a;
-  --surface2:#1e1e24;
+  --surface2:#1e1e24
   --surface3:#26262e;
   --card:#18181d;
   --card-hover:#1e1e26;
@@ -1860,7 +1860,7 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [
     const thisWeekPastDue = thisWeekPlan.filter(r => {
       const st = (r['Status '] || r['Status'] || '').trim();
       const d = r['date:Planned Date:start'] || r['Planned Date'] || '';
-      return st === 'Planned' && d && new Date(d) < _TODAY;
+      return (!st || st === 'Planned') && d && new Date(d) < _TODAY;
     }).length;
     if (thisWeekMissed > 0) flags.push({ t: 'red', l: `${thisWeekMissed} Missed` });
     else if (thisWeekPastDue > 0) flags.push({ t: 'yellow', l: `${thisWeekPastDue} Overdue` });
@@ -2501,7 +2501,7 @@ function buildCard(a) {
     const remaining = a.thisWeekPlan.filter(r=>{
       const st=(r['Status ']||r['Status']||'').trim();
       const d=r['date:Planned Date:start']||r['Planned Date']||'';
-      return st==='Planned' && d && new Date(d) >= _TDAY;
+      return (!st || st==='Planned') && d && new Date(d) >= _TDAY;
     }).length;
     const comp = a.scheduleCompliance;
     const cc   = comp!==null ? (comp>=80?'good':comp>=60?'mid':'bad') : '';
