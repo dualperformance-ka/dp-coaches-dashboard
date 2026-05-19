@@ -1,5 +1,5 @@
 // api/progress-photos.js — Cloudinary progress photo lookup
-// Reads Cloudinary credentials server-side and returns matched athlete/week assets.
+// Uses the Admin API resources endpoint with prefix filtering (works with path-based public IDs).
 
 function parseCloudinaryUrl() {
   const raw = process.env.CLOUDINARY_URL;
@@ -9,16 +9,13 @@ function parseCloudinaryUrl() {
       const cloudName = url.hostname;
       const apiKey = decodeURIComponent(url.username);
       const apiSecret = decodeURIComponent(url.password);
-      // Only use if all three parsed correctly
       if (cloudName && apiKey && apiSecret) {
         return { cloudName, apiKey, apiSecret };
       }
     } catch {
-      // Fall through to individual env vars below
+      // Fall through to individual env vars
     }
   }
-
-  // Fallback: individual env vars (CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET)
   return {
     cloudName: process.env.CLOUDINARY_CLOUD_NAME,
     apiKey: process.env.CLOUDINARY_API_KEY,
@@ -27,18 +24,14 @@ function parseCloudinaryUrl() {
 }
 
 function cleanSegment(value) {
-  return String(value || '')
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9_-]/g, '');
+  return String(value || '').toLowerCase().trim().replace(/[^a-z0-9_-]/g, '');
 }
 
 function inferPhotoType(publicId) {
   const name = String(publicId || '').split('/').pop() || '';
   const raw = name
-    .replace(/^[a-z0-9_-]+_week\d+_/i, '')
+    .replace(/^[a-z0-9_-]+_week\d+_?/i, '')
     .replace(/\.(jpg|jpeg|png|webp)$/i, '');
-
   return raw
     .split(/[_-]+/)
     .filter(Boolean)
@@ -68,26 +61,23 @@ module.exports = async function handler(req, res) {
     return;
   }
 
-  const folder = weekNum >= 0
+  // Use path-based prefix — works with public_id folder structure (no asset_folder needed)
+  const prefix = weekNum >= 0
     ? `dp_progress/${athleteSlug}/week${weekNum}`
     : `dp_progress/${athleteSlug}`;
 
-  const expression = `folder="${folder}"`;
   const auth = Buffer.from(`${apiKey}:${apiSecret}`).toString('base64');
+  const qs = new URLSearchParams({
+    type: 'upload',
+    prefix,
+    max_results: '30',
+  });
 
   try {
-    const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/resources/search`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Basic ${auth}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        expression,
-        max_results: 30,
-        sort_by: [{ public_id: 'asc' }],
-      }),
-    });
+    const response = await fetch(
+      `https://api.cloudinary.com/v1_1/${cloudName}/resources/image?${qs}`,
+      { headers: { Authorization: `Basic ${auth}` } }
+    );
 
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
@@ -106,7 +96,7 @@ module.exports = async function handler(req, res) {
     }));
 
     res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=300');
-    res.status(200).json({ athlete: athleteSlug, week: weekNum, folder, photos });
+    res.status(200).json({ athlete: athleteSlug, week: weekNum, folder: prefix, photos });
   } catch (e) {
     console.error('[progress-photos]', e.message);
     res.status(500).json({ error: e.message });
