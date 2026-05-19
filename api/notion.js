@@ -23,7 +23,7 @@ function flattenProps(props) {
       case 'rich_text':    out[k] = rt(v.rich_text); break;
       case 'number':       out[k] = v.number; break;
       case 'select':       out[k] = v.select ? v.select.name : null; break;
-      case 'multi_select': out[k] = v.multi_select.map(s => s.name); break;
+      case 'multi_select': out[k] = v.multi_select.map(s => s.name).join(', '); break;
       case 'date':
         out[k] = v.date ? v.date.start : null;
         out[`date:${k}:start`] = v.date ? v.date.start : null;
@@ -45,8 +45,8 @@ function flattenProps(props) {
           out[k] = v.rollup.number || v.rollup.date || null;
         }
         break;
-      case 'people':       out[k] = v.people.map(p => p.name || p.id); break;
-      case 'files':        out[k] = v.files.map(f => f.name); break;
+      case 'people': out[k] = v.people.map(p => p.name || p.id).join(', '); break;
+      case 'files': out[k] = v.files.map(f => f.name).join(', '); break;
       case 'created_time': out[k] = v.created_time; break;
       case 'last_edited_time': out[k] = v.last_edited_time; break;
       default:             out[k] = null;
