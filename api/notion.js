@@ -37,7 +37,7 @@ function flattenProps(props) {
       case 'formula':
         out[k] = v.formula ? (v.formula.string || v.formula.number || v.formula.boolean) : null;
         break;
-      case 'relation':     out[k] = v.relation.map(r => r.id); break;
+      case 'relation': out[k] = null; break;
       case 'rollup':
         if (v.rollup && v.rollup.type === 'array') {
           out[k] = v.rollup.array.map(i => flattenProps({_: i})['_']).filter(Boolean);
