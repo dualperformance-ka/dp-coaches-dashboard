@@ -122,7 +122,7 @@ export default async function handler(req, res) {
       hasMore = data.has_more && !cursor;
       next = data.next_cursor;
     }
-    return res.json(all);
+    return res.json({ results: all });
   } catch (e) {
     return res.status(500).json({ error: e.message });
   }
