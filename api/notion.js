@@ -1,123 +1,129 @@
-// api/notion.js — Vercel serverless function
-// Proxies Notion API calls so the token stays server-side and CORS is handled.
-
+const NOTION_TOKEN = process.env.NOTION_TOKEN;
 const NOTION_VERSION = '2022-06-28';
-const MAX_PAGES = 600; // safety cap
+const BASE = 'https://api.notion.com/v1';
 
-// ─── Property parser ──────────────────────────────────────────────────────────
-
-function extractProp(prop) {
-  if (!prop) return null;
-  switch (prop.type) {
-    case 'title':
-      return prop.title?.map(t => t.plain_text).join('') ?? '';
-    case 'rich_text':
-      return prop.rich_text?.map(t => t.plain_text).join('') ?? '';
-    case 'number':
-      return prop.number ?? null;
-    case 'date':
-      return prop.date?.start ?? null;
-    case 'select':
-      return prop.select?.name ?? null;
-    case 'multi_select':
-      return (prop.multi_select ?? []).map(s => s.name);
-    case 'relation':
-      return (prop.relation ?? []).map(r => r.id);
-    case 'created_time':
-      return prop.created_time ?? null;
-    case 'checkbox':
-      return prop.checkbox ?? null;
-    case 'url':
-      return prop.url ?? null;
-    case 'email':
-      return prop.email ?? null;
-    case 'phone_number':
-      return prop.phone_number ?? null;
-    default:
-      return null;
-  }
+function headers() {
+  return {
+    'Authorization': `Bearer ${NOTION_TOKEN}`,
+    'Notion-Version': NOTION_VERSION,
+    'Content-Type': 'application/json'
+  };
 }
 
-function parsePage(page) {
-  const out = {
-    _id: page.id,
-    _url: page.url,
-    _createdTime: page.created_time,
-  };
-  for (const [key, val] of Object.entries(page.properties ?? {})) {
-    out[key] = extractProp(val);
-    // Mirror the MCP tool's date expansion for date-type properties
-    if (val?.type === 'date') {
-      out[`date:${key}:start`] = val.date?.start ?? null;
-      out[`date:${key}:end`] = val.date?.end ?? null;
-      out[`date:${key}:is_datetime`] = val.date?.start?.includes('T') ? 1 : 0;
+function rt(arr) {
+  if (!arr || !arr.length) return '';
+  return arr.map(t => t.plain_text || '').join('');
+}
+
+function flattenProps(props) {
+  const out = {};
+  for (const [k, v] of Object.entries(props || {})) {
+    switch (v.type) {
+      case 'title':        out[k] = rt(v.title); break;
+      case 'rich_text':    out[k] = rt(v.rich_text); break;
+      case 'number':       out[k] = v.number; break;
+      case 'select':       out[k] = v.select ? v.select.name : null; break;
+      case 'multi_select': out[k] = v.multi_select.map(s => s.name); break;
+      case 'date':
+        out[k] = v.date ? v.date.start : null;
+        out[`date:${k}:start`] = v.date ? v.date.start : null;
+        out[`date:${k}:end`]   = v.date ? v.date.end   : null;
+        out[`date:${k}:is_datetime`] = v.date ? (v.date.start && v.date.start.includes('T') ? 1 : 0) : 0;
+        break;
+      case 'checkbox':     out[k] = v.checkbox; break;
+      case 'url':          out[k] = v.url; break;
+      case 'email':        out[k] = v.email; break;
+      case 'phone_number': out[k] = v.phone_number; break;
+      case 'formula':
+        out[k] = v.formula ? (v.formula.string || v.formula.number || v.formula.boolean) : null;
+        break;
+      case 'relation':     out[k] = v.relation.map(r => r.id); break;
+      case 'rollup':
+        if (v.rollup && v.rollup.type === 'array') {
+          out[k] = v.rollup.array.map(i => flattenProps({_: i})['_']).filter(Boolean);
+        } else if (v.rollup) {
+          out[k] = v.rollup.number || v.rollup.date || null;
+        }
+        break;
+      case 'people':       out[k] = v.people.map(p => p.name || p.id); break;
+      case 'files':        out[k] = v.files.map(f => f.name); break;
+      case 'created_time': out[k] = v.created_time; break;
+      case 'last_edited_time': out[k] = v.last_edited_time; break;
+      default:             out[k] = null;
     }
   }
   return out;
 }
 
-// ─── Notion API call ──────────────────────────────────────────────────────────
-
-async function queryDatabase(dbId, token, startCursor = null) {
-  const body = { page_size: 100 };
-  if (startCursor) body.start_cursor = startCursor;
-
-  const res = await fetch(`https://api.notion.com/v1/databases/${dbId}/query`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Notion-Version': NOTION_VERSION,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(body),
-  });
-
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(`Notion API ${res.status}: ${err.message || res.statusText}`);
-  }
-
-  return res.json();
+function flattenBlock(block) {
+  const type = block.type;
+  const data = block[type] || {};
+  return {
+    id: block.id,
+    type,
+    text: rt(data.rich_text),
+    checked: data.checked ?? null,
+    color: data.color ?? null,
+    has_children: block.has_children ?? false,
+    url: data.url ?? null
+  };
 }
 
-// ─── Handler ──────────────────────────────────────────────────────────────────
-
-module.exports = async function handler(req, res) {
-  // CORS – open so the dashboard can be hosted anywhere
+export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  if (req.method === 'OPTIONS') { res.status(200).end(); return; }
+  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
+  if (req.method === 'OPTIONS') return res.status(200).end();
 
-  const { db } = req.query;
-  if (!db) {
-    res.status(400).json({ error: 'Missing ?db= query parameter' });
-    return;
+  const { db, cursor, page } = req.query;
+
+  // ── Page block fetching ──────────────────────────────────────────────────
+  if (page) {
+    try {
+      const all = [];
+      let next = undefined;
+      do {
+        const url = `${BASE}/blocks/${page}/children?page_size=100${next ? `&start_cursor=${next}` : ''}`;
+        const r = await fetch(url, { headers: headers() });
+        const data = await r.json();
+        if (data.object === 'error') return res.status(400).json({ error: data.message });
+        (data.results || []).forEach(b => all.push(flattenBlock(b)));
+        next = data.has_more ? data.next_cursor : null;
+      } while (next);
+      return res.json({ results: all });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
   }
 
-  const token = process.env.NOTION_TOKEN;
-  if (!token) {
-    res.status(500).json({ error: 'NOTION_TOKEN environment variable is not set' });
-    return;
-  }
+  // ── Database query ───────────────────────────────────────────────────────
+  if (!db) return res.status(400).json({ error: 'Missing ?db= query parameter' });
 
   try {
-    let allResults = [];
-    let cursor = null;
+    const all = [];
+    let next = cursor || undefined;
     let hasMore = true;
-
-    while (hasMore && allResults.length < MAX_PAGES) {
-      const data = await queryDatabase(db, token, cursor);
-      allResults = allResults.concat(data.results.map(parsePage));
-      hasMore = data.has_more;
-      cursor = data.next_cursor;
+    while (hasMore) {
+      const body = { page_size: 100 };
+      if (next) body.start_cursor = next;
+      const r = await fetch(`${BASE}/databases/${db}/query`, {
+        method: 'POST',
+        headers: headers(),
+        body: JSON.stringify(body)
+      });
+      const data = await r.json();
+      if (data.object === 'error') return res.status(400).json({ error: data.message });
+      (data.results || []).forEach(row => {
+        const flat = flattenProps(row.properties);
+        flat._id = row.id;
+        flat._url = row.url;
+        flat._createdTime = row.created_time;
+        all.push(flat);
+      });
+      hasMore = data.has_more && !cursor;
+      next = data.next_cursor;
     }
-
-    // Cache for 60 seconds at the CDN edge
-    res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate=30');
-    res.status(200).json({ results: allResults, total: allResults.length });
+    return res.json(all);
   } catch (e) {
-    console.error('[notion-proxy]', e.message);
-    res.status(500).json({ error: e.message });
+    return res.status(500).json({ error: e.message });
   }
-};
+}
