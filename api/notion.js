@@ -40,7 +40,7 @@ function flattenProps(props) {
       case 'relation': out[k] = null; break;
       case 'rollup':
         if (v.rollup && v.rollup.type === 'array') {
-          out[k] = v.rollup.array.map(i => flattenProps({_: i})['_']).filter(Boolean);
+          out[k] = v.rollup.array.map(i => flattenProps({_: i})['_']).filter(Boolean).join(', ');
         } else if (v.rollup) {
           out[k] = v.rollup.number || v.rollup.date || null;
         }
