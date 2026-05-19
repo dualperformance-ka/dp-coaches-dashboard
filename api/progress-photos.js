@@ -6,16 +6,19 @@ function parseCloudinaryUrl() {
   if (raw) {
     try {
       const url = new URL(raw);
-      return {
-        cloudName: url.hostname,
-        apiKey: decodeURIComponent(url.username),
-        apiSecret: decodeURIComponent(url.password),
-      };
+      const cloudName = url.hostname;
+      const apiKey = decodeURIComponent(url.username);
+      const apiSecret = decodeURIComponent(url.password);
+      // Only use if all three parsed correctly
+      if (cloudName && apiKey && apiSecret) {
+        return { cloudName, apiKey, apiSecret };
+      }
     } catch {
-      throw new Error('CLOUDINARY_URL is not valid');
+      // Fall through to individual env vars below
     }
   }
 
+  // Fallback: individual env vars (CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET)
   return {
     cloudName: process.env.CLOUDINARY_CLOUD_NAME,
     apiKey: process.env.CLOUDINARY_API_KEY,
