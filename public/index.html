@@ -272,6 +272,57 @@ header{background:#0a0a0a;padding:0 18px;height:62px;display:flex;align-items:ce
 .ai-loading-dot{width:5px;height:5px;border-radius:50%;background:var(--dim);animation:blink 1.2s infinite}
 .ai-loading-dot:nth-child(2){animation-delay:.2s}.ai-loading-dot:nth-child(3){animation-delay:.4s}
 
+/* ── Premium Card Layout ── */
+.pcard-tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:7px;align-items:center}
+
+/* 6-metric scores row */
+.pcard-metrics{display:flex;border-bottom:1px solid var(--border)}
+.pm{flex:1;padding:11px 2px;text-align:center;border-right:1px solid var(--border)}
+.pm:last-child{border-right:none}
+.pm-lbl{font-family:var(--mono);font-size:7px;color:var(--dim);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}
+.pm-val{font-size:20px;font-weight:900;line-height:1;letter-spacing:-.02em}
+.pm-val.good{color:var(--ok)}.pm-val.mid{color:var(--warn)}.pm-val.bad{color:var(--alert)}.pm-val.n{color:var(--text)}
+
+/* Progress bars */
+.pcard-bars{padding:10px 13px;display:flex;flex-direction:column;gap:8px;border-bottom:1px solid var(--border)}
+.pbar-row{display:flex;align-items:center;gap:9px}
+.pbar-lbl{font-family:var(--mono);font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;width:72px;flex-shrink:0}
+.pbar-track{flex:1;height:5px;background:rgba(0,0,0,.07);border-radius:3px;overflow:hidden}
+.pbar-fill{height:100%;border-radius:3px}
+.pbar-fill.good{background:var(--ok)}.pbar-fill.mid{background:var(--warn)}.pbar-fill.bad{background:var(--alert)}.pbar-fill.run{background:var(--run)}
+.pbar-val{font-family:var(--mono);font-size:11px;font-weight:700;min-width:60px;text-align:right;white-space:nowrap}
+.pbar-val.good{color:var(--ok)}.pbar-val.mid{color:var(--warn)}.pbar-val.bad{color:var(--alert)}.pbar-val.run{color:var(--run)}
+
+/* Training split */
+.pcard-training{display:grid;grid-template-columns:1fr 1fr;gap:0}
+.ptrain{padding:10px 12px;border-right:1px solid var(--border)}
+.ptrain:last-child{border-right:none}
+.ptrain-hdr{font-size:10px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;margin-bottom:5px;padding-bottom:5px;border-bottom:1px solid rgba(0,0,0,.06)}
+.ptrain-hdr.run{color:var(--run)}.ptrain-hdr.str{color:var(--str)}
+.ptrain-stat{font-family:var(--mono);font-size:9px;color:var(--muted);line-height:1.6;margin-bottom:2px}
+.ptrain-stat strong{color:var(--text);font-size:10px}
+.ptrain-pbar{height:3px;background:rgba(0,0,0,.08);border-radius:2px;margin:4px 0}
+.ptrain-pfill{height:100%;border-radius:2px}.ptrain-pfill.run{background:var(--run)}.ptrain-pfill.str{background:var(--str)}
+.ptrain-feel{font-family:var(--mono);font-size:8px;color:var(--muted);margin-top:3px}
+.ptrain-win{font-size:10px;color:var(--ok);margin-top:5px;line-height:1.4;padding-left:13px;position:relative}
+.ptrain-win::before{content:'✓';position:absolute;left:0;font-weight:800;font-size:9px}
+.ptrain-niggle{font-size:10px;color:var(--alert);margin-top:4px;line-height:1.4;padding-left:13px;position:relative}
+.ptrain-niggle::before{content:'⚠';position:absolute;left:0;font-size:9px}
+.pcard-training-sec{padding:0;border-bottom:1px solid var(--border)}
+.pcard-training-sec>.sec-ttl{padding:8px 13px 0;margin-bottom:8px}
+.pcard-training-sec .testim{margin:6px 13px 0}
+.pcard-training-sec .impact{margin:5px 13px 8px}
+
+/* Bottom stats strip */
+.pcard-stats{display:grid;border-bottom:1px solid var(--border);background:var(--surface2)}
+.pstat{padding:9px 6px;text-align:center;border-right:1px solid var(--border)}
+.pstat:last-child{border-right:none}
+.pstat-lbl{font-family:var(--mono);font-size:7px;color:var(--dim);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}
+.pstat-val{font-size:17px;font-weight:800;line-height:1;letter-spacing:-.01em}
+.pstat-unit{font-family:var(--mono);font-size:8px;color:var(--dim)}
+.pstat-trend{font-family:var(--mono);font-size:9px;font-weight:700;margin-left:1px}
+.pstat-trend.up{color:var(--ok)}.pstat-trend.dn{color:var(--alert)}.pstat-trend.flat{color:var(--dim)}
+
 /* ── Coaches Tab ── */
 .coaches-section{max-width:1400px;margin:0 auto;padding:14px 14px 40px}
 .coaches-intro{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 18px;margin-bottom:18px;display:flex;align-items:center;gap:12px}
@@ -1962,7 +2013,20 @@ function buildCard(a) {
   const bcls = hR ? 'red' : hY ? 'yellow' : '';
   const fps = a.flags.map(f => `<span class="fp ${f.t}">${esc(f.l)}</span>`).join('');
 
-  // ── Activity notification dot
+  // ── Meta text (check-in status)
+  let metaText;
+  const wkEndDisplay = fmtDate(a.expectedWeekEnd);
+  if (a.hasCurrentCheckin) {
+    metaText = `Week ending ${wkEndDisplay}`;
+  } else if (a.hasLastWeekCheckin && hW) {
+    metaText = `Submitted ${fmtDate(w['Week Ending'])} · wk ends ${wkEndDisplay}`;
+  } else if (hW) {
+    metaText = `No check-in — wk ends ${wkEndDisplay} · last ${fmtDate(w['Week Ending'])}`;
+  } else {
+    metaText = a.body.length ? 'Daily tracking only' : 'No recent data';
+  }
+
+  // ── Activity dot
   let actDotHtml = '';
   if (a.lastActivity) {
     const diffH = (Date.now() - new Date(a.lastActivity)) / 3600000;
@@ -1973,43 +2037,99 @@ function buildCard(a) {
     else if (diffD < 2)  { dotCls = 'today';  tsText = 'Active yesterday'; }
     else if (diffD < 7)  { dotCls = 'recent'; tsText = `Active ${Math.floor(diffD)}d ago`; }
     else                 { dotCls = 'old';    tsText = `Active ${Math.floor(diffD)}d ago`; }
-    actDotHtml = `<div class="act-ts"><span class="act-dot ${dotCls}"></span>${tsText}</div>`;
+    actDotHtml = `<span class="act-dot ${dotCls}"></span><span style="font-family:var(--mono);font-size:8px;color:rgba(255,255,255,.38);text-transform:uppercase;letter-spacing:.07em">${tsText}</span>`;
   }
 
-  // Scores
-  let scores = '';
+  // ── Action ribbon
+  let actionRibbonHtml = '';
+  if (a.actions?.severity) {
+    const list = [...(a.actions.critical || []), ...(a.actions.watch || []).slice(0, 2)].slice(0, 3);
+    if (list.length) {
+      actionRibbonHtml = `<div class="action-ribbon ${a.actions.severity === 'amber' ? 'amber' : ''}">
+        <div class="action-ribbon-title">${a.actions.severity === 'red' ? '⚠ Action Required' : '⚠ Watch List'}</div>
+        <div class="action-ribbon-list">${list.map(t => `<span>${esc(t)}</span>`).join('')}</div>
+      </div>`;
+    }
+  }
+
+  // ── Premium 6-metric row
+  let metricsHtml = '';
   if (hW) {
     const sx = [
-      { l: 'Energy',  v: w['Energy /10'],             inv: false },
       { l: 'Sleep',   v: w['Sleep hrs'],               inv: false },
-      { l: 'Sore',    v: w['Soreness /10'],            inv: true  },
-      { l: 'Stress',  v: w['Stress'],                  inv: true  },
-      { l: 'Motiv',   v: w['Motivation'],              inv: false },
-      { l: 'Nutr',    v: w['Nutrition Adherence /10'], inv: false },
+      { l: 'Energy',  v: w['Energy /10'],               inv: false },
+      { l: 'Stress',  v: w['Stress'],                   inv: true  },
+      { l: 'Sore',    v: w['Soreness /10'],              inv: true  },
+      { l: 'Motiv',   v: w['Motivation'],               inv: false },
+      { l: 'Nutr',    v: w['Nutrition Adherence /10'],   inv: false },
     ];
-    scores = `<div class="scores">${sx.map(x =>
-      `<div class="sc"><div class="sc-lbl">${esc(x.l)}</div><div class="sc-val ${scoreClass(x.v, x.inv)}">${esc(x.v) || '—'}</div></div>`
+    metricsHtml = `<div class="pcard-metrics">${sx.map(x =>
+      `<div class="pm"><div class="pm-lbl">${esc(x.l)}</div><div class="pm-val ${scoreClass(x.v, x.inv)}">${esc(x.v) || '—'}</div></div>`
     ).join('')}</div>`;
   }
 
-  // Compliance bar
-  let compBar = '';
+  // ── Progress bars: Recovery · Weekly KM · Compliance
+  const barRows = [];
+  if (a.recoveryScore !== null) {
+    const rc = a.recoveryScore >= 7.5 ? 'good' : a.recoveryScore >= 5 ? 'mid' : 'bad';
+    const pct = Math.round((a.recoveryScore / 10) * 100);
+    barRows.push(`<div class="pbar-row">
+      <span class="pbar-lbl">Recovery</span>
+      <div class="pbar-track"><div class="pbar-fill ${rc}" style="width:${pct}%"></div></div>
+      <span class="pbar-val ${rc}">${a.recoveryScore}/10</span>
+    </div>`);
+  }
+  if (hW) {
+    const km = parseFloat(w['Weekly Run KM']) || 0;
+    const kmTarget = parseFloat(a.target?.['Weekly KM Target']) || 0;
+    if (km > 0 || kmTarget > 0) {
+      const kmPct = kmTarget > 0 ? Math.min(100, Math.round(km / kmTarget * 100)) : 100;
+      const kmLabel = kmTarget > 0 ? `${km} / ${kmTarget} km` : `${km} km`;
+      barRows.push(`<div class="pbar-row">
+        <span class="pbar-lbl">Weekly KM</span>
+        <div class="pbar-track"><div class="pbar-fill run" style="width:${kmTarget > 0 ? kmPct : 100}%"></div></div>
+        <span class="pbar-val run">${kmLabel}</span>
+      </div>`);
+    }
+  }
   if (a.compliance !== null) {
     const cc = a.compliance >= 90 ? 'good' : a.compliance >= 70 ? 'mid' : 'bad';
-    compBar = `<div class="compliance-row">
-      <span class="comp-lbl">Compliance</span>
-      <div class="comp-track"><div class="comp-fill ${cc}" style="width:${a.compliance}%"></div></div>
-      <span class="comp-pct ${cc}">${a.compliance}%</span>
-    </div>`;
+    barRows.push(`<div class="pbar-row">
+      <span class="pbar-lbl">Compliance</span>
+      <div class="pbar-track"><div class="pbar-fill ${cc}" style="width:${a.compliance}%"></div></div>
+      <span class="pbar-val ${cc}">${a.compliance}%</span>
+    </div>`);
+  }
+  const barsHtml = barRows.length ? `<div class="pcard-bars">${barRows.join('')}</div>` : '';
+
+  // ── Sparkline strip
+  let sparkStripHtml = '';
+  if (a.trends) {
+    const cells = [
+      { key: 'sleep',  lbl: 'Sleep',  inv: false, color: '#3b82f6' },
+      { key: 'stress', lbl: 'Stress', inv: true,  color: '#dc2626' },
+      { key: 'energy', lbl: 'Energy', inv: false, color: '#f59e0b' },
+      { key: 'weight', lbl: 'Weight', inv: false, color: '#0a0a0a' },
+    ];
+    const cellsHtml = cells.map(c => {
+      const series = a.trends[c.key] || [];
+      const t = trendDelta(series, c.inv);
+      const last = [...series].reverse().find(p => p.value !== null);
+      const lastVal = last ? (Number.isInteger(last.value) ? last.value : last.value.toFixed(1)) : '—';
+      const arrow = t.dir === 'up' ? '↑' : t.dir === 'dn' ? '↓' : '→';
+      const dirCls = t.dir === 'up' ? 'up' : t.dir === 'dn' ? 'dn' : 'flat';
+      return `<div class="spark-cell">
+        <div class="spark-cell-lbl">${esc(c.lbl)}</div>
+        <div class="spark-cell-val ${dirCls}">${arrow} ${lastVal}</div>
+        ${sparkSVG(series, c.color)}
+      </div>`;
+    }).join('');
+    sparkStripHtml = `<div class="spark-strip">${cellsHtml}</div>`;
   }
 
-  // ── Week-in-progress section ──────────────────────────────────────────────────
-  // For athletes who haven't submitted this week's check-in, show current-week
-  // live session counts (resets to 0 on Monday). This makes it immediately clear
-  // how far into the week they are — separate from last week's completed data.
+  // ── Week-in-progress
   let weekInProgress = '';
   if (!a.hasCurrentCheckin) {
-    // Count completed planned sessions from athlete portal (ticked circles)
     const _RUN_PT = new Set(['Run','Tempo','Speed','Long Run','Easy Effort','race','Recovery','Run + Strength']);
     const _STR_PT = new Set(['Strength','Lift','Run + Strength']);
     const _planRun = (a.thisWeekPlan||[]).filter(r => {
@@ -2022,14 +2142,11 @@ function buildCard(a) {
       const ty = (r['Session Type'] || r['SessionType'] || '').trim();
       return st === 'Completed' && _STR_PT.has(ty);
     }).length;
-    // Use max of quality-data submissions vs portal ticks (no double-counting)
     const rCount  = Math.max(a.currRunS.length, _planRun);
     const sCount  = Math.max(a.currStrS.length, _planStr);
     const prCount = a.prevRunS.length;
     const psCount = a.prevStrS.length;
     const noThisWeek = rCount === 0 && sCount === 0;
-    // Show previous week's session counts when there are no sessions yet this week
-    // (common on Monday morning before anyone logs a session for the new week)
     const showPrev = noThisWeek && (prCount > 0 || psCount > 0);
     weekInProgress = `<div class="sec" style="background:var(--surface2);border-color:rgba(0,0,0,.06)">
       <div class="sec-ttl" style="color:var(--str)">📍 Week ${a.weekNum ?? ''} In Progress — ends ${fmtDate(a.expectedWeekEnd)}</div>
@@ -2046,154 +2163,31 @@ function buildCard(a) {
     </div>`;
   }
 
-  // Stale banner: BIG warning only for genuinely missing athletes (>8 days)
-  // Last-week submitters get a soft note — they submitted, new week just started
+  // ── Stale / last-week banner
   let staleBanner = '';
   if (hW && a.isStale) {
     staleBanner = `<div class="sec" style="background:#fef2f2;border-color:rgba(220,38,38,.18)">
-        <div style="display:flex;align-items:center;gap:7px">
-          <span style="font-size:13px">🚨</span>
-          <div>
-            <div style="font-family:var(--mono);font-size:9px;font-weight:700;color:#991b1b;text-transform:uppercase;letter-spacing:.08em">No check-in submitted this week</div>
-            <div style="font-family:var(--mono);font-size:9px;color:#b91c1c;margin-top:1px">Showing last submission — week ending ${fmtDate(w['Week Ending'])}</div>
-          </div>
+      <div style="display:flex;align-items:center;gap:7px">
+        <span style="font-size:13px">🚨</span>
+        <div>
+          <div style="font-family:var(--mono);font-size:9px;font-weight:700;color:#991b1b;text-transform:uppercase;letter-spacing:.08em">No check-in submitted this week</div>
+          <div style="font-family:var(--mono);font-size:9px;color:#b91c1c;margin-top:1px">Showing last submission — week ending ${fmtDate(w['Week Ending'])}</div>
         </div>
-      </div>`;
+      </div>
+    </div>`;
   } else if (hW && a.hasLastWeekCheckin) {
     staleBanner = `<div class="sec" style="background:#f0f9ff;border-color:rgba(14,165,233,.15)">
-        <div style="display:flex;align-items:center;gap:7px">
-          <span style="font-size:12px">📅</span>
-          <div>
-            <div style="font-family:var(--mono);font-size:9px;font-weight:700;color:#0369a1;text-transform:uppercase;letter-spacing:.08em">Last week's check-in</div>
-            <div style="font-family:var(--mono);font-size:9px;color:#0284c7;margin-top:1px">Submitted ${fmtDate(w['Week Ending'])} · new week ends ${fmtDate(a.expectedWeekEnd)}</div>
-          </div>
-        </div>
-      </div>`;
-  }
-
-  // Training
-  let training = '';
-  if (hW) {
-    const rp = parseInt(w['Run Planned']) || 0, rc = parseInt(w['Run Completed']) || 0;
-    const lp = parseInt(w['Lift Planned']) || 0, lc = parseInt(w['Lift Completed']) || 0;
-    const rPct = rp > 0 ? Math.min(100, Math.round(rc / rp * 100)) : 0;
-    const lPct = lp > 0 ? Math.min(100, Math.round(lc / lp * 100)) : 0;
-
-    training = `<div class="sec">
-      <div class="sec-ttl">${(() => {
-        // Show the week the submitted data actually belongs to, not the current week.
-        // dataWeekNum = current week minus however many weeks behind the check-in is.
-        const submittedEnd = w['Week Ending'];
-        let dataWeekNum = a.weekNum;
-        if (a.weekNum !== null && submittedEnd) {
-          const weeksBehind = Math.round(
-            (new Date(currentWeekEnd) - new Date(submittedEnd)) / (7 * 86400000)
-          );
-          dataWeekNum = Math.max(0, a.weekNum - weeksBehind);
-        }
-        const label = dataWeekNum === null ? 'Training'
-          : dataWeekNum === 0 ? 'Discovery Week Training'
-          : `Wk ${dataWeekNum} Training`;
-        return `${label} — ending ${fmtDate(submittedEnd) || '?'}`;
-      })()}</div>
-      <div class="tpair">
-        <div class="tb">
-          <div class="tt run">Run</div>
-          <div class="ts"><strong>${rc}/${rp}</strong> sessions · <strong>${esc(w['Weekly Run KM'] || '—')} km</strong></div>
-          <div class="pbar"><div class="pfill run" style="width:${rPct}%"></div></div>
-          <div class="ts">Feel: <strong>${esc(w['Run Feel /10'] || '—')}/10</strong></div>
-          ${isBad(w['Run Niggles']) ? `<div class="nl red"><span class="nl-lbl">⚠ Niggle</span>${esc(w['Run Niggles'])}</div>` : ''}
-          ${w['Runs Wins'] && w['Runs Wins'] !== 'n/a' ? `<div class="nl"><span class="nl-lbl">✓ Win</span>${esc(w['Runs Wins'])}</div>` : ''}
-        </div>
-        <div class="tb">
-          <div class="tt str">Lift</div>
-          <div class="ts"><strong>${lc}/${lp}</strong> sessions</div>
-          <div class="pbar"><div class="pfill str" style="width:${lPct}%"></div></div>
-          <div class="ts">Feel: <strong>${esc(w['Lift Feel /10'] || '—')}/10</strong></div>
-          ${isBad(w['Lifts Niggles']) ? `<div class="nl red"><span class="nl-lbl">⚠ Niggle</span>${esc(w['Lifts Niggles'])}</div>` : ''}
-          ${w['Lift Wins'] && w['Lift Wins'] !== 'n/a' ? `<div class="nl"><span class="nl-lbl">✓ Win</span>${esc(w['Lift Wins'])}</div>` : ''}
+      <div style="display:flex;align-items:center;gap:7px">
+        <span style="font-size:12px">📅</span>
+        <div>
+          <div style="font-family:var(--mono);font-size:9px;font-weight:700;color:#0369a1;text-transform:uppercase;letter-spacing:.08em">Last week's check-in</div>
+          <div style="font-family:var(--mono);font-size:9px;color:#0284c7;margin-top:1px">Submitted ${fmtDate(w['Week Ending'])} · new week ends ${fmtDate(a.expectedWeekEnd)}</div>
         </div>
       </div>
-      ${w['Testimonial'] ? `<div class="testim">"${esc(w['Testimonial'])}"</div>` : ''}
-      ${w['Upcoming Impact'] && w['Upcoming Impact'] !== 'n/a' ? `<div class="impact">⚡ ${esc(w['Upcoming Impact'])}</div>` : ''}
     </div>`;
   }
 
-  // Body
-  let bodyHtml = '';
-  if (a.bAvg.wt !== undefined || a.bAvg.sleep !== null) {
-    const bLast = [...a.body].sort((x, y) =>
-      (y['date:Date:start'] || y.Date || '') > (x['date:Date:start'] || x.Date || '') ? 1 : -1)[0];
-    const bn = bLast?.Notes;
-    bodyHtml = `<div class="sec">
-      <div class="sec-ttl">Body — 7-day avg</div>
-      <div class="body-grid">
-        ${a.bAvg.wt !== undefined ? `<div><div class="wnum">${esc(a.bAvg.wt)}<span class="wunit">kg</span></div><div class="wdate">${fmtDate(a.bAvg.wtd)}</div></div>` : ''}
-        <div class="bmet">
-          ${[{l:'Sleep',v:a.bAvg.sleep},{l:'Energy',v:a.bAvg.energy},{l:'Stress',v:a.bAvg.stress},{l:'Sore',v:a.bAvg.soreness}].map(m =>
-            `<div class="bm"><div class="bm-lbl">${m.l}</div><div class="bm-val">${m.v !== null ? m.v : '—'}</div></div>`).join('')}
-        </div>
-      </div>
-      ${bn ? `<div class="bnote">${esc(bn)}</div>` : ''}
-    </div>`;
-  }
-
-  // Nutrition — actual 7d avg + prescribed target for the current week
-  let nutrHtml = '';
-  if (a.nAvg.cal !== null || a.target) {
-    const t = a.target;
-    // Strip 'g' suffix from target values for display
-    const tCal  = t?.Calories ? String(t.Calories).replace(/[^\d.]/g,'') : null;
-    const tPro  = t?.Protein  ? String(t.Protein).replace(/[^\d.]/g,'')  : null;
-    const tCarb = t?.Carbs    ? String(t.Carbs).replace(/[^\d.]/g,'')    : null;
-    const tFat  = t?.Fats     ? String(t.Fats).replace(/[^\d.]/g,'')     : null;
-    const tKM   = t?.['Weekly KM Target'] ? String(t['Weekly KM Target']) : null;
-    const hasTarget = tCal || tPro || tCarb || tFat;
-
-    nutrHtml = `<div class="sec">
-      <div class="sec-ttl">Nutrition${a.nAvg.cal !== null ? ` — ${a.nAvg.days}d avg` : ''}</div>
-      ${a.nAvg.cal !== null ? `<div class="mrow" style="margin-bottom:${hasTarget?'6':'0'}px">
-        <div class="mc"><div class="mc-lbl">Calories</div><div class="mc-val">${a.nAvg.cal || '—'}</div></div>
-        <div class="mc"><div class="mc-lbl">Protein</div><div class="mc-val">${a.nAvg.pro || '—'}<span class="mc-unit">g</span></div></div>
-        <div class="mc"><div class="mc-lbl">Carbs</div><div class="mc-val">${a.nAvg.carb || '—'}<span class="mc-unit">g</span></div></div>
-        <div class="mc"><div class="mc-lbl">Fats</div><div class="mc-val">${a.nAvg.fat || '—'}<span class="mc-unit">g</span></div></div>
-      </div>` : ''}
-      ${hasTarget ? `<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:5px 8px;background:var(--coach-bg);border-radius:6px;border:1px solid var(--coach-border)">
-        <span style="font-family:var(--mono);font-size:7px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;white-space:nowrap">Wk ${a.weekNum ?? ''} Target →</span>
-        ${tCal  ? `<span style="font-family:var(--mono);font-size:9px;color:var(--coach-text)"><strong>${tCal}</strong> kcal</span>` : ''}
-        ${tPro  ? `<span style="font-family:var(--mono);font-size:9px;color:var(--coach-text)"><strong>${tPro}g</strong> P</span>` : ''}
-        ${tCarb ? `<span style="font-family:var(--mono);font-size:9px;color:var(--coach-text)"><strong>${tCarb}g</strong> C</span>` : ''}
-        ${tFat  ? `<span style="font-family:var(--mono);font-size:9px;color:var(--coach-text)"><strong>${tFat}g</strong> F</span>` : ''}
-        ${tKM   ? `<span style="font-family:var(--mono);font-size:9px;color:var(--run)"><strong>${tKM} km</strong> run</span>` : ''}
-      </div>` : ''}
-    </div>`;
-  }
-
-  // Session count (no weekly)
-  let sessHtml = '';
-  if (!hW && (a.runS.length || a.strS.length)) {
-    sessHtml = `<div class="sec">
-      <div class="sec-ttl">Sessions (7 days)</div>
-      <div class="sess-row">
-        <div class="scard"><div class="snum run-c">${a.runS.length}</div><div class="slbl">Run</div></div>
-        <div class="scard"><div class="snum str-c">${a.strS.length}</div><div class="slbl">Strength</div></div>
-      </div>
-    </div>`;
-  }
-
-  // Recovery score row
-  let recoveryHtml = '';
-  if (a.recoveryScore !== null) {
-    const rc = a.recoveryScore >= 7.5 ? 'good' : a.recoveryScore >= 5 ? 'mid' : 'bad';
-    const pct = Math.round((a.recoveryScore/10)*100);
-    recoveryHtml = `<div class="recovery-row">
-      <span class="recovery-lbl">Recovery</span>
-      <span class="recovery-score ${rc}">${a.recoveryScore}</span>
-      <div class="recovery-bar-wrap"><div class="recovery-bar ${rc}" style="width:${pct}%"></div></div>
-    </div>`;
-  }
-
-  // This week's plan
+  // ── This week's plan pills
   let planHtml = '';
   if (a.thisWeekPlan && a.thisWeekPlan.length) {
     const badges = a.thisWeekPlan.slice(0, 7).map(r =>
@@ -2208,7 +2202,119 @@ function buildCard(a) {
     </div>`;
   }
 
-  // Call Prep
+  // ── Premium training split: Run | Lift
+  let trainingHtml = '';
+  if (hW) {
+    const rp = parseInt(w['Run Planned']) || 0, rc2 = parseInt(w['Run Completed']) || 0;
+    const lp = parseInt(w['Lift Planned']) || 0, lc2 = parseInt(w['Lift Completed']) || 0;
+    const rPct = rp > 0 ? Math.min(100, Math.round(rc2 / rp * 100)) : 0;
+    const lPct = lp > 0 ? Math.min(100, Math.round(lc2 / lp * 100)) : 0;
+    const submittedEnd = w['Week Ending'];
+    let dataWeekNum = a.weekNum;
+    if (a.weekNum !== null && submittedEnd) {
+      const weeksBehind = Math.round((new Date(currentWeekEnd) - new Date(submittedEnd)) / (7 * 86400000));
+      dataWeekNum = Math.max(0, a.weekNum - weeksBehind);
+    }
+    const wkLabel = dataWeekNum === null ? 'Training' : dataWeekNum === 0 ? 'Discovery' : `Wk ${dataWeekNum}`;
+
+    trainingHtml = `<div class="sec pcard-training-sec">
+      <div class="sec-ttl">${wkLabel} Training — week ending ${fmtDate(submittedEnd) || '?'}</div>
+      <div class="pcard-training">
+        <div class="ptrain">
+          <div class="ptrain-hdr run">Running</div>
+          <div class="ptrain-stat"><strong>${rc2}/${rp}</strong> sessions · <strong>${esc(w['Weekly Run KM'] || '—')} km</strong></div>
+          <div class="ptrain-pbar"><div class="ptrain-pfill run" style="width:${rPct}%"></div></div>
+          ${w['Run Feel /10'] ? `<div class="ptrain-feel">Feel: ${esc(w['Run Feel /10'])}/10</div>` : ''}
+          ${w['Runs Wins'] && w['Runs Wins'] !== 'n/a' ? `<div class="ptrain-win">${esc(w['Runs Wins'])}</div>` : ''}
+          ${isBad(w['Run Niggles']) ? `<div class="ptrain-niggle">${esc(w['Run Niggles'])}</div>` : ''}
+        </div>
+        <div class="ptrain">
+          <div class="ptrain-hdr str">Lifting</div>
+          <div class="ptrain-stat"><strong>${lc2}/${lp}</strong> sessions</div>
+          <div class="ptrain-pbar"><div class="ptrain-pfill str" style="width:${lPct}%"></div></div>
+          ${w['Lift Feel /10'] ? `<div class="ptrain-feel">Feel: ${esc(w['Lift Feel /10'])}/10</div>` : ''}
+          ${w['Lift Wins'] && w['Lift Wins'] !== 'n/a' ? `<div class="ptrain-win">${esc(w['Lift Wins'])}</div>` : ''}
+          ${isBad(w['Lifts Niggles']) ? `<div class="ptrain-niggle">${esc(w['Lifts Niggles'])}</div>` : ''}
+        </div>
+      </div>
+      ${w['Testimonial'] ? `<div class="testim">"${esc(w['Testimonial'])}"</div>` : ''}
+      ${w['Upcoming Impact'] && w['Upcoming Impact'] !== 'n/a' ? `<div class="impact">⚡ ${esc(w['Upcoming Impact'])}</div>` : ''}
+    </div>`;
+  }
+
+  // ── Bottom stats strip: Weight · Compliance · Energy · Calories
+  const statCells = [];
+  if (a.bAvg.wt !== undefined) {
+    const wtTrend = a.trends?.weight ? trendDelta(a.trends.weight, false) : { dir: 'flat' };
+    const wtArrow = wtTrend.dir === 'up' ? '↑' : wtTrend.dir === 'dn' ? '↓' : '';
+    const wtCls   = wtTrend.dir === 'up' ? 'up' : wtTrend.dir === 'dn' ? 'dn' : 'flat';
+    statCells.push(`<div class="pstat">
+      <div class="pstat-lbl">Weight</div>
+      <div><span class="pstat-val">${esc(a.bAvg.wt)}</span><span class="pstat-unit"> kg</span><span class="pstat-trend ${wtCls}">${wtArrow}</span></div>
+    </div>`);
+  }
+  if (a.compliance !== null) {
+    const cCls = a.compliance >= 90 ? 'var(--ok)' : a.compliance >= 70 ? 'var(--warn)' : 'var(--alert)';
+    statCells.push(`<div class="pstat">
+      <div class="pstat-lbl">Compliance</div>
+      <div><span class="pstat-val" style="color:${cCls}">${a.compliance}</span><span class="pstat-unit">%</span></div>
+    </div>`);
+  }
+  if (a.bAvg.energy !== null) {
+    const eTrend = a.trends?.energy ? trendDelta(a.trends.energy, false) : { dir: 'flat' };
+    const eArrow = eTrend.dir === 'up' ? '↑' : eTrend.dir === 'dn' ? '↓' : '';
+    const eCls   = eTrend.dir === 'up' ? 'up' : eTrend.dir === 'dn' ? 'dn' : 'flat';
+    statCells.push(`<div class="pstat">
+      <div class="pstat-lbl">Energy</div>
+      <div><span class="pstat-val">${a.bAvg.energy}</span><span class="pstat-unit">/10</span><span class="pstat-trend ${eCls}">${eArrow}</span></div>
+    </div>`);
+  }
+  if (a.nAvg.cal !== null) {
+    statCells.push(`<div class="pstat">
+      <div class="pstat-lbl">Calories</div>
+      <div><span class="pstat-val">${Number(a.nAvg.cal).toLocaleString()}</span><span class="pstat-unit"> kcal</span></div>
+    </div>`);
+  }
+  const statsStripHtml = statCells.length >= 2
+    ? `<div class="pcard-stats" style="grid-template-columns:repeat(${statCells.length},1fr)">${statCells.join('')}</div>`
+    : '';
+
+  // ── Nutrition target (compact)
+  let nutrTargetHtml = '';
+  if (a.target) {
+    const t = a.target;
+    const tCal  = t.Calories ? String(t.Calories).replace(/[^\d.]/g,'') : null;
+    const tPro  = t.Protein  ? String(t.Protein).replace(/[^\d.]/g,'')  : null;
+    const tCarb = t.Carbs    ? String(t.Carbs).replace(/[^\d.]/g,'')    : null;
+    const tFat  = t.Fats     ? String(t.Fats).replace(/[^\d.]/g,'')     : null;
+    const tKM   = t['Weekly KM Target'] ? String(t['Weekly KM Target']) : null;
+    if (tCal || tPro || tCarb || tFat) {
+      nutrTargetHtml = `<div class="sec">
+        <div class="sec-ttl">Wk ${a.weekNum ?? ''} Targets</div>
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:6px 9px;background:var(--coach-bg);border-radius:6px;border:1px solid var(--coach-border)">
+          ${tCal  ? `<span style="font-family:var(--mono);font-size:9px;color:var(--coach-text)"><strong>${tCal}</strong> kcal</span>` : ''}
+          ${tPro  ? `<span style="font-family:var(--mono);font-size:9px;color:var(--coach-text)"><strong>${tPro}g</strong> P</span>` : ''}
+          ${tCarb ? `<span style="font-family:var(--mono);font-size:9px;color:var(--coach-text)"><strong>${tCarb}g</strong> C</span>` : ''}
+          ${tFat  ? `<span style="font-family:var(--mono);font-size:9px;color:var(--coach-text)"><strong>${tFat}g</strong> F</span>` : ''}
+          ${tKM   ? `<span style="font-family:var(--mono);font-size:9px;color:var(--run)"><strong>${tKM} km</strong> run</span>` : ''}
+        </div>
+      </div>`;
+    }
+  }
+
+  // ── Session count (no weekly)
+  let sessHtml = '';
+  if (!hW && (a.runS.length || a.strS.length)) {
+    sessHtml = `<div class="sec">
+      <div class="sec-ttl">Sessions (7 days)</div>
+      <div class="sess-row">
+        <div class="scard"><div class="snum run-c">${a.runS.length}</div><div class="slbl">Run</div></div>
+        <div class="scard"><div class="snum str-c">${a.strS.length}</div><div class="slbl">Strength</div></div>
+      </div>
+    </div>`;
+  }
+
+  // ── Call Prep
   const callPrep = buildCallPrep(a);
   const cpId = `cp-${a.id.replace(/\s+/g,'-')}`;
   const savedNote = callNotes[a.id] || '';
@@ -2242,79 +2348,26 @@ function buildCard(a) {
       </div>
     </div>`;
 
-  // Card header: always anchored to the same expected week end for all athletes.
-  // Three states:
-  //  1. hasCurrentCheckin  → "Week ending DD-MM"           (normal, this week's data)
-  //  2. hasLastWeekCheckin → "Last wk · wk ends DD-MM"     (soft amber — submitted recently but new week started)
-  //  3. isStale            → "No check-in · wk ends DD-MM · last DD-MM"  (red warning)
-  let metaText;
-  const wkEndDisplay = fmtDate(a.expectedWeekEnd);
-  if (a.hasCurrentCheckin) {
-    metaText = `Week ending ${wkEndDisplay}`;
-  } else if (a.hasLastWeekCheckin && hW) {
-    metaText = `Submitted ${fmtDate(w['Week Ending'])} · wk ends ${wkEndDisplay}`;
-  } else if (hW) {
-    const lastStr = ` · last ${fmtDate(w['Week Ending'])}`;
-    metaText = `No check-in — wk ends ${wkEndDisplay}${lastStr}`;
-  } else {
-    metaText = a.body.length ? 'Daily tracking only' : 'No recent data';
-  }
-
-  // ── Action Required Ribbon ────────────────────────────────────────────────
-  let actionRibbonHtml = '';
-  if (a.actions && a.actions.severity) {
-    const list = [...a.actions.critical, ...a.actions.watch.slice(0, 2)].slice(0, 3);
-    if (list.length) {
-      actionRibbonHtml = `<div class="action-ribbon ${a.actions.severity === 'amber' ? 'amber' : ''}">
-        <div class="action-ribbon-title">${a.actions.severity === 'red' ? '⚠ Action Required' : '⚠ Watch List'}</div>
-        <div class="action-ribbon-list">${list.map(t => `<span>${esc(t)}</span>`).join('')}</div>
-      </div>`;
-    }
-  }
-
-  // ── Sparkline strip: 7-day glance at recovery vitals ──────────────────────
-  let sparkStripHtml = '';
-  if (a.trends) {
-    const cells = [
-      { key: 'sleep',    lbl: 'Sleep',  inv: false, color: '#3b82f6', unit: '/10' },
-      { key: 'stress',   lbl: 'Stress', inv: true,  color: '#dc2626', unit: '/10' },
-      { key: 'energy',   lbl: 'Energy', inv: false, color: '#f59e0b', unit: '/10' },
-      { key: 'weight',   lbl: 'Weight', inv: false, color: '#0a0a0a', unit: 'kg' },
-    ];
-    const cellsHtml = cells.map(c => {
-      const series = a.trends[c.key] || [];
-      const t = trendDelta(series, c.inv);
-      const last = [...series].reverse().find(p => p.value !== null);
-      const lastVal = last ? (Number.isInteger(last.value) ? last.value : last.value.toFixed(1)) : '—';
-      const arrow = t.dir === 'up' ? '↑' : t.dir === 'dn' ? '↓' : '→';
-      const dirCls = t.dir === 'up' ? 'up' : t.dir === 'dn' ? 'dn' : 'flat';
-      return `<div class="spark-cell">
-        <div class="spark-cell-lbl">${esc(c.lbl)}</div>
-        <div class="spark-cell-val ${dirCls}">${arrow} ${lastVal}</div>
-        ${sparkSVG(series, c.color)}
-      </div>`;
-    }).join('');
-    sparkStripHtml = `<div class="spark-strip">${cellsHtml}</div>`;
-  }
-
+  // ── Assemble card
   return `<div class="card ${bcls}" data-card="${esc(a.id)}" data-alert="${a.alertScore}" data-name="${esc(a.id)}" data-week="${a.weekNum ?? 0}" data-compliance="${a.compliance ?? 0}" data-checkin="${w?.['Week Ending'] || ''}" data-lastactive="${a.lastActivity || ''}">
     <div class="card-head">
       <div class="card-head-top">
         <div>
           <div class="aname">${esc(a.id)}</div>
           <div class="ameta ${a.isStale ? 'nocheckin' : ''}">${metaText}</div>
-          ${actDotHtml}
+          ${fps || actDotHtml ? `<div class="pcard-tags">${fps}${actDotHtml ? `<span style="display:inline-flex;align-items:center;gap:4px;margin-left:${fps?'2':'0'}px">${actDotHtml}</span>` : ''}</div>` : ''}
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">
           <button class="fp-open-btn" onclick="showFP('${esc(a.id)}')">⤢ Full Page</button>
           ${a.weekNum !== null ? `<div class="week-badge"><div class="wk-num">${a.weekNum}</div><div class="wk-lbl">${a.weekNum === 0 ? 'Discovery' : 'Week'}</div></div>` : ''}
         </div>
       </div>
-      ${a.flags.length ? `<div class="flags">${fps}</div>` : ''}
     </div>
     ${actionRibbonHtml}
+    ${metricsHtml}
+    ${barsHtml}
     ${sparkStripHtml}
-    ${weekInProgress}${staleBanner}${recoveryHtml}${planHtml}${compBar}${scores}${training}${bodyHtml}${nutrHtml}${sessHtml}
+    ${weekInProgress}${staleBanner}${planHtml}${trainingHtml}${statsStripHtml}${nutrTargetHtml}${sessHtml}
     <div class="ai-sec"></div>
     ${callPrepHtml}
   </div>`;
