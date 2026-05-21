@@ -3,350 +3,235 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DP Coaches Dashboard v2</title>
+<title>DP Coaches Dashboard</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800;900&family=Barlow:ital,wght@0,400;0,500;0,600;1,400&family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800;900&family=Barlow:ital,wght@0,400;0,500;0,600;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 :root{
-  /* ── Premium dark surfaces ── */
-  --bg:#0d0d0f;
-  --surface:#16161a;
-  --surface2:#1e1e24
-  --surface3:#26262e;
-  --card:#18181d;
-  --card-hover:#1e1e26;
-
-  /* ── Borders ── */
-  --border:rgba(255,255,255,.07);
-  --border-mid:rgba(255,255,255,.12);
-  --border-hi:rgba(255,255,255,.2);
-
-  /* ── Text ── */
-  --text:#f0f0f2;
-  --muted:#8a8a9a;
-  --dim:#555560;
-
-  /* ── Brand colours ── */
-  --run:#f97316;        /* orange — running */
-  --run-dim:#7c2d12;
-  --run-bg:rgba(249,115,22,.1);
-  --str:#6366f1;        /* indigo — strength */
-  --str-dim:#312e81;
-  --str-bg:rgba(99,102,241,.1);
-
-  /* ── Signal ── */
-  --ok:#22c55e;
-  --ok-bg:rgba(34,197,94,.1);
-  --ok-border:rgba(34,197,94,.25);
-  --warn:#f59e0b;
-  --warn-bg:rgba(245,158,11,.1);
-  --warn-border:rgba(245,158,11,.25);
-  --alert:#ef4444;
-  --alert-bg:rgba(239,68,68,.1);
-  --alert-border:rgba(239,68,68,.25);
-
-  /* ── Semantic badge fills ── */
-  --green-bg:rgba(34,197,94,.12);--green-border:rgba(34,197,94,.3);--green-text:#4ade80;
-  --amber-bg:rgba(245,158,11,.12);--amber-border:rgba(245,158,11,.3);--amber-text:#fcd34d;
-  --red-bg:rgba(239,68,68,.12);--red-border:rgba(239,68,68,.3);--red-text:#fca5a5;
-  --coach-bg:rgba(99,102,241,.12);--coach-border:rgba(99,102,241,.3);--coach-text:#a5b4fc;
-
-  /* ── Amber alias (used by macro bars etc) ── */
+  --bg:#f4f3f0;--surface:#fff;--surface2:#f0ede8;
+  --border:rgba(0,0,0,.08);--border-mid:rgba(0,0,0,.14);
+  --text:#0a0a0a;--muted:#5a5a5a;--dim:#999;
+  --run:#b45309;--str:#1e3a8a;
   --amber:#f59e0b;--amber-dim:#fcd34d;
-
-  /* ── Typography ── */
+  --ok:#15803d;--warn:#d97706;--alert:#dc2626;
   --mono:'DM Mono','SF Mono','Fira Code',monospace;
-  --sans:'Inter','Barlow',system-ui,sans-serif;
+  --sans:'Barlow',system-ui,sans-serif;
   --cond:'Barlow Condensed','Arial Narrow',sans-serif;
-
-  /* ── Radius ── */
-  --r-sm:6px;--r-md:10px;--r-lg:14px;--r-xl:18px;
+  --green-bg:#f0fdf4;--green-border:#86efac;--green-text:#15803d;
+  --amber-bg:#fffbeb;--amber-border:#fcd34d;--amber-text:#92400e;
+  --red-bg:#fef2f2;--red-border:#fca5a5;--red-text:#991b1b;
+  --coach-bg:#f0f4ff;--coach-border:#a5b4fc;--coach-text:#3730a3;
 }
-
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;line-height:1.5}
 
-/* ────────────────────────────────────────────────────────── Header */
-header{
-  background:rgba(13,13,15,.95);
-  backdrop-filter:blur(12px);
-  padding:0 20px;height:60px;
-  display:flex;align-items:center;justify-content:space-between;
-  position:sticky;top:0;z-index:100;gap:12px;
-  border-bottom:1px solid var(--border);
-}
+/* ── Header ── */
+header{background:#0a0a0a;padding:0 18px;height:62px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;gap:12px;border-bottom:1px solid rgba(255,255,255,.06)}
 .logo-block{display:flex;align-items:center;gap:14px;flex-shrink:0}
-.logo-mark{height:34px;width:auto;display:block}
-.logo-text{display:flex;flex-direction:column;line-height:1;gap:3px}
-.logo{font-size:14px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;white-space:nowrap;line-height:1;font-family:var(--sans)}
-.logo .d{color:#fff}.logo .p{color:rgba(255,255,255,.28)}
-.coach-pill{
-  display:inline-flex;align-items:center;gap:5px;
-  background:linear-gradient(90deg,rgba(239,68,68,.25),rgba(239,68,68,.1));
-  border:1px solid rgba(239,68,68,.35);
-  color:#fca5a5;font-family:var(--mono);font-size:8px;font-weight:700;
-  text-transform:uppercase;letter-spacing:.14em;padding:3px 8px 3px 6px;
-  border-radius:4px;width:fit-content;
-}
-.coach-pill::before{content:'';width:5px;height:5px;border-radius:50%;background:#ef4444;box-shadow:0 0 6px #ef4444}
-.h-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
-.updated{font-family:var(--mono);font-size:9px;color:var(--dim);white-space:nowrap}
-.coach-select{
-  background:rgba(255,255,255,.05);border:1px solid var(--border-mid);
-  color:var(--text);font-family:var(--mono);font-size:10px;
-  padding:5px 10px;border-radius:var(--r-sm);cursor:pointer;outline:none;
-}
-.coach-select option{background:#16161a;color:#fff}
-.refresh-btn{
-  background:transparent;border:1px solid var(--border-mid);
-  color:var(--muted);font-family:var(--mono);font-size:10px;
-  padding:5px 12px;border-radius:var(--r-sm);cursor:pointer;
-  text-transform:uppercase;letter-spacing:.06em;transition:all .15s;
-}
-.refresh-btn:hover{border-color:var(--border-hi);color:var(--text)}
-.refresh-btn:disabled{opacity:.35;cursor:not-allowed}
+.logo-mark{height:36px;width:auto;display:block}
+.logo-text{display:flex;flex-direction:column;line-height:1;gap:2px}
+.logo{font-size:15px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;white-space:nowrap;line-height:1}
+.logo .d{color:#fff}.logo .p{color:rgba(255,255,255,.32)}
+.coach-pill{display:inline-flex;align-items:center;gap:6px;background:linear-gradient(90deg,#dc2626 0%,#991b1b 100%);color:#fff;font-family:var(--mono);font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;padding:3px 9px 3px 7px;border-radius:4px;width:fit-content;box-shadow:0 1px 0 rgba(255,255,255,.1) inset}
+.coach-pill::before{content:'';width:5px;height:5px;border-radius:50%;background:#fff;box-shadow:0 0 6px rgba(255,255,255,.6)}
+.h-mid{display:none}
+.h-right{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.updated{font-family:var(--mono);font-size:9px;color:rgba(255,255,255,.32);white-space:nowrap}
+.coach-select{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);color:#fff;font-family:var(--mono);font-size:10px;padding:5px 10px 5px 8px;border-radius:6px;cursor:pointer;outline:none;letter-spacing:.04em}
+.coach-select:hover{background:rgba(255,255,255,.1)}
+.coach-select option{background:#0a0a0a;color:#fff}
+.refresh-btn{background:transparent;border:1px solid rgba(255,255,255,.18);color:rgba(255,255,255,.55);font-family:var(--mono);font-size:10px;padding:5px 12px;border-radius:6px;cursor:pointer;text-transform:uppercase;letter-spacing:.06em;transition:all .15s}
+.refresh-btn:hover{border-color:rgba(255,255,255,.4);color:#fff}
+.refresh-btn:disabled{opacity:.4;cursor:not-allowed}
 
-/* ────────────────────────────────────────────────────────── Tab Bar */
-.tab-bar{
-  background:rgba(13,13,15,.95);backdrop-filter:blur(12px);
-  border-bottom:1px solid var(--border);
-  padding:0 20px;display:flex;align-items:flex-end;gap:1px;
-  position:sticky;top:60px;z-index:99;
-}
-.tab{
-  background:transparent;border:none;
-  border-bottom:2px solid transparent;
-  color:var(--dim);font-family:var(--mono);font-size:10px;font-weight:600;
-  text-transform:uppercase;letter-spacing:.1em;
-  padding:10px 16px 9px;cursor:pointer;transition:all .15s;
-  white-space:nowrap;display:flex;align-items:center;gap:6px;
-}
-.tab:hover{color:var(--muted)}
+/* ── Tab Bar (raised for taller header) ── */
+.tab-bar{background:#0a0a0a;border-bottom:1px solid rgba(255,255,255,.08);padding:0 18px;display:flex;align-items:flex-end;gap:2px;position:sticky;top:62px;z-index:99}
+.tab{background:transparent;border:none;border-bottom:2px solid transparent;color:rgba(255,255,255,.35);font-family:var(--mono);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;padding:10px 16px 9px;cursor:pointer;transition:all .15s;white-space:nowrap;display:flex;align-items:center;gap:6px}
+.tab:hover{color:rgba(255,255,255,.65)}
 .tab.active{color:#fff;border-bottom-color:#fff}
-.tab-badge{
-  background:rgba(255,255,255,.08);border-radius:20px;
-  padding:1px 7px;font-size:9px;min-width:20px;text-align:center;
-}
-.tab.active .tab-badge{background:rgba(255,255,255,.15)}
-.tab-badge.red{background:rgba(239,68,68,.3);color:#fca5a5}
+.tab-badge{background:rgba(255,255,255,.12);border-radius:20px;padding:1px 7px;font-size:9px;min-width:20px;text-align:center}
+.tab.active .tab-badge{background:rgba(255,255,255,.22)}
+.tab-badge.red{background:rgba(220,38,38,.5);color:#fca5a5}
 
-/* ────────────────────────────────────────────────────────── Filter Bar */
-.filter-bar{
-  background:var(--surface);border-bottom:1px solid var(--border);
-  padding:8px 20px;display:flex;align-items:center;gap:10px;
-  flex-wrap:wrap;position:sticky;top:97px;z-index:98;
-}
-.search-input{
-  border:1px solid var(--border-mid);border-radius:var(--r-sm);
-  padding:6px 12px;font-family:var(--mono);font-size:11px;
-  color:var(--text);background:var(--surface2);outline:none;
-  min-width:180px;transition:border .15s;
-}
-.search-input:focus{border-color:var(--border-hi)}
+/* ── Filter Bar ── */
+.filter-bar{background:var(--surface);border-bottom:1px solid var(--border);padding:8px 18px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;position:sticky;top:94px;z-index:98}
+.search-input{border:1px solid var(--border-mid);border-radius:7px;padding:6px 12px;font-family:var(--mono);font-size:11px;color:var(--text);background:var(--surface);outline:none;min-width:180px;transition:border .15s}
+.search-input:focus{border-color:rgba(0,0,0,.3)}
 .search-input::placeholder{color:var(--dim)}
-.sf-group{display:flex;gap:3px;align-items:center}
-.sf{
-  background:transparent;border:1px solid var(--border-mid);
-  border-radius:20px;padding:4px 12px;
-  font-family:var(--mono);font-size:9px;font-weight:600;
-  text-transform:uppercase;letter-spacing:.06em;
-  cursor:pointer;color:var(--muted);transition:all .15s;
-}
-.sf:hover{border-color:var(--border-hi);color:var(--text)}
-.sf.active{background:var(--surface3);border-color:var(--border-hi);color:#fff}
-.sf.sf-red.active{background:var(--alert-bg);border-color:var(--alert-border);color:var(--red-text)}
-.sf.sf-amber.active{background:var(--warn-bg);border-color:var(--warn-border);color:var(--amber-text)}
-.sf.sf-green.active{background:var(--ok-bg);border-color:var(--ok-border);color:var(--green-text)}
-.sort-select{
-  border:1px solid var(--border-mid);border-radius:var(--r-sm);
-  padding:5px 10px;font-family:var(--mono);font-size:10px;
-  color:var(--muted);background:var(--surface2);cursor:pointer;outline:none;
-}
-.filter-divider{width:1px;height:22px;background:var(--border)}
+.sf-group{display:flex;gap:4px;align-items:center}
+.sf{background:transparent;border:1px solid var(--border-mid);border-radius:20px;padding:4px 12px;font-family:var(--mono);font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;cursor:pointer;color:var(--muted);transition:all .15s}
+.sf:hover{border-color:rgba(0,0,0,.25);color:var(--text)}
+.sf.active{background:#0a0a0a;border-color:#0a0a0a;color:#fff}
+.sf.sf-red.active{background:var(--alert);border-color:var(--alert);color:#fff}
+.sf.sf-amber.active{background:var(--warn);border-color:var(--warn);color:#fff}
+.sf.sf-green.active{background:var(--ok);border-color:var(--ok);color:#fff}
+.sort-select{border:1px solid var(--border-mid);border-radius:7px;padding:5px 10px;font-family:var(--mono);font-size:10px;color:var(--muted);background:var(--surface);cursor:pointer;outline:none}
+.filter-divider{width:1px;height:22px;background:var(--border-mid)}
 .filter-label{font-family:var(--mono);font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;white-space:nowrap}
 
-/* ────────────────────────────────────────────────────────── Layout */
-.main{padding:16px 16px 60px;max-width:1440px;margin:0 auto}
+/* ── Layout ── */
+.main{padding:14px 14px 40px;max-width:1400px;margin:0 auto}
 
-/* ────────────────────────────────────────────────────────── Summary Bar */
-.summary-bar{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
-.sum-card{
-  background:var(--surface);border:1px solid var(--border);
-  border-radius:var(--r-md);padding:10px 16px;min-width:90px;
-  transition:border-color .15s;
-}
-.sum-card:hover{border-color:var(--border-mid)}
-.sum-num{font-size:22px;font-weight:700;letter-spacing:-.02em;line-height:1;margin-bottom:2px;font-variant-numeric:tabular-nums}
+/* ── Summary bar ── */
+.summary-bar{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+.sum-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 16px;min-width:100px}
+.sum-num{font-size:24px;font-weight:800;letter-spacing:-.01em;line-height:1;margin-bottom:1px}
 .sum-num.red{color:var(--alert)}.sum-num.grn{color:var(--ok)}.sum-num.run-c{color:var(--run)}.sum-num.str-c{color:var(--str)}
 .sum-lbl{font-family:var(--mono);font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em}
 
-/* ────────────────────────────────────────────────────────── Command Centre */
-.command-center{display:grid;grid-template-columns:minmax(280px,1.1fr) minmax(260px,.9fr);gap:12px;margin-bottom:16px}
-.cc-panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-xl);overflow:hidden}
-.cc-hero{
-  background:linear-gradient(135deg,#111116 0%,#191920 100%);
-  border-bottom:1px solid var(--border);
-  color:#fff;padding:18px 20px;
-  display:flex;align-items:flex-start;justify-content:space-between;gap:18px;
-}
-.cc-kicker{font-family:var(--mono);font-size:9px;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.14em;margin-bottom:5px}
-.cc-title{font-family:var(--cond);font-size:30px;font-weight:900;line-height:.95;text-transform:uppercase;letter-spacing:.04em}
-.cc-sub{font-size:11px;color:rgba(255,255,255,.45);margin-top:8px;max-width:560px;line-height:1.45}
-.cc-score{display:grid;grid-template-columns:repeat(3,68px);gap:6px;flex-shrink:0}
-.cc-score-card{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:var(--r-md);padding:8px 6px;text-align:center}
-.cc-score-num{font-size:24px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
+/* ── Command centre ── */
+.command-center{display:grid;grid-template-columns:minmax(280px,1.1fr) minmax(260px,.9fr);gap:12px;margin-bottom:14px}
+.cc-panel{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden}
+.cc-hero{background:#0a0a0a;color:#fff;padding:16px 18px;display:flex;align-items:flex-start;justify-content:space-between;gap:18px}
+.cc-kicker{font-family:var(--mono);font-size:9px;color:rgba(255,255,255,.42);text-transform:uppercase;letter-spacing:.14em;margin-bottom:5px}
+.cc-title{font-family:var(--cond);font-size:34px;font-weight:900;line-height:.95;text-transform:uppercase;letter-spacing:.04em}
+.cc-sub{font-size:12px;color:rgba(255,255,255,.62);margin-top:8px;max-width:560px;line-height:1.45}
+.cc-score{display:grid;grid-template-columns:repeat(3,72px);gap:7px;flex-shrink:0}
+.cc-score-card{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.13);border-radius:9px;padding:9px 7px;text-align:center}
+.cc-score-num{font-size:26px;font-weight:900;line-height:1}
 .cc-score-num.red{color:#fca5a5}.cc-score-num.amber{color:#fcd34d}.cc-score-num.green{color:#86efac}
-.cc-score-lbl{font-family:var(--mono);font-size:7px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.1em;margin-top:4px}
+.cc-score-lbl{font-family:var(--mono);font-size:7px;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:.1em;margin-top:4px}
 .cc-body{display:grid;grid-template-columns:1fr 1fr;gap:0;border-top:1px solid var(--border)}
-.cc-list{padding:13px 15px;border-right:1px solid var(--border);min-height:160px}
+.cc-list{padding:13px 15px;border-right:1px solid var(--border);min-height:170px}
 .cc-list:last-child{border-right:none}
 .cc-list-title{font-family:var(--mono);font-size:9px;font-weight:800;color:var(--dim);text-transform:uppercase;letter-spacing:.12em;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:8px}
 .cc-list-count{font-size:9px;color:var(--muted);background:var(--surface2);border-radius:20px;padding:2px 7px}
 .cc-athlete{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)}
-.cc-athlete[type="button"]{background:transparent;border:0;border-bottom:1px solid var(--border);width:100%;text-align:left;cursor:pointer;font:inherit;transition:background .12s;border-radius:4px;padding:8px 4px}
-.cc-athlete[type="button"]:hover{background:var(--surface2)}
+.cc-athlete[type="button"]{background:transparent;border:0;border-bottom:1px solid var(--border);width:100%;text-align:left;cursor:pointer;font:inherit}
 .cc-athlete:last-child{border-bottom:none}
-.cc-athlete-name{font-family:var(--cond);font-size:17px;font-weight:900;line-height:1;text-transform:uppercase;letter-spacing:.05em;color:var(--text)}
-.cc-athlete-reason{font-size:10px;color:var(--muted);line-height:1.35;margin-top:2px}
-.cc-chip{font-family:var(--mono);font-size:8px;text-transform:uppercase;letter-spacing:.08em;border-radius:20px;padding:3px 7px;white-space:nowrap;border:1px solid}
-.cc-chip.red{background:var(--red-bg);color:var(--red-text);border-color:var(--red-border)}
-.cc-chip.amber{background:var(--amber-bg);color:var(--amber-text);border-color:var(--amber-border)}
+.cc-athlete-name{font-family:var(--cond);font-size:18px;font-weight:900;line-height:1;text-transform:uppercase;letter-spacing:.05em;color:var(--text)}
+.cc-athlete-reason{font-size:11px;color:var(--muted);line-height:1.35;margin-top:2px}
+.cc-chip{font-family:var(--mono);font-size:8px;text-transform:uppercase;letter-spacing:.08em;border-radius:20px;padding:3px 7px;white-space:nowrap}
+.cc-chip.red{background:var(--red-bg);color:var(--red-text);border:1px solid var(--red-border)}
+.cc-chip.amber{background:var(--amber-bg);color:var(--amber-text);border:1px solid var(--amber-border)}
 .cc-empty{font-family:var(--mono);font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;padding:16px 0}
 .cc-side{display:flex;flex-direction:column}
 .cc-side-head{padding:14px 16px 11px;border-bottom:1px solid var(--border)}
 .cc-side-title{font-family:var(--mono);font-size:9px;font-weight:800;color:var(--dim);text-transform:uppercase;letter-spacing:.12em}
-.cc-side-sub{font-size:11px;color:var(--muted);margin-top:4px}
+.cc-side-sub{font-size:12px;color:var(--muted);margin-top:4px}
 .cc-actions{padding:12px 16px;display:flex;flex-direction:column;gap:8px;border-bottom:1px solid var(--border)}
 .cc-action{display:grid;grid-template-columns:20px 1fr;gap:8px;align-items:flex-start}
-.cc-action-idx{font-family:var(--mono);font-size:9px;color:#fff;background:var(--surface3);border:1px solid var(--border-mid);border-radius:5px;width:20px;height:20px;display:flex;align-items:center;justify-content:center}
-.cc-action-text{font-size:11px;color:var(--muted);line-height:1.4}
+.cc-action-idx{font-family:var(--mono);font-size:9px;color:#fff;background:#0a0a0a;border-radius:5px;width:20px;height:20px;display:flex;align-items:center;justify-content:center}
+.cc-action-text{font-size:12px;color:var(--text);line-height:1.4}
 .cc-health{padding:12px 16px;display:grid;grid-template-columns:repeat(2,1fr);gap:8px;background:var(--surface2)}
-.cc-health-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);padding:8px 10px}
+.cc-health-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 10px}
 .cc-health-lbl{font-family:var(--mono);font-size:7px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em}
-.cc-health-val{font-size:15px;font-weight:700;line-height:1.1;margin-top:2px}
+.cc-health-val{font-size:16px;font-weight:800;line-height:1.1;margin-top:2px}
 .cc-health-val.good{color:var(--ok)}.cc-health-val.warn{color:var(--warn)}.cc-health-val.bad{color:var(--alert)}
 
-/* ────────────────────────────────────────────────────────── States */
+/* ── States ── */
 .state-box{text-align:center;padding:60px 20px}
 .dots{display:flex;gap:6px;justify-content:center;margin-bottom:12px}
-.dot{width:6px;height:6px;border-radius:50%;background:var(--surface3);animation:blink 1.2s infinite}
+.dot{width:7px;height:7px;border-radius:50%;background:#ccc;animation:blink 1.2s infinite}
 .dot:nth-child(2){animation-delay:.2s}.dot:nth-child(3){animation-delay:.4s}
 @keyframes blink{0%,100%{opacity:.2}50%{opacity:1}}
 .state-txt{font-family:var(--mono);font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em}
 
-/* ────────────────────────────────────────────────────────── Grid */
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:12px}
+/* ── Grid ── */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:11px}
 
-/* ────────────────────────────────────────────────────────── Card */
-@keyframes cardIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
-.card{
-  background:var(--card);
-  border:1px solid var(--border);
-  border-radius:var(--r-xl);
-  overflow:hidden;display:flex;flex-direction:column;
-  transition:border-color .18s,box-shadow .18s,transform .18s;
-  animation:cardIn .22s ease both;
-}
-.card:nth-child(2){animation-delay:.03s}.card:nth-child(3){animation-delay:.06s}
-.card:nth-child(4){animation-delay:.09s}.card:nth-child(5){animation-delay:.12s}
-.card:nth-child(6){animation-delay:.15s}.card:nth-child(7){animation-delay:.18s}
-.card:nth-child(8){animation-delay:.21s}
-.card:hover{border-color:var(--border-hi);box-shadow:0 12px 40px rgba(0,0,0,.55);transform:translateY(-3px)}
-.card.red{border-color:rgba(239,68,68,.35)}.card.yellow{border-color:rgba(245,158,11,.3)}
+/* ── Card ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;display:flex;flex-direction:column;transition:box-shadow .15s}
+.card:hover{box-shadow:0 4px 18px rgba(0,0,0,.08)}
+.card.red{border-color:rgba(220,38,38,.35)}.card.yellow{border-color:rgba(217,119,6,.3)}
 .card.hidden{display:none}
-
-/* Card header — black with amber week badge */
-.card-head{background:linear-gradient(135deg,#07070c 0%,#0f0f18 100%);padding:14px 15px 13px;border-bottom:1px solid rgba(255,255,255,.08)}
-.aname{font-family:var(--cond);font-size:30px;font-weight:900;letter-spacing:.05em;text-transform:uppercase;color:#fff;line-height:1}
-.ameta{font-family:var(--mono);font-size:8px;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:.06em;margin-top:3px}
-.ameta.nocheckin{color:rgba(239,68,68,.6)}
-.flags{display:flex;flex-wrap:wrap;gap:3px;margin-top:7px}
-.fp{font-family:var(--mono);font-size:8.5px;font-weight:700;padding:3px 9px;border-radius:20px;text-transform:uppercase;letter-spacing:.04em;border:1px solid}
-.fp.red{background:var(--red-bg);color:var(--red-text);border-color:var(--red-border)}
-.fp.yellow{background:var(--amber-bg);color:var(--amber-text);border-color:var(--amber-border)}
-.fp.green{background:var(--ok-bg);color:var(--green-text);border-color:var(--ok-border)}
+.card-head{background:#0a0a0a;padding:11px 14px 10px}
+.aname{font-family:var(--cond);font-size:26px;font-weight:900;letter-spacing:.05em;text-transform:uppercase;color:#fff;line-height:1}
+.ameta{font-family:var(--mono);font-size:8px;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:.08em;margin-top:3px}
+.ameta.nocheckin{color:rgba(248,113,113,.6)}
+.act-dot{display:inline-block;width:7px;height:7px;border-radius:50%;vertical-align:middle;margin-right:4px;flex-shrink:0}
+.act-dot.live{background:#4ade80;animation:dpulse 1.8s infinite}
+.act-dot.today{background:#4ade80}
+.act-dot.recent{background:#fbbf24}
+.act-dot.old{background:#475569}
+@keyframes dpulse{0%,100%{box-shadow:0 0 0 0 rgba(74,222,128,.55)}50%{box-shadow:0 0 0 5px rgba(74,222,128,0)}}
+.act-ts{font-family:var(--mono);font-size:8px;color:rgba(255,255,255,.38);text-transform:uppercase;letter-spacing:.07em;margin-top:3px;display:flex;align-items:center}
+.flags{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.fp{font-family:var(--mono);font-size:8px;padding:2px 7px;border-radius:20px;text-transform:uppercase;letter-spacing:.04em}
+.fp.red{background:rgba(248,113,113,.18);color:#fca5a5;border:1px solid rgba(248,113,113,.3)}
+.fp.yellow{background:rgba(251,191,36,.15);color:#f59e0b;border:1px solid rgba(251,191,36,.28)}
+.fp.green{background:rgba(74,222,128,.12);color:#059669;border:1px solid rgba(74,222,128,.22)}
 
 /* ── Scores row ── */
 .scores{display:flex;border-bottom:1px solid var(--border)}
-.sc{flex:1;padding:10px 3px 9px;text-align:center;border-right:1px solid var(--border);transition:background .2s}.sc:last-child{border-right:none}
-.sc:has(.sc-val.good){background:rgba(34,197,94,.07)}
-.sc:has(.sc-val.bad){background:rgba(239,68,68,.07)}
-.sc:has(.sc-val.mid){background:rgba(245,158,11,.05)}
-.sc-lbl{font-family:var(--mono);font-size:7px;color:var(--dim);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px}
-.sc-val{font-size:19px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.sc{flex:1;padding:8px 3px;text-align:center;border-right:1px solid var(--border)}.sc:last-child{border-right:none}
+.sc-lbl{font-family:var(--mono);font-size:7px;color:var(--dim);text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px}
+.sc-val{font-size:17px;font-weight:800;line-height:1}
 .sc-val.good{color:var(--ok)}.sc-val.mid{color:var(--warn)}.sc-val.bad{color:var(--alert)}.sc-val.n{color:var(--text)}
 
 /* ── Compliance bar ── */
-.compliance-row{display:flex;align-items:center;gap:8px;padding:8px 13px 6px;border-bottom:1px solid var(--border)}
+.compliance-row{display:flex;align-items:center;gap:8px;padding:8px 13px 4px;border-bottom:1px solid var(--border)}
 .comp-lbl{font-family:var(--mono);font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;white-space:nowrap}
-.comp-track{flex:1;height:7px;background:rgba(255,255,255,.07);border-radius:4px;overflow:hidden}
-.comp-fill{height:100%;border-radius:4px;transition:width .5s cubic-bezier(.4,0,.2,1)}
-.comp-fill.good{background:linear-gradient(90deg,#16a34a,#4ade80)}.comp-fill.mid{background:linear-gradient(90deg,#b45309,#fcd34d)}.comp-fill.bad{background:linear-gradient(90deg,#dc2626,#f87171)}
+.comp-track{flex:1;height:5px;background:rgba(0,0,0,.07);border-radius:3px;overflow:hidden}
+.comp-fill{height:100%;border-radius:3px;transition:width .3s}
+.comp-fill.good{background:var(--ok)}.comp-fill.mid{background:var(--warn)}.comp-fill.bad{background:var(--alert)}
 .comp-pct{font-family:var(--mono);font-size:10px;font-weight:700;min-width:28px;text-align:right}
 .comp-pct.good{color:var(--ok)}.comp-pct.mid{color:var(--warn)}.comp-pct.bad{color:var(--alert)}
 
 /* ── Sections ── */
 .sec{padding:10px 13px;border-bottom:1px solid var(--border)}.sec:last-child{border-bottom:none}
-.sec-ttl{font-family:var(--mono);font-size:8px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:7px;font-weight:700}
+.sec-ttl{font-family:var(--mono);font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.1em;margin-bottom:7px}
 
 /* ── Training ── */
-.tpair{display:flex;gap:6px}
-.tb{flex:1;background:var(--surface2);border-radius:var(--r-md);padding:10px 11px;border:1px solid var(--border)}
-.tt{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px}
+.tpair{display:flex;gap:7px}
+.tb{flex:1;background:var(--surface2);border-radius:8px;padding:8px 9px}
+.tt{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;margin-bottom:3px}
 .tt.run{color:var(--run)}.tt.str{color:var(--str)}
 .ts{font-family:var(--mono);font-size:9px;color:var(--muted);line-height:1.6}
 .ts strong{color:var(--text)}
-.pbar{height:3px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden;margin:4px 0}
+.pbar{height:3px;background:rgba(0,0,0,.08);border-radius:2px;overflow:hidden;margin:4px 0}
 .pfill{height:100%;border-radius:2px}.pfill.run{background:var(--run)}.pfill.str{background:var(--str)}
-.nl{font-size:10px;color:var(--muted);line-height:1.4;margin-top:3px}
+.nl{font-size:11px;color:var(--muted);line-height:1.4;margin-top:3px}
 .nl-lbl{font-family:var(--mono);font-size:7px;color:var(--dim);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:1px}
 .nl.red{color:var(--alert)}
-.testim{font-size:10px;color:var(--muted);font-style:italic;line-height:1.4;padding:6px 9px;background:var(--surface3);border-radius:var(--r-sm);border-left:2px solid var(--border-mid);margin-top:6px}
-.impact{font-size:10px;color:var(--amber-text);margin-top:5px;padding:4px 8px;background:var(--amber-bg);border-radius:var(--r-sm);border-left:2px solid var(--warn)}
+.testim{font-size:11px;color:var(--muted);font-style:italic;line-height:1.4;padding:6px 9px;background:var(--surface2);border-radius:6px;border-left:2px solid rgba(0,0,0,.1);margin-top:6px}
+.impact{font-size:11px;color:#92400e;margin-top:5px;padding:4px 8px;background:#fffbeb;border-radius:5px;border-left:2px solid var(--warn)}
 
 /* ── Body ── */
 .body-grid{display:flex;align-items:flex-start;gap:14px}
-.wnum{font-size:26px;font-weight:700;line-height:1;letter-spacing:-.01em;font-variant-numeric:tabular-nums}
+.wnum{font-size:26px;font-weight:800;line-height:1;letter-spacing:-.01em}
 .wunit{font-family:var(--mono);font-size:9px;color:var(--dim);margin-left:2px}
 .wdate{font-family:var(--mono);font-size:8px;color:var(--dim);margin-top:2px}
 .bmet{flex:1;display:flex;gap:8px}
 .bm{flex:1;text-align:center}
 .bm-lbl{font-family:var(--mono);font-size:7px;color:var(--dim);text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px}
-.bm-val{font-size:16px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.bm-val{font-size:15px;font-weight:700}
 .bnote{font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:6px;border-left:2px solid var(--alert);padding-left:6px;line-height:1.4}
 
 /* ── Nutrition ── */
-.mrow{display:flex;gap:5px}
-.mc{flex:1;background:var(--surface2);border-radius:var(--r-sm);padding:6px 7px;text-align:center}
+.mrow{display:flex;gap:6px}
+.mc{flex:1;background:var(--surface2);border-radius:6px;padding:6px 8px;text-align:center}
 .mc-lbl{font-family:var(--mono);font-size:7px;color:var(--dim);text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px}
-.mc-val{font-size:14px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
+.mc-val{font-size:15px;font-weight:700;line-height:1}
 .mc-unit{font-family:var(--mono);font-size:8px;color:var(--dim)}
 
 /* ── Week badge ── */
 .card-head-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
-.week-badge{text-align:center;background:rgba(249,115,22,.18)!important;border:1.5px solid rgba(249,115,22,.45)!important;border-radius:var(--r-md);padding:6px 14px;flex-shrink:0}
-.wk-num{font-size:24px;font-weight:900;color:var(--run)!important;line-height:1;letter-spacing:-.02em}
-.wk-lbl{font-family:var(--mono);font-size:7px;color:rgba(249,115,22,.6);text-transform:uppercase;letter-spacing:.12em;margin-top:2px}
+.week-badge{text-align:center;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);border-radius:8px;padding:5px 12px;flex-shrink:0}
+.wk-num{font-size:24px;font-weight:900;color:#fff;line-height:1;letter-spacing:-.01em}
+.wk-lbl{font-family:var(--mono);font-size:7px;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:.12em;margin-top:2px}
 
-/* ── Session count ── */
-.sess-row{display:flex;gap:7px;margin-bottom:4px}
-.scard{background:var(--surface2);border-radius:var(--r-md);padding:7px 11px;text-align:center}
-.snum{font-size:20px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
-.snum.run-c{color:var(--run)}.snum.str-c{color:var(--str)}
+/* ── Session count (no weekly) ── */
+.sess-row{display:flex;gap:8px;margin-bottom:4px}
+.scard{background:var(--surface2);border-radius:7px;padding:7px 11px;text-align:center}
+.snum{font-size:20px;font-weight:800;line-height:1}.snum.run-c{color:var(--run)}.snum.str-c{color:var(--str)}
 .slbl{font-family:var(--mono);font-size:7px;color:var(--dim);text-transform:uppercase;letter-spacing:.05em;margin-top:2px}
 
 /* ── Call Prep ── */
-.call-prep{border-top:1px solid var(--border)}
-.cp-header{background:var(--surface2);padding:8px 13px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;transition:background .15s}
-.cp-header:hover{background:var(--surface3)}
-.cp-title{font-family:var(--mono);font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.12em;display:flex;align-items:center;gap:7px}
+.call-prep{border-top:2px solid #0a0a0a}
+.cp-header{background:#0a0a0a;padding:8px 13px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none}
+.cp-title{font-family:var(--mono);font-size:9px;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:.12em;display:flex;align-items:center;gap:7px}
 .cp-icon{font-size:11px}
-.cp-toggle{font-family:var(--mono);font-size:9px;color:var(--dim);transition:transform .2s}
+.cp-toggle{font-family:var(--mono);font-size:9px;color:rgba(255,255,255,.35);transition:transform .2s}
 .cp-toggle.open{transform:rotate(180deg)}
 .cp-body{padding:11px 13px;display:flex;flex-direction:column;gap:9px}
+.cp-block{}
 .cp-block-lbl{font-family:var(--mono);font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px;display:flex;align-items:center;gap:5px}
-.cp-block-lbl.win{color:var(--ok)}.cp-block-lbl.issue{color:var(--alert)}.cp-block-lbl.ask{color:var(--str)}.cp-block-lbl.note-lbl{color:var(--dim)}
+.cp-block-lbl.win{color:var(--ok)}
+.cp-block-lbl.issue{color:var(--alert)}
+.cp-block-lbl.ask{color:var(--str)}
+.cp-block-lbl.note-lbl{color:var(--dim)}
 .cp-items{display:flex;flex-direction:column;gap:3px}
 .cp-item{font-size:11px;color:var(--muted);line-height:1.5;padding-left:14px;position:relative}
 .cp-item::before{position:absolute;left:0;font-size:10px}
@@ -355,160 +240,170 @@ header{
 .cp-item.ask::before{content:'→';color:var(--str)}
 .cp-item em{font-style:italic;color:var(--dim)}
 .cp-none{font-family:var(--mono);font-size:9px;color:var(--dim);font-style:italic}
-.cp-note{width:100%;border:1px solid var(--border-mid);border-radius:var(--r-sm);padding:7px 10px;font-family:var(--sans);font-size:11px;color:var(--text);background:var(--surface2);resize:vertical;min-height:52px;outline:none;transition:border .15s;line-height:1.45}
-.cp-note:focus{border-color:var(--border-hi);background:var(--surface3)}
+.cp-note{width:100%;border:1px solid var(--border-mid);border-radius:6px;padding:7px 10px;font-family:var(--sans);font-size:11px;color:var(--text);background:var(--surface2);resize:vertical;min-height:52px;outline:none;transition:border .15s;line-height:1.45}
+.cp-note:focus{border-color:rgba(0,0,0,.3);background:var(--surface)}
 .cp-note::placeholder{color:var(--dim)}
 
 /* ── AI analysis ── */
-.gen-btn{background:rgba(99,102,241,.15);border:1px solid rgba(99,102,241,.3);color:#a5b4fc;font-family:var(--mono);font-size:10px;padding:5px 14px;border-radius:var(--r-sm);cursor:pointer;text-transform:uppercase;letter-spacing:.06em;transition:all .15s;white-space:nowrap}
-.gen-btn:hover{background:rgba(99,102,241,.25);border-color:rgba(99,102,241,.5)}
+.gen-btn{background:#0a0a0a;border:1px solid rgba(255,255,255,.25);color:#fff;font-family:var(--mono);font-size:10px;padding:5px 14px;border-radius:6px;cursor:pointer;text-transform:uppercase;letter-spacing:.06em;transition:all .15s;white-space:nowrap}
+.gen-btn:hover{background:#222;border-color:rgba(255,255,255,.5)}
 .gen-btn:disabled{opacity:.4;cursor:not-allowed}
-.gen-btn.loading{background:rgba(99,102,241,.2);border-color:#6366f1;color:#c7d2fe}
-.squad-brief{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-xl);padding:16px 18px;margin-bottom:14px;display:none}
+.gen-btn.loading{background:#1a327a;border-color:#3b5bdb;color:#bfdbfe}
+
+.squad-brief{background:#0a0a0a;color:#fff;border-radius:12px;padding:16px 18px;margin-bottom:14px;display:none}
 .squad-brief.visible{display:block}
-.sb-title{font-family:var(--mono);font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.12em;margin-bottom:8px}
-.sb-text{font-size:13px;color:var(--muted);line-height:1.6}
+.sb-title{font-family:var(--mono);font-size:9px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.12em;margin-bottom:8px}
+.sb-text{font-size:13px;color:rgba(255,255,255,.82);line-height:1.6}
 
 .ai-sec{padding:11px 13px;border-top:1px solid var(--border)}
-.ai-status-badge{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;padding:3px 10px;border-radius:20px;margin-bottom:8px;border:1px solid}
-.ai-status-badge.GREEN{background:var(--ok-bg);color:var(--green-text);border-color:var(--ok-border)}
-.ai-status-badge.AMBER{background:var(--warn-bg);color:var(--amber-text);border-color:var(--warn-border)}
-.ai-status-badge.RED{background:var(--alert-bg);color:var(--red-text);border-color:var(--alert-border)}
+.ai-status-badge{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;padding:3px 10px;border-radius:20px;margin-bottom:8px}
+.ai-status-badge.GREEN{background:var(--green-bg);color:var(--green-text);border:1px solid var(--green-border)}
+.ai-status-badge.AMBER{background:var(--amber-bg);color:var(--amber-text);border:1px solid var(--amber-border)}
+.ai-status-badge.RED{background:var(--red-bg);color:var(--red-text);border:1px solid var(--red-border)}
 .ai-status-badge::before{content:'●';font-size:8px}
+
 .ai-flags{display:flex;flex-direction:column;gap:3px;margin-bottom:8px}
 .ai-flag{font-family:var(--mono);font-size:9px;color:var(--muted);padding-left:10px;position:relative;line-height:1.5}
 .ai-flag::before{content:'—';position:absolute;left:0;color:var(--dim)}
-.ai-rec{font-size:12px;color:var(--text);line-height:1.55;padding:9px 11px;background:var(--surface2);border-radius:var(--r-sm);border-left:3px solid var(--str)}
+
+.ai-rec{font-size:12px;color:var(--text);line-height:1.55;padding:9px 11px;background:var(--surface2);border-radius:7px;border-left:3px solid #0a0a0a}
+
 .ai-loading{font-family:var(--mono);font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;padding:8px 0;display:flex;align-items:center;gap:6px}
 .ai-loading-dot{width:5px;height:5px;border-radius:50%;background:var(--dim);animation:blink 1.2s infinite}
 .ai-loading-dot:nth-child(2){animation-delay:.2s}.ai-loading-dot:nth-child(3){animation-delay:.4s}
 
-/* ────────────────────────────────────────────────────────── Coaches Tab */
-.coaches-section{max-width:1440px;margin:0 auto;padding:16px 16px 60px}
-.coaches-intro{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:14px 18px;margin-bottom:18px;display:flex;align-items:center;gap:12px}
+/* ── Coaches Tab ── */
+.coaches-section{max-width:1400px;margin:0 auto;padding:14px 14px 40px}
+.coaches-intro{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 18px;margin-bottom:18px;display:flex;align-items:center;gap:12px}
 .coaches-intro-icon{font-size:22px}
-.coaches-intro-text{font-size:12px;color:var(--muted)}
+.coaches-intro-text{font-size:13px;color:var(--muted)}
 .coaches-intro-text strong{color:var(--text)}
 .coaches-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:14px}
 
-.coach-card{background:var(--card);border:1px solid var(--coach-border);border-radius:var(--r-xl);overflow:hidden}
-.coach-card-head{background:linear-gradient(135deg,#1e1e44 0%,#282860 100%);padding:14px 16px 12px}
+.coach-card{background:var(--surface);border:1px solid var(--coach-border);border-radius:14px;overflow:hidden}
+.coach-card-head{background:linear-gradient(135deg,#1e3a8a 0%,#1e40af 100%);padding:14px 16px 12px}
 .coach-card-head-top{display:flex;justify-content:space-between;align-items:flex-start}
 .coach-name-row{display:flex;align-items:center;gap:10px}
 .coach-name{font-size:26px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;color:#fff;line-height:1}
-.coach-badge{font-family:var(--mono);font-size:7px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;padding:3px 8px;border-radius:20px;background:rgba(255,255,255,.12);color:rgba(255,255,255,.7);border:1px solid rgba(255,255,255,.2);align-self:center}
-.coach-meta{font-family:var(--mono);font-size:8px;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.08em;margin-top:4px}
-.coach-wk-badge{text-align:center;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:var(--r-md);padding:5px 14px}
-.coach-wk-num{font-size:22px;font-weight:900;color:#fff;line-height:1;letter-spacing:-.01em}
-.coach-wk-lbl{font-family:var(--mono);font-size:7px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.12em;margin-top:2px}
+.coach-badge{font-family:var(--mono);font-size:7px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;padding:3px 8px;border-radius:20px;background:rgba(255,255,255,.18);color:rgba(255,255,255,.9);border:1px solid rgba(255,255,255,.3);align-self:center}
+.coach-meta{font-family:var(--mono);font-size:8px;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:.08em;margin-top:4px}
+.coach-wk-badge{text-align:center;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);border-radius:8px;padding:5px 14px}
+.coach-wk-num{font-size:26px;font-weight:900;color:#fff;line-height:1;letter-spacing:-.01em}
+.coach-wk-lbl{font-family:var(--mono);font-size:7px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.12em;margin-top:2px}
+
 .coach-scores{display:flex;border-bottom:1px solid var(--border)}
 .coach-scores .sc{flex:1;padding:9px 3px;text-align:center;border-right:1px solid var(--border)}
 .coach-scores .sc:last-child{border-right:none}
+
 .coach-training{padding:12px 14px;border-bottom:1px solid var(--border)}
 .coach-training-lbl{font-family:var(--mono);font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px}
-.coach-body-row{display:flex;gap:7px;padding:12px 14px;border-bottom:1px solid var(--border)}
-.coach-body-item{flex:1;background:var(--coach-bg);border:1px solid var(--coach-border);border-radius:var(--r-md);padding:8px 10px;text-align:center}
-.coach-body-item-val{font-size:17px;font-weight:700;color:var(--coach-text);line-height:1}
+
+.coach-body-row{display:flex;gap:8px;padding:12px 14px;border-bottom:1px solid var(--border)}
+.coach-body-item{flex:1;background:var(--coach-bg);border-radius:7px;padding:8px 10px;text-align:center}
+.coach-body-item-val{font-size:18px;font-weight:800;color:var(--coach-text);line-height:1}
 .coach-body-item-lbl{font-family:var(--mono);font-size:7px;color:var(--dim);text-transform:uppercase;letter-spacing:.05em;margin-top:2px}
+
 .coach-notes{padding:12px 14px}
 .coach-notes-lbl{font-family:var(--mono);font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px}
-.coach-quote{font-size:12px;color:var(--muted);font-style:italic;line-height:1.5;padding:7px 10px;background:var(--surface2);border-radius:var(--r-md);border-left:2px solid var(--coach-border)}
+.coach-quote{font-size:12px;color:var(--muted);font-style:italic;line-height:1.5;padding:7px 10px;background:var(--surface2);border-radius:7px;border-left:2px solid var(--coach-border)}
+
 .coach-no-data{padding:30px;text-align:center}
 .coach-no-data-txt{font-family:var(--mono);font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em}
 
-/* ────────────────────────────────────────────────────────── No results */
+/* ── No results ── */
 .no-results{text-align:center;padding:50px 20px}
 .no-results-txt{font-family:var(--mono);font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em}
 
-/* ────────────────────────────────────────────────────────── Full-page overlay */
+/* ── Full-page overlay ── */
 #fp-overlay{position:fixed;inset:0;background:var(--bg);z-index:300;overflow-y:auto;display:none}
-.fp-topbar{background:rgba(13,13,15,.95);backdrop-filter:blur(12px);padding:0 20px;height:50px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10;gap:12px;border-bottom:1px solid var(--border)}
-.fp-back{background:transparent;border:1px solid var(--border-mid);color:var(--muted);font-family:var(--mono);font-size:10px;padding:6px 14px;border-radius:var(--r-sm);cursor:pointer;text-transform:uppercase;letter-spacing:.07em;transition:all .15s}
-.fp-back:hover{color:var(--text);border-color:var(--border-hi)}
+.fp-topbar{background:#0a0a0a;padding:0 20px;height:50px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10;gap:12px}
+.fp-back{background:transparent;border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.65);font-family:var(--mono);font-size:10px;padding:6px 14px;border-radius:6px;cursor:pointer;text-transform:uppercase;letter-spacing:.07em;transition:all .15s}
+.fp-back:hover{color:#fff;border-color:rgba(255,255,255,.5)}
 .fp-nav{display:flex;align-items:center;gap:8px}
-.fp-nav-btn{background:transparent;border:1px solid var(--border);color:var(--dim);font-family:var(--mono);font-size:10px;padding:5px 14px;border-radius:var(--r-sm);cursor:pointer;text-transform:uppercase;letter-spacing:.06em;transition:all .15s}
-.fp-nav-btn:hover:not([disabled]){color:var(--text);border-color:var(--border-hi)}
+.fp-nav-btn{background:transparent;border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.45);font-family:var(--mono);font-size:10px;padding:5px 14px;border-radius:6px;cursor:pointer;text-transform:uppercase;letter-spacing:.06em;transition:all .15s}
+.fp-nav-btn:hover:not([disabled]){color:#fff;border-color:rgba(255,255,255,.45)}
 .fp-nav-btn[disabled]{opacity:.2;cursor:not-allowed}
-.fp-idx{font-family:var(--mono);font-size:9px;color:var(--dim);min-width:40px;text-align:center}
-.fp-hint{font-family:var(--mono);font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em}
-.fp-body{max-width:920px;margin:0 auto;padding:22px 18px 80px}
+.fp-idx{font-family:var(--mono);font-size:9px;color:rgba(255,255,255,.28);min-width:40px;text-align:center}
+.fp-hint{font-family:var(--mono);font-size:8px;color:rgba(255,255,255,.18);text-transform:uppercase;letter-spacing:.08em}
+.fp-body{max-width:900px;margin:0 auto;padding:22px 18px 60px}
 
-/* ── Full-page card ── */
-.fpc-hero{background:linear-gradient(135deg,#0a0a0f 0%,#141420 100%);border:1px solid var(--border);border-radius:var(--r-xl);padding:28px 30px 24px;margin-bottom:16px}
+/* ── Full-page card: clean layout ── */
+.fpc-hero{background:#0a0a0a;border-radius:16px;padding:28px 30px 24px;margin-bottom:18px}
 .fpc-hero-top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
 .fpc-name{font-family:var(--cond);font-size:52px;font-weight:900;letter-spacing:.04em;text-transform:uppercase;color:#fff;line-height:1}
-.fpc-meta{font-family:var(--mono);font-size:11px;color:rgba(255,255,255,.35);margin-top:8px;letter-spacing:.05em}
-.fpc-meta.stale{color:rgba(239,68,68,.7)}
-.fpc-week-badge{text-align:center;background:rgba(249,115,22,.15);border:1px solid rgba(249,115,22,.3);border-radius:var(--r-lg);padding:12px 24px;flex-shrink:0}
-.fpc-week-num{font-size:44px;font-weight:900;color:var(--run);line-height:1;letter-spacing:-.01em}
-.fpc-week-lbl{font-family:var(--mono);font-size:9px;color:rgba(249,115,22,.5);text-transform:uppercase;letter-spacing:.14em;margin-top:4px}
+.fpc-meta{font-family:var(--mono);font-size:11px;color:rgba(255,255,255,.4);margin-top:8px;letter-spacing:.05em}
+.fpc-meta.stale{color:rgba(248,113,113,.7)}
+.fpc-week-badge{text-align:center;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:12px;padding:12px 24px;flex-shrink:0}
+.fpc-week-num{font-size:44px;font-weight:900;color:#fff;line-height:1;letter-spacing:-.01em}
+.fpc-week-lbl{font-family:var(--mono);font-size:9px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.14em;margin-top:4px}
 .fpc-flags{display:flex;gap:6px;flex-wrap:wrap;margin-top:16px}
 
-.fpc-banner{border-radius:var(--r-lg);padding:14px 18px;margin-bottom:16px;display:flex;align-items:flex-start;gap:12px;border:1px solid}
-.fpc-banner.stale{background:var(--alert-bg);border-color:var(--alert-border)}
-.fpc-banner.lastweek{background:rgba(14,165,233,.08);border-color:rgba(14,165,233,.2)}
+.fpc-banner{border-radius:12px;padding:14px 18px;margin-bottom:18px;display:flex;align-items:flex-start;gap:12px}
+.fpc-banner.stale{background:#fef2f2;border:1px solid rgba(220,38,38,.2)}
+.fpc-banner.lastweek{background:#f0f9ff;border:1px solid rgba(14,165,233,.18)}
 .fpc-banner-icon{font-size:18px;flex-shrink:0;line-height:1.3}
 .fpc-banner-title{font-family:var(--mono);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-bottom:3px}
-.fpc-banner-title.stale{color:var(--red-text)}.fpc-banner-title.lastweek{color:#38bdf8}
-.fpc-banner-sub{font-family:var(--mono);font-size:10px;color:var(--muted)}
+.fpc-banner-title.stale{color:#991b1b}
+.fpc-banner-title.lastweek{color:#0369a1}
+.fpc-banner-sub{font-family:var(--mono);font-size:10px;color:#6b7280}
 
-.fpc-section{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-xl);padding:22px 24px;margin-bottom:14px}
+.fpc-section{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:22px 24px;margin-bottom:16px}
 .fpc-section-title{font-family:var(--mono);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.14em;color:var(--dim);margin-bottom:18px}
 
 .fpc-scores{display:grid;grid-template-columns:repeat(6,1fr);gap:0;border-top:1px solid var(--border);margin:0 -24px}
 .fpc-score{text-align:center;padding:18px 8px;border-right:1px solid var(--border)}
 .fpc-score:last-child{border-right:none}
 .fpc-score-lbl{font-family:var(--mono);font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px}
-.fpc-score-val{font-size:36px;font-weight:900;line-height:1;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.fpc-score-val{font-size:38px;font-weight:900;line-height:1;letter-spacing:-.02em}
 .fpc-score-val.good{color:var(--ok)}.fpc-score-val.mid{color:var(--warn)}.fpc-score-val.bad{color:var(--alert)}.fpc-score-val.n{color:var(--text)}
 
-.fpc-wip{background:var(--str-bg);border:1px solid rgba(99,102,241,.2);border-radius:var(--r-xl);padding:20px 24px;margin-bottom:14px}
+.fpc-wip{background:#f0f4ff;border:1px solid rgba(30,58,138,.12);border-radius:14px;padding:20px 24px;margin-bottom:16px}
 .fpc-wip-title{font-family:var(--mono);font-size:9px;font-weight:700;color:var(--str);text-transform:uppercase;letter-spacing:.1em;margin-bottom:16px}
-.fpc-sess-row{display:flex;gap:12px}
-.fpc-sess{background:var(--surface);border:1px solid rgba(99,102,241,.2);border-radius:var(--r-lg);padding:16px 24px;text-align:center}
-.fpc-sess-num{font-size:44px;font-weight:900;line-height:1;font-variant-numeric:tabular-nums}
+.fpc-sess-row{display:flex;gap:14px}
+.fpc-sess{background:#fff;border:1px solid rgba(30,58,138,.14);border-radius:10px;padding:16px 24px;text-align:center}
+.fpc-sess-num{font-size:44px;font-weight:900;line-height:1}
 .fpc-sess-num.run{color:var(--run)}.fpc-sess-num.str{color:var(--str)}
 .fpc-sess-lbl{font-family:var(--mono);font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;margin-top:6px}
 
-.fpc-train-pair{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.fpc-train-block{background:var(--surface2);border-radius:var(--r-lg);padding:18px 20px}
-.fpc-train-label{font-size:13px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;margin-bottom:12px}
+.fpc-train-pair{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.fpc-train-block{background:var(--surface2);border-radius:10px;padding:18px 20px}
+.fpc-train-label{font-size:14px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;margin-bottom:12px}
 .fpc-train-label.run{color:var(--run)}.fpc-train-label.str{color:var(--str)}
 .fpc-train-stat{font-family:var(--mono);font-size:12px;color:var(--muted);margin-bottom:4px;line-height:1.5}
 .fpc-train-stat strong{color:var(--text);font-size:15px}
-.fpc-pbar{height:3px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden;margin:10px 0}
+.fpc-pbar{height:4px;background:rgba(0,0,0,.08);border-radius:2px;overflow:hidden;margin:10px 0}
 .fpc-pfill{height:100%;border-radius:2px}.fpc-pfill.run{background:var(--run)}.fpc-pfill.str{background:var(--str)}
-.fpc-train-note{font-size:12px;line-height:1.55;margin-top:10px;padding:9px 11px;border-radius:var(--r-sm);border-left:3px solid}
-.fpc-train-note.bad{color:var(--red-text);background:var(--alert-bg);border-color:var(--alert)}
-.fpc-train-note.good{color:var(--green-text);background:var(--ok-bg);border-color:var(--ok)}
-.fpc-testim{font-size:14px;color:var(--muted);font-style:italic;line-height:1.65;padding:16px 18px;background:var(--surface2);border-radius:var(--r-lg);border-left:3px solid var(--border-mid);margin-top:18px}
-.fpc-impact{font-size:13px;color:var(--amber-text);margin-top:14px;padding:12px 16px;background:var(--amber-bg);border-radius:var(--r-md);border-left:3px solid var(--warn)}
+.fpc-train-note{font-size:12px;line-height:1.55;margin-top:10px;padding:9px 11px;border-radius:7px}
+.fpc-train-note.bad{color:var(--alert);background:#fef2f2;border-left:3px solid var(--alert)}
+.fpc-train-note.good{color:var(--ok);background:#f0fdf4;border-left:3px solid var(--ok)}
+.fpc-testim{font-size:14px;color:var(--muted);font-style:italic;line-height:1.65;padding:16px 18px;background:var(--surface2);border-radius:10px;border-left:3px solid rgba(0,0,0,.12);margin-top:18px}
+.fpc-impact{font-size:13px;color:#92400e;margin-top:14px;padding:12px 16px;background:#fffbeb;border-radius:9px;border-left:3px solid var(--warn)}
 
-.fpc-body-nutr{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
+.fpc-body-nutr{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px}
 .fpc-body-nutr .fpc-section{margin-bottom:0}
-.fpc-metric-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.fpc-metric{background:var(--surface2);border-radius:var(--r-md);padding:14px;text-align:center}
-.fpc-metric-val{font-size:28px;font-weight:700;line-height:1;color:var(--text);font-variant-numeric:tabular-nums}
+.fpc-metric-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.fpc-metric{background:var(--surface2);border-radius:9px;padding:14px;text-align:center}
+.fpc-metric-val{font-size:30px;font-weight:800;line-height:1;color:var(--text)}
 .fpc-metric-lbl{font-family:var(--mono);font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;margin-top:6px}
-.fpc-weight{font-size:44px;font-weight:900;line-height:1;letter-spacing:-.02em;margin-bottom:2px;font-variant-numeric:tabular-nums}
+.fpc-weight{font-size:46px;font-weight:900;line-height:1;letter-spacing:-.02em;margin-bottom:2px}
 .fpc-weight-unit{font-family:var(--mono);font-size:13px;color:var(--dim);margin-left:3px}
 .fpc-weight-date{font-family:var(--mono);font-size:9px;color:var(--dim);margin-bottom:16px}
 .fpc-bnote{font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:14px;border-left:2px solid var(--alert);padding-left:10px;line-height:1.5}
 
-.fpc-nutr-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
-.fpc-nutr-cell{background:var(--surface2);border-radius:var(--r-md);padding:14px;text-align:center}
-.fpc-nutr-val{font-size:26px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
+.fpc-nutr-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.fpc-nutr-cell{background:var(--surface2);border-radius:9px;padding:14px;text-align:center}
+.fpc-nutr-val{font-size:28px;font-weight:800;line-height:1}
 .fpc-nutr-unit{font-family:var(--mono);font-size:10px;color:var(--dim)}
 .fpc-nutr-lbl{font-family:var(--mono);font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;margin-top:6px}
-.fpc-target{background:var(--coach-bg);border:1px solid var(--coach-border);border-radius:var(--r-md);padding:14px 16px}
+.fpc-target{background:var(--coach-bg);border:1px solid var(--coach-border);border-radius:9px;padding:14px 16px}
 .fpc-target-lbl{font-family:var(--mono);font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px}
 .fpc-target-vals{display:flex;gap:12px;flex-wrap:wrap}
 .fpc-target-val{font-family:var(--mono);font-size:11px;color:var(--coach-text)}
 .fpc-target-val strong{font-size:14px}
 
-.fpc-cp{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-xl);overflow:hidden}
-.fpc-cp-head{background:var(--surface2);padding:16px 22px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border)}
-.fpc-cp-head-title{font-family:var(--mono);font-size:10px;font-weight:700;color:var(--text);text-transform:uppercase;letter-spacing:.14em}
+.fpc-cp{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden}
+.fpc-cp-head{background:#0a0a0a;padding:16px 22px;display:flex;align-items:center;gap:10px}
+.fpc-cp-head-title{font-family:var(--mono);font-size:10px;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:.14em}
 .fpc-cp-body{padding:22px 24px;display:flex;flex-direction:column;gap:20px}
 .fpc-cp-section-lbl{font-family:var(--mono);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;margin-bottom:10px;display:flex;align-items:center;gap:6px}
 .fpc-cp-section-lbl.win{color:var(--ok)}.fpc-cp-section-lbl.issue{color:var(--alert)}.fpc-cp-section-lbl.ask{color:var(--str)}.fpc-cp-section-lbl.note{color:var(--dim)}
@@ -519,87 +414,68 @@ header{
 .fpc-cp-item.issue::before{content:'⚠';color:var(--alert)}
 .fpc-cp-item.ask::before{content:'→';color:var(--str)}
 .fpc-cp-none{font-family:var(--mono);font-size:11px;color:var(--dim);font-style:italic}
-.fpc-note{width:100%;border:1px solid var(--border-mid);border-radius:var(--r-md);padding:12px 14px;font-family:var(--sans);font-size:13px;color:var(--text);background:var(--surface2);resize:vertical;min-height:80px;outline:none;transition:border .15s;line-height:1.5}
-.fpc-note:focus{border-color:var(--border-hi);background:var(--surface3)}
+.fpc-note{width:100%;border:1px solid var(--border-mid);border-radius:8px;padding:12px 14px;font-family:var(--sans);font-size:13px;color:var(--text);background:var(--surface2);resize:vertical;min-height:80px;outline:none;transition:border .15s;line-height:1.5}
+.fpc-note:focus{border-color:rgba(0,0,0,.3);background:var(--surface)}
 .fpc-note::placeholder{color:var(--dim)}
 
-/* ── Expand button on grid cards ── */
-.fp-open-btn{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);color:rgba(255,255,255,.45);font-family:var(--mono);font-size:9px;padding:4px 10px;border-radius:var(--r-sm);cursor:pointer;text-transform:uppercase;letter-spacing:.06em;transition:all .15s;white-space:nowrap;align-self:flex-start;flex-shrink:0}
-.fp-open-btn:hover{color:#fff;background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.3)}
+/* Expand button on grid cards */
+.fp-open-btn{background:transparent;border:1px solid rgba(255,255,255,.18);color:rgba(255,255,255,.38);font-family:var(--mono);font-size:9px;padding:4px 10px;border-radius:5px;cursor:pointer;text-transform:uppercase;letter-spacing:.06em;transition:all .15s;white-space:nowrap;align-self:flex-start;flex-shrink:0}
+.fp-open-btn:hover{color:#fff;border-color:rgba(255,255,255,.55)}
 
 /* ── Session badges ── */
-.sched-badges{display:flex;flex-wrap:wrap;gap:3px;margin-top:6px}
+.sched-badges{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
 .sbadge{display:inline-flex;align-items:center;gap:4px;font-family:var(--mono);font-size:9px;font-weight:500;padding:3px 8px;border-radius:20px;border:1px solid;letter-spacing:.04em;white-space:nowrap}
-.sbadge .sdot{width:4px;height:4px;border-radius:50%;flex-shrink:0}
-.sbadge.planned{opacity:.6}.sbadge.completed{opacity:1}.sbadge.missed{opacity:.5;text-decoration:line-through}.sbadge.sick{opacity:.4;font-style:italic}
-.sbadge-tempo{background:rgba(249,115,22,.12);color:#fb923c;border-color:rgba(249,115,22,.3)}.sbadge-tempo .sdot{background:#f97316}
-.sbadge-speed{background:rgba(239,68,68,.1);color:#f87171;border-color:rgba(239,68,68,.25)}.sbadge-speed .sdot{background:#ef4444}
-.sbadge-longrun{background:rgba(168,85,247,.1);color:#c084fc;border-color:rgba(168,85,247,.25)}.sbadge-longrun .sdot{background:#a855f7}
-.sbadge-strength{background:rgba(99,102,241,.1);color:#818cf8;border-color:rgba(99,102,241,.25)}.sbadge-strength .sdot{background:#6366f1}
-.sbadge-runstr{background:rgba(139,92,246,.1);color:#a78bfa;border-color:rgba(139,92,246,.25)}.sbadge-runstr .sdot{background:#8b5cf6}
-.sbadge-rest{background:rgba(255,255,255,.05);color:var(--muted);border-color:var(--border)}.sbadge-rest .sdot{background:var(--dim)}
-.sbadge-recovery{background:rgba(20,184,166,.1);color:#2dd4bf;border-color:rgba(20,184,166,.25)}.sbadge-recovery .sdot{background:#14b8a6}
-.sbadge-easy{background:rgba(34,197,94,.1);color:#4ade80;border-color:rgba(34,197,94,.25)}.sbadge-easy .sdot{background:#22c55e}
-.sbadge-optional{background:rgba(255,255,255,.04);color:var(--dim);border-color:var(--border)}.sbadge-optional .sdot{background:var(--dim)}
-.sbadge-race{background:rgba(244,63,94,.1);color:#fb7185;border-color:rgba(244,63,94,.25)}.sbadge-race .sdot{background:#f43f5e}
-.sbadge-run{background:rgba(249,115,22,.1);color:#fb923c;border-color:rgba(249,115,22,.25)}.sbadge-run .sdot{background:#f97316}
-.sbadge-default{background:var(--surface2);color:var(--muted);border-color:var(--border)}.sbadge-default .sdot{background:var(--dim)}
+.sbadge .sdot{width:5px;height:5px;border-radius:50%;flex-shrink:0}
+.sbadge.planned{opacity:.65}
+.sbadge.completed{opacity:1}
+.sbadge.missed{opacity:.55;text-decoration:line-through}
+.sbadge.sick{opacity:.45;font-style:italic}
+.sbadge-tempo{background:#fff7ed;color:#c2410c;border-color:#fed7aa}.sbadge-tempo .sdot{background:#f97316}
+.sbadge-speed{background:#fef2f2;color:#b91c1c;border-color:#fecaca}.sbadge-speed .sdot{background:#ef4444}
+.sbadge-longrun{background:#fdf4ff;color:#7e22ce;border-color:#e9d5ff}.sbadge-longrun .sdot{background:#a855f7}
+.sbadge-strength{background:#eff6ff;color:#1e40af;border-color:#bfdbfe}.sbadge-strength .sdot{background:#3b82f6}
+.sbadge-runstr{background:#f5f3ff;color:#5b21b6;border-color:#ddd6fe}.sbadge-runstr .sdot{background:#8b5cf6}
+.sbadge-rest{background:#f9fafb;color:#4b5563;border-color:#e5e7eb}.sbadge-rest .sdot{background:#9ca3af}
+.sbadge-recovery{background:#f0fdfa;color:#0f766e;border-color:#99f6e4}.sbadge-recovery .sdot{background:#14b8a6}
+.sbadge-easy{background:#f0fdf4;color:#15803d;border-color:#bbf7d0}.sbadge-easy .sdot{background:#22c55e}
+.sbadge-optional{background:#fafafa;color:#6b7280;border-color:#e5e5e5}.sbadge-optional .sdot{background:#d1d5db}
+.sbadge-race{background:#fff1f2;color:#9f1239;border-color:#fda4af}.sbadge-race .sdot{background:#f43f5e}
+.sbadge-run{background:#fff7ed;color:#92400e;border-color:#fde68a}.sbadge-run .sdot{background:#f59e0b}
+.sbadge-default{background:#f4f3f0;color:#5a5a5a;border-color:#d1d5db}.sbadge-default .sdot{background:#9ca3af}
 .sbadge-status{font-family:var(--mono);font-size:8px;margin-left:2px;opacity:.8}
 
 /* ── Recovery score ── */
-.recovery-row{display:flex;align-items:center;gap:10px;padding:9px 13px;border-bottom:1px solid var(--border);background:rgba(245,158,11,.05)}
-.recovery-lbl{font-family:var(--mono);font-size:8px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;white-space:nowrap;font-weight:700}
-.recovery-score{font-size:26px;font-weight:900;line-height:1;letter-spacing:-.03em;font-family:var(--cond);font-variant-numeric:tabular-nums}
+.recovery-row{display:flex;align-items:center;gap:10px;padding:8px 13px;border-bottom:1px solid var(--border);background:linear-gradient(90deg,rgba(245,158,11,.04) 0%,transparent 60%)}
+.recovery-lbl{font-family:var(--mono);font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;white-space:nowrap}
+.recovery-score{font-size:20px;font-weight:800;line-height:1;letter-spacing:-.01em;font-family:var(--cond)}
 .recovery-score.good{color:var(--ok)}.recovery-score.mid{color:var(--warn)}.recovery-score.bad{color:var(--alert)}.recovery-score.n{color:var(--text)}
-.recovery-bar-wrap{flex:1;height:7px;background:rgba(255,255,255,.07);border-radius:4px;overflow:hidden}
-.recovery-bar{height:100%;border-radius:4px;transition:width .5s cubic-bezier(.4,0,.2,1)}
-.recovery-bar.good{background:linear-gradient(90deg,#16a34a,#4ade80)}.recovery-bar.mid{background:linear-gradient(90deg,#d97706,#fcd34d)}.recovery-bar.bad{background:linear-gradient(90deg,#dc2626,#f87171)}
+.recovery-bar-wrap{flex:1;height:4px;background:rgba(0,0,0,.07);border-radius:2px;overflow:hidden}
+.recovery-bar{height:100%;border-radius:2px;transition:width .3s}
+.recovery-bar.good{background:var(--ok)}.recovery-bar.mid{background:var(--warn)}.recovery-bar.bad{background:var(--alert)}
 
-/* ── This week's plan ── */
-.plan-sec{padding:9px 13px;border-bottom:1px solid var(--border)}
-.plan-sec-hdr{display:flex;align-items:center;gap:6px;margin-bottom:7px}
-.plan-sec-ttl{font-family:var(--mono);font-size:8px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em}
+/* ── This week's plan section ── */
+.plan-sec{padding:9px 13px;border-bottom:1px solid var(--border);background:var(--surface2)}
+.plan-sec-ttl{font-family:var(--mono);font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px;display:flex;align-items:center;gap:5px}
 .plan-sec-comp{font-family:var(--mono);font-size:9px;font-weight:700;margin-left:auto}
 .plan-sec-comp.good{color:var(--ok)}.plan-sec-comp.mid{color:var(--warn)}.plan-sec-comp.bad{color:var(--alert)}
-.plan-missed-badge{font-family:var(--mono);font-size:8px;font-weight:800;color:#fff;background:var(--alert);border-radius:3px;padding:2px 5px;letter-spacing:.04em;text-transform:uppercase}
-.plan-overdue-badge{font-family:var(--mono);font-size:8px;font-weight:800;color:#fff;background:var(--warn);border-radius:3px;padding:2px 5px;letter-spacing:.04em;text-transform:uppercase}
-.sched-grid{display:flex;flex-direction:column;gap:4px;margin-bottom:7px}
-.sched-day{display:flex;align-items:center;gap:8px;min-height:20px}
-.sched-day.today{background:rgba(249,115,22,.06);border-radius:5px;padding:2px 5px;margin:0 -5px}
-.sched-day-lbl{font-family:var(--mono);font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;min-width:26px;flex-shrink:0}
-.sched-day-lbl.past{color:var(--dim)}.sched-day-lbl.today-lbl{color:var(--run)}
-.sched-day-badges{display:flex;flex-wrap:wrap;gap:3px;flex:1}
-.sched-summary{display:flex;gap:10px;flex-wrap:wrap;padding-top:6px;border-top:1px solid var(--border)}
-.ss-item{font-family:var(--mono);font-size:9px;font-weight:700}
-.ss-done{color:var(--ok)}.ss-missed{color:var(--alert)}.ss-overdue{color:var(--warn)}.ss-left{color:var(--dim)}
-
-/* ── Weekly KM bar ── */
-.km-bar-row{display:flex;align-items:center;gap:8px;padding:8px 13px;border-bottom:1px solid var(--border);background:rgba(249,115,22,.05)}
-.km-bar-lbl{font-family:var(--mono);font-size:8px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;white-space:nowrap;font-weight:700}
-.km-bar-track{flex:1;height:7px;background:rgba(255,255,255,.07);border-radius:4px;overflow:hidden}
-.km-bar-fill{height:100%;border-radius:4px;transition:width .5s cubic-bezier(.4,0,.2,1)}
-.km-bar-fill.good{background:linear-gradient(90deg,#ea580c,#fdba74)}.km-bar-fill.mid{background:linear-gradient(90deg,#b45309,#fcd34d)}.km-bar-fill.bad{background:linear-gradient(90deg,#dc2626,#f87171)}
-.km-bar-val{font-family:var(--cond);font-size:13px;font-weight:800;min-width:32px;text-align:right;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
-.km-bar-val.good{color:var(--run)}.km-bar-val.mid{color:var(--warn)}.km-bar-val.bad{color:var(--alert)}
-.km-bar-tgt{font-family:var(--mono);font-size:9px;color:var(--dim)}
 
 /* ── Macro compliance bars ── */
 .macro-bar-row{display:flex;flex-direction:column;gap:4px;margin-top:6px}
 .macro-bar-item{display:flex;align-items:center;gap:6px}
 .macro-bar-lbl{font-family:var(--mono);font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.05em;width:34px;flex-shrink:0}
-.macro-bar-track{flex:1;height:3px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden}
-.macro-bar-fill{height:100%;border-radius:2px;transition:width .3s;background:var(--warn)}
+.macro-bar-track{flex:1;height:4px;background:rgba(0,0,0,.07);border-radius:2px;overflow:hidden;position:relative}
+.macro-bar-fill{height:100%;border-radius:2px;transition:width .3s;background:var(--amber)}
 .macro-bar-fill.over{background:var(--alert)}
 .macro-bar-val{font-family:var(--mono);font-size:9px;color:var(--muted);min-width:38px;text-align:right}
 
-/* ────────────────────────────────────────────────────────── Schedule tab */
-.sched-section{max-width:1440px;margin:0 auto;padding:16px 16px 60px}
-.sched-intro{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:12px 18px;margin-bottom:14px;font-family:var(--mono);font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em}
+/* ── Schedule tab ── */
+.sched-section{max-width:1400px;margin:0 auto;padding:14px 14px 40px}
+.sched-intro{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 18px;margin-bottom:14px;font-family:var(--mono);font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em}
 .sched-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:11px}
-.sched-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden}
-.sched-card-head{background:#0a0a0f;padding:10px 14px}
+.sched-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.sched-card-head{background:#0a0a0a;padding:10px 14px}
 .sched-card-name{font-family:var(--cond);font-size:20px;font-weight:900;letter-spacing:.05em;text-transform:uppercase;color:#fff;line-height:1}
-.sched-card-meta{font-family:var(--mono);font-size:8px;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:.08em;margin-top:2px}
+.sched-card-meta{font-family:var(--mono);font-size:8px;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.08em;margin-top:2px}
 .sched-card-body{padding:10px 13px}
 .sched-session-row{display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)}
 .sched-session-row:last-child{border-bottom:none}
@@ -607,66 +483,72 @@ header{
 .sched-session-name{font-size:11px;color:var(--muted);line-height:1.4;flex:1}
 .sched-status-icon{font-size:11px;flex-shrink:0}
 
-/* ────────────────────────────────────────────────────────── Sync Health tab */
-.sync-section{max-width:1440px;margin:0 auto;padding:16px 16px 60px}
-.sync-intro{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:13px 18px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+/* ── Sync Health tab ── */
+.sync-section{max-width:1400px;margin:0 auto;padding:14px 14px 40px}
+.sync-intro{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:13px 18px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
 .sync-intro-title{font-family:var(--mono);font-size:9px;font-weight:800;color:var(--text);text-transform:uppercase;letter-spacing:.12em}
-.sync-intro-sub{font-size:11px;color:var(--muted);margin-top:3px}
-.sync-score-row{display:flex;gap:7px;flex-wrap:wrap}
-.sync-score{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-md);padding:7px 10px;min-width:74px}
-.sync-score-num{font-size:17px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
+.sync-intro-sub{font-size:12px;color:var(--muted);margin-top:3px}
+.sync-score-row{display:flex;gap:8px;flex-wrap:wrap}
+.sync-score{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:7px 10px;min-width:76px}
+.sync-score-num{font-size:18px;font-weight:900;line-height:1}
 .sync-score-num.good{color:var(--ok)}.sync-score-num.warn{color:var(--warn)}.sync-score-num.bad{color:var(--alert)}
 .sync-score-lbl{font-family:var(--mono);font-size:7px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;margin-top:3px}
-.sync-table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);overflow:auto}
+.sync-table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:auto}
 .sync-table{width:100%;border-collapse:collapse;min-width:980px}
-.sync-table th{position:sticky;top:0;background:#0a0a0f;color:rgba(255,255,255,.5);font-family:var(--mono);font-size:8px;text-transform:uppercase;letter-spacing:.1em;text-align:left;padding:9px 10px;white-space:nowrap}
+.sync-table th{position:sticky;top:0;background:#0a0a0a;color:rgba(255,255,255,.65);font-family:var(--mono);font-size:8px;text-transform:uppercase;letter-spacing:.1em;text-align:left;padding:9px 10px;white-space:nowrap}
 .sync-table td{border-top:1px solid var(--border);padding:9px 10px;font-size:12px;color:var(--muted);vertical-align:middle;white-space:nowrap}
-.sync-table tr.bad td{background:rgba(239,68,68,.05)}.sync-table tr.warn td{background:rgba(245,158,11,.05)}
+.sync-table tr.bad td{background:#fff7f7}.sync-table tr.warn td{background:#fffaf0}
 .sync-name{font-family:var(--cond);font-size:20px;font-weight:900;letter-spacing:.05em;text-transform:uppercase;color:var(--text)}
 .sync-pill{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;border-radius:20px;padding:3px 8px;border:1px solid}
-.sync-pill.good{background:var(--ok-bg);border-color:var(--ok-border);color:var(--green-text)}
-.sync-pill.warn{background:var(--warn-bg);border-color:var(--warn-border);color:var(--amber-text)}
-.sync-pill.bad{background:var(--alert-bg);border-color:var(--alert-border);color:var(--red-text)}
+.sync-pill.good{background:var(--green-bg);border-color:var(--green-border);color:var(--green-text)}
+.sync-pill.warn{background:var(--amber-bg);border-color:var(--amber-border);color:var(--amber-text)}
+.sync-pill.bad{background:var(--red-bg);border-color:var(--red-border);color:var(--red-text)}
 .sync-muted{font-family:var(--mono);font-size:10px;color:var(--dim)}
 
-/* ────────────────────────────────────────────────────────── Applications tab */
-.apps-section{max-width:1440px;margin:0 auto;padding:16px 16px 60px}
+/* ── Applications tab ── */
+.apps-section{max-width:1400px;margin:0 auto;padding:14px 14px 40px}
 .apps-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:11px}
-.app-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden}
-.app-card-head{background:#0a0a0f;padding:11px 14px 10px}
+.app-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.app-card-head{background:#0a0a0a;padding:11px 14px 10px}
 .app-name{font-family:var(--cond);font-size:22px;font-weight:900;letter-spacing:.05em;text-transform:uppercase;color:#fff;line-height:1}
-.app-meta{font-family:var(--mono);font-size:8px;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:.08em;margin-top:3px}
+.app-meta{font-family:var(--mono);font-size:8px;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.08em;margin-top:3px}
 .app-body{padding:12px 14px}
 .app-field{margin-bottom:8px}
 .app-field-lbl{font-family:var(--mono);font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px}
 .app-field-val{font-size:12px;color:var(--muted);line-height:1.45}
 .app-field-val.strong{color:var(--text);font-weight:600}
-.app-status{display:inline-block;font-family:var(--mono);font-size:8px;padding:2px 8px;border-radius:20px;text-transform:uppercase;letter-spacing:.06em;font-weight:700;margin-top:2px;border:1px solid}
-.app-status.new{background:var(--amber-bg);color:var(--amber-text);border-color:var(--amber-border)}
-.app-status.accepted{background:var(--ok-bg);color:var(--green-text);border-color:var(--ok-border)}
-.app-status.rejected{background:var(--alert-bg);color:var(--red-text);border-color:var(--alert-border)}
+.app-status{display:inline-block;font-family:var(--mono);font-size:8px;padding:2px 8px;border-radius:20px;text-transform:uppercase;letter-spacing:.06em;font-weight:700;margin-top:2px}
+.app-status.new{background:var(--amber-bg);color:var(--amber-text);border:1px solid var(--amber-border)}
+.app-status.accepted{background:var(--green-bg);color:var(--green-text);border:1px solid var(--green-border)}
+.app-status.rejected{background:var(--red-bg);color:var(--red-text);border:1px solid var(--red-border)}
 
-/* ────────────────────────────────────────────────────────── Week detail (day-by-day) */
+/* ── Amber accent on week badge ── */
+.week-badge{background:rgba(245,158,11,.18)!important;border-color:rgba(245,158,11,.35)!important}
+.wk-num{color:var(--amber)!important}
+
+/* ── Week detail (day-by-day timeline in FP card) ── */
 .wd-timeline{display:flex;flex-direction:column;gap:0;margin:0 -24px}
 .wd-row{display:flex;gap:0;border-top:1px solid var(--border);padding:12px 24px}
 .wd-row:first-child{border-top:none}
-.wd-row.empty{opacity:.35}
+.wd-row.empty{opacity:.45}
 .wd-date{font-family:var(--mono);font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;width:80px;flex-shrink:0;padding-top:2px;line-height:1.4}
 .wd-rest{font-family:var(--mono);font-size:9px;color:var(--dim);font-style:italic;padding-top:2px}
 .wd-day-content{flex:1;display:flex;flex-direction:column;gap:8px}
-.wd-session{border-radius:var(--r-md);padding:10px 12px}
-.wd-session.run{background:var(--run-bg);border-left:3px solid var(--run)}
-.wd-session.str{background:var(--str-bg);border-left:3px solid var(--str)}
+.wd-session{border-radius:8px;padding:10px 12px}
+.wd-session.run{background:#fff7ed;border-left:3px solid var(--run)}
+.wd-session.str{background:#eff6ff;border-left:3px solid var(--str)}
 .wd-session.other{background:var(--surface2);border-left:3px solid var(--border-mid)}
 .wd-sess-cat{font-family:var(--mono);font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px}
-.wd-session.run .wd-sess-cat{color:var(--run)}.wd-session.str .wd-sess-cat{color:var(--str)}
+.wd-session.run .wd-sess-cat{color:var(--run)}
+.wd-session.str .wd-sess-cat{color:var(--str)}
 .wd-sess-name{font-size:13px;font-weight:600;color:var(--text);margin-bottom:3px;line-height:1.4}
 .wd-sess-log{font-family:var(--mono);font-size:10px;color:var(--muted);line-height:1.5}
 .wd-ex-list{display:flex;flex-direction:column;gap:2px;margin-top:4px}
 .wd-ex-row{display:flex;align-items:baseline;gap:8px;min-height:20px}
 .wd-ex-name{font-family:var(--mono);font-size:9px;color:var(--muted);width:160px;flex-shrink:0;line-height:1.4;padding-top:1px;text-transform:capitalize}
 .wd-ex-sets{display:flex;flex-wrap:wrap;gap:3px}
-.wd-ex-set{font-family:var(--mono);font-size:9px;background:var(--surface3);border:1px solid var(--border);padding:1px 6px;border-radius:4px;color:var(--text);white-space:nowrap;line-height:1.5}
+.wd-ex-set{font-family:var(--mono);font-size:9px;background:var(--surface2);border:1px solid var(--border);padding:1px 6px;border-radius:4px;color:var(--text);white-space:nowrap;line-height:1.5}
+.wd-session.run .wd-ex-set{background:#fff7ed;border-color:#fde68a;color:var(--run)}
 .wd-run-stats{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
 .wd-run-stat{font-family:var(--mono);font-size:10px;color:var(--muted)}
 .wd-run-stat strong{color:var(--text);font-size:11px}
@@ -680,177 +562,130 @@ header{
 .wd-metric.body-lbl{font-size:8px;text-transform:uppercase;letter-spacing:.06em;opacity:.6;padding:2px 6px}
 .wd-metric.nutr-lbl{font-size:8px;text-transform:uppercase;letter-spacing:.06em;opacity:.6;padding:2px 6px;background:transparent}
 
-/* ────────────────────────────────────────────────────────── Action ribbon */
-.action-ribbon{background:linear-gradient(90deg,rgba(239,68,68,.12) 0%,rgba(239,68,68,.03) 100%);border-left:3px solid var(--alert);padding:8px 12px;margin:0;font-family:var(--mono);font-size:9px;color:var(--red-text);line-height:1.5;letter-spacing:.02em}
-.action-ribbon.amber{background:linear-gradient(90deg,rgba(245,158,11,.1) 0%,rgba(245,158,11,.04) 100%);border-left-color:var(--warn);color:var(--amber-text)}
+/* Responsive ── */
+@media(max-width:600px){
+  header{height:54px;padding:0 12px;gap:8px}
+  .logo-mark{height:28px}
+  .logo{font-size:12px;letter-spacing:.08em}
+  .coach-pill{font-size:7px;padding:2px 6px 2px 4px;letter-spacing:.08em}
+  .coach-pill::before{width:4px;height:4px}
+  .updated{display:none}
+  .coach-select{font-size:9px;padding:4px 6px}
+  .refresh-btn{font-size:0;padding:5px 8px}
+  .refresh-btn::before{content:'↻';font-size:12px}
+  .tab-bar{top:54px}
+  .filter-bar{top:86px}
+  .grid{grid-template-columns:1fr}
+  .command-center{grid-template-columns:1fr}
+  .cc-hero{flex-direction:column}
+  .cc-score{grid-template-columns:repeat(3,1fr);width:100%}
+  .cc-body{grid-template-columns:1fr}
+  .cc-list{border-right:none;border-bottom:1px solid var(--border)}
+  .cc-health{grid-template-columns:1fr}
+  .coaches-grid{grid-template-columns:1fr}
+  .sched-grid{grid-template-columns:1fr}
+  .apps-grid{grid-template-columns:1fr}
+  .search-input{width:100%}
+  .fpc-train-pair{grid-template-columns:1fr}
+  .fpc-body-nutr{grid-template-columns:1fr}
+  .fpc-scores{grid-template-columns:repeat(3,1fr)}
+  .wd-date{width:60px}
+}
+
+/* ── Action Required Ribbon (squad card + full-page) ── */
+.action-ribbon{background:linear-gradient(90deg,#fef2f2 0%,#fff 100%);border-left:3px solid var(--alert);padding:8px 12px;margin:0;font-family:var(--mono);font-size:9px;color:#991b1b;line-height:1.5;letter-spacing:.02em;text-transform:uppercase}
+.action-ribbon.amber{background:linear-gradient(90deg,#fffbeb 0%,#fff 100%);border-left-color:var(--warn);color:#92400e}
 .action-ribbon-title{font-weight:800;letter-spacing:.08em;margin-bottom:3px;font-size:8px}
-.action-ribbon-list{font-weight:500;text-transform:none;letter-spacing:0;font-size:10px;color:var(--text)}
+.action-ribbon-list{font-weight:500;text-transform:none;letter-spacing:0;font-size:10px;color:#0a0a0a}
 .action-ribbon-list span{display:inline-block;margin-right:10px}
 .action-ribbon-list span::before{content:'• ';color:var(--alert);font-weight:900}
 .action-ribbon.amber .action-ribbon-list span::before{color:var(--warn)}
 
-/* ────────────────────────────────────────────────────────── Sparkline strip */
-.spark-strip{display:flex;gap:7px;padding:10px 13px 12px;background:rgba(255,255,255,.025);border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+/* ── Squad card sparkline strip ── */
+.spark-strip{display:flex;gap:8px;padding:10px 14px 12px;background:var(--surface2);border-top:1px solid var(--border)}
 .spark-cell{flex:1;text-align:center;min-width:0}
 .spark-cell-lbl{font-family:var(--mono);font-size:7px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px}
-.spark-cell-val{font-family:var(--cond);font-size:13px;font-weight:800;color:var(--text);line-height:1;margin-bottom:3px;letter-spacing:.01em}
+.spark-cell-val{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--text);line-height:1;margin-bottom:3px}
 .spark-cell-val.up{color:var(--ok)}.spark-cell-val.dn{color:var(--alert)}.spark-cell-val.flat{color:var(--muted)}
 .spark-svg{width:100%;height:18px;display:block}
 
-/* ────────────────────────────────────────────────────────── PR section */
+/* ── PR section ── */
 .fpc-pr-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-top:6px}
-.fpc-pr{background:linear-gradient(135deg,#1e1e44 0%,#242460 100%);border:1px solid rgba(99,102,241,.25);border-radius:var(--r-lg);padding:14px 16px;color:#fff;position:relative;overflow:hidden}
-.fpc-pr::before{content:'PR';position:absolute;top:8px;right:10px;font-family:var(--mono);font-size:8px;font-weight:900;letter-spacing:.1em;color:rgba(255,255,255,.25)}
+.fpc-pr{background:linear-gradient(135deg,#1e3a8a 0%,#312e81 100%);border-radius:10px;padding:14px 16px;color:#fff;position:relative;overflow:hidden}
+.fpc-pr::before{content:'PR';position:absolute;top:8px;right:10px;font-family:var(--mono);font-size:8px;font-weight:900;letter-spacing:.1em;color:rgba(255,255,255,.35)}
 .fpc-pr-ex{font-family:var(--cond);font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;line-height:1.1;margin-bottom:6px;padding-right:24px}
 .fpc-pr-val{font-size:24px;font-weight:900;letter-spacing:-.01em;line-height:1}
 .fpc-pr-val span{font-size:12px;font-weight:600;opacity:.7;margin-left:2px}
-.fpc-pr-prev{font-family:var(--mono);font-size:9px;color:rgba(255,255,255,.5);margin-top:4px}
+.fpc-pr-prev{font-family:var(--mono);font-size:9px;color:rgba(255,255,255,.55);margin-top:4px}
 .fpc-pr-prev .delta{color:#86efac;font-weight:700}
-.fpc-pr-date{font-family:var(--mono);font-size:8px;color:rgba(255,255,255,.35);margin-top:6px;letter-spacing:.05em;text-transform:uppercase}
+.fpc-pr-date{font-family:var(--mono);font-size:8px;color:rgba(255,255,255,.4);margin-top:6px;letter-spacing:.05em;text-transform:uppercase}
 .no-pr{font-family:var(--mono);font-size:10px;color:var(--dim);text-align:center;padding:14px 0}
 
-/* ────────────────────────────────────────────────────────── Daily nutrition chart */
+/* ── Daily nutrition timeline ── */
 .daily-nutr-wrap{margin-top:6px}
 .daily-nutr-legend{display:flex;gap:14px;margin-bottom:10px;font-family:var(--mono);font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
 .daily-nutr-legend span{display:flex;align-items:center;gap:5px}
 .daily-nutr-legend .swatch{width:10px;height:10px;border-radius:2px;display:inline-block}
 .daily-nutr-grid{display:flex;gap:4px;align-items:flex-end;height:140px;padding-bottom:18px;border-bottom:1px solid var(--border);position:relative}
-.daily-nutr-tgt-line{position:absolute;left:0;right:0;border-top:1.5px dashed rgba(239,68,68,.4);pointer-events:none}
-.daily-nutr-tgt-lbl{position:absolute;right:0;font-family:var(--mono);font-size:8px;color:var(--red-text);background:var(--surface);padding:0 4px;font-weight:700;letter-spacing:.06em;transform:translateY(-50%)}
+.daily-nutr-tgt-line{position:absolute;left:0;right:0;border-top:1.5px dashed rgba(220,38,38,.4);pointer-events:none}
+.daily-nutr-tgt-lbl{position:absolute;right:0;font-family:var(--mono);font-size:8px;color:#991b1b;background:#fff;padding:0 4px;font-weight:700;letter-spacing:.06em;transform:translateY(-50%)}
 .dnb{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;min-width:0;position:relative;height:100%;cursor:default}
-.dnb-bar{width:80%;background:linear-gradient(180deg,#4ade80 0%,#16a34a 100%);border-radius:3px 3px 0 0;min-height:1px;transition:opacity .15s}
+.dnb-bar{width:80%;background:linear-gradient(180deg,#86efac 0%,#15803d 100%);border-radius:3px 3px 0 0;min-height:1px;transition:opacity .15s;position:relative}
 .dnb.under .dnb-bar{background:linear-gradient(180deg,#fcd34d 0%,#d97706 100%)}
 .dnb.over .dnb-bar{background:linear-gradient(180deg,#fca5a5 0%,#dc2626 100%)}
-.dnb.empty .dnb-bar{background:rgba(255,255,255,.06)}
+.dnb.empty .dnb-bar{background:rgba(0,0,0,.06)}
 .dnb-val{font-family:var(--mono);font-size:8px;color:var(--muted);margin-bottom:3px;font-weight:700;white-space:nowrap}
 .dnb-day{font-family:var(--mono);font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.04em;position:absolute;bottom:-15px;left:0;right:0;text-align:center}
 .dnb-day.today{color:var(--text);font-weight:800}
 .dnb:hover .dnb-bar{opacity:.7}
-.dnb-tip{position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);background:var(--surface3);color:var(--text);font-family:var(--mono);font-size:9px;padding:5px 8px;border-radius:var(--r-sm);white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .15s;z-index:5;border:1px solid var(--border-mid)}
+.dnb-tip{position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);background:#0a0a0a;color:#fff;font-family:var(--mono);font-size:9px;padding:5px 8px;border-radius:5px;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .15s;z-index:5}
 .dnb:hover .dnb-tip{opacity:1}
 
-/* ────────────────────────────────────────────────────────── Trend section */
-.trend-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-top:6px}
-.trend-card{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-lg);padding:12px 14px}
+/* ── Trend section (sparklines large) ── */
+.trend-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-top:6px}
+.trend-card{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 14px}
 .trend-card-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
 .trend-card-lbl{font-family:var(--mono);font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;font-weight:700}
-.trend-card-now{font-size:22px;font-weight:800;letter-spacing:-.02em;line-height:1;font-variant-numeric:tabular-nums}
+.trend-card-now{font-size:22px;font-weight:900;letter-spacing:-.02em;line-height:1}
 .trend-card-now span{font-size:10px;font-weight:600;color:var(--muted);margin-left:2px}
 .trend-card-delta{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.04em}
 .trend-card-delta.up{color:var(--ok)}.trend-card-delta.dn{color:var(--alert)}.trend-card-delta.flat{color:var(--muted)}
 .trend-svg{width:100%;height:42px;display:block}
 .trend-card-foot{font-family:var(--mono);font-size:8px;color:var(--dim);margin-top:6px;text-transform:uppercase;letter-spacing:.06em}
 
-/* ────────────────────────────────────────────────────────── Progress photos */
+/* ── Progress photos ── */
 .progress-photo-panel{min-height:140px}
 .progress-photo-state{font-family:var(--mono);font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;padding:10px 0}
 .progress-photo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
-.progress-photo{display:block;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden;text-decoration:none;color:inherit}
+.progress-photo{display:block;background:var(--surface2);border:1px solid var(--border);border-radius:10px;overflow:hidden;text-decoration:none;color:inherit}
 .progress-photo img{width:100%;aspect-ratio:3/4;object-fit:cover;display:block;background:var(--surface2)}
 .progress-photo-meta{padding:8px 10px}
 .progress-photo-type{font-family:var(--mono);font-size:9px;font-weight:800;color:var(--text);text-transform:uppercase;letter-spacing:.08em}
 .progress-photo-date{font-family:var(--mono);font-size:8px;color:var(--dim);margin-top:3px}
 
-/* ────────────────────────────────────────────────────────── Daily input ledger */
+/* ── Daily input ledger ── */
 .daily-ledger{display:flex;flex-direction:column;gap:8px}
 .daily-ledger-row{display:grid;grid-template-columns:86px 1fr 1fr;gap:10px;padding:10px 0;border-top:1px solid var(--border)}
 .daily-ledger-row:first-child{border-top:none;padding-top:0}
 .daily-ledger-date{font-family:var(--mono);font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;line-height:1.5;padding-top:3px}
-.daily-ledger-box{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-md);padding:10px 11px;min-height:64px}
-.daily-ledger-box.empty{opacity:.4}
+.daily-ledger-box{background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:10px 11px;min-height:64px}
+.daily-ledger-box.empty{opacity:.5}
 .daily-ledger-title{font-family:var(--mono);font-size:8px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:var(--dim);margin-bottom:7px}
 .daily-ledger-fields{display:flex;flex-wrap:wrap;gap:5px}
-.daily-ledger-field{font-family:var(--mono);font-size:10px;color:var(--muted);background:var(--surface3);border:1px solid var(--border);border-radius:20px;padding:3px 8px}
+.daily-ledger-field{font-family:var(--mono);font-size:10px;color:var(--muted);background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:3px 8px}
 .daily-ledger-field strong{color:var(--text)}
 .daily-ledger-note{font-size:11px;color:var(--muted);line-height:1.45;margin-top:8px;border-left:2px solid var(--border-mid);padding-left:8px}
 .daily-ledger-empty{font-family:var(--mono);font-size:10px;color:var(--dim);font-style:italic}
 @media(max-width:720px){.daily-ledger-row{grid-template-columns:1fr}.daily-ledger-date{padding-top:0}}
-
-/* ────────────────────────────────────────────────────────── Week jump */
-.week-jump{display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:10px 14px;margin-bottom:14px}
+.week-jump{display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:10px 14px;margin-bottom:14px}
 .week-jump-title{font-family:var(--mono);font-size:9px;font-weight:800;color:var(--dim);text-transform:uppercase;letter-spacing:.12em}
 .week-jump-main{font-family:var(--cond);font-size:22px;font-weight:900;text-transform:uppercase;letter-spacing:.05em;line-height:1;margin-top:2px}
 .week-jump-sub{font-family:var(--mono);font-size:9px;color:var(--dim);margin-top:3px}
 .week-jump-controls{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end}
-.week-jump-btn{background:var(--surface2);border:1px solid var(--border-mid);color:var(--text);font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.08em;border-radius:var(--r-sm);padding:7px 10px;cursor:pointer;transition:all .15s}
-.week-jump-btn:hover{background:var(--surface3);border-color:var(--border-hi)}
-.week-jump-btn.secondary{background:transparent;color:var(--muted);border-color:var(--border)}
-.week-jump-btn:disabled{opacity:.25;cursor:not-allowed}
+.week-jump-btn{background:#0a0a0a;border:1px solid #0a0a0a;color:#fff;font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.08em;border-radius:6px;padding:7px 10px;cursor:pointer}
+.week-jump-btn.secondary{background:transparent;color:var(--muted);border-color:var(--border-mid)}
+.week-jump-btn:disabled{opacity:.35;cursor:not-allowed}
 @media(max-width:720px){.week-jump{align-items:flex-start;flex-direction:column}.week-jump-controls{justify-content:flex-start}}
-
-/* ────────────────────────────────────────────────────────── Coach Check-in Form */
-.coach-checkin{border-top:1px solid var(--coach-border);background:var(--coach-bg)}
-.coach-checkin-header{background:linear-gradient(90deg,rgba(30,58,138,.4) 0%,rgba(30,64,175,.25) 100%);padding:10px 14px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none}
-.coach-checkin-title{font-family:var(--mono);font-size:9px;font-weight:700;color:#a5b4fc;text-transform:uppercase;letter-spacing:.12em;display:flex;align-items:center;gap:7px}
-.coach-checkin-toggle{font-family:var(--mono);font-size:9px;color:rgba(165,180,252,.5);transition:transform .2s}
-.coach-checkin-toggle.open{transform:rotate(180deg)}
-.coach-checkin-body{padding:14px;display:none;flex-direction:column;gap:12px}
-.coach-checkin-body.open{display:flex}
-.cci-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px}
-.cci-field{display:flex;flex-direction:column;gap:3px}
-.cci-label{font-family:var(--mono);font-size:7px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em}
-.cci-input{border:1px solid var(--border-mid);border-radius:var(--r-sm);padding:5px 8px;font-family:var(--mono);font-size:11px;color:var(--text);background:var(--surface);outline:none;width:100%;transition:border .15s}
-.cci-input:focus{border-color:#6366f1}
-.cci-textarea{border:1px solid var(--border-mid);border-radius:var(--r-sm);padding:6px 8px;font-family:var(--sans);font-size:11px;color:var(--text);background:var(--surface);outline:none;width:100%;resize:vertical;min-height:46px;line-height:1.4;transition:border .15s}
-.cci-textarea:focus{border-color:#6366f1}
-.cci-section-lbl{font-family:var(--mono);font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--coach-text);margin-bottom:2px}
-.cci-save-btn{background:linear-gradient(90deg,#3730a3 0%,#4f46e5 100%);border:none;color:#fff;font-family:var(--mono);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;padding:8px 20px;border-radius:var(--r-md);cursor:pointer;transition:opacity .15s}
-.cci-save-btn:hover{opacity:.85}
-.cci-saved{font-family:var(--mono);font-size:9px;color:var(--ok);letter-spacing:.06em;text-transform:uppercase;display:none}
-.cci-saved.show{display:inline}
-.cci-week-lbl{font-family:var(--mono);font-size:9px;color:var(--coach-text);margin-bottom:6px;font-weight:700}
-.coach-history{padding:12px 14px;border-top:1px solid var(--coach-border)}
-.coach-history-lbl{font-family:var(--mono);font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px}
-.coach-history-row{display:flex;gap:6px;align-items:center;padding:5px 0;border-bottom:1px solid var(--border);font-family:var(--mono);font-size:9px;color:var(--muted)}
-.coach-history-row:last-child{border-bottom:none}
-.coach-history-date{color:var(--dim);min-width:80px}
-.coach-history-pills{display:flex;gap:4px;flex-wrap:wrap}
-.coach-history-pill{background:var(--coach-bg);color:var(--coach-text);border:1px solid var(--coach-border);border-radius:20px;padding:1px 7px;font-size:8px}
-
-/* ────────────────────────────────────────────────────────── Responsive */
-@media(max-width:600px){
-  header{height:54px;padding:0 12px;gap:8px}
-  .logo-mark{height:28px}.logo{font-size:12px;letter-spacing:.08em}
-  .coach-pill{font-size:7px;padding:2px 6px 2px 4px;letter-spacing:.08em}.coach-pill::before{width:4px;height:4px}
-  .updated{display:none}.coach-select{font-size:9px;padding:4px 6px}
-  .refresh-btn{font-size:0;padding:5px 8px}.refresh-btn::before{content:'↻';font-size:12px}
-  .tab-bar{top:54px}.filter-bar{top:86px}
-  .grid{grid-template-columns:1fr}.command-center{grid-template-columns:1fr}
-  .cc-hero{flex-direction:column}.cc-score{grid-template-columns:repeat(3,1fr);width:100%}
-  .cc-body{grid-template-columns:1fr}.cc-list{border-right:none;border-bottom:1px solid var(--border)}
-  .cc-health{grid-template-columns:1fr}.coaches-grid{grid-template-columns:1fr}
-  .sched-grid{grid-template-columns:1fr}.apps-grid{grid-template-columns:1fr}
-  .search-input{width:100%}.fpc-train-pair{grid-template-columns:1fr}
-  .fpc-body-nutr{grid-template-columns:1fr}.fpc-scores{grid-template-columns:repeat(3,1fr)}
-  .wd-date{width:60px}
-}
-
-/* ── session detail modal ── */
-.sess-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:9000;display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s}
-.sess-modal-overlay.open{opacity:1;pointer-events:all}
-.sess-modal{background:var(--surface);border-radius:14px 14px 0 0;border:1px solid var(--border-mid);border-bottom:none;width:100%;max-width:580px;max-height:86vh;overflow-y:auto;padding:22px 20px 28px;transform:translateY(40px);transition:transform .25s ease}
-.sess-modal-overlay.open .sess-modal{transform:translateY(0)}
-.sess-modal-hdr{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px}
-.sess-modal-title{font-family:var(--mono);font-size:15px;font-weight:700;color:var(--text);line-height:1.3}
-.sess-modal-sub{font-family:var(--mono);font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-top:3px}
-.sess-modal-close{background:var(--surface2);border:none;color:var(--muted);font-size:18px;cursor:pointer;border-radius:6px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.sess-modal-close:hover{color:var(--text);background:var(--surface3)}
-.sess-modal-meta{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid var(--border)}
-.sess-field{display:flex;flex-direction:column;gap:2px}
-.sess-field-lbl{font-family:var(--mono);font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.1em}
-.sess-field-val{font-family:var(--mono);font-size:11px;color:var(--muted)}
-.sess-modal-body{font-size:12px;line-height:1.75;color:var(--text-sec)}
-.sess-modal-body p{margin:0 0 7px;font-family:var(--mono)}
-.sess-modal-body ul,.sess-modal-body ol{margin:0 0 10px;padding-left:20px;font-family:var(--mono)}
-.sess-modal-body li{margin-bottom:4px}
-.sess-modal-body h3{font-family:var(--mono);font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin:12px 0 5px;border-bottom:1px solid var(--border);padding-bottom:4px}
-.sess-modal-body .cb-row{display:flex;align-items:flex-start;gap:7px;margin-bottom:5px;font-family:var(--mono);font-size:12px}
-.sess-modal-body .cb-row input{margin-top:2px;accent-color:var(--run);flex-shrink:0}
-.sess-modal-body hr.notion-divider{border:none;border-top:1px solid var(--border);margin:10px 0}
-.sess-modal-loading{text-align:center;padding:24px;font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:.06em}
-.sess-modal-footer{margin-top:16px;padding-top:12px;border-top:1px solid var(--border);display:flex;gap:8px;align-items:center}
-.sess-notion-link{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:10px;color:var(--muted);text-decoration:none;padding:5px 10px;background:var(--surface2);border-radius:5px;border:1px solid var(--border)}
-.sess-notion-link:hover{color:var(--text);border-color:var(--border-mid)}
 </style>
 </head>
 <body>
@@ -874,7 +709,7 @@ header{
     <img class="logo-mark" src="data:image/png;base64,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" alt="DP">
     <div class="logo-text">
       <div class="logo"><span class="d">DUAL</span> <span class="p">PERFORMANCE</span></div>
-      <div class="coach-pill">Coaches Dashboard · v2</div>
+      <div class="coach-pill">Coaches Dashboard · Internal</div>
     </div>
   </div>
   <div class="h-right">
@@ -920,6 +755,7 @@ header{
   </div>
   <div class="filter-divider"></div>
   <select class="sort-select" id="sort-select" onchange="applyFilters()">
+    <option value="recent" selected>Sort: Recently Active</option>
     <option value="alert">Sort: Needs Attention</option>
     <option value="name">Sort: Name A–Z</option>
     <option value="week">Sort: Program Week</option>
@@ -1033,8 +869,6 @@ const DB = {
   targets:      '3405a96c-c70b-80de-9221-c2a40653277c',
   planning:     '0b85a96c-c70b-8368-98fd-013e0e15c4f2',
   applications: '33f5a96c-c70b-8008-ac37-e11d3b48d8c1',
-  // Optional: dedicated coaches check-in Notion DB (leave empty string if using same weekly DB)
-  coachWeekly:  '',
 };
 
 // ── Session type → badge class mapping ───────────────────────────────────────
@@ -1052,14 +886,13 @@ const ST_LABEL = {
 function stClass(t){ return ST_CLASS[t] || 'default'; }
 function stLabel(t){ return ST_LABEL[t] || t || 'Session'; }
 
-function sessionBadgeHTML(sessionType, status, sessionName, sid) {
+function sessionBadgeHTML(sessionType, status, sessionName) {
   const cls = stClass(sessionType);
   const lbl = stLabel(sessionType);
-  const rawStatus = (status||'planned').trim().toLowerCase();
-  const statusCls = rawStatus.replace(/\s+/g,'');
-  const statusIcon = statusCls==='completed'?'✓':statusCls==='missed'?'✗':statusCls==='sick'?'🤒':statusCls==='inprogress'?'◐':'→';
+  const statusCls = (status||'planned').trim().toLowerCase().replace(/\s+/g,'');
+  const statusIcon = statusCls==='completed'?'✓':statusCls==='missed'?'✗':statusCls==='sick'?'🤒':'→';
   const title = sessionName ? `${sessionName} (${sessionType||''})` : (sessionType||'Session');
-  return `<span class="sbadge sbadge-${cls} ${statusCls}"${sid ? ` data-sid="${sid}" onclick="openSessModal('${sid}')" style="cursor:pointer"` : ""} title="${esc(title)}"><span class="sdot"></span>${esc(lbl)} <span class="sbadge-status">${statusIcon}</span></span>`;
+  return `<span class="sbadge sbadge-${cls} ${statusCls}" title="${esc(title)}"><span class="sdot"></span>${esc(lbl)} <span class="sbadge-status">${statusIcon}</span></span>`;
 }
 
 // ── Recovery score (composite 0–10) ─────────────────────────────────────────
@@ -1070,48 +903,20 @@ function calcRecoveryScore(w) {
   const energy = parseFloat(w['Energy /10']); if (!isNaN(energy)) vals.push(energy);
   const stress = parseFloat(w['Stress']); if (!isNaN(stress)) vals.push(10-stress);
   const soreness = parseFloat(w['Soreness /10']); if (!isNaN(soreness)) vals.push(10-soreness);
-  const motiv = parseFloat(w['Motivation']); if (!isNaN(motiv)) vals.push(motiv);
   if (!vals.length) return null;
   return Math.round((vals.reduce((a,b)=>a+b,0)/vals.length)*10)/10;
 }
 
-// ── Race countdown helper ────────────────────────────────────────────────────
-function raceCountdownDays(target) {
-  if (!target) return null;
-  const rd = target['Race Date'] || target['race_date'] || target['Race date'];
-  if (!rd) return null;
-  const raceDate = new Date(String(rd).split('T')[0]);
-  const today = new Date(); today.setHours(0,0,0,0);
-  const diff = Math.round((raceDate - today) / 86400000);
-  return diff >= 0 && diff <= 180 ? { days: diff, name: target['Race Name'] || target['Race'] || 'Race' } : null;
-}
-
-// ── isBad helper: returns true if a string has meaningful content ─────────────
-function isBad(s) {
-  if (!s) return false;
-  const t = String(s).trim().toLowerCase();
-  return t !== '' && t !== 'n/a' && t !== 'none' && t !== 'nil' && t !== '-' && t !== 'no';
-}
-
 // ── Extract athlete ID from a planning schedule row ──────────────────────────
-// Populated in buildAll() once the athlete DB rows are resolved.
-// Maps normalised Notion page IDs (no dashes, lowercase) → athlete code (e.g. 'JACOB')
-const notionIdToCode = {};
-
+// The Athlete field comes back as a relation — could be a name string, JSON array, or comma-list
 function getPlanningAthleteId(r) {
   const a = r['Athlete'] || r['athlete'];
   if (!a) return null;
   const s = String(a).trim();
-  let rawId = null;
   if (s.startsWith('[')) {
-    try { const p=JSON.parse(s); rawId = Array.isArray(p)?String(p[0]):String(p); } catch{}
-  } else {
-    rawId = s.split(',')[0].trim();
+    try { const p=JSON.parse(s); return nid(Array.isArray(p)?String(p[0]):String(p)); } catch{}
   }
-  if (!rawId) return null;
-  const cleanId = rawId.replace(/https?:\/\/[^\s/]+\//,'').replace(/-/g,'').toLowerCase();
-  if (notionIdToCode[cleanId]) return notionIdToCode[cleanId];
-  return nid(rawId);
+  return nid(s.split(',')[0].trim());
 }
 
 // Name aliases — maps any variant to the canonical athlete ID used everywhere
@@ -1125,7 +930,7 @@ const COACHES = new Set(['KARL', 'ALEX']);
 // Their week formula is: floor(days/7) + 1  →  Week 1 on Day 0.
 // New athletes all go through a Week 0 discovery week, so their formula is
 // floor(days/7)  →  Week 0 on Day 0, Week 1 on Day 7.
-const NO_DISCOVERY = new Set(['JACOB', 'KHANG', 'NATE']);
+const NO_DISCOVERY = new Set(['JACOB', 'KHANG']);
 
 // ── Week anchors — fallback ONLY for athletes without a Notion Start Date ─────
 // { ID: { week: N, endDate: 'YYYY-MM-DD' } }
@@ -1142,56 +947,6 @@ const callNotes = (() => {
   try { return JSON.parse(localStorage.getItem('dp_call_notes') || '{}'); }
   catch { return {}; }
 })();
-
-// ── Coach self-tracking data (localStorage, keyed by coachId + weekEnding) ──
-// Persists across refreshes. Data shape mirrors the weekly check-in DB fields.
-const coachStore = {
-  _key: 'dp_coach_data_v2',
-  _data: (() => {
-    try { return JSON.parse(localStorage.getItem('dp_coach_data_v2') || '{}'); }
-    catch { return {}; }
-  })(),
-  save() {
-    try { localStorage.setItem(this._key, JSON.stringify(this._data)); } catch {}
-  },
-  getEntry(coachId, weekEnding) {
-    return this._data[coachId + '__' + weekEnding] || null;
-  },
-  setEntry(coachId, weekEnding, data) {
-    this._data[coachId + '__' + weekEnding] = { ...data, coachId, weekEnding };
-    this.save();
-  },
-  getAllForCoach(coachId) {
-    return Object.values(this._data).filter(e => e.coachId === coachId)
-      .sort((a,b) => (b.weekEnding||'').localeCompare(a.weekEnding||''));
-  },
-  toWeeklyRow(entry) {
-    if (!entry) return null;
-    return {
-      Name: entry.coachId,
-      'Week Ending': entry.weekEnding,
-      'Energy /10':              String(entry.energy || ''),
-      'Sleep hrs':               String(entry.sleep || ''),
-      'Soreness /10':            String(entry.soreness || ''),
-      'Stress':                  String(entry.stress || ''),
-      'Motivation':              String(entry.motivation || ''),
-      'Nutrition Adherence /10': String(entry.nutrition || ''),
-      'Run Planned':             String(entry.runPlanned || ''),
-      'Run Completed':           String(entry.runCompleted || ''),
-      'Weekly Run KM':           String(entry.runKm || ''),
-      'Run Feel /10':            String(entry.runFeel || ''),
-      'Run Niggles':             entry.runNiggles || '',
-      'Runs Wins':               entry.runWins || '',
-      'Lift Planned':            String(entry.liftPlanned || ''),
-      'Lift Completed':          String(entry.liftCompleted || ''),
-      'Lift Feel /10':           String(entry.liftFeel || ''),
-      'Lifts Niggles':           entry.liftNiggles || '',
-      'Lift Wins':               entry.liftWins || '',
-      'Notes':                   entry.notes || '',
-      '_source': 'local',
-    };
-  },
-};
 
 // ── Local date helper (avoids UTC-shift bug with toISOString) ─────────────────
 function localDateStr(d) {
@@ -1264,6 +1019,9 @@ function fmtDate(s) {
   const [y, m, d] = String(s).split('T')[0].split('-');
   if (!y || !m || !d) return s;
   return `${d}-${m}-${y}`;
+}
+function isBad(v) {
+  return v && !['n/a', '', 'none', 'nope', 'nothing', 'no', '-'].includes((v || '').toLowerCase().trim());
 }
 function daysAgo(dateStr) {
   if (!dateStr) return null;
@@ -1595,7 +1353,6 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [
     const sd = r['date:Start Date:start'] || r['Start Date'];
     if (code) masterIds.add(code);
     if (code && sd) startDates[code] = sd;
-    if (code && r._id) notionIdToCode[r._id.replace(/-/g,'').toLowerCase()] = code;
   });
 
   // Build targets lookup: targetMap[athleteId][weekLabel] = row
@@ -1880,18 +1637,6 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [
     const scheduleCompliance = (planCompleted + planMissed) > 0
       ? Math.round((planCompleted / (planCompleted + planMissed)) * 100) : null;
 
-    // Accountability: missed + past-due (planned but date already passed)
-    const _TODAY = new Date(); _TODAY.setHours(0,0,0,0);
-    const thisWeekMissed = thisWeekPlan.filter(r =>
-      (r['Status '] || r['Status'] || '').trim() === 'Missed').length;
-    const thisWeekPastDue = thisWeekPlan.filter(r => {
-      const st = (r['Status '] || r['Status'] || '').trim();
-      const d = r['date:Planned Date:start'] || r['Planned Date'] || '';
-      return (!st || st === 'Planned') && d && new Date(d) < _TODAY;
-    }).length;
-    if (thisWeekMissed > 0) flags.push({ t: 'red', l: `${thisWeekMissed} Missed` });
-    else if (thisWeekPastDue > 0) flags.push({ t: 'yellow', l: `${thisWeekPastDue} Overdue` });
-
     // Recovery score from weekly check-in
     const recoveryScore = calcRecoveryScore(w);
 
@@ -1909,6 +1654,16 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [
       protein:  buildTimeseries(a.nutrition, 'date:Date:start', 'Protein', 14),
     };
 
+    // ── Most recent logged data across all sources (for recency sort + badge) ─
+    const _lastSess = a.sessions.length
+      ? a.sessions.reduce((best, s) => (!best || (s._d || '') > best) ? (s._d || '') : best, '') : '';
+    const _lastBody = a.body.length
+      ? a.body.reduce((best, b) => { const d = b['date:Date:start'] || ''; return (!best || d > best) ? d : best; }, '') : '';
+    const _lastNutr = a.nutrition.length
+      ? a.nutrition.reduce((best, n) => { const d = n['date:Date:start'] || ''; return (!best || d > best) ? d : best; }, '') : '';
+    const lastActivity = [_lastSess, _lastBody, _lastNutr].filter(Boolean).sort().pop() || null;
+    const lastActivityMs = lastActivity ? new Date(lastActivity).getTime() : 0;
+
     return {
       ...a, bAvg, nAvg, runS, strS,
       currRunS, currStrS,
@@ -1922,12 +1677,11 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [
       weeklies: wh[a.id] || [],
       allPlan: athletePlan,
       thisWeekPlan,
-      thisWeekMissed,
-      thisWeekPastDue,
       scheduleCompliance,
       recoveryScore,
       prs,
       trends,
+      lastActivity, lastActivityMs,
       isCoach: COACHES.has(a.id),
     };
   });
@@ -1936,25 +1690,8 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [
   // (buildActionList reads .compliance, .target, .body, etc.)
   all.forEach(a => { a.actions = buildActionList(a); });
 
-  let coaches  = all.filter(a => a.isCoach);
-  const athletes = all.filter(a => !a.isCoach).sort((a, b) => b.alertScore - a.alertScore);
-
-  // Guarantee KARL and ALEX always appear even if they have no Notion data at all.
-  // renderCoaches will inject localStorage entries if available.
-  for (const coachId of ['KARL', 'ALEX']) {
-    if (!coaches.find(c => c.id === coachId)) {
-      coaches.push({
-        id: coachId, weekly: null, body: [], nutrition: [], sessions: [],
-        bAvg: {}, nAvg: {}, runS: [], strS: [], currRunS: [], currStrS: [],
-        prevRunS: [], prevStrS: [], flags: [], alertScore: 0,
-        hasRecent: false, hasCurrentCheckin: false, hasLastWeekCheckin: false,
-        isStale: false, expectedWeekEnd: null, compliance: null,
-        weekNum: null, target: null, targetByWeek: {}, weeklies: [],
-        allPlan: [], thisWeekPlan: [], thisWeekMissed: 0, thisWeekPastDue: 0, scheduleCompliance: null,
-        recoveryScore: null, prs: [], trends: {}, isCoach: true, actions: [],
-      });
-    }
-  }
+  const coaches  = all.filter(a => a.isCoach);
+  const athletes = all.filter(a => !a.isCoach).sort((a, b) => (b.lastActivityMs || 0) - (a.lastActivityMs || 0));
   const syncAudit = buildSyncAudit({
     masterIds, startDates, wl, targetMap, bodyCounts, nutritionCounts,
     sessionCounts, planCounts, calcWeekNum,
@@ -2070,25 +1807,13 @@ function renderSummary(ath) {
     return s + a.prs.recent.filter(pr => new Date(pr.date) >= c7).length;
   }, 0);
 
-  const racingThisMonth = ath.filter(a => {
-    const r = raceCountdownDays(a.target);
-    return r && r.days <= 30;
-  }).length;
-
-  const avgRecovery = ath.map(a => a.recoveryScore).filter(v => v !== null && !isNaN(v));
-  const avgRecoveryVal = avgRecovery.length
-    ? (avgRecovery.reduce((s,v)=>s+v,0)/avgRecovery.length).toFixed(1)
-    : null;
-
   document.getElementById('sum-bar').innerHTML = `
     <div class="sum-card"><div class="sum-num">${ath.length}</div><div class="sum-lbl">Athletes</div></div>
     <div class="sum-card"><div class="sum-num ${alertN ? 'red' : 'grn'}">${alertN}</div><div class="sum-lbl">Action Required</div></div>
     <div class="sum-card"><div class="sum-num">${watchN}</div><div class="sum-lbl">Watch List</div></div>
     <div class="sum-card"><div class="sum-num grn">${checkedIn}</div><div class="sum-lbl">Checked In</div></div>
-    ${avgRecoveryVal !== null ? `<div class="sum-card"><div class="sum-num ${avgRecoveryVal>=7?'grn':avgRecoveryVal>=5?'':'red'}">${avgRecoveryVal}</div><div class="sum-lbl">Avg Recovery</div></div>` : ''}
     <div class="sum-card"><div class="sum-num str-c">${prs7}</div><div class="sum-lbl">PRs (7d)</div></div>
     <div class="sum-card"><div class="sum-num run-c">${totalKm.toFixed(0)}</div><div class="sum-lbl">Squad KM (14d)</div></div>
-    ${racingThisMonth ? `<div class="sum-card"><div class="sum-num" style="color:#dc2626">${racingThisMonth}</div><div class="sum-lbl">Racing 30d</div></div>` : ''}
     ${avgComp !== null ? `<div class="sum-card"><div class="sum-num ${avgComp >= 80 ? 'grn' : avgComp >= 60 ? '' : 'red'}">${avgComp}%</div><div class="sum-lbl">Avg Compliance</div></div>` : ''}`;
 }
 
@@ -2215,55 +1940,15 @@ function renderGrid(ath) {
 
 function renderCoaches(coaches) {
   const grid = document.getElementById('coaches-grid');
-
-  // Inject any localStorage check-in data so the Coaches tab shows it
-  // even before the next full data refresh from Notion.
-  const now = new Date();
-  const day = now.getDay();
-  const sun = new Date(now);
-  sun.setDate(now.getDate() + (7 - day) % 7);
-  const currentWE = localDateStr(sun);
-
-  const enriched = coaches.map(c => {
-    const local = coachStore.getEntry(c.id, currentWE);
-    if (!local) return c;
-    // If no weekly data from Notion, use the localStorage entry
-    if (!c.weekly || !c.weekly.Name) {
-      const row = coachStore.toWeeklyRow(local);
-      // Recalculate compliance from local data
-      const rp = parseInt(row['Run Planned']) || 0;
-      const rc = parseInt(row['Run Completed']) || 0;
-      const lp = parseInt(row['Lift Planned']) || 0;
-      const lc = parseInt(row['Lift Completed']) || 0;
-      const total = rp + lp;
-      const done  = rc + lc;
-      const comp  = total > 0 ? Math.round(done / total * 100) : null;
-      return { ...c, weekly: row, compliance: comp };
-    }
-    // If existing weekly data is older, prefer local
-    if (c.weekly['Week Ending'] < currentWE || c.weekly['_source'] === 'local') {
-      const row = coachStore.toWeeklyRow(local);
-      const rp = parseInt(row['Run Planned']) || 0;
-      const rc = parseInt(row['Run Completed']) || 0;
-      const lp = parseInt(row['Lift Planned']) || 0;
-      const lc = parseInt(row['Lift Completed']) || 0;
-      const total = rp + lp;
-      const done  = rc + lc;
-      const comp  = total > 0 ? Math.round(done / total * 100) : null;
-      return { ...c, weekly: row, compliance: comp };
-    }
-    return c;
-  });
-
-  if (!enriched.length) {
+  if (!coaches.length) {
     grid.innerHTML = `<div class="coach-no-data"><div class="coach-no-data-txt">No coach data found for Karl or Alex</div></div>`;
     return;
   }
   // Always show Karl first, then Alex, then others
   const ordered = [
-    ...enriched.filter(c => c.id === 'KARL'),
-    ...enriched.filter(c => c.id === 'ALEX'),
-    ...enriched.filter(c => c.id !== 'KARL' && c.id !== 'ALEX'),
+    ...coaches.filter(c => c.id === 'KARL'),
+    ...coaches.filter(c => c.id === 'ALEX'),
+    ...coaches.filter(c => c.id !== 'KARL' && c.id !== 'ALEX'),
   ];
   grid.innerHTML = ordered.map(buildCoachCard).join('');
 }
@@ -2276,6 +1961,20 @@ function buildCard(a) {
   const hY = !hR && a.flags.some(f => f.t === 'yellow');
   const bcls = hR ? 'red' : hY ? 'yellow' : '';
   const fps = a.flags.map(f => `<span class="fp ${f.t}">${esc(f.l)}</span>`).join('');
+
+  // ── Activity notification dot
+  let actDotHtml = '';
+  if (a.lastActivity) {
+    const diffH = (Date.now() - new Date(a.lastActivity)) / 3600000;
+    const diffD = diffH / 24;
+    let dotCls, tsText;
+    if (diffH < 1)       { dotCls = 'live';   tsText = 'Active just now'; }
+    else if (diffH < 24) { dotCls = 'today';  tsText = `Active ${Math.floor(diffH)}h ago`; }
+    else if (diffD < 2)  { dotCls = 'today';  tsText = 'Active yesterday'; }
+    else if (diffD < 7)  { dotCls = 'recent'; tsText = `Active ${Math.floor(diffD)}d ago`; }
+    else                 { dotCls = 'old';    tsText = `Active ${Math.floor(diffD)}d ago`; }
+    actDotHtml = `<div class="act-ts"><span class="act-dot ${dotCls}"></span>${tsText}</div>`;
+  }
 
   // Scores
   let scores = '';
@@ -2494,103 +2193,19 @@ function buildCard(a) {
     </div>`;
   }
 
-  // This week's plan — day-by-day accountability grid
+  // This week's plan
   let planHtml = '';
   if (a.thisWeekPlan && a.thisWeekPlan.length) {
-    const _TDAY = new Date(); _TDAY.setHours(0,0,0,0);
-    const DAY_ABB = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-    const dayMap = {};
-    a.thisWeekPlan.forEach(r => {
-      const d = r['date:Planned Date:start'] || r['Planned Date'] || '';
-      if (!d) return;
-      const idx = new Date(d).getDay();
-      if (!dayMap[idx]) dayMap[idx] = [];
-      dayMap[idx].push(r);
-    });
-    const ORDER = [1,2,3,4,5,6,0];
-    const rows = ORDER.map(idx => {
-      const sess = dayMap[idx];
-      if (!sess || !sess.length) return '';
-      const offset = idx === 0 ? 6 : idx - 1;
-      const dayDate = new Date(currentWeekStart);
-      dayDate.setDate(currentWeekStart.getDate() + offset);
-      const isToday = dayDate.getTime() === _TDAY.getTime();
-      const isPast  = dayDate < _TDAY;
-      const lblCls  = isToday ? 'today-lbl' : isPast ? 'past' : '';
-      const badges  = sess.map(r => { const sid=r._id||''; if(sid) window._sessMap[sid]=r; return sessionBadgeHTML(r['Session Type']||r['SessionType'], r['Status ']||r['Status'], r.Session, sid); }).join('');
-      return `<div class="sched-day${isToday?' today':''}"><span class="sched-day-lbl ${lblCls}">${DAY_ABB[idx]}</span><div class="sched-day-badges">${badges}</div></div>`;
-    }).join('');
-    const done      = a.thisWeekPlan.filter(r=>(r['Status ']||r['Status']||'').trim()==='Completed').length;
-    const missed    = a.thisWeekMissed  || 0;
-    const pastDue   = a.thisWeekPastDue || 0;
-    const remaining = a.thisWeekPlan.filter(r=>{
-      const st=(r['Status ']||r['Status']||'').trim();
-      const d=r['date:Planned Date:start']||r['Planned Date']||'';
-      return (!st || st==='Planned') && d && new Date(d) >= _TDAY;
-    }).length;
+    const badges = a.thisWeekPlan.slice(0, 7).map(r =>
+      sessionBadgeHTML(r['Session Type'] || r['SessionType'], r['Status '] || r['Status'], r.Session)
+    ).join('');
+    const extra = a.thisWeekPlan.length > 7 ? `<span class="sbadge sbadge-default">+${a.thisWeekPlan.length-7}</span>` : '';
     const comp = a.scheduleCompliance;
-    const cc   = comp!==null ? (comp>=80?'good':comp>=60?'mid':'bad') : '';
+    const cc = comp !== null ? (comp>=80?'good':comp>=60?'mid':'bad') : '';
     planHtml = `<div class="plan-sec">
-      <div class="plan-sec-hdr">
-        <span class="plan-sec-ttl">📅 This Week</span>
-        ${missed>0  ? `<span class="plan-missed-badge">${missed} Missed</span>` : ''}
-        ${pastDue>0 && missed===0 ? `<span class="plan-overdue-badge">${pastDue} Overdue</span>` : ''}
-        ${comp!==null ? `<span class="plan-sec-comp ${cc}" style="margin-left:auto">${comp}% hist</span>` : ''}
-      </div>
-      <div class="sched-grid">${rows}</div>
-      <div class="sched-summary">
-        <span class="ss-item ss-done">✓ ${done} done</span>
-        ${missed   > 0 ? `<span class="ss-item ss-missed">✗ ${missed} missed</span>`      : ''}
-        ${pastDue  > 0 ? `<span class="ss-item ss-overdue">⚠ ${pastDue} past due</span>` : ''}
-        ${remaining> 0 ? `<span class="ss-item ss-left">→ ${remaining} left</span>`       : ''}
-      </div>
+      <div class="plan-sec-ttl">📅 This Week's Plan${comp!==null?`<span class="plan-sec-comp ${cc}">${comp}%</span>`:''}</div>
+      <div class="sched-badges">${badges}${extra}</div>
     </div>`;
-  }
-
-  // ── Race Countdown Chip ───────────────────────────────────────────────────
-  let raceChipHtml = '';
-  const race = raceCountdownDays(a.target);
-  if (race) {
-    const urgency = race.days <= 14 ? '#dc2626' : race.days <= 28 ? '#d97706' : '#15803d';
-    raceChipHtml = `<div style="display:flex;align-items:center;gap:8px;padding:6px 13px;border-bottom:1px solid var(--border);background:linear-gradient(90deg,rgba(220,38,38,.04) 0%,transparent 60%)">
-      <span style="width:6px;height:6px;border-radius:50%;background:${urgency};flex-shrink:0;display:inline-block"></span>
-      <span style="font-size:10px;font-weight:700;color:var(--text);flex:1">${esc(race.name)}</span>
-      <span style="font-family:var(--mono);font-size:10px;font-weight:700;color:${urgency}">${race.days === 0 ? 'Race Day!' : race.days + 'd out'}</span>
-    </div>`;
-  }
-
-  // ── Weekly KM bar ─────────────────────────────────────────────────────────
-  let kmBarHtml = '';
-  if (hW && w['Weekly Run KM']) {
-    const km = parseFloat(w['Weekly Run KM']);
-    const tKM = a.target ? parseFloat(String(a.target['Weekly KM Target'] || '').replace(/[^\d.]/g,'')) : 0;
-    if (!isNaN(km)) {
-      const pct = tKM > 0 ? Math.min(100, Math.round((km/tKM)*100)) : null;
-      const kmCls = pct !== null ? (pct>=90?'good':pct>=70?'mid':'bad') : 'mid';
-      kmBarHtml = `<div class="km-bar-row">
-        <span class="km-bar-lbl">Weekly KM</span>
-        <div class="km-bar-track"><div class="km-bar-fill ${kmCls}" style="width:${pct ?? 60}%"></div></div>
-        <span class="km-bar-val ${kmCls}">${km}</span>
-        ${tKM ? `<span class="km-bar-tgt">/ ${tKM}</span>` : ''}
-      </div>`;
-    }
-  }
-
-  // ── Nutrition signal on card (7d avg vs target) ───────────────────────────
-  let nutrSignalHtml = '';
-  if (a.nAvg.cal !== null && a.target) {
-    const tCal = parseFloat(String(a.target.Calories||'').replace(/[^\d.]/g,''));
-    const aCal = parseFloat(a.nAvg.cal);
-    if (tCal && aCal) {
-      const pct = Math.round((aCal/tCal)*100);
-      const cls = pct >= 85 && pct <= 115 ? 'good' : pct < 75 ? 'bad' : 'mid';
-      const lbl = pct < 75 ? 'Under-fuelling' : pct > 115 ? 'Over target' : 'On target';
-      nutrSignalHtml = `<div style="display:flex;align-items:center;gap:8px;padding:5px 13px;border-bottom:1px solid var(--border);background:var(--amber-bg)">
-        <span style="font-family:var(--mono);font-size:8px;color:var(--amber-text);text-transform:uppercase;letter-spacing:.07em">Avg Cals 7d</span>
-        <span style="font-family:var(--mono);font-size:10px;font-weight:700;color:var(--amber-text)">${Math.round(aCal)} kcal</span>
-        <span style="font-family:var(--mono);font-size:9px;color:var(--${cls==='good'?'ok':cls==='bad'?'alert':'warn'});margin-left:auto">${pct}% · ${lbl}</span>
-      </div>`;
-    }
   }
 
   // Call Prep
@@ -2657,22 +2272,20 @@ function buildCard(a) {
     }
   }
 
-  // ── Sparkline strip: coach-glance at key trends ───────────────────────────
+  // ── Sparkline strip: 7-day glance at recovery vitals ──────────────────────
   let sparkStripHtml = '';
   if (a.trends) {
     const cells = [
-      { key: 'sleep',    lbl: 'Sleep',    inv: false, color: '#3b82f6', unit: '/10' },
-      { key: 'stress',   lbl: 'Stress',   inv: true,  color: '#dc2626', unit: '/10' },
-      { key: 'energy',   lbl: 'Energy',   inv: false, color: '#f59e0b', unit: '/10' },
-      { key: 'calories', lbl: 'Cals',     inv: false, color: '#15803d', unit: 'kcal' },
+      { key: 'sleep',    lbl: 'Sleep',  inv: false, color: '#3b82f6', unit: '/10' },
+      { key: 'stress',   lbl: 'Stress', inv: true,  color: '#dc2626', unit: '/10' },
+      { key: 'energy',   lbl: 'Energy', inv: false, color: '#f59e0b', unit: '/10' },
+      { key: 'weight',   lbl: 'Weight', inv: false, color: '#0a0a0a', unit: 'kg' },
     ];
     const cellsHtml = cells.map(c => {
       const series = a.trends[c.key] || [];
       const t = trendDelta(series, c.inv);
       const last = [...series].reverse().find(p => p.value !== null);
-      const lastVal = last
-        ? (c.unit === 'kcal' ? Math.round(last.value).toLocaleString() : (Number.isInteger(last.value) ? last.value : last.value.toFixed(1)))
-        : '—';
+      const lastVal = last ? (Number.isInteger(last.value) ? last.value : last.value.toFixed(1)) : '—';
       const arrow = t.dir === 'up' ? '↑' : t.dir === 'dn' ? '↓' : '→';
       const dirCls = t.dir === 'up' ? 'up' : t.dir === 'dn' ? 'dn' : 'flat';
       return `<div class="spark-cell">
@@ -2684,12 +2297,13 @@ function buildCard(a) {
     sparkStripHtml = `<div class="spark-strip">${cellsHtml}</div>`;
   }
 
-  return `<div class="card ${bcls}" data-card="${esc(a.id)}" data-alert="${a.alertScore}" data-name="${esc(a.id)}" data-week="${a.weekNum ?? 0}" data-compliance="${a.compliance ?? 0}" data-checkin="${w?.['Week Ending'] || ''}">
+  return `<div class="card ${bcls}" data-card="${esc(a.id)}" data-alert="${a.alertScore}" data-name="${esc(a.id)}" data-week="${a.weekNum ?? 0}" data-compliance="${a.compliance ?? 0}" data-checkin="${w?.['Week Ending'] || ''}" data-lastactive="${a.lastActivity || ''}">
     <div class="card-head">
       <div class="card-head-top">
         <div>
           <div class="aname">${esc(a.id)}</div>
           <div class="ameta ${a.isStale ? 'nocheckin' : ''}">${metaText}</div>
+          ${actDotHtml}
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">
           <button class="fp-open-btn" onclick="showFP('${esc(a.id)}')">⤢ Full Page</button>
@@ -2700,9 +2314,6 @@ function buildCard(a) {
     </div>
     ${actionRibbonHtml}
     ${sparkStripHtml}
-    ${raceChipHtml}
-    ${kmBarHtml}
-    ${nutrSignalHtml}
     ${weekInProgress}${staleBanner}${recoveryHtml}${planHtml}${compBar}${scores}${training}${bodyHtml}${nutrHtml}${sessHtml}
     <div class="ai-sec"></div>
     ${callPrepHtml}
@@ -2879,18 +2490,11 @@ function buildFPCard(a, weekOffset = 0) {
   }
 
   // Hero
-  const raceInfo = raceCountdownDays(a.target);
-  const raceHeroHtml = raceInfo ? `<div style="display:inline-flex;align-items:center;gap:6px;margin-top:10px;background:rgba(220,38,38,.12);border:1px solid rgba(220,38,38,.25);border-radius:6px;padding:4px 10px">
-    <span style="width:6px;height:6px;border-radius:50%;background:#fca5a5;flex-shrink:0;display:inline-block"></span>
-    <span style="font-family:var(--mono);font-size:9px;font-weight:700;color:#fca5a5;text-transform:uppercase;letter-spacing:.08em">${esc(raceInfo.name)} · ${raceInfo.days === 0 ? 'Race Day!' : raceInfo.days + ' days out'}</span>
-  </div>` : '';
-
   const hero = `<div class="fpc-hero">
     <div class="fpc-hero-top">
       <div>
         <div class="fpc-name">${esc(a.id)}</div>
         <div class="fpc-meta ${a.isStale ? 'stale' : ''}">${metaText}</div>
-        ${raceHeroHtml}
       </div>
       ${ctx.selectedWeekNum !== null ? `<div class="fpc-week-badge">
         <div class="fpc-week-num">${ctx.selectedWeekNum}</div>
@@ -3085,11 +2689,10 @@ function buildFPCard(a, weekOffset = 0) {
     const tCarb = t?.Carbs    ? String(t.Carbs).replace(/[^\d.]/g,'')    : null;
     const tFat  = t?.Fats     ? String(t.Fats).replace(/[^\d.]/g,'')     : null;
     const tKM   = t?.['Weekly KM Target'] ? String(t['Weekly KM Target']) : null;
-    const tRace = raceCountdownDays(t);
     const hasTarget = tCal || tPro || tCarb || tFat;
 
     nutrHtml = `<div class="fpc-section" style="margin-bottom:0">
-      <div class="fpc-section-title">Nutrition${a.nAvg.cal !== null ? ` — ${a.nAvg.days}d avg` : ''}${tRace ? ` · <span style="color:#dc2626;font-weight:700">${tRace.name} ${tRace.days}d out</span>` : ''}</div>
+      <div class="fpc-section-title">Nutrition${a.nAvg.cal !== null ? ` — ${a.nAvg.days}d avg` : ''}</div>
       ${a.nAvg.cal !== null ? `<div class="fpc-nutr-row">
         <div class="fpc-nutr-cell"><div class="fpc-nutr-val">${a.nAvg.cal || '—'}</div><div class="fpc-nutr-lbl">Calories</div></div>
         <div class="fpc-nutr-cell"><div class="fpc-nutr-val">${a.nAvg.pro || '—'}<span class="fpc-nutr-unit">g</span></div><div class="fpc-nutr-lbl">Protein</div></div>
@@ -3588,37 +3191,11 @@ function buildCoachCard(a) {
   }
 
   const noData = !hW && !a.bAvg.wt && !a.bAvg.sleep;
-  const isLocalData = hW && w['_source'] === 'local';
   const metaTxt = hW
-    ? `Week ending ${fmtDate(w['Week Ending'])}${isLocalData ? ' · Locally logged' : ''}`
+    ? `Week ending ${fmtDate(w['Week Ending'])}`
     : a.body.length ? 'Daily tracking only' : 'No check-in data yet';
 
-  // Coach check-in form (collapsed by default)
-  const cardId = 'coach-' + a.id.toLowerCase();
-  const formHtml = buildCoachForm(a.id, cardId);
-
-  // Recent history pills
-  const historyRows = coachStore.getAllForCoach(a.id).slice(0, 5);
-  let historyHtml = '';
-  if (historyRows.length > 1) {
-    historyHtml = `<div class="coach-history">
-      <div class="coach-history-lbl">Recent weeks</div>
-      ${historyRows.map(e => {
-        const pills = [
-          e.energy ? `Energy ${e.energy}` : null,
-          e.runCompleted ? `Run ${e.runCompleted}/${e.runPlanned||'?'}` : null,
-          e.liftCompleted ? `Lift ${e.liftCompleted}/${e.liftPlanned||'?'}` : null,
-          e.runKm ? `${e.runKm}km` : null,
-        ].filter(Boolean);
-        return `<div class="coach-history-row">
-          <span class="coach-history-date">${fmtDate(e.weekEnding)}</span>
-          <div class="coach-history-pills">${pills.map(p => `<span class="coach-history-pill">${esc(p)}</span>`).join('')}</div>
-        </div>`;
-      }).join('')}
-    </div>`;
-  }
-
-  return `<div class="coach-card" id="${cardId}-card">
+  return `<div class="coach-card">
     <div class="coach-card-head">
       <div class="coach-card-head-top">
         <div>
@@ -3635,131 +3212,8 @@ function buildCoachCard(a) {
     ${trainingHtml}
     ${bodyHtml}
     ${notesHtml}
-    ${noData ? `<div class="coach-no-data"><div class="coach-no-data-txt">No check-in data — log below</div></div>` : ''}
-    ${historyHtml}
-    ${formHtml}
+    ${noData ? `<div class="coach-no-data"><div class="coach-no-data-txt">No recent data found</div></div>` : ''}
   </div>`;
-}
-
-// ── Build coach self-check-in form ────────────────────────────────────────────
-function buildCoachForm(coachId, cardId) {
-  const now = new Date();
-  const day = now.getDay();
-  const sun = new Date(now);
-  sun.setDate(now.getDate() + (7 - day) % 7);
-  const weekEnding = localDateStr(sun);
-  const existing = coachStore.getEntry(coachId, weekEnding) || {};
-
-  function val(k) { return existing[k] !== undefined ? ` value="${esc(String(existing[k]))}"` : ''; }
-  function tv(k)  { return existing[k] !== undefined ? esc(String(existing[k])) : ''; }
-
-  return `<div class="coach-checkin">
-    <div class="coach-checkin-header" onclick="toggleCoachForm('${cardId}')">
-      <div class="coach-checkin-title">✏ Log This Week · ends ${fmtDate(weekEnding)}</div>
-      <div class="coach-checkin-toggle" id="${cardId}-toggle">▾</div>
-    </div>
-    <div class="coach-checkin-body" id="${cardId}-form">
-      <div class="cci-section-lbl">Wellness scores (out of 10)</div>
-      <div class="cci-row">
-        <div class="cci-field"><label class="cci-label">Energy</label><input class="cci-input" type="number" min="1" max="10" step="0.5" id="${cardId}-energy" placeholder="7"${val('energy')}></div>
-        <div class="cci-field"><label class="cci-label">Sleep hrs</label><input class="cci-input" type="number" min="3" max="12" step="0.5" id="${cardId}-sleep" placeholder="7.5"${val('sleep')}></div>
-        <div class="cci-field"><label class="cci-label">Soreness</label><input class="cci-input" type="number" min="1" max="10" step="0.5" id="${cardId}-soreness" placeholder="3"${val('soreness')}></div>
-        <div class="cci-field"><label class="cci-label">Stress</label><input class="cci-input" type="number" min="1" max="10" step="0.5" id="${cardId}-stress" placeholder="4"${val('stress')}></div>
-        <div class="cci-field"><label class="cci-label">Motivation</label><input class="cci-input" type="number" min="1" max="10" step="0.5" id="${cardId}-motivation" placeholder="8"${val('motivation')}></div>
-        <div class="cci-field"><label class="cci-label">Nutrition</label><input class="cci-input" type="number" min="1" max="10" step="0.5" id="${cardId}-nutrition" placeholder="7"${val('nutrition')}></div>
-      </div>
-
-      <div class="cci-section-lbl" style="margin-top:4px">Running</div>
-      <div class="cci-row">
-        <div class="cci-field"><label class="cci-label">Planned</label><input class="cci-input" type="number" min="0" max="20" id="${cardId}-runPlanned" placeholder="4"${val('runPlanned')}></div>
-        <div class="cci-field"><label class="cci-label">Completed</label><input class="cci-input" type="number" min="0" max="20" id="${cardId}-runCompleted" placeholder="3"${val('runCompleted')}></div>
-        <div class="cci-field"><label class="cci-label">Total km</label><input class="cci-input" type="number" min="0" max="300" id="${cardId}-runKm" placeholder="55"${val('runKm')}></div>
-        <div class="cci-field"><label class="cci-label">Feel /10</label><input class="cci-input" type="number" min="1" max="10" step="0.5" id="${cardId}-runFeel" placeholder="7"${val('runFeel')}></div>
-      </div>
-      <div class="cci-row" style="grid-template-columns:1fr 1fr">
-        <div class="cci-field"><label class="cci-label">Run win</label><textarea class="cci-textarea" id="${cardId}-runWins" placeholder="Hit a new tempo PB...">${tv('runWins')}</textarea></div>
-        <div class="cci-field"><label class="cci-label">Run niggle</label><textarea class="cci-textarea" id="${cardId}-runNiggles" placeholder="Tight left calf...">${tv('runNiggles')}</textarea></div>
-      </div>
-
-      <div class="cci-section-lbl" style="margin-top:4px">Lifting</div>
-      <div class="cci-row">
-        <div class="cci-field"><label class="cci-label">Planned</label><input class="cci-input" type="number" min="0" max="20" id="${cardId}-liftPlanned" placeholder="3"${val('liftPlanned')}></div>
-        <div class="cci-field"><label class="cci-label">Completed</label><input class="cci-input" type="number" min="0" max="20" id="${cardId}-liftCompleted" placeholder="3"${val('liftCompleted')}></div>
-        <div class="cci-field"><label class="cci-label">Feel /10</label><input class="cci-input" type="number" min="1" max="10" step="0.5" id="${cardId}-liftFeel" placeholder="8"${val('liftFeel')}></div>
-      </div>
-      <div class="cci-row" style="grid-template-columns:1fr 1fr">
-        <div class="cci-field"><label class="cci-label">Lift win</label><textarea class="cci-textarea" id="${cardId}-liftWins" placeholder="New squat PR...">${tv('liftWins')}</textarea></div>
-        <div class="cci-field"><label class="cci-label">Lift niggle</label><textarea class="cci-textarea" id="${cardId}-liftNiggles" placeholder="Shoulder tweaked...">${tv('liftNiggles')}</textarea></div>
-      </div>
-
-      <div class="cci-field">
-        <label class="cci-label">Notes / upcoming impact</label>
-        <textarea class="cci-textarea" id="${cardId}-notes" placeholder="Night shifts this week...">${tv('notes')}</textarea>
-      </div>
-
-      <div style="display:flex;align-items:center;gap:12px;margin-top:4px">
-        <button class="cci-save-btn" onclick="saveCoachEntry('${coachId}','${weekEnding}','${cardId}')">Save check-in</button>
-        <span class="cci-saved" id="${cardId}-saved">✓ Saved</span>
-      </div>
-    </div>
-  </div>`;
-}
-
-// ── Coach form helpers ───────────────────────────────────────────────────────
-function toggleCoachForm(cardId) {
-  const body = document.getElementById(cardId + '-form');
-  const toggle = document.getElementById(cardId + '-toggle');
-  if (!body || !toggle) return;
-  const open = body.classList.toggle('open');
-  toggle.classList.toggle('open', open);
-}
-
-function saveCoachEntry(coachId, weekEnding, cardId) {
-  function gv(field) {
-    const el = document.getElementById(cardId + '-' + field);
-    return el ? el.value.trim() : '';
-  }
-  const entry = {
-    energy:        gv('energy'),
-    sleep:         gv('sleep'),
-    soreness:      gv('soreness'),
-    stress:        gv('stress'),
-    motivation:    gv('motivation'),
-    nutrition:     gv('nutrition'),
-    runPlanned:    gv('runPlanned'),
-    runCompleted:  gv('runCompleted'),
-    runKm:         gv('runKm'),
-    runFeel:       gv('runFeel'),
-    runWins:       gv('runWins'),
-    runNiggles:    gv('runNiggles'),
-    liftPlanned:   gv('liftPlanned'),
-    liftCompleted: gv('liftCompleted'),
-    liftFeel:      gv('liftFeel'),
-    liftWins:      gv('liftWins'),
-    liftNiggles:   gv('liftNiggles'),
-    notes:         gv('notes'),
-  };
-  coachStore.setEntry(coachId, weekEnding, entry);
-
-  // Show saved flash
-  const savedEl = document.getElementById(cardId + '-saved');
-  if (savedEl) {
-    savedEl.classList.add('show');
-    setTimeout(() => savedEl.classList.remove('show'), 2500);
-  }
-
-  // Re-render coaches tab with updated data (merge new row into existing data)
-  // We do this by triggering a lightweight re-render of just the coach card
-  const card = document.getElementById(cardId + '-card');
-  if (card && _coaches.length) {
-    renderCoaches(_coaches);
-    // Re-open the form after re-render
-    setTimeout(() => {
-      toggleCoachForm(cardId);
-      const s = document.getElementById(cardId + '-saved');
-      if (s) { s.classList.add('show'); setTimeout(() => s.classList.remove('show'), 2000); }
-    }, 50);
-  }
 }
 
 // ── Filters ───────────────────────────────────────────────────────────────────
@@ -3791,7 +3245,9 @@ function applyFilters() {
   }
 
   // Sort
-  if (sortBy === 'name') {
+  if (sortBy === 'recent') {
+    visible = [...visible].sort((a, b) => (b.lastActivityMs || 0) - (a.lastActivityMs || 0));
+  } else if (sortBy === 'name') {
     visible = [...visible].sort((a, b) => a.id.localeCompare(b.id));
   } else if (sortBy === 'week') {
     visible = [...visible].sort((a, b) => (b.weekNum ?? -1) - (a.weekNum ?? -1));
@@ -3978,39 +3434,13 @@ async function load() {
   document.getElementById('refresh-btn').disabled = true;
 
   try {
-    const [weekly, sessions, body, nutrition, athleteDb, targets, planning, applications, coachWeekly] = await Promise.all([
+    const [weekly, sessions, body, nutrition, athleteDb, targets, planning, applications] = await Promise.all([
       fetchDB(DB.weekly), fetchDB(DB.sessions), fetchDB(DB.body),
       fetchDB(DB.nutrition), fetchDB(DB.athletes), fetchDB(DB.targets),
       fetchDB(DB.planning), fetchDB(DB.applications),
-      DB.coachWeekly ? fetchDB(DB.coachWeekly) : Promise.resolve([]),
     ]);
 
-    // Merge coach weekly rows: Notion coachWeekly DB + localStorage entries
-    // localStorage entries are keyed by coachId + weekEnding and always take
-    // precedence over any Notion row for the same coach + week.
-    const coachWeeklyMerged = [...weekly, ...coachWeekly];
-    const currentWE = (() => {
-      const now = new Date();
-      const day = now.getDay();
-      const sun = new Date(now);
-      sun.setDate(now.getDate() + (7 - day) % 7);
-      return localDateStr(sun);
-    })();
-    for (const coachId of ['KARL', 'ALEX']) {
-      const local = coachStore.getEntry(coachId, currentWE);
-      if (local) {
-        const row = coachStore.toWeeklyRow(local);
-        // Remove any existing row for this coach+week from merged array so local wins
-        const idx = coachWeeklyMerged.findIndex(r => {
-          const id = (r.Name || '').toUpperCase().trim().split('—')[0].split('--')[0].trim();
-          return id === coachId && r['Week Ending'] === currentWE;
-        });
-        if (idx >= 0) coachWeeklyMerged.splice(idx, 1, row);
-        else coachWeeklyMerged.push(row);
-      }
-    }
-
-    const { athletes, coaches, syncAudit } = buildAll(coachWeeklyMerged, sessions, body, nutrition, athleteDb, targets, planning, applications);
+    const { athletes, coaches, syncAudit } = buildAll(weekly, sessions, body, nutrition, athleteDb, targets, planning, applications);
     const dataHealth = {
       weekly: weekly.length,
       sessions: sessions.length,
@@ -4231,136 +3661,6 @@ document.getElementById('gen-btn').addEventListener('click', generateAI);
     updateLabel();
   });
 })();
-
-
-/* ── Session detail modal ── */
-window._sessMap = {};
-
-function openSessModal(id) {
-  const overlay = document.getElementById('sessModal');
-  const sess = window._sessMap[id];
-  if (!sess) return;
-
-  const title = document.getElementById('sessModalTitle');
-  const sub   = document.getElementById('sessModalSub');
-  const meta  = document.getElementById('sessModalMeta');
-  const body  = document.getElementById('sessModalBody');
-  const footer= document.getElementById('sessModalFooter');
-
-  // Title & sub
-  title.textContent = sess.Session || sess['Session Type'] || 'Session';
-  const typeLabel = sess['Session Type'] || '';
-  const dateLabel = sess['date:Planned Date:start'] || sess['Planned Date'] || '';
-  const stRaw = (sess['Status '] || sess['Status'] || '');
-  const statusLabel = stRaw || 'Planned';
-  sub.textContent = [typeLabel, dateLabel, statusLabel].filter(Boolean).join(' · ');
-
-  // Meta fields
-  const metaFields = [
-    { l:'Intensity',    v: sess['Intensity'] },
-    { l:'Week',         v: sess['Week'] },
-    { l:'Run Target',   v: sess['Weekly Run Target (KM)'] ? sess['Weekly Run Target (KM)'] + ' km' : null },
-  ].filter(f => f.v !== null && f.v !== undefined && f.v !== '');
-  meta.innerHTML = metaFields.map(f =>
-    `<div class="sess-field"><span class="sess-field-lbl">${f.l}</span><span class="sess-field-val">${f.v}</span></div>`
-  ).join('') || '';
-
-  // Show known text fields immediately while blocks load
-  const knownText = [
-    sess['Workout Exercise'] ? `<h3>Workout</h3><p>${sess['Workout Exercise'].replace(/\n/g,'<br>')}</p>` : '',
-    sess['Run Details']      ? `<h3>Run details</h3><p>${sess['Run Details'].replace(/\n/g,'<br>')}</p>` : '',
-    sess['Workout Splits']   ? `<h3>Splits</h3><p>${(Array.isArray(sess['Workout Splits'])?sess['Workout Splits'].join(', '):sess['Workout Splits'])}</p>` : '',
-  ].filter(Boolean).join('');
-  body.innerHTML = knownText || '<div class="sess-modal-loading">Loading workout details...</div>';
-
-  // Footer: Notion link
-  footer.innerHTML = sess._url
-    ? `<a class="sess-notion-link" href="${sess._url}" target="_blank">Open in Notion ↗</a>`
-    : '';
-
-  overlay.classList.add('open');
-  document.body.style.overflow = 'hidden';
-
-  // Fetch full page blocks
-  if (sess._id) {
-    fetch('/api/notion?page=' + sess._id)
-      .then(r => r.json())
-      .then(data => {
-        const blocks = data.results || data;
-        if (!blocks || !blocks.length) {
-          if (!knownText) body.innerHTML = '<p style="color:var(--dim);font-family:var(--mono);font-size:11px">No workout details in Notion page.</p>';
-          return;
-        }
-        body.innerHTML = (knownText ? knownText + '<hr class="notion-divider">' : '') + renderBlocks(blocks);
-      })
-      .catch(() => {
-        if (!knownText) body.innerHTML = '<p style="color:var(--dim);font-family:var(--mono);font-size:11px">Could not load workout details.</p>';
-      });
-  }
-}
-
-function closeSessModal() {
-  document.getElementById('sessModal').classList.remove('open');
-  document.body.style.overflow = '';
-}
-
-function renderBlocks(blocks) {
-  let html = '';
-  let inList = null;
-  for (const b of blocks) {
-    if (b.type !== 'bulleted_list_item' && b.type !== 'numbered_list_item') {
-      if (inList) { html += inList === 'ul' ? '</ul>' : '</ol>'; inList = null; }
-    }
-    switch(b.type) {
-      case 'heading_1':
-      case 'heading_2':
-      case 'heading_3':
-        html += `<h3>${esc(b.text)}</h3>`; break;
-      case 'paragraph':
-        if (b.text) html += `<p>${esc(b.text)}</p>`; break;
-      case 'bulleted_list_item':
-        if (inList !== 'ul') { html += '<ul>'; inList = 'ul'; }
-        html += `<li>${esc(b.text)}</li>`; break;
-      case 'numbered_list_item':
-        if (inList !== 'ol') { html += '<ol>'; inList = 'ol'; }
-        html += `<li>${esc(b.text)}</li>`; break;
-      case 'to_do':
-        html += `<div class="cb-row"><input type="checkbox" ${b.checked?'checked':''} disabled><span>${esc(b.text)}</span></div>`; break;
-      case 'divider':
-        html += '<hr class="notion-divider">'; break;
-      case 'callout':
-      case 'quote':
-        if (b.text) html += `<p style="border-left:2px solid var(--run);padding-left:8px;color:var(--muted)">${esc(b.text)}</p>`; break;
-      default: break;
-    }
-  }
-  if (inList) html += inList === 'ul' ? '</ul>' : '</ol>';
-  return html || '<p style="color:var(--dim);font-family:var(--mono);font-size:11px">No content in Notion page.</p>';
-}
-
-function esc(t) {
-  return String(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-}
-
-document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') closeSessModal();
-});
 </script>
-
-  <!-- Session detail modal -->
-  <div class="sess-modal-overlay" id="sessModal" onclick="if(event.target===this)closeSessModal()">
-    <div class="sess-modal">
-      <div class="sess-modal-hdr">
-        <div>
-          <div class="sess-modal-title" id="sessModalTitle">Session</div>
-          <div class="sess-modal-sub" id="sessModalSub"></div>
-        </div>
-        <button class="sess-modal-close" onclick="closeSessModal()">✕</button>
-      </div>
-      <div class="sess-modal-meta" id="sessModalMeta"></div>
-      <div class="sess-modal-body" id="sessModalBody"><div class="sess-modal-loading">Loading workout...</div></div>
-      <div class="sess-modal-footer" id="sessModalFooter"></div>
-    </div>
-  </div>
 </body>
 </html>
