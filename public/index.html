@@ -976,16 +976,42 @@ function calcRecoveryScore(w) {
   return Math.round((vals.reduce((a,b)=>a+b,0)/vals.length)*10)/10;
 }
 
+// ── Notion page ID → athlete code ─────────────────────────────────────────────
+// The planning database Athlete relation returns Notion page UUIDs instead of
+// code names. This map resolves them so schedule matching works correctly.
+// Add a row here whenever a new athlete is onboarded.
+const NOTION_PAGE_IDS = {
+  '3405A96C-C70B-81A4-B715-FC8A565E390D': 'NATE',
+  '3415A96C-C70B-8095-AB3C-C8AA574578B5': 'KARL',
+  '3485A96C-C70B-8015-8D35-C5BA4B6E53F4': 'ALVIN',
+  '3505A96C-C70B-808F-9AEF-C38C8F40CA77': 'SHAUN',
+  '4665A96C-C70B-8244-AD4C-014D7C64A5CC': 'KHANG',
+  '60B5A96C-C70B-8360-9278-016FA8A3DEEA': 'JACOB',
+  '3415A96C-C70B-80CF-9C5B-E23CFD087758': 'BRYAN',
+  '3405A96C-C70B-80A4-A8CD-F4575E80F5AA': 'ALEX',
+  '3415A96C-C70B-80BB-A290-FFFBC5E94C79': 'WILL',
+  '3755A96C-C70B-82E7-AB18-01802396C78A': null, // EXAMPLE ATHLETE — ignore
+};
+const UUID_RE = /^[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}$/;
+
 // ── Extract athlete ID from a planning schedule row ──────────────────────────
-// The Athlete field comes back as a relation — could be a name string, JSON array, or comma-list
+// The Athlete field comes back as a relation — could be a name string, JSON
+// array, UUID, or comma-list. If it's a Notion page UUID, resolve it via
+// NOTION_PAGE_IDS so schedule sessions match the athlete's code correctly.
 function getPlanningAthleteId(r) {
   const a = r['Athlete'] || r['athlete'];
   if (!a) return null;
   const s = String(a).trim();
+  let raw;
   if (s.startsWith('[')) {
-    try { const p=JSON.parse(s); return nid(Array.isArray(p)?String(p[0]):String(p)); } catch{}
+    try { const p=JSON.parse(s); raw = nid(Array.isArray(p)?String(p[0]):String(p)); } catch{ raw = null; }
+  } else {
+    raw = nid(s.split(',')[0].trim());
   }
-  return nid(s.split(',')[0].trim());
+  if (!raw) return null;
+  // Resolve Notion page UUIDs → athlete code
+  if (UUID_RE.test(raw)) return NOTION_PAGE_IDS[raw] ?? null;
+  return raw;
 }
 
 // Name aliases — maps any variant to the canonical athlete ID used everywhere
@@ -1063,8 +1089,11 @@ function nid(s) {
 function sid(r) {
   const code = r['Athlete Code'];
   if (code) return nid(code);
-  const name = (r.Name || '').split('—')[0].trim();
-  return name ? nid(name) : null;
+  const name = (r.Name || '').split('—')[0].split('--')[0].trim();
+  // Reject if it looks like a session description: too long, contains sentence
+  // punctuation, or digits (e.g. "MENTALLY CHECKED OUT...", "TREADMILL 1738")
+  if (!name || name.length > 25 || /[,.()\d]/.test(name)) return null;
+  return nid(name);
 }
 function avg(arr, k) {
   const v = arr.map(r => parseFloat(r[k])).filter(x => !isNaN(x));
@@ -1781,7 +1810,14 @@ function buildSyncAudit(ctx) {
   ]);
 
   return [...ids]
-    .filter(id => id && !COACHES.has(id))
+    .filter(id => {
+      if (!id) return false;
+      if (COACHES.has(id)) return false;
+      if (UUID_RE.test(id)) return false;      // Notion page UUIDs leaking through
+      if (/^\d+$/.test(id)) return false;      // pure numbers (e.g. "1738" test rows)
+      if (id.length > 30) return false;        // session descriptions picked up as IDs
+      return true;
+    })
     .sort((a, b) => a.localeCompare(b))
     .map(id => {
       const weekNum = ctx.calcWeekNum(id);
