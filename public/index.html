@@ -959,7 +959,7 @@ function sessionBadgeHTML(sessionType, status, sessionName) {
   const cls = stClass(sessionType);
   const lbl = stLabel(sessionType);
   const statusCls = (status||'planned').trim().toLowerCase().replace(/\s+/g,'');
-  const statusIcon = statusCls==='completed'?'✓':statusCls==='missed'?'✗':statusCls==='sick'?'🤒':'→';
+  const statusIcon = statusCls==='completed'?'✓':statusCls==='missed'?'✗':statusCls==='sick'?'SICK':'→';
   const title = sessionName ? `${sessionName} (${sessionType||''})` : (sessionType||'Session');
   return `<span class="sbadge sbadge-${cls} ${statusCls}" title="${esc(title)}"><span class="sdot"></span>${esc(lbl)} <span class="sbadge-status">${statusIcon}</span></span>`;
 }
@@ -3393,7 +3393,7 @@ function renderSchedule(athletes) {
       const d = r['date:Planned Date:start'] || r['Planned Date'] || '';
       const dateStr = d ? fmtDate(d.split('T')[0]) : '—';
       const status = (r['Status '] || r['Status'] || 'planned').trim().toLowerCase();
-      const statusIcon = status==='completed'?'✓':status==='missed'?'✗':status==='sick'?'🤒':'→';
+      const statusIcon = status==='completed'?'✓':status==='missed'?'✗':status==='sick'?'SICK':'→';
       const badge = sessionBadgeHTML(r['Session Type'], r['Status ']||r['Status'], r.Session);
       const name = r.Session || r['Session Type'] || 'Session';
       return `<div class="sched-session-row">
