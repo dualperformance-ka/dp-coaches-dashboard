@@ -800,9 +800,6 @@ header{background:#0a0a0a;padding:0 18px;height:62px;display:flex;align-items:ce
   <button class="tab" id="tab-coaches-btn" onclick="switchTab('coaches')">
     Coaches <span class="tab-badge">2</span>
   </button>
-  <button class="tab" id="tab-schedule-btn" onclick="switchTab('schedule')">
-    Schedule <span class="tab-badge" id="tab-sched-count">—</span>
-  </button>
   <button class="tab" id="tab-sync-btn" onclick="switchTab('sync')">
     Sync <span class="tab-badge" id="tab-sync-count">—</span>
   </button>
@@ -856,14 +853,6 @@ header{background:#0a0a0a;padding:0 18px;height:62px;display:flex;align-items:ce
         <div class="no-results-txt">No athletes match this filter</div>
       </div>
     </div>
-  </div>
-</div>
-
-<!-- SCHEDULE TAB -->
-<div id="tab-schedule-content" style="display:none">
-  <div class="sched-section">
-    <div class="sched-intro" id="sched-intro">Week ending <span id="sched-week-end">—</span> · Planned sessions for all athletes</div>
-    <div class="sched-grid" id="sched-grid"></div>
   </div>
 </div>
 
@@ -1875,17 +1864,13 @@ function render({ athletes, coaches, applications = [], dataHealth = null, syncA
   badge.textContent = athletes.length;
   if (alertCount > 0) badge.classList.add('red'); else badge.classList.remove('red');
 
-  const totalPlan = athletes.reduce((s,a)=>s+(a.thisWeekPlan||[]).length,0);
-  document.getElementById('tab-sched-count').textContent = totalPlan || '—';
   document.getElementById('tab-apps-count').textContent  = applications.length || '—';
   document.getElementById('tab-sync-count').textContent  = syncAudit.filter(r => r.severity !== 'good').length || '✓';
-  document.getElementById('sched-week-end').textContent  = fmtDate(currentWeekEnd);
 
   renderCommandCenter(athletes, applications, dataHealth);
   renderSummary(athletes);
   renderGrid(athletes);
   renderCoaches(coaches);
-  renderSchedule(athletes);
   renderSyncAudit(syncAudit);
   renderApplications(applications);
 
@@ -2231,18 +2216,28 @@ function buildCard(a) {
     </div>`;
   }
 
-  // ── This week's plan pills
+  // ── This week's plan (inline schedule rows)
   let planHtml = '';
   if (a.thisWeekPlan && a.thisWeekPlan.length) {
-    const badges = a.thisWeekPlan.slice(0, 7).map(r =>
-      sessionBadgeHTML(r['Session Type'] || r['SessionType'], r['Status '] || r['Status'], r.Session)
-    ).join('');
-    const extra = a.thisWeekPlan.length > 7 ? `<span class="sbadge sbadge-default">+${a.thisWeekPlan.length-7}</span>` : '';
     const comp = a.scheduleCompliance;
     const cc = comp !== null ? (comp>=80?'good':comp>=60?'mid':'bad') : '';
+    const rows = a.thisWeekPlan.map(r => {
+      const d = r['date:Planned Date:start'] || r['Planned Date'] || '';
+      const dateStr = d ? fmtDate(d.split('T')[0]) : '—';
+      const status = (r['Status '] || r['Status'] || 'planned').trim().toLowerCase();
+      const statusIcon = status==='completed'?'✓':status==='missed'?'✗':status==='sick'?'SICK':'→';
+      const badge = sessionBadgeHTML(r['Session Type'] || r['SessionType'], r['Status '] || r['Status'], r.Session);
+      const name = r.Session || r['Session Type'] || 'Session';
+      return `<div class="sched-session-row">
+        <span class="sched-date">${dateStr}</span>
+        ${badge}
+        <span class="sched-session-name">${esc(name)}</span>
+        <span class="sched-status-icon">${statusIcon}</span>
+      </div>`;
+    }).join('');
     planHtml = `<div class="plan-sec">
       <div class="plan-sec-ttl">This Week's Plan${comp!==null?`<span class="plan-sec-comp ${cc}">${comp}%</span>`:''}</div>
-      <div class="sched-badges">${badges}${extra}</div>
+      <div class="sched-card-body" style="padding:0 0 4px">${rows}</div>
     </div>`;
   }
 
@@ -3496,7 +3491,7 @@ function renderApplications(apps) {
 
 // ── Tab switching ─────────────────────────────────────────────────────────────
 function switchTab(tab) {
-  const tabs = ['athletes','coaches','schedule','sync','applications'];
+  const tabs = ['athletes','coaches','sync','applications'];
   tabs.forEach(t => {
     const btn = document.getElementById(`tab-${t === 'applications' ? 'apps' : t}-btn`);
     const content = document.getElementById(`tab-${t === 'applications' ? 'apps' : t}-content`);
