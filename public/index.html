@@ -170,8 +170,8 @@ header{background:#0a0a0a;padding:0 18px;height:62px;display:flex;align-items:ce
 .comp-pct.good{color:var(--ok)}.comp-pct.mid{color:var(--warn)}.comp-pct.bad{color:var(--alert)}
 
 /* ── Sections ── */
-.sec{padding:10px 13px;border-bottom:1px solid var(--border)}.sec:last-child{border-bottom:none}
-.sec-ttl{font-family:var(--mono);font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.1em;margin-bottom:7px}
+.sec{padding:9px 13px;border-bottom:1px solid var(--border)}.sec:last-child{border-bottom:none}
+.sec-ttl{font-family:var(--mono);font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.09em;margin-bottom:6px}
 
 /* ── Training ── */
 .tpair{display:flex;gap:7px}
@@ -271,6 +271,24 @@ header{background:#0a0a0a;padding:0 18px;height:62px;display:flex;align-items:ce
 .ai-loading{font-family:var(--mono);font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;padding:8px 0;display:flex;align-items:center;gap:6px}
 .ai-loading-dot{width:5px;height:5px;border-radius:50%;background:var(--dim);animation:blink 1.2s infinite}
 .ai-loading-dot:nth-child(2){animation-delay:.2s}.ai-loading-dot:nth-child(3){animation-delay:.4s}
+
+/* ── Week-in-progress banner ── */
+.wip-banner{padding:9px 13px;background:#f5f3ff;border-bottom:1px solid rgba(30,58,138,.1)}
+.wip-label{font-family:var(--mono);font-size:9px;font-weight:700;color:var(--str);text-transform:uppercase;letter-spacing:.1em}
+.wip-ends{font-weight:400;color:rgba(30,58,138,.55);margin-left:6px}
+.wip-none{font-family:var(--mono);font-size:9px;color:var(--dim);margin-top:2px}
+.wip-prev-lbl{font-family:var(--mono);font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;margin-top:6px;margin-bottom:3px}
+
+/* ── Status banners (stale / last-week) ── */
+.status-banner{padding:7px 13px;border-bottom:1px solid transparent}
+.status-banner--red{background:#fef2f2;border-color:rgba(220,38,38,.15)}
+.status-banner--blue{background:#eff6ff;border-color:rgba(59,130,246,.15)}
+.status-banner-title{font-family:var(--mono);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.09em}
+.status-banner--red .status-banner-title{color:#991b1b}
+.status-banner--blue .status-banner-title{color:#1d4ed8}
+.status-banner-sub{font-family:var(--mono);font-size:9px;margin-top:2px}
+.status-banner--red .status-banner-sub{color:#b91c1c}
+.status-banner--blue .status-banner-sub{color:#2563eb}
 
 /* ── Premium Card Layout ── */
 .pcard-tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:7px;align-items:center}
@@ -2148,17 +2166,17 @@ function buildCard(a) {
     const psCount = a.prevStrS.length;
     const noThisWeek = rCount === 0 && sCount === 0;
     const showPrev = noThisWeek && (prCount > 0 || psCount > 0);
-    weekInProgress = `<div class="sec" style="background:var(--surface2);border-color:rgba(0,0,0,.06)">
-      <div class="sec-ttl" style="color:var(--str)">📍 Week ${a.weekNum ?? ''} In Progress — ends ${fmtDate(a.expectedWeekEnd)}</div>
-      <div class="sess-row" style="margin-bottom:${noThisWeek && !showPrev ? 0 : 4}px">
+    weekInProgress = `<div class="wip-banner">
+      <div class="wip-label">Week ${a.weekNum ?? ''} in progress <span class="wip-ends">ends ${fmtDate(a.expectedWeekEnd)}</span></div>
+      <div class="sess-row" style="margin:6px 0 ${noThisWeek && !showPrev ? 0 : 2}px">
         <div class="scard"><div class="snum run-c">${rCount}</div><div class="slbl">Run</div></div>
         <div class="scard"><div class="snum str-c">${sCount}</div><div class="slbl">Strength</div></div>
       </div>
-      ${noThisWeek && !showPrev ? `<div style="font-family:var(--mono);font-size:9px;color:var(--dim);margin-top:4px">No sessions logged yet this week</div>` : ''}
-      ${showPrev ? `<div style="font-family:var(--mono);font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;margin-top:6px;margin-bottom:3px">Last week's sessions</div>
+      ${noThisWeek && !showPrev ? `<div class="wip-none">No sessions logged yet this week</div>` : ''}
+      ${showPrev ? `<div class="wip-prev-lbl">Last week</div>
         <div class="sess-row">
-          <div class="scard" style="opacity:.65"><div class="snum run-c">${prCount}</div><div class="slbl">Run</div></div>
-          <div class="scard" style="opacity:.65"><div class="snum str-c">${psCount}</div><div class="slbl">Strength</div></div>
+          <div class="scard" style="opacity:.6"><div class="snum run-c">${prCount}</div><div class="slbl">Run</div></div>
+          <div class="scard" style="opacity:.6"><div class="snum str-c">${psCount}</div><div class="slbl">Strength</div></div>
         </div>` : ''}
     </div>`;
   }
@@ -2166,24 +2184,14 @@ function buildCard(a) {
   // ── Stale / last-week banner
   let staleBanner = '';
   if (hW && a.isStale) {
-    staleBanner = `<div class="sec" style="background:#fef2f2;border-color:rgba(220,38,38,.18)">
-      <div style="display:flex;align-items:center;gap:7px">
-        <span style="font-size:13px">🚨</span>
-        <div>
-          <div style="font-family:var(--mono);font-size:9px;font-weight:700;color:#991b1b;text-transform:uppercase;letter-spacing:.08em">No check-in submitted this week</div>
-          <div style="font-family:var(--mono);font-size:9px;color:#b91c1c;margin-top:1px">Showing last submission — week ending ${fmtDate(w['Week Ending'])}</div>
-        </div>
-      </div>
+    staleBanner = `<div class="status-banner status-banner--red">
+      <div class="status-banner-title">No check-in this week</div>
+      <div class="status-banner-sub">Last submission — week ending ${fmtDate(w['Week Ending'])}</div>
     </div>`;
   } else if (hW && a.hasLastWeekCheckin) {
-    staleBanner = `<div class="sec" style="background:#f0f9ff;border-color:rgba(14,165,233,.15)">
-      <div style="display:flex;align-items:center;gap:7px">
-        <span style="font-size:12px">📅</span>
-        <div>
-          <div style="font-family:var(--mono);font-size:9px;font-weight:700;color:#0369a1;text-transform:uppercase;letter-spacing:.08em">Last week's check-in</div>
-          <div style="font-family:var(--mono);font-size:9px;color:#0284c7;margin-top:1px">Submitted ${fmtDate(w['Week Ending'])} · new week ends ${fmtDate(a.expectedWeekEnd)}</div>
-        </div>
-      </div>
+    staleBanner = `<div class="status-banner status-banner--blue">
+      <div class="status-banner-title">Last week's check-in</div>
+      <div class="status-banner-sub">Submitted ${fmtDate(w['Week Ending'])} · new week ends ${fmtDate(a.expectedWeekEnd)}</div>
     </div>`;
   }
 
@@ -2197,7 +2205,7 @@ function buildCard(a) {
     const comp = a.scheduleCompliance;
     const cc = comp !== null ? (comp>=80?'good':comp>=60?'mid':'bad') : '';
     planHtml = `<div class="plan-sec">
-      <div class="plan-sec-ttl">📅 This Week's Plan${comp!==null?`<span class="plan-sec-comp ${cc}">${comp}%</span>`:''}</div>
+      <div class="plan-sec-ttl">This Week's Plan${comp!==null?`<span class="plan-sec-comp ${cc}">${comp}%</span>`:''}</div>
       <div class="sched-badges">${badges}${extra}</div>
     </div>`;
   }
@@ -2218,7 +2226,7 @@ function buildCard(a) {
     const wkLabel = dataWeekNum === null ? 'Training' : dataWeekNum === 0 ? 'Discovery' : `Wk ${dataWeekNum}`;
 
     trainingHtml = `<div class="sec pcard-training-sec">
-      <div class="sec-ttl">${wkLabel} Training — week ending ${fmtDate(submittedEnd) || '?'}</div>
+      <div class="sec-ttl">${wkLabel} Training &mdash; ${fmtDate(submittedEnd) || '?'}</div>
       <div class="pcard-training">
         <div class="ptrain">
           <div class="ptrain-hdr run">Running</div>
@@ -2238,7 +2246,7 @@ function buildCard(a) {
         </div>
       </div>
       ${w['Testimonial'] ? `<div class="testim">"${esc(w['Testimonial'])}"</div>` : ''}
-      ${w['Upcoming Impact'] && w['Upcoming Impact'] !== 'n/a' ? `<div class="impact">⚡ ${esc(w['Upcoming Impact'])}</div>` : ''}
+      ${w['Upcoming Impact'] && w['Upcoming Impact'] !== 'n/a' ? `<div class="impact">${esc(w['Upcoming Impact'])}</div>` : ''}
     </div>`;
   }
 
