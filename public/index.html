@@ -3217,7 +3217,6 @@ function buildCoachCard(a) {
       { l: 'Sore',    v: w['Soreness /10'],            inv: true  },
       { l: 'Stress',  v: w['Stress'],                  inv: true  },
       { l: 'Motiv',   v: w['Motivation'],              inv: false },
-      { l: 'Nutr',    v: w['Nutrition Adherence /10'], inv: false },
     ];
     scores = `<div class="coach-scores">${sx.map(x =>
       `<div class="sc"><div class="sc-lbl">${esc(x.l)}</div><div class="sc-val ${scoreClass(x.v, x.inv)}">${esc(x.v) || '—'}</div></div>`
@@ -3273,6 +3272,46 @@ function buildCoachCard(a) {
     }
   }
 
+  // Nutrition — only renders if data exists (mirrors athlete card)
+  let nutrHtml = '';
+  if (a.target || a.nAvg.cal !== null) {
+    const parts = [];
+    // Targets block (from Notion targets DB)
+    if (a.target) {
+      const t = a.target;
+      const tCal  = t.Calories ? String(t.Calories).replace(/[^\d.]/g,'') : null;
+      const tPro  = t.Protein  ? String(t.Protein).replace(/[^\d.]/g,'')  : null;
+      const tCarb = t.Carbs    ? String(t.Carbs).replace(/[^\d.]/g,'')    : null;
+      const tFat  = t.Fats     ? String(t.Fats).replace(/[^\d.]/g,'')     : null;
+      const tKM   = t['Weekly KM Target'] ? String(t['Weekly KM Target']) : null;
+      if (tCal || tPro || tCarb || tFat) {
+        parts.push(`<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:6px 9px;background:var(--coach-bg);border-radius:6px;border:1px solid var(--coach-border)">
+          ${tCal  ? `<span style="font-family:var(--mono);font-size:9px;color:var(--coach-text)"><strong>${tCal}</strong> kcal</span>` : ''}
+          ${tPro  ? `<span style="font-family:var(--mono);font-size:9px;color:var(--coach-text)"><strong>${tPro}g</strong> P</span>` : ''}
+          ${tCarb ? `<span style="font-family:var(--mono);font-size:9px;color:var(--coach-text)"><strong>${tCarb}g</strong> C</span>` : ''}
+          ${tFat  ? `<span style="font-family:var(--mono);font-size:9px;color:var(--coach-text)"><strong>${tFat}g</strong> F</span>` : ''}
+          ${tKM   ? `<span style="font-family:var(--mono);font-size:9px;color:var(--run)"><strong>${tKM} km</strong> run</span>` : ''}
+        </div>`);
+      }
+    }
+    // Averages block (from daily nutrition logs)
+    if (a.nAvg.cal !== null) {
+      const avgItems = [
+        a.nAvg.cal  !== null ? `<strong>${Number(a.nAvg.cal).toLocaleString()}</strong> kcal avg` : null,
+        a.nAvg.pro  !== null ? `<strong>${a.nAvg.pro}g</strong> protein avg` : null,
+      ].filter(Boolean);
+      if (avgItems.length) {
+        parts.push(`<div style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:4px">${avgItems.join(' · ')}</div>`);
+      }
+    }
+    if (parts.length) {
+      nutrHtml = `<div class="coach-notes">
+        <div class="coach-notes-lbl">Nutrition</div>
+        ${parts.join('')}
+      </div>`;
+    }
+  }
+
   // Notes
   let notesHtml = '';
   if (hW && w['Notes'] && isBad(w['Notes'])) {
@@ -3303,6 +3342,7 @@ function buildCoachCard(a) {
     ${scores}
     ${trainingHtml}
     ${bodyHtml}
+    ${nutrHtml}
     ${notesHtml}
     ${noData ? `<div class="coach-no-data"><div class="coach-no-data-txt">No recent data found</div></div>` : ''}
   </div>`;
