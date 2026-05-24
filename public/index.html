@@ -3336,7 +3336,10 @@ function buildCoachCard(a) {
           </div>
           <div class="coach-meta">${metaTxt}</div>
         </div>
-        ${a.compliance !== null ? `<div class="coach-wk-badge"><div class="coach-wk-num">${a.compliance}%</div><div class="coach-wk-lbl">Compliance</div></div>` : ''}
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">
+          <button class="fp-open-btn" onclick="showFP('${esc(a.id)}')">⤢ Full Page</button>
+          ${a.compliance !== null ? `<div class="coach-wk-badge"><div class="coach-wk-num">${a.compliance}%</div><div class="coach-wk-lbl">Compliance</div></div>` : ''}
+        </div>
       </div>
     </div>
     ${scores}
