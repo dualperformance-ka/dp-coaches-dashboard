@@ -110,6 +110,37 @@ html.light .cp-header{border-bottom-color:var(--border)}
 html.light .theme-toggle-btn{border-color:rgba(0,0,0,.2);color:rgba(0,0,0,.55)}
 html.light .theme-toggle-btn:hover{border-color:rgba(0,0,0,.5);color:#09090b}
 
+/* ════════════════════════════════════════════════════════
+   LGBT THEME
+   ════════════════════════════════════════════════════════ */
+html.lgbt{
+  --bg:#07070a;--surface:#111116;--surface2:#1a1a22;
+  --border:rgba(255,255,255,.1);--border-mid:rgba(255,255,255,.18);
+  --text:#fff7fb;--muted:#b7adba;--dim:#766e7d;
+  --run:#ff8c00;--str:#00c2ff;
+  --amber:#ffed00;--amber-dim:#ffb703;
+  --ok:#00d26a;--warn:#ff8c00;--alert:#ff4d6d;
+  --green-bg:rgba(0,210,106,.12);--green-border:rgba(0,210,106,.32);--green-text:#51f28f;
+  --amber-bg:rgba(255,140,0,.12);--amber-border:rgba(255,140,0,.32);--amber-text:#ffb703;
+  --red-bg:rgba(255,77,109,.12);--red-border:rgba(255,77,109,.32);--red-text:#ff7a95;
+  --coach-bg:rgba(191,90,242,.14);--coach-border:rgba(191,90,242,.34);--coach-text:#d8a7ff;
+}
+html.lgbt body{background:linear-gradient(180deg,#07070a 0%,#111116 58%,#07070a 100%)}
+html.lgbt header,html.lgbt .tab-bar{background:#09090d;border-bottom-color:rgba(255,255,255,.1)}
+html.lgbt header::before,html.lgbt .tab-bar::before{content:'';position:absolute;left:0;right:0;bottom:-1px;height:2px;background:linear-gradient(90deg,#e40303,#ff8c00,#ffed00,#008026,#24408e,#732982);pointer-events:none}
+html.lgbt .logo-mark{filter:none}
+html.lgbt .logo .d{color:#fff}
+html.lgbt .logo .p{color:rgba(255,255,255,.72)}
+html.lgbt .coach-pill{background:linear-gradient(90deg,#e40303,#ff8c00,#ffed00,#008026,#24408e,#732982);color:#fff}
+html.lgbt .tab.active{border-bottom-color:#ffed00;color:#fff}
+html.lgbt .tab.active .tab-badge{background:rgba(255,237,0,.18);color:#fff}
+html.lgbt .sf.active{background:linear-gradient(90deg,#e40303,#ff8c00,#ffed00,#008026,#24408e,#732982);border-color:transparent;color:#fff}
+html.lgbt .card,html.lgbt .cc-panel{box-shadow:0 0 0 1px rgba(255,255,255,.02),0 10px 30px rgba(115,41,130,.12)}
+html.lgbt .card-head{background:linear-gradient(90deg,#17171f 0%,#101017 100%);border-bottom:2px solid transparent;border-image:linear-gradient(90deg,#e40303,#ff8c00,#ffed00,#008026,#24408e,#732982) 1}
+html.lgbt .cc-hero,html.lgbt .fpc-hero{background:linear-gradient(135deg,#111116 0%,#24172f 55%,#101826 100%)}
+html.lgbt .theme-toggle-btn{border-color:rgba(255,255,255,.28);color:#fff;background:linear-gradient(90deg,rgba(228,3,3,.18),rgba(255,140,0,.18),rgba(255,237,0,.18),rgba(0,128,38,.18),rgba(36,64,142,.18),rgba(115,41,130,.18))}
+html.lgbt .theme-toggle-btn:hover{border-color:rgba(255,255,255,.58);color:#fff}
+
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;line-height:1.5}
 
@@ -4131,32 +4162,44 @@ document.addEventListener('keydown', e => {
 });
 
 // ── Global Theme ─────────────────────────────────────────────────────────────
-(function() {
-  const saved = localStorage.getItem('dp_ui_theme') || 'dark';
-  if (saved === 'light') document.documentElement.classList.add('light');
+const UI_THEMES = ['dark', 'light', 'lgbt'];
+
+function applyTheme(theme) {
+  const nextTheme = UI_THEMES.includes(theme) ? theme : 'dark';
+  document.documentElement.classList.remove('light', 'lgbt');
+  if (nextTheme !== 'dark') document.documentElement.classList.add(nextTheme);
+  localStorage.setItem('dp_ui_theme', nextTheme);
+
   // Keep WH overlay in sync
   const whOl = document.getElementById('wh-overlay');
-  if (whOl && saved === 'light') whOl.classList.add('wh-light');
+  if (whOl) whOl.classList.toggle('wh-light', nextTheme === 'light');
+
+  // Update button label
+  const btn = document.getElementById('theme-toggle-btn');
+  if (btn) {
+    const nextIdx = (UI_THEMES.indexOf(nextTheme) + 1) % UI_THEMES.length;
+    const nextLabel = UI_THEMES[nextIdx];
+    btn.textContent = nextLabel === 'light' ? '☀ Light' : nextLabel === 'lgbt' ? 'LGBT' : '◑ Dark';
+  }
+}
+
+(function() {
+  applyTheme(localStorage.getItem('dp_ui_theme') || 'dark');
 })();
 
 function toggleTheme() {
-  const isLight = document.documentElement.classList.toggle('light');
-  const theme = isLight ? 'light' : 'dark';
-  localStorage.setItem('dp_ui_theme', theme);
-  // Keep WH overlay in sync
-  const whOl = document.getElementById('wh-overlay');
-  if (whOl) whOl.classList.toggle('wh-light', isLight);
-  // Update button label
-  const btn = document.getElementById('theme-toggle-btn');
-  if (btn) btn.textContent = isLight ? '◑ Dark' : '☀ Light';
+  const current = document.documentElement.classList.contains('lgbt')
+    ? 'lgbt'
+    : document.documentElement.classList.contains('light')
+      ? 'light'
+      : 'dark';
+  const nextIdx = (UI_THEMES.indexOf(current) + 1) % UI_THEMES.length;
+  applyTheme(UI_THEMES[nextIdx]);
 }
 
 // Apply correct button label on load
 document.addEventListener('DOMContentLoaded', () => {
-  const btn = document.getElementById('theme-toggle-btn');
-  if (!btn) return;
-  const isLight = document.documentElement.classList.contains('light');
-  btn.textContent = isLight ? '◑ Dark' : '☀ Light';
+  applyTheme(localStorage.getItem('dp_ui_theme') || 'dark');
 });
 
 // ── Init ──────────────────────────────────────────────────────────────────────
