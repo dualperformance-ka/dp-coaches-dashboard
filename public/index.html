@@ -81,8 +81,8 @@ html.light .fp-topbar{background:#fff;border-bottom:1px solid rgba(0,0,0,.1)}
 html.light .fp-back,html.light .fp-nav-btn{border-color:rgba(0,0,0,.18);color:rgba(0,0,0,.55)}
 html.light .fp-back:hover,html.light .fp-nav-btn:hover:not([disabled]){color:#09090b;border-color:rgba(0,0,0,.5)}
 html.light .fp-idx,html.light .fp-hint{color:rgba(0,0,0,.28)}
-html.light .fp-open-btn{border-color:rgba(0,0,0,.18);color:rgba(0,0,0,.5)}
-html.light .fp-open-btn:hover{color:#09090b;border-color:rgba(0,0,0,.5)}
+html.light .fp-open-btn{border-color:rgba(255,255,255,.22);color:rgba(255,255,255,.62)}
+html.light .fp-open-btn:hover{color:#fff;border-color:rgba(255,255,255,.62)}
 /* Athlete full-page hero — stays dark for contrast */
 html.light .fpc-hero{background:#09090b}
 html.light .fpc-week-badge{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.22)}
@@ -125,7 +125,13 @@ html.lgbt{
   --red-bg:rgba(255,77,109,.12);--red-border:rgba(255,77,109,.32);--red-text:#ff7a95;
   --coach-bg:rgba(191,90,242,.14);--coach-border:rgba(191,90,242,.34);--coach-text:#d8a7ff;
 }
-html.lgbt body{background:linear-gradient(180deg,#07070a 0%,#111116 58%,#07070a 100%)}
+html.lgbt body{
+  background:
+    linear-gradient(180deg,rgba(7,7,10,.9) 0%,rgba(17,17,22,.94) 42%,rgba(7,7,10,.96) 100%),
+    linear-gradient(120deg,rgba(228,3,3,.28) 0%,rgba(255,140,0,.24) 16%,rgba(255,237,0,.18) 32%,rgba(0,128,38,.2) 49%,rgba(36,64,142,.25) 67%,rgba(115,41,130,.28) 100%);
+  background-attachment:fixed;
+}
+html.lgbt .filter-bar,html.lgbt .main{background:transparent}
 html.lgbt header,html.lgbt .tab-bar{background:#09090d;border-bottom-color:rgba(255,255,255,.1)}
 html.lgbt header::before,html.lgbt .tab-bar::before{content:'';position:absolute;left:0;right:0;bottom:-1px;height:2px;background:linear-gradient(90deg,#e40303,#ff8c00,#ffed00,#008026,#24408e,#732982);pointer-events:none}
 html.lgbt .logo-mark{filter:none}
