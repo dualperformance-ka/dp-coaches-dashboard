@@ -396,6 +396,34 @@ header{background:#0a0a0a;padding:0 18px;height:62px;display:flex;align-items:ce
 .fp-hint{font-family:var(--mono);font-size:8px;color:rgba(255,255,255,.18);text-transform:uppercase;letter-spacing:.08em}
 .fp-body{max-width:900px;margin:0 auto;padding:22px 18px 60px}
 
+/* ── Weight History Overlay ── */
+#wh-overlay{position:fixed;inset:0;z-index:500;overflow-y:auto;display:none;
+  --wh-bg:#0a0a0a;--wh-text:#f0f0f0;--wh-dim:rgba(255,255,255,.32);--wh-border:rgba(255,255,255,.1);--wh-surface:rgba(255,255,255,.04);--wh-bar:#111111;--wh-str:var(--str)}
+#wh-overlay.wh-light{--wh-bg:#ffffff;--wh-text:#0a0a0a;--wh-dim:rgba(0,0,0,.38);--wh-border:rgba(0,0,0,.1);--wh-surface:rgba(0,0,0,.025);--wh-bar:#f5f5f5}
+#wh-overlay{background:var(--wh-bg);color:var(--wh-text)}
+.wh-topbar{background:var(--wh-bar);border-bottom:1px solid var(--wh-border);padding:0 20px;height:50px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:10}
+.wh-back{background:transparent;border:1px solid var(--wh-border);color:var(--wh-dim);font-family:var(--mono);font-size:10px;font-weight:600;padding:5px 14px;border-radius:6px;cursor:pointer;text-transform:uppercase;letter-spacing:.07em;transition:all .15s;flex-shrink:0}
+.wh-back:hover{border-color:var(--wh-text);color:var(--wh-text)}
+.wh-topbar-title{font-family:var(--cond);font-size:17px;font-weight:900;text-transform:uppercase;letter-spacing:.05em;color:var(--wh-text);flex:1;padding-left:4px}
+.wh-topbar-right{display:flex;gap:5px}
+.wh-theme-btn{background:transparent;border:1px solid var(--wh-border);color:var(--wh-dim);font-family:var(--mono);font-size:9px;font-weight:700;padding:4px 12px;border-radius:20px;cursor:pointer;text-transform:uppercase;letter-spacing:.07em;transition:all .15s}
+.wh-theme-btn.wh-active{border-color:var(--wh-text);color:var(--wh-text);background:var(--wh-surface)}
+.wh-body{max-width:980px;margin:0 auto;padding:28px 18px 80px}
+.wh-section{background:var(--wh-surface);border:1px solid var(--wh-border);border-radius:14px;padding:22px 24px;margin-bottom:20px}
+.wh-section-title{font-family:var(--mono);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.14em;color:var(--wh-dim);margin-bottom:20px;display:flex;align-items:center;justify-content:space-between}
+.wh-stat-row{display:flex;gap:20px;flex-wrap:wrap;margin-bottom:18px}
+.wh-stat{min-width:80px}.wh-stat-val{font-size:22px;font-weight:900;line-height:1;letter-spacing:-.01em;color:var(--wh-text)}
+.wh-stat-lbl{font-family:var(--mono);font-size:8px;color:var(--wh-dim);text-transform:uppercase;letter-spacing:.1em;margin-top:3px}
+.wh-table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:11px}
+.wh-table th{font-weight:700;text-transform:uppercase;letter-spacing:.08em;font-size:8px;padding:0 10px 10px 0;text-align:right;color:var(--wh-dim);white-space:nowrap}
+.wh-table th:first-child{text-align:left}
+.wh-table td{padding:7px 10px 7px 0;vertical-align:middle;border-top:1px solid var(--wh-border);color:var(--wh-text);text-align:right;white-space:nowrap}
+.wh-table td:first-child{text-align:left;font-weight:700}
+.wh-wt{font-size:13px;font-weight:800}
+.wh-dn{color:#22c55e}.wh-up{color:#ef4444}.wh-fl{color:var(--wh-dim)}
+.wh-spark-wrap{cursor:pointer;position:relative}
+.wh-spark-wrap::after{content:'↗ Full history';font-family:var(--mono);font-size:7px;text-transform:uppercase;letter-spacing:.06em;color:var(--dim);position:absolute;bottom:18px;right:0;opacity:.5}
+
 /* ── Full-page card: clean layout ── */
 .fpc-hero{background:#0a0a0a;border-radius:16px;padding:28px 30px 24px;margin-bottom:18px}
 .fpc-hero-top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
@@ -771,6 +799,19 @@ header{background:#0a0a0a;padding:0 18px;height:62px;display:flex;align-items:ce
     <span class="fp-hint">Esc to close · ← → to navigate</span>
   </div>
   <div class="fp-body" id="fp-body"></div>
+</div>
+
+<!-- ── Weight History full-page view ── -->
+<div id="wh-overlay">
+  <div class="wh-topbar">
+    <button class="wh-back" onclick="hideWH()">← Back</button>
+    <span class="wh-topbar-title" id="wh-title"></span>
+    <div class="wh-topbar-right">
+      <button class="wh-theme-btn wh-active" id="wh-btn-dark" onclick="setWHTheme('dark')">◑ Dark</button>
+      <button class="wh-theme-btn" id="wh-btn-light" onclick="setWHTheme('light')">☀ Light</button>
+    </div>
+  </div>
+  <div class="wh-body" id="wh-body"></div>
 </div>
 
 <header>
@@ -2767,7 +2808,7 @@ function buildFPCard(a, weekOffset = 0) {
         const anchor = i === 0 ? 'start' : i === _wtPts.length - 1 ? 'end' : 'middle';
         return `<text x="${cx}" y="${_H + 13}" font-family="var(--mono)" font-size="7" fill="var(--dim)" text-anchor="${anchor}">${_fmtShort(_wtPts[i].date)}</text>`;
       }).join('');
-      _sparkSvg = '<div style="margin-bottom:10px">'
+      _sparkSvg = '<div class="wh-spark-wrap" data-whid="' + esc(a.id) + '" onclick="showWH(this.dataset.whid)" title="View full body history" style="margin-bottom:10px">'
         + '<div style="display:flex;align-items:baseline;gap:10px;margin-bottom:4px">'
         + '<span style="font-size:36px;font-weight:900;line-height:1;letter-spacing:-.02em">' + esc(String(_last.value)) + '</span>'
         + '<span style="font-family:var(--mono);font-size:11px;color:var(--dim)">kg</span>'
@@ -3776,8 +3817,184 @@ async function loadProgressPhotos(a, weekOffset = 0) {
   }
 }
 
+// ── Weight History Overlay ─────────────────────────────────────────────────
+let _whId = null;
+let _whTheme = (typeof localStorage !== 'undefined' && localStorage.getItem('dp_wh_theme')) || 'dark';
+
+function showWH(id) {
+  _whId = id;
+  _drawWH();
+  const ol = document.getElementById('wh-overlay');
+  ol.style.display = 'block';
+  ol.scrollTop = 0;
+  document.body.style.overflow = 'hidden';
+}
+
+function hideWH() {
+  document.getElementById('wh-overlay').style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+function setWHTheme(t) {
+  _whTheme = t;
+  try { localStorage.setItem('dp_wh_theme', t); } catch(e) {}
+  const ol = document.getElementById('wh-overlay');
+  ol.classList.toggle('wh-light', t === 'light');
+  document.getElementById('wh-btn-dark').classList.toggle('wh-active', t === 'dark');
+  document.getElementById('wh-btn-light').classList.toggle('wh-active', t === 'light');
+}
+
+function _drawWH() {
+  const a = _allAthletes.find(x => x.id === _whId) || _coaches.find(x => x.id === _whId);
+  if (!a) return;
+  const ol = document.getElementById('wh-overlay');
+  ol.classList.toggle('wh-light', _whTheme === 'light');
+  document.getElementById('wh-btn-dark').classList.toggle('wh-active', _whTheme === 'dark');
+  document.getElementById('wh-btn-light').classList.toggle('wh-active', _whTheme === 'light');
+  document.getElementById('wh-title').textContent = a.id + ' — Body & Nutrition History';
+  document.getElementById('wh-body').innerHTML = buildWeightHistory(a);
+}
+
+function buildWeightHistory(a) {
+  const _mn = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const _fmtD = d => { if (!d) return '—'; const [,m,dy] = d.split('-'); return parseInt(dy) + ' ' + _mn[parseInt(m)-1]; };
+  const _fmtFull = d => { if (!d) return '—'; const [y,m,dy] = d.split('-'); return parseInt(dy) + ' ' + _mn[parseInt(m)-1] + ' ' + y; };
+
+  // ── Weight chart ───────────────────────────────────────────────────────────
+  const wtPts = [...a.body]
+    .filter(r => r.Weight !== undefined && r.Weight !== null && !isNaN(parseFloat(r.Weight)))
+    .map(r => ({ date: (r['date:Date:start'] || r.Date || '').split('T')[0], value: parseFloat(r.Weight) }))
+    .filter(p => p.date)
+    .sort((a, b) => a.date > b.date ? 1 : -1);
+
+  let chartHtml = '<p style="font-family:var(--mono);font-size:11px;color:var(--wh-dim)">No weight data available.</p>';
+  if (wtPts.length >= 2) {
+    const CW = 880, CH = 180, pL = 48, pR = 10, pT = 10, pB = 30;
+    const cW = CW - pL - pR;
+    const vals = wtPts.map(p => p.value);
+    const rawMin = Math.min(...vals), rawMax = Math.max(...vals);
+    const vRange = rawMax - rawMin || 1;
+    const vStep = vRange <= 1.5 ? 0.5 : vRange <= 4 ? 1 : vRange <= 8 ? 2 : 5;
+    const vMin = Math.floor(rawMin / vStep) * vStep;
+    const vMax = Math.ceil(rawMax / vStep) * vStep + vStep;
+    const vSpan = vMax - vMin;
+    const ticks = [];
+    for (let v = vMin; v <= vMax + 0.001; v = parseFloat((v + vStep).toFixed(4))) ticks.push(v);
+
+    const toX = i => pL + (i / (wtPts.length - 1)) * cW;
+    const toY = v => pT + CH - ((v - vMin) / vSpan) * CH;
+
+    const gridLines = ticks.map(v => {
+      const y = toY(v).toFixed(1);
+      return `<line x1="${pL}" y1="${y}" x2="${CW-pR}" y2="${y}" stroke="var(--wh-border)" stroke-width="1"/>` +
+             `<text x="${pL-5}" y="${y}" font-family="var(--mono)" font-size="8" fill="var(--wh-dim)" text-anchor="end" dominant-baseline="middle">${v % 1 === 0 ? v : v.toFixed(1)}</text>`;
+    }).join('');
+
+    const step = Math.max(1, Math.floor(wtPts.length / 8));
+    const xLabels = wtPts.map((p, i) => {
+      if (i % step !== 0 && i !== wtPts.length - 1) return '';
+      const x = toX(i).toFixed(1);
+      const anchor = i === 0 ? 'start' : i === wtPts.length - 1 ? 'end' : 'middle';
+      return `<text x="${x}" y="${pT+CH+18}" font-family="var(--mono)" font-size="8" fill="var(--wh-dim)" text-anchor="${anchor}">${_fmtD(p.date)}</text>`;
+    }).join('');
+
+    const pathD = wtPts.map((p, i) => `${i===0?'M':'L'}${toX(i).toFixed(1)},${toY(p.value).toFixed(1)}`).join(' ');
+    const dots = wtPts.map((p, i) => {
+      const isLast = i === wtPts.length - 1;
+      return `<circle cx="${toX(i).toFixed(1)}" cy="${toY(p.value).toFixed(1)}" r="${isLast?4:2.5}" fill="var(--wh-str)" opacity="${isLast?1:0.65}"/>`;
+    }).join('');
+
+    const last = wtPts[wtPts.length-1], first = wtPts[0];
+    const diff = (last.value - first.value).toFixed(1);
+    const diffTxt = (diff > 0 ? '+' : '') + diff + ' kg';
+    const diffCls = Math.abs(diff) < 0.3 ? 'wh-fl' : diff < 0 ? 'wh-dn' : 'wh-up';
+
+    chartHtml = `<div class="wh-stat-row">
+      <div class="wh-stat"><div class="wh-stat-val">${last.value} kg</div><div class="wh-stat-lbl">Current</div></div>
+      <div class="wh-stat"><div class="wh-stat-val ${diffCls}">${diffTxt}</div><div class="wh-stat-lbl">${wtPts.length}d change</div></div>
+      <div class="wh-stat"><div class="wh-stat-val">${wtPts.length}</div><div class="wh-stat-lbl">Entries</div></div>
+      <div class="wh-stat"><div class="wh-stat-val">${rawMin.toFixed(1)}</div><div class="wh-stat-lbl">Low</div></div>
+      <div class="wh-stat"><div class="wh-stat-val">${rawMax.toFixed(1)}</div><div class="wh-stat-lbl">High</div></div>
+    </div>
+    <svg viewBox="0 0 ${CW} ${pT+CH+pB}" width="100%" style="display:block;overflow:visible;margin-top:8px">
+      ${gridLines}
+      <path d="${pathD}" fill="none" stroke="var(--wh-str)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      ${dots}
+      ${xLabels}
+    </svg>`;
+  }
+
+  // ── Day-by-day log ─────────────────────────────────────────────────────────
+  const bodyMap = {}, nutrMap = {};
+  a.body.forEach(r => {
+    const d = (r['date:Date:start'] || r.Date || '').split('T')[0];
+    if (d) bodyMap[d] = r;
+  });
+  a.nutrition.forEach(r => {
+    const d = (r['date:Date:start'] || r.Date || '').split('T')[0];
+    if (d) nutrMap[d] = r;
+  });
+  const allDates = [...new Set([...Object.keys(bodyMap), ...Object.keys(nutrMap)])].sort((a,b) => b > a ? 1 : -1);
+
+  // Build weight delta map (for each date, delta from previous weight entry)
+  const wtByDate = {};
+  wtPts.forEach(p => { wtByDate[p.date] = p.value; });
+  const wtDates = wtPts.map(p => p.date);
+
+  const bodyRows = allDates.map(date => {
+    const b = bodyMap[date];
+    const n = nutrMap[date];
+    const wt = b?.Weight !== undefined ? parseFloat(b.Weight) : null;
+    // Find previous weight entry for delta
+    const wtIdx = wt !== null ? wtDates.indexOf(date) : -1;
+    let deltaTxt = '', deltaCls = 'wh-fl';
+    if (wt !== null && wtIdx > 0) {
+      const prev = wtPts[wtIdx - 1].value;
+      const d = (wt - prev);
+      deltaTxt = (d > 0 ? '+' : '') + d.toFixed(1);
+      deltaCls = Math.abs(d) < 0.15 ? 'wh-fl' : d < 0 ? 'wh-dn' : 'wh-up';
+    }
+    const cell = v => `<td>${v !== undefined && v !== null && v !== '' ? esc(String(v)) : '<span style="opacity:.3">—</span>'}</td>`;
+    return `<tr>
+      <td>${_fmtFull(date)}</td>
+      <td>${wt !== null ? `<span class="wh-wt">${wt}</span>` : '<span style="opacity:.3">—</span>'}</td>
+      <td>${deltaTxt ? `<span class="${deltaCls}">${deltaTxt}</span>` : '<span style="opacity:.3">—</span>'}</td>
+      ${cell(b?.['Sleep Score'])}${cell(b?.Energy)}${cell(b?.Stress)}${cell(b?.Soreness)}
+      <td>${n?.Calories !== undefined && n?.Calories !== null ? esc(String(n.Calories)) : '<span style="opacity:.3">—</span>'}</td>
+      <td>${n?.Protein  !== undefined && n?.Protein  !== null ? esc(String(n.Protein))+'g'  : '<span style="opacity:.3">—</span>'}</td>
+      <td>${n?.Carbs    !== undefined && n?.Carbs    !== null ? esc(String(n.Carbs))+'g'    : '<span style="opacity:.3">—</span>'}</td>
+      <td>${n?.Fats     !== undefined && n?.Fats     !== null ? esc(String(n.Fats))+'g'     : '<span style="opacity:.3">—</span>'}</td>
+    </tr>`;
+  }).join('');
+
+  return `
+    <div class="wh-section">
+      <div class="wh-section-title">Weight Trend<span>${wtPts.length > 0 ? _fmtFull(wtPts[0].date) + ' → ' + _fmtFull(wtPts[wtPts.length-1].date) : ''}</span></div>
+      ${chartHtml}
+    </div>
+    <div class="wh-section">
+      <div class="wh-section-title">Full Log — ${allDates.length} days</div>
+      <div style="overflow-x:auto">
+        <table class="wh-table">
+          <thead><tr>
+            <th>Date</th><th>Weight</th><th>Δ</th>
+            <th>Sleep</th><th>Energy</th><th>Stress</th><th>Soreness</th>
+            <th>Cal</th><th>Protein</th><th>Carbs</th><th>Fat</th>
+          </tr></thead>
+          <tbody>${bodyRows}</tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
 // Keyboard shortcuts: Escape = close, ←→ = navigate
 document.addEventListener('keydown', e => {
+  // WH overlay takes priority (it sits on top of fp-overlay)
+  const whOl = document.getElementById('wh-overlay');
+  if (whOl && whOl.style.display !== 'none') {
+    if (e.key === 'Escape') hideWH();
+    return;
+  }
   const overlay = document.getElementById('fp-overlay');
   if (overlay.style.display === 'none') return;
   if (e.key === 'Escape') hideFP();
