@@ -398,8 +398,8 @@ header{background:#0a0a0a;padding:0 18px;height:62px;display:flex;align-items:ce
 
 /* ── Weight History Overlay ── */
 #wh-overlay{position:fixed;inset:0;z-index:500;overflow-y:auto;display:none;
-  --wh-bg:#0a0a0a;--wh-text:#f0f0f0;--wh-dim:rgba(255,255,255,.32);--wh-border:rgba(255,255,255,.1);--wh-surface:rgba(255,255,255,.04);--wh-bar:#111111;--wh-str:var(--str)}
-#wh-overlay.wh-light{--wh-bg:#ffffff;--wh-text:#0a0a0a;--wh-dim:rgba(0,0,0,.38);--wh-border:rgba(0,0,0,.1);--wh-surface:rgba(0,0,0,.025);--wh-bar:#f5f5f5}
+  --wh-bg:#0a0a0a;--wh-text:#ffffff;--wh-dim:rgba(255,255,255,.55);--wh-mid:rgba(255,255,255,.8);--wh-border:rgba(255,255,255,.13);--wh-surface:rgba(255,255,255,.05);--wh-bar:#111111;--wh-str:var(--str)}
+#wh-overlay.wh-light{--wh-bg:#ffffff;--wh-text:#0a0a0a;--wh-dim:rgba(0,0,0,.55);--wh-mid:rgba(0,0,0,.8);--wh-border:rgba(0,0,0,.12);--wh-surface:rgba(0,0,0,.03);--wh-bar:#f5f5f5}
 #wh-overlay{background:var(--wh-bg);color:var(--wh-text)}
 .wh-topbar{background:var(--wh-bar);border-bottom:1px solid var(--wh-border);padding:0 20px;height:50px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:10}
 .wh-back{background:transparent;border:1px solid var(--wh-border);color:var(--wh-dim);font-family:var(--mono);font-size:10px;font-weight:600;padding:5px 14px;border-radius:6px;cursor:pointer;text-transform:uppercase;letter-spacing:.07em;transition:all .15s;flex-shrink:0}
@@ -410,12 +410,12 @@ header{background:#0a0a0a;padding:0 18px;height:62px;display:flex;align-items:ce
 .wh-theme-btn.wh-active{border-color:var(--wh-text);color:var(--wh-text);background:var(--wh-surface)}
 .wh-body{max-width:980px;margin:0 auto;padding:28px 18px 80px}
 .wh-section{background:var(--wh-surface);border:1px solid var(--wh-border);border-radius:14px;padding:22px 24px;margin-bottom:20px}
-.wh-section-title{font-family:var(--mono);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.14em;color:var(--wh-dim);margin-bottom:20px;display:flex;align-items:center;justify-content:space-between}
+.wh-section-title{font-family:var(--mono);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.14em;color:var(--wh-mid);margin-bottom:20px;display:flex;align-items:center;justify-content:space-between}
 .wh-stat-row{display:flex;gap:20px;flex-wrap:wrap;margin-bottom:18px}
 .wh-stat{min-width:80px}.wh-stat-val{font-size:22px;font-weight:900;line-height:1;letter-spacing:-.01em;color:var(--wh-text)}
 .wh-stat-lbl{font-family:var(--mono);font-size:8px;color:var(--wh-dim);text-transform:uppercase;letter-spacing:.1em;margin-top:3px}
 .wh-table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:11px}
-.wh-table th{font-weight:700;text-transform:uppercase;letter-spacing:.08em;font-size:8px;padding:0 10px 10px 0;text-align:right;color:var(--wh-dim);white-space:nowrap}
+.wh-table th{font-weight:700;text-transform:uppercase;letter-spacing:.08em;font-size:8px;padding:0 10px 10px 0;text-align:right;color:var(--wh-mid);white-space:nowrap}
 .wh-table th:first-child{text-align:left}
 .wh-table td{padding:7px 10px 7px 0;vertical-align:middle;border-top:1px solid var(--wh-border);color:var(--wh-text);text-align:right;white-space:nowrap}
 .wh-table td:first-child{text-align:left;font-weight:700}
@@ -2800,7 +2800,7 @@ function buildFPCard(a, weekOffset = 0) {
         const cx = (_pad + i * _xStep).toFixed(1);
         const cy = (_pad + (_H - _pad * 2) * (1 - (p.value - _minV) / _rng)).toFixed(1);
         const isLast = i === _wtPts.length - 1;
-        return `<circle cx="${cx}" cy="${cy}" r="${isLast ? 3.5 : 2}" fill="var(--str)" opacity="${isLast ? 1 : 0.55}"/>`;
+        return `<circle cx="${cx}" cy="${cy}" r="${isLast ? 4 : 2.8}" fill="var(--str)" opacity="${isLast ? 1 : 0.7}"/>`;
       }).join('');
       // Date labels along x-axis
       const _dateLabels = [..._lblIdx].sort((a,b)=>a-b).map(i => {
@@ -3901,7 +3901,7 @@ function buildWeightHistory(a) {
     const pathD = wtPts.map((p, i) => `${i===0?'M':'L'}${toX(i).toFixed(1)},${toY(p.value).toFixed(1)}`).join(' ');
     const dots = wtPts.map((p, i) => {
       const isLast = i === wtPts.length - 1;
-      return `<circle cx="${toX(i).toFixed(1)}" cy="${toY(p.value).toFixed(1)}" r="${isLast?4:2.5}" fill="var(--wh-str)" opacity="${isLast?1:0.65}"/>`;
+      return `<circle cx="${toX(i).toFixed(1)}" cy="${toY(p.value).toFixed(1)}" r="${isLast?5.5:3.5}" fill="var(--wh-str)" opacity="${isLast?1:0.8}"/>`;
     }).join('');
 
     const last = wtPts[wtPts.length-1], first = wtPts[0];
