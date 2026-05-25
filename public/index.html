@@ -1270,6 +1270,24 @@ function trendDelta(series, inv = false) {
   return { delta, dir, pct, recentAvg: rAvg };
 }
 
+// ── Smooth curve helper (Catmull-Rom → cubic Bezier) ─────────────────────────
+function smoothPath(pts) {
+  if (pts.length < 2) return '';
+  let d = `M${pts[0].x.toFixed(1)},${pts[0].y.toFixed(1)}`;
+  for (let i = 1; i < pts.length; i++) {
+    const p0 = pts[Math.max(0, i - 2)];
+    const p1 = pts[i - 1];
+    const p2 = pts[i];
+    const p3 = pts[Math.min(pts.length - 1, i + 1)];
+    const cp1x = p1.x + (p2.x - p0.x) / 6;
+    const cp1y = p1.y + (p2.y - p0.y) / 6;
+    const cp2x = p2.x - (p3.x - p1.x) / 6;
+    const cp2y = p2.y - (p3.y - p1.y) / 6;
+    d += ` C${cp1x.toFixed(1)},${cp1y.toFixed(1)} ${cp2x.toFixed(1)},${cp2y.toFixed(1)} ${p2.x.toFixed(1)},${p2.y.toFixed(1)}`;
+  }
+  return d;
+}
+
 // ── Mini sparkline SVG ───────────────────────────────────────────────────────
 function sparkSVG(series, color = '#0a0a0a', height = 18) {
   const w = 100, h = height;
@@ -2779,11 +2797,11 @@ function buildFPCard(a, weekOffset = 0) {
       const _minV = Math.min(..._vals), _maxV = Math.max(..._vals);
       const _rng = _maxV - _minV || 1;
       const _xStep = (_W - _pad * 2) / (_wtPts.length - 1);
-      const _pts = _wtPts.map((p, i) => {
-        const x = _pad + i * _xStep;
-        const y = _pad + (_H - _pad * 2) * (1 - (p.value - _minV) / _rng);
-        return x.toFixed(1) + ',' + y.toFixed(1);
-      }).join(' ');
+      const _xyPts = _wtPts.map((p, i) => ({
+        x: _pad + i * _xStep,
+        y: _pad + (_H - _pad * 2) * (1 - (p.value - _minV) / _rng)
+      }));
+      const _pts = _xyPts.map(p => p.x.toFixed(1) + ',' + p.y.toFixed(1)).join(' ');
       const _last = _wtPts[_wtPts.length - 1];
       const _prev = _wtPts[0];
       const _diff = (_last.value - _prev.value).toFixed(1);
@@ -2815,7 +2833,7 @@ function buildFPCard(a, weekOffset = 0) {
         + '<span style="font-family:var(--mono);font-size:10px;font-weight:700;color:' + _diffCol + ';margin-left:4px">' + _diffTxt + ' (28d)</span>'
         + '</div>'
         + '<svg viewBox="0 0 ' + _W + ' ' + _totalH + '" width="100%" height="' + _totalH + '" style="display:block;overflow:visible">'
-        + '<polyline points="' + _pts + '" fill="none" stroke="var(--str)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'
+        + '<path d="' + smoothPath(_xyPts) + '" fill="none" stroke="var(--str)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'
         + _dots
         + _dateLabels
         + '</svg>'
@@ -3898,7 +3916,8 @@ function buildWeightHistory(a) {
       return `<text x="${x}" y="${pT+CH+18}" font-family="var(--mono)" font-size="8" fill="var(--wh-dim)" text-anchor="${anchor}">${_fmtD(p.date)}</text>`;
     }).join('');
 
-    const pathD = wtPts.map((p, i) => `${i===0?'M':'L'}${toX(i).toFixed(1)},${toY(p.value).toFixed(1)}`).join(' ');
+    const _xyHistPts = wtPts.map((p, i) => ({ x: toX(i), y: toY(p.value) }));
+    const pathD = smoothPath(_xyHistPts);
     const dots = wtPts.map((p, i) => {
       const isLast = i === wtPts.length - 1;
       return `<circle cx="${toX(i).toFixed(1)}" cy="${toY(p.value).toFixed(1)}" r="${isLast?5.5:3.5}" fill="var(--wh-str)" opacity="${isLast?1:0.8}"/>`;
