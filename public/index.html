@@ -507,6 +507,10 @@ header{background:#0a0a0a;padding:0 18px;height:62px;display:flex;align-items:ce
 .wh-table td:first-child{text-align:left;font-weight:700}
 .wh-wt{font-size:13px;font-weight:800}
 .wh-dn{color:#22c55e}.wh-up{color:#ef4444}.wh-fl{color:var(--wh-dim)}
+.wh-range-btns{display:flex;gap:4px}
+.wh-range-btn{background:transparent;border:1px solid var(--wh-border);color:var(--wh-dim);font-family:var(--mono);font-size:8px;font-weight:700;padding:3px 9px;border-radius:20px;cursor:pointer;text-transform:uppercase;letter-spacing:.07em;transition:all .12s}
+.wh-range-btn:hover{border-color:var(--wh-text);color:var(--wh-text)}
+.wh-range-btn.wh-active{background:var(--wh-str);border-color:var(--wh-str);color:#fff}
 .wh-spark-wrap{cursor:pointer;position:relative}
 .wh-spark-wrap::after{content:'↗ Full history';font-family:var(--mono);font-size:7px;text-transform:uppercase;letter-spacing:.06em;color:var(--dim);position:absolute;bottom:18px;right:0;opacity:.5}
 
@@ -3924,6 +3928,7 @@ async function loadProgressPhotos(a, weekOffset = 0) {
 
 // ── Weight History Overlay ─────────────────────────────────────────────────
 let _whId = null;
+let _whRange = 28; // days — default 4 weeks
 let _whTheme = (typeof localStorage !== 'undefined' && localStorage.getItem('dp_wh_theme')) || 'dark';
 
 function showWH(id) {
@@ -3949,6 +3954,11 @@ function setWHTheme(t) {
   document.getElementById('wh-btn-light').classList.toggle('wh-active', t === 'light');
 }
 
+function setWHRange(days) {
+  _whRange = days;
+  _drawWH();
+}
+
 function _drawWH() {
   const a = _allAthletes.find(x => x.id === _whId) || _coaches.find(x => x.id === _whId);
   if (!a) return;
@@ -3965,11 +3975,14 @@ function buildWeightHistory(a) {
   const _fmtD = d => { if (!d) return '—'; const [,m,dy] = d.split('-'); return parseInt(dy) + ' ' + _mn[parseInt(m)-1]; };
   const _fmtFull = d => { if (!d) return '—'; const [y,m,dy] = d.split('-'); return parseInt(dy) + ' ' + _mn[parseInt(m)-1] + ' ' + y; };
 
+  // ── Range cutoff ──────────────────────────────────────────────────────────
+  const _cutoff = dagoStr(_whRange - 1); // inclusive start date for selected window
+
   // ── Weight chart ───────────────────────────────────────────────────────────
   const wtPts = [...a.body]
     .filter(r => r.Weight !== undefined && r.Weight !== null && !isNaN(parseFloat(r.Weight)))
     .map(r => ({ date: (r['date:Date:start'] || r.Date || '').split('T')[0], value: parseFloat(r.Weight) }))
-    .filter(p => p.date)
+    .filter(p => p.date && p.date >= _cutoff)
     .sort((a, b) => a.date > b.date ? 1 : -1);
 
   let chartHtml = '<p style="font-family:var(--mono);font-size:11px;color:var(--wh-dim)">No weight data available.</p>';
@@ -4040,7 +4053,7 @@ function buildWeightHistory(a) {
     const d = (r['date:Date:start'] || r.Date || '').split('T')[0];
     if (d) nutrMap[d] = r;
   });
-  const allDates = [...new Set([...Object.keys(bodyMap), ...Object.keys(nutrMap)])].sort((a,b) => b > a ? 1 : -1);
+  const allDates = [...new Set([...Object.keys(bodyMap), ...Object.keys(nutrMap)])].filter(d => d >= _cutoff).sort((a,b) => b > a ? 1 : -1);
 
   // Build weight delta map (for each date, delta from previous weight entry)
   const wtByDate = {};
@@ -4073,9 +4086,17 @@ function buildWeightHistory(a) {
     </tr>`;
   }).join('');
 
+  const _ranges = [{d:7,l:'1W'},{d:14,l:'2W'},{d:28,l:'4W'},{d:56,l:'8W'},{d:90,l:'12W'}];
+  const _rangeBtns = _ranges.map(r =>
+    `<button class="wh-range-btn${_whRange===r.d?' wh-active':''}" onclick="setWHRange(${r.d})">${r.l}</button>`
+  ).join('');
+
   return `
     <div class="wh-section">
-      <div class="wh-section-title">Weight Trend<span>${wtPts.length > 0 ? _fmtFull(wtPts[0].date) + ' → ' + _fmtFull(wtPts[wtPts.length-1].date) : ''}</span></div>
+      <div class="wh-section-title">
+        <span>Weight Trend${wtPts.length > 0 ? ' · <span style="font-weight:400;opacity:.7">' + _fmtFull(wtPts[0].date) + ' → ' + _fmtFull(wtPts[wtPts.length-1].date) + '</span>' : ''}</span>
+        <div class="wh-range-btns">${_rangeBtns}</div>
+      </div>
       ${chartHtml}
     </div>
     <div class="wh-section">
