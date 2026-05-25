@@ -23,6 +23,7 @@ function flattenProps(props) {
       case 'rich_text':    out[k] = rt(v.rich_text); break;
       case 'number':       out[k] = v.number; break;
       case 'select':       out[k] = v.select ? v.select.name : null; break;
+      case 'status':       out[k] = v.status ? v.status.name : null; break;
       case 'multi_select': out[k] = v.multi_select.map(s => s.name).join(', '); break;
       case 'date':
         out[k] = v.date ? v.date.start : null;
