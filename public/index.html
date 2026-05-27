@@ -96,6 +96,7 @@ html.light .fpc-wip{background:rgba(99,102,241,.06);border-color:rgba(99,102,241
 /* Session day rows */
 html.light .wd-session.run{background:#fff7ed}
 html.light .wd-session.str{background:#eff6ff}
+html.light .wd-session.run .wd-ex-set{background:#fff7ed;border-color:#fde68a}
 html.light .wd-row{border-top-color:var(--border)}
 /* Spark / chart colours on white */
 html.light .wh-spark-wrap::after{color:var(--muted)}
@@ -766,8 +767,8 @@ header{background:#0a0a0a;padding:0 18px;height:62px;display:flex;align-items:ce
 .wd-rest{font-family:var(--mono);font-size:9px;color:var(--dim);font-style:italic;padding-top:2px}
 .wd-day-content{flex:1;display:flex;flex-direction:column;gap:8px}
 .wd-session{border-radius:8px;padding:10px 12px}
-.wd-session.run{background:#fff7ed;border-left:3px solid var(--run)}
-.wd-session.str{background:#eff6ff;border-left:3px solid var(--str)}
+.wd-session.run{background:var(--amber-bg);border-left:3px solid var(--run)}
+.wd-session.str{background:rgba(96,165,250,.08);border-left:3px solid var(--str)}
 .wd-session.other{background:var(--surface2);border-left:3px solid var(--border-mid)}
 .wd-sess-cat{font-family:var(--mono);font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px}
 .wd-session.run .wd-sess-cat{color:var(--run)}
@@ -779,7 +780,7 @@ header{background:#0a0a0a;padding:0 18px;height:62px;display:flex;align-items:ce
 .wd-ex-name{font-family:var(--mono);font-size:9px;color:var(--muted);width:160px;flex-shrink:0;line-height:1.4;padding-top:1px;text-transform:capitalize}
 .wd-ex-sets{display:flex;flex-wrap:wrap;gap:3px}
 .wd-ex-set{font-family:var(--mono);font-size:9px;background:var(--surface2);border:1px solid var(--border);padding:1px 6px;border-radius:4px;color:var(--text);white-space:nowrap;line-height:1.5}
-.wd-session.run .wd-ex-set{background:#fff7ed;border-color:#fde68a;color:var(--run)}
+.wd-session.run .wd-ex-set{background:rgba(245,158,11,.12);border-color:var(--amber-border);color:var(--run)}
 .wd-run-stats{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
 .wd-run-stat{font-family:var(--mono);font-size:10px;color:var(--muted)}
 .wd-run-stat strong{color:var(--text);font-size:11px}
