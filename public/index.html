@@ -3037,6 +3037,8 @@ function buildFPCard(a, weekOffset = 0) {
     const days = [];
     const todayStr = ctx.weekOffset === 0 ? localDateStr(new Date()) : ctx.weekEndStr;
     const weekStartStr = ctx.weekStartStr;
+    const _wdT = ctx.target || a.target;
+    const tCalTarget = _wdT && _wdT.Calories ? parseFloat(String(_wdT.Calories).replace(/[^\d.]/g,'')) || 0 : 0;
     for (let d = new Date(ctx.weekStart); localDateStr(d) <= todayStr; d.setDate(d.getDate() + 1)) {
       days.push(localDateStr(new Date(d)));
     }
@@ -3056,11 +3058,12 @@ function buildFPCard(a, weekOffset = 0) {
         const dayNutr = a.nutrition.find(r => (r['date:Date:start'] || r.Date || '').split('T')[0] === dateStr);
 
         const hasData = daySessions.length > 0 || dayBody || dayNutr;
+        const isFuture = ctx.weekOffset === 0 && dateStr > todayStr;
 
         if (!hasData) {
           return `<div class="wd-row empty">
             <div class="wd-date">${dayLabel}</div>
-            <div class="wd-rest">No data logged</div>
+            <div class="wd-rest">${isFuture ? '—' : 'No data logged'}</div>
           </div>`;
         }
 
@@ -3093,22 +3096,42 @@ function buildFPCard(a, weekOffset = 0) {
             dayBody.Energy       ? `<span class="wd-metric">⚡ <strong>${esc(dayBody.Energy)}</strong> energy</span>` : '',
             dayBody.Stress       ? `<span class="wd-metric">🧠 <strong>${esc(dayBody.Stress)}</strong> stress</span>` : '',
             dayBody.Soreness     ? `<span class="wd-metric">💪 <strong>${esc(dayBody.Soreness)}</strong> sore</span>` : '',
+            dayBody.Steps        ? `<span class="wd-metric">🚶 <strong>${esc(dayBody.Steps)}</strong> steps</span>` : '',
           ].filter(Boolean).join('');
+          const bNotes = pickFirst(dayBody, ['Notes', 'Note', 'Body Notes']);
           if (bParts) bodyRowHtml = `<div class="wd-body-row">
-            <span class="wd-metric body-lbl">Body</span>${bParts}</div>`;
+            <span class="wd-metric body-lbl">Body</span>${bParts}</div>
+            ${isBad(bNotes) ? `<div class="wd-sess-notes" style="margin-top:2px">${esc(bNotes)}</div>` : ''}`;
         }
 
         // Nutrition metrics
         let nutrRowHtml = '';
         if (dayNutr) {
+          const adh = pickFirst(dayNutr, ['Adherence', 'Nutrition Adherence']);
+          const water = pickFirst(dayNutr, ['Water', 'Water Intake']);
           const nParts = [
             dayNutr.Calories ? `<span class="wd-metric nutr"><strong>${esc(dayNutr.Calories)}</strong> kcal</span>` : '',
             dayNutr.Protein  ? `<span class="wd-metric nutr"><strong>${esc(dayNutr.Protein)}g</strong> P</span>` : '',
             dayNutr.Carbs    ? `<span class="wd-metric nutr"><strong>${esc(dayNutr.Carbs)}g</strong> C</span>` : '',
             dayNutr.Fats     ? `<span class="wd-metric nutr"><strong>${esc(dayNutr.Fats)}g</strong> F</span>` : '',
-          ].filter(Boolean).join('');
-          if (nParts) nutrRowHtml = `<div class="wd-nutr-row">
-            <span class="wd-metric nutr-lbl">Nutr</span>${nParts}</div>`;
+            water            ? `<span class="wd-metric nutr"><strong>${esc(water)}</strong> water</span>` : '',
+            adh              ? `<span class="wd-metric nutr"><strong>${esc(adh)}/10</strong> adherence</span>` : '',
+          ];
+          if (tCalTarget && dayNutr.Calories) {
+            const _cal = parseFloat(String(dayNutr.Calories).replace(/[^\d.]/g,''));
+            if (!isNaN(_cal) && _cal > 0) {
+              const _ratio = _cal / tCalTarget;
+              const _pct = Math.round(_ratio * 100);
+              const _cls = _ratio < 0.8 ? 'under' : _ratio > 1.15 ? 'over' : 'ok';
+              const _icon = _ratio < 0.8 ? '\u2193' : _ratio > 1.15 ? '\u2191' : '\u2713';
+              nParts.push(`<span class="wd-metric nutr-tgt ${_cls}">${_icon} ${_pct}%</span>`);
+            }
+          }
+          const _nPartsHtml = nParts.filter(Boolean).join('');
+          const nNotes = pickFirst(dayNutr, ['Notes', 'Note', 'Nutrition Notes', 'Meals', 'Comments']);
+          if (_nPartsHtml) nutrRowHtml = `<div class="wd-nutr-row">
+            <span class="wd-metric nutr-lbl">Nutr</span>${_nPartsHtml}</div>
+            ${isBad(nNotes) ? `<div class="wd-sess-notes" style="margin-top:2px">${esc(nNotes)}</div>` : ''}`;
         }
 
         return `<div class="wd-row">
@@ -3329,7 +3352,6 @@ function buildFPCard(a, weekOffset = 0) {
     ${trendsHtml}
     ${progressPhotosHtml}
     ${dailyNutrHtml}
-    ${dailyInputsHtml}
     ${weekDetailHtml}
     ${bodyNutrPart}
     ${callPrepHtml}
