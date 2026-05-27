@@ -793,6 +793,12 @@ header{background:#0a0a0a;padding:0 18px;height:62px;display:flex;align-items:ce
 .wd-metric.nutr strong{color:var(--amber-text)}
 .wd-metric.body-lbl{font-size:8px;text-transform:uppercase;letter-spacing:.06em;opacity:.6;padding:2px 6px}
 .wd-metric.nutr-lbl{font-size:8px;text-transform:uppercase;letter-spacing:.06em;opacity:.6;padding:2px 6px;background:transparent}
+.wd-macro-row{display:flex;flex-wrap:wrap;gap:4px;margin-top:2px}
+.wd-macro-chip{display:inline-flex;align-items:center;gap:3px;font-family:var(--mono);font-size:11px;border-radius:4px;padding:2px 6px;white-space:nowrap;border:1px solid}
+.wd-macro-lbl{font-size:9px;text-transform:uppercase;letter-spacing:.05em;opacity:.7}
+.wd-macro-chip.ok{background:var(--green-bg);color:var(--green-text);border-color:var(--green-border)}
+.wd-macro-chip.under{background:var(--amber-bg);color:var(--amber-text);border-color:var(--amber-border)}
+.wd-macro-chip.over{background:var(--red-bg);color:var(--red-text);border-color:var(--red-border)}
 
 /* Responsive ── */
 @media(max-width:600px){
@@ -3117,20 +3123,25 @@ function buildFPCard(a, weekOffset = 0) {
             water            ? `<span class="wd-metric nutr"><strong>${esc(water)}</strong> water</span>` : '',
             adh              ? `<span class="wd-metric nutr"><strong>${esc(adh)}/10</strong> adherence</span>` : '',
           ];
-          if (tCalTarget && dayNutr.Calories) {
-            const _cal = parseFloat(String(dayNutr.Calories).replace(/[^\d.]/g,''));
-            if (!isNaN(_cal) && _cal > 0) {
-              const _ratio = _cal / tCalTarget;
-              const _pct = Math.round(_ratio * 100);
-              const _cls = _ratio < 0.8 ? 'under' : _ratio > 1.15 ? 'over' : 'ok';
-              const _icon = _ratio < 0.8 ? '\u2193' : _ratio > 1.15 ? '\u2191' : '\u2713';
-              nParts.push(`<span class="wd-metric nutr-tgt ${_cls}">${_icon} ${_pct}%</span>`);
-            }
-          }
           const _nPartsHtml = nParts.filter(Boolean).join('');
+          let _macroChipsHtml = '';
+          if (_wdT) {
+            const _mDefs = [['kcal',dayNutr.Calories,_wdT.Calories],['P',dayNutr.Protein,_wdT.Protein],['C',dayNutr.Carbs,_wdT.Carbs],['F',dayNutr.Fats,_wdT.Fats]];
+            const _chips = _mDefs.map(([ml,ma,mt]) => {
+              if (!ma||!mt) return '';
+              const _a=parseFloat(String(ma).replace(/[^\d.]/g,'')),_t=parseFloat(String(mt).replace(/[^\d.]/g,''));
+              if(!_t||!_a||isNaN(_a)||isNaN(_t)) return '';
+              const _r=_a/_t,_p=Math.round(_r*100);
+              const _c=_r<0.8?'under':_r>1.15?'over':'ok';
+              const _i=_r<0.8?'\u2193':_r>1.15?'\u2191':'\u2713';
+              return `<span class="wd-macro-chip ${_c}"><span class="wd-macro-lbl">${esc(ml)}</span> ${_i} ${_p}%</span>`;
+            }).filter(Boolean).join('');
+            if (_chips) _macroChipsHtml = `<div class="wd-macro-row">${_chips}</div>`;
+          }
           const nNotes = pickFirst(dayNutr, ['Notes', 'Note', 'Nutrition Notes', 'Meals', 'Comments']);
           if (_nPartsHtml) nutrRowHtml = `<div class="wd-nutr-row">
             <span class="wd-metric nutr-lbl">Nutr</span>${_nPartsHtml}</div>
+            ${_macroChipsHtml}
             ${isBad(nNotes) ? `<div class="wd-sess-notes" style="margin-top:2px">${esc(nNotes)}</div>` : ''}`;
         }
 
