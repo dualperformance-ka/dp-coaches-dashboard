@@ -3123,7 +3123,7 @@ function buildFPCard(a, weekOffset = 0) {
 
       weekDetailHtml = `<div class="fpc-section">
         <div class="fpc-section-title">This Week — Day by Day · ${weekStartStr} → ${todayStr}</div>
-        <div class="wd-timeline">${dayRows.join('')}</div>
+        <div class="wd-timeline">${dayRows.reverse().join('')}</div>
       </div>`;
     }
   }
