@@ -1742,7 +1742,11 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [
   sessions.forEach(r => {
     const id = sid(r);
     if (!id) return;
-    const ds = parseSessionDate(r.Date) || parseSessionDate(r['Submitted At']) || parseSessionDate(r._createdTime);
+    // Reject r.Date if Make.com stored it as a future date (DD/MM misread as MM/DD)
+    const _rawDate = parseSessionDate(r.Date);
+    const ds = (_rawDate && _rawDate <= localDateStr(new Date()))
+      ? _rawDate
+      : (parseSessionDate(r['Submitted At']) || parseSessionDate(r._createdTime));
     if (!ds || new Date(ds) < c90) return;
     sessionCounts[id] = (sessionCounts[id] || 0) + 1;
     if (!map[id]) return;
