@@ -23,137 +23,6 @@
   --red-bg:rgba(248,113,113,.08);--red-border:rgba(248,113,113,.22);--red-text:#f87171;
   --coach-bg:rgba(165,180,252,.08);--coach-border:rgba(165,180,252,.22);--coach-text:#a5b4fc;
 }
-
-/* ════════════════════════════════════════════════════════
-   LIGHT THEME
-   ════════════════════════════════════════════════════════ */
-html.light{
-  --bg:#f4f4f5;--surface:#ffffff;--surface2:#ececed;
-  --border:rgba(0,0,0,.09);--border-mid:rgba(0,0,0,.16);
-  --text:#09090b;--muted:#71717a;--dim:#a1a1aa;
-  --ok:#16a34a;--warn:#d97706;--alert:#dc2626;
-  --str:#2563eb;--run:#d97706;
-  --amber:#d97706;--amber-dim:#b45309;
-  --green-bg:rgba(22,163,74,.08);--green-border:rgba(22,163,74,.22);--green-text:#15803d;
-  --amber-bg:rgba(217,119,6,.08);--amber-border:rgba(217,119,6,.22);--amber-text:#b45309;
-  --red-bg:rgba(220,38,38,.08);--red-border:rgba(220,38,38,.22);--red-text:#dc2626;
-  --coach-bg:rgba(99,102,241,.08);--coach-border:rgba(99,102,241,.22);--coach-text:#4f46e5;
-}
-/* Header */
-html.light header{background:#fff;border-bottom-color:rgba(0,0,0,.1)}
-html.light .logo-mark{filter:brightness(0)}
-html.light .logo .d,html.light .logo .p{color:#09090b}
-html.light .updated{color:rgba(0,0,0,.36)}
-html.light .coach-select{background:rgba(0,0,0,.05);border-color:rgba(0,0,0,.16);color:#09090b}
-html.light .coach-select option{background:#fff;color:#09090b}
-html.light .refresh-btn{border-color:rgba(0,0,0,.2);color:rgba(0,0,0,.55)}
-html.light .refresh-btn:hover{border-color:rgba(0,0,0,.55);color:#09090b}
-html.light .gen-btn{background:#f4f4f5;border-color:rgba(0,0,0,.18);color:#09090b}
-html.light .gen-btn:hover{background:#e4e4e7;border-color:rgba(0,0,0,.4)}
-html.light .gen-btn.loading{background:#eff6ff;border-color:#3b82f6;color:#1d4ed8}
-/* Tab bar */
-html.light .tab-bar{background:#fff;border-bottom-color:rgba(0,0,0,.1)}
-html.light .tab{color:rgba(0,0,0,.38)}
-html.light .tab:hover{color:rgba(0,0,0,.7)}
-html.light .tab.active{color:#09090b;border-bottom-color:#09090b}
-html.light .tab.active .tab-badge{background:rgba(0,0,0,.1)}
-html.light .tab-badge{background:rgba(0,0,0,.08);color:rgba(0,0,0,.55)}
-/* Filter / sort chips */
-html.light .sf{color:var(--muted);border-color:rgba(0,0,0,.16);background:transparent}
-html.light .sf:hover{border-color:rgba(0,0,0,.35);color:var(--text)}
-html.light .sf.active{background:#09090b;border-color:#09090b;color:#fff}
-html.light .sf.sf-red.active{background:var(--alert);border-color:var(--alert)}
-html.light .sf.sf-amber.active{background:var(--warn);border-color:var(--warn)}
-html.light .sf.sf-green.active{background:var(--ok);border-color:var(--ok)}
-/* Cards — card-head stays dark (accent) */
-html.light .card-head{background:#09090b}
-html.light .aname{color:#fff}
-/* Squad overview panel */
-html.light .cc-panel{background:var(--surface);border-color:var(--border)}
-html.light .cc-athlete{border-bottom-color:var(--border)}
-html.light .cc-athlete:hover{background:var(--surface2)}
-html.light .cc-list{border-right-color:var(--border)}
-html.light .cc-score-num.red{color:#dc2626}
-html.light .cc-score-num.amber{color:#d97706}
-html.light .cc-score-num.green{color:#16a34a}
-/* Full-page overlay */
-html.light .fp-topbar{background:#fff;border-bottom:1px solid rgba(0,0,0,.1)}
-html.light .fp-back,html.light .fp-nav-btn{border-color:rgba(0,0,0,.18);color:rgba(0,0,0,.55)}
-html.light .fp-back:hover,html.light .fp-nav-btn:hover:not([disabled]){color:#09090b;border-color:rgba(0,0,0,.5)}
-html.light .fp-idx,html.light .fp-hint{color:rgba(0,0,0,.28)}
-html.light .fp-open-btn{border-color:rgba(255,255,255,.22);color:rgba(255,255,255,.62)}
-html.light .fp-open-btn:hover{color:#fff;border-color:rgba(255,255,255,.62)}
-/* Athlete full-page hero — stays dark for contrast */
-html.light .fpc-hero{background:#09090b}
-html.light .fpc-week-badge{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.22)}
-html.light .fpc-meta{color:rgba(255,255,255,.45)}
-/* FPC scores strip */
-html.light .fpc-scores{border-top-color:var(--border)}
-html.light .fpc-score{border-right-color:var(--border)}
-html.light .fpc-score-lbl{color:var(--dim)}
-/* WIP / plan section */
-html.light .fpc-wip{background:rgba(99,102,241,.06);border-color:rgba(99,102,241,.18)}
-/* Session day rows */
-html.light .wd-session.run{background:#fff7ed}
-html.light .wd-session.str{background:#eff6ff}
-html.light .wd-session.run .wd-ex-set{background:#fff7ed;border-color:#fde68a}
-html.light .wd-row{border-top-color:var(--border)}
-/* Spark / chart colours on white */
-html.light .wh-spark-wrap::after{color:var(--muted)}
-/* Sync table */
-html.light .sync-table th{background:var(--surface2);color:var(--dim)}
-html.light .sync-table td{border-top-color:var(--border)}
-/* Call prep section */
-html.light .cp-header{border-bottom-color:var(--border)}
-/* Theme toggle button */
-.theme-toggle-btn{background:transparent;border:1px solid rgba(255,255,255,.18);color:rgba(255,255,255,.55);font-family:var(--mono);font-size:10px;padding:5px 11px;border-radius:6px;cursor:pointer;text-transform:uppercase;letter-spacing:.06em;transition:all .15s;white-space:nowrap}
-.theme-toggle-btn:hover{border-color:rgba(255,255,255,.5);color:#fff}
-html.light .theme-toggle-btn{border-color:rgba(0,0,0,.2);color:rgba(0,0,0,.55)}
-html.light .theme-toggle-btn:hover{border-color:rgba(0,0,0,.5);color:#09090b}
-
-/* ════════════════════════════════════════════════════════
-   LGBT THEME
-   ════════════════════════════════════════════════════════ */
-html.lgbt{
-  --bg:#07070a;--surface:#111116;--surface2:#1a1a22;
-  --border:rgba(255,255,255,.1);--border-mid:rgba(255,255,255,.18);
-  --text:#fff7fb;--muted:#b7adba;--dim:#766e7d;
-  --run:#ff8c00;--str:#00c2ff;
-  --amber:#ffed00;--amber-dim:#ffb703;
-  --ok:#00d26a;--warn:#ff8c00;--alert:#ff4d6d;
-  --green-bg:rgba(0,210,106,.12);--green-border:rgba(0,210,106,.32);--green-text:#51f28f;
-  --amber-bg:rgba(255,140,0,.12);--amber-border:rgba(255,140,0,.32);--amber-text:#ffb703;
-  --red-bg:rgba(255,77,109,.12);--red-border:rgba(255,77,109,.32);--red-text:#ff7a95;
-  --coach-bg:rgba(191,90,242,.14);--coach-border:rgba(191,90,242,.34);--coach-text:#d8a7ff;
-}
-html.lgbt body{
-  background:
-    linear-gradient(180deg,rgba(7,7,10,.68) 0%,rgba(17,17,22,.76) 46%,rgba(7,7,10,.84) 100%),
-    linear-gradient(135deg,
-      #e40303 0 16.66%,
-      #ff8c00 16.66% 33.33%,
-      #ffed00 33.33% 50%,
-      #008026 50% 66.66%,
-      #24408e 66.66% 83.33%,
-      #732982 83.33% 100%);
-  background-attachment:fixed;
-}
-html.lgbt .filter-bar,html.lgbt .main{background:transparent}
-html.lgbt header,html.lgbt .tab-bar{background:#09090d;border-bottom-color:rgba(255,255,255,.1)}
-html.lgbt header::before,html.lgbt .tab-bar::before{content:'';position:absolute;left:0;right:0;bottom:-1px;height:4px;background:linear-gradient(90deg,#e40303 0 16.66%,#ff8c00 16.66% 33.33%,#ffed00 33.33% 50%,#008026 50% 66.66%,#24408e 66.66% 83.33%,#732982 83.33% 100%);pointer-events:none}
-html.lgbt .logo-mark{filter:none}
-html.lgbt .logo .d{color:#fff}
-html.lgbt .logo .p{color:rgba(255,255,255,.72)}
-html.lgbt .coach-pill{background:linear-gradient(90deg,#e40303 0 16.66%,#ff8c00 16.66% 33.33%,#ffed00 33.33% 50%,#008026 50% 66.66%,#24408e 66.66% 83.33%,#732982 83.33% 100%);color:#fff}
-html.lgbt .tab.active{border-bottom-color:#ffed00;color:#fff}
-html.lgbt .tab.active .tab-badge{background:rgba(255,237,0,.18);color:#fff}
-html.lgbt .sf.active{background:linear-gradient(90deg,#e40303 0 16.66%,#ff8c00 16.66% 33.33%,#ffed00 33.33% 50%,#008026 50% 66.66%,#24408e 66.66% 83.33%,#732982 83.33% 100%);border-color:transparent;color:#fff}
-html.lgbt .card,html.lgbt .cc-panel{box-shadow:0 0 0 1px rgba(255,255,255,.02),0 10px 30px rgba(115,41,130,.12)}
-html.lgbt .card-head{background:linear-gradient(90deg,#17171f 0%,#101017 100%);border-bottom:3px solid transparent;border-image:linear-gradient(90deg,#e40303 0 16.66%,#ff8c00 16.66% 33.33%,#ffed00 33.33% 50%,#008026 50% 66.66%,#24408e 66.66% 83.33%,#732982 83.33% 100%) 1}
-html.lgbt .cc-hero,html.lgbt .fpc-hero{background:linear-gradient(135deg,#111116 0%,#24172f 55%,#101826 100%)}
-html.lgbt .theme-toggle-btn{border-color:rgba(255,255,255,.28);color:#fff;background:linear-gradient(90deg,rgba(228,3,3,.18),rgba(255,140,0,.18),rgba(255,237,0,.18),rgba(0,128,38,.18),rgba(36,64,142,.18),rgba(115,41,130,.18))}
-html.lgbt .theme-toggle-btn:hover{border-color:rgba(255,255,255,.58);color:#fff}
-
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;line-height:1.5}
 
@@ -526,38 +395,6 @@ header{background:#0a0a0a;padding:0 18px;height:62px;display:flex;align-items:ce
 .fp-idx{font-family:var(--mono);font-size:9px;color:rgba(255,255,255,.28);min-width:40px;text-align:center}
 .fp-hint{font-family:var(--mono);font-size:8px;color:rgba(255,255,255,.18);text-transform:uppercase;letter-spacing:.08em}
 .fp-body{max-width:900px;margin:0 auto;padding:22px 18px 60px}
-
-/* ── Weight History Overlay ── */
-#wh-overlay{position:fixed;inset:0;z-index:500;overflow-y:auto;display:none;
-  --wh-bg:#0a0a0a;--wh-text:#ffffff;--wh-dim:rgba(255,255,255,.55);--wh-mid:rgba(255,255,255,.8);--wh-border:rgba(255,255,255,.13);--wh-surface:rgba(255,255,255,.05);--wh-bar:#111111;--wh-str:var(--str)}
-#wh-overlay.wh-light{--wh-bg:#ffffff;--wh-text:#0a0a0a;--wh-dim:rgba(0,0,0,.55);--wh-mid:rgba(0,0,0,.8);--wh-border:rgba(0,0,0,.12);--wh-surface:rgba(0,0,0,.03);--wh-bar:#f5f5f5}
-#wh-overlay{background:var(--wh-bg);color:var(--wh-text)}
-.wh-topbar{background:var(--wh-bar);border-bottom:1px solid var(--wh-border);padding:0 20px;height:50px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:10}
-.wh-back{background:transparent;border:1px solid var(--wh-border);color:var(--wh-dim);font-family:var(--mono);font-size:10px;font-weight:600;padding:5px 14px;border-radius:6px;cursor:pointer;text-transform:uppercase;letter-spacing:.07em;transition:all .15s;flex-shrink:0}
-.wh-back:hover{border-color:var(--wh-text);color:var(--wh-text)}
-.wh-topbar-title{font-family:var(--cond);font-size:17px;font-weight:900;text-transform:uppercase;letter-spacing:.05em;color:var(--wh-text);flex:1;padding-left:4px}
-.wh-topbar-right{display:flex;gap:5px}
-.wh-theme-btn{background:transparent;border:1px solid var(--wh-border);color:var(--wh-dim);font-family:var(--mono);font-size:9px;font-weight:700;padding:4px 12px;border-radius:20px;cursor:pointer;text-transform:uppercase;letter-spacing:.07em;transition:all .15s}
-.wh-theme-btn.wh-active{border-color:var(--wh-text);color:var(--wh-text);background:var(--wh-surface)}
-.wh-body{max-width:980px;margin:0 auto;padding:28px 18px 80px}
-.wh-section{background:var(--wh-surface);border:1px solid var(--wh-border);border-radius:14px;padding:22px 24px;margin-bottom:20px}
-.wh-section-title{font-family:var(--mono);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.14em;color:var(--wh-mid);margin-bottom:20px;display:flex;align-items:center;justify-content:space-between}
-.wh-stat-row{display:flex;gap:20px;flex-wrap:wrap;margin-bottom:18px}
-.wh-stat{min-width:80px}.wh-stat-val{font-size:22px;font-weight:900;line-height:1;letter-spacing:-.01em;color:var(--wh-text)}
-.wh-stat-lbl{font-family:var(--mono);font-size:8px;color:var(--wh-dim);text-transform:uppercase;letter-spacing:.1em;margin-top:3px}
-.wh-table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:11px}
-.wh-table th{font-weight:700;text-transform:uppercase;letter-spacing:.08em;font-size:8px;padding:0 10px 10px 0;text-align:right;color:var(--wh-mid);white-space:nowrap}
-.wh-table th:first-child{text-align:left}
-.wh-table td{padding:7px 10px 7px 0;vertical-align:middle;border-top:1px solid var(--wh-border);color:var(--wh-text);text-align:right;white-space:nowrap}
-.wh-table td:first-child{text-align:left;font-weight:700}
-.wh-wt{font-size:13px;font-weight:800}
-.wh-dn{color:#22c55e}.wh-up{color:#ef4444}.wh-fl{color:var(--wh-dim)}
-.wh-range-btns{display:flex;gap:4px}
-.wh-range-btn{background:transparent;border:1px solid var(--wh-border);color:var(--wh-dim);font-family:var(--mono);font-size:8px;font-weight:700;padding:3px 9px;border-radius:20px;cursor:pointer;text-transform:uppercase;letter-spacing:.07em;transition:all .12s}
-.wh-range-btn:hover{border-color:var(--wh-text);color:var(--wh-text)}
-.wh-range-btn.wh-active{background:var(--wh-str);border-color:var(--wh-str);color:#fff}
-.wh-spark-wrap{cursor:pointer;position:relative}
-.wh-spark-wrap::after{content:'↗ Full history';font-family:var(--mono);font-size:7px;text-transform:uppercase;letter-spacing:.06em;color:var(--dim);position:absolute;bottom:18px;right:0;opacity:.5}
 
 /* ── Full-page card: clean layout ── */
 .fpc-hero{background:#0a0a0a;border-radius:16px;padding:28px 30px 24px;margin-bottom:18px}
@@ -942,19 +779,6 @@ header{background:#0a0a0a;padding:0 18px;height:62px;display:flex;align-items:ce
   <div class="fp-body" id="fp-body"></div>
 </div>
 
-<!-- ── Weight History full-page view ── -->
-<div id="wh-overlay">
-  <div class="wh-topbar">
-    <button class="wh-back" onclick="hideWH()">← Back</button>
-    <span class="wh-topbar-title" id="wh-title"></span>
-    <div class="wh-topbar-right">
-      <button class="wh-theme-btn wh-active" id="wh-btn-dark" onclick="setWHTheme('dark')">◑ Dark</button>
-      <button class="wh-theme-btn" id="wh-btn-light" onclick="setWHTheme('light')">☀ Light</button>
-    </div>
-  </div>
-  <div class="wh-body" id="wh-body"></div>
-</div>
-
 <header>
   <div class="logo-block">
     <img class="logo-mark" src="data:image/png;base64,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" alt="DP">
@@ -970,7 +794,6 @@ header{background:#0a0a0a;padding:0 18px;height:62px;display:flex;align-items:ce
       <option value="ALEX">ALEX</option>
     </select>
     <span class="updated" id="updated"></span>
-    <button class="theme-toggle-btn" id="theme-toggle-btn" onclick="toggleTheme()" title="Switch theme">☀ Light</button>
     <button class="refresh-btn" id="refresh-btn">↻ Refresh</button>
     <button class="gen-btn" id="gen-btn" style="display:none">✦ AI Summaries</button>
   </div>
@@ -1412,24 +1235,6 @@ function trendDelta(series, inv = false) {
   return { delta, dir, pct, recentAvg: rAvg };
 }
 
-// ── Smooth curve helper (Catmull-Rom → cubic Bezier) ─────────────────────────
-function smoothPath(pts) {
-  if (pts.length < 2) return '';
-  let d = `M${pts[0].x.toFixed(1)},${pts[0].y.toFixed(1)}`;
-  for (let i = 1; i < pts.length; i++) {
-    const p0 = pts[Math.max(0, i - 2)];
-    const p1 = pts[i - 1];
-    const p2 = pts[i];
-    const p3 = pts[Math.min(pts.length - 1, i + 1)];
-    const cp1x = p1.x + (p2.x - p0.x) / 6;
-    const cp1y = p1.y + (p2.y - p0.y) / 6;
-    const cp2x = p2.x - (p3.x - p1.x) / 6;
-    const cp2y = p2.y - (p3.y - p1.y) / 6;
-    d += ` C${cp1x.toFixed(1)},${cp1y.toFixed(1)} ${cp2x.toFixed(1)},${cp2y.toFixed(1)} ${p2.x.toFixed(1)},${p2.y.toFixed(1)}`;
-  }
-  return d;
-}
-
 // ── Mini sparkline SVG ───────────────────────────────────────────────────────
 function sparkSVG(series, color = '#0a0a0a', height = 18) {
   const w = 100, h = height;
@@ -1746,12 +1551,13 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [
   // athlete+sessionName+category+date, concatenating the Exercise Log lines so
   // the FP card shows the full workout rather than just the first exercise.
   const sessionMap = {}; // key → merged session entry
+  const _todayStr = localDateStr(new Date());
   sessions.forEach(r => {
     const id = sid(r);
     if (!id) return;
-    // Reject r.Date if Make.com stored it as a future date (DD/MM misread as MM/DD)
+    // Reject r.Date if Make.com stored it as a future date (DD/MM misread as MM/DD, e.g. "12/05" → Dec 5)
     const _rawDate = parseSessionDate(r.Date);
-    const ds = (_rawDate && _rawDate <= localDateStr(new Date()))
+    const ds = (_rawDate && _rawDate <= _todayStr)
       ? _rawDate
       : (parseSessionDate(r['Submitted At']) || parseSessionDate(r._createdTime));
     if (!ds || new Date(ds) < c90) return;
@@ -2371,41 +2177,26 @@ function buildCard(a) {
     sparkStripHtml = `<div class="spark-strip">${cellsHtml}</div>`;
   }
 
-  // ── Week-in-progress
-  let weekInProgress = '';
-  if (!a.hasCurrentCheckin) {
-    const _RUN_PT = new Set(['Run','Tempo','Speed','Long Run','Easy Effort','race','Recovery','Run + Strength']);
-    const _STR_PT = new Set(['Strength','Lift','Run + Strength']);
-    const _planRun = (a.thisWeekPlan||[]).filter(r => {
-      const st = (r['Status '] || r['Status'] || '').trim();
-      const ty = (r['Session Type'] || r['SessionType'] || '').trim();
-      return st === 'Completed' && _RUN_PT.has(ty);
-    }).length;
-    const _planStr = (a.thisWeekPlan||[]).filter(r => {
-      const st = (r['Status '] || r['Status'] || '').trim();
-      const ty = (r['Session Type'] || r['SessionType'] || '').trim();
-      return st === 'Completed' && _STR_PT.has(ty);
-    }).length;
-    const rCount  = Math.max(a.currRunS.length, _planRun);
-    const sCount  = Math.max(a.currStrS.length, _planStr);
-    const prCount = a.prevRunS.length;
-    const psCount = a.prevStrS.length;
-    const noThisWeek = rCount === 0 && sCount === 0;
-    const showPrev = noThisWeek && (prCount > 0 || psCount > 0);
-    weekInProgress = `<div class="wip-banner">
-      <div class="wip-label">Week ${a.weekNum ?? ''} in progress <span class="wip-ends">ends ${fmtDate(a.expectedWeekEnd)}</span></div>
-      <div class="sess-row" style="margin:6px 0 ${noThisWeek && !showPrev ? 0 : 2}px">
-        <div class="scard"><div class="snum run-c">${rCount}</div><div class="slbl">Run</div></div>
-        <div class="scard"><div class="snum str-c">${sCount}</div><div class="slbl">Strength</div></div>
-      </div>
-      ${noThisWeek && !showPrev ? `<div class="wip-none">No sessions logged yet this week</div>` : ''}
-      ${showPrev ? `<div class="wip-prev-lbl">Last week</div>
-        <div class="sess-row">
-          <div class="scard" style="opacity:.6"><div class="snum run-c">${prCount}</div><div class="slbl">Run</div></div>
-          <div class="scard" style="opacity:.6"><div class="snum str-c">${psCount}</div><div class="slbl">Strength</div></div>
-        </div>` : ''}
-    </div>`;
-  }
+  // ── Week-in-progress (always show)
+  const rCount  = a.currRunS.length;
+  const sCount  = a.currStrS.length;
+  const prCount = a.prevRunS.length;
+  const psCount = a.prevStrS.length;
+  const noThisWeek = rCount === 0 && sCount === 0;
+  const showPrev = noThisWeek && (prCount > 0 || psCount > 0);
+  const weekInProgress = `<div class="wip-banner">
+    <div class="wip-label">Week ${a.weekNum ?? ''} in progress <span class="wip-ends">ends ${fmtDate(a.expectedWeekEnd)}</span></div>
+    <div class="sess-row" style="margin:6px 0 ${noThisWeek && !showPrev ? 0 : 2}px">
+      <div class="scard"><div class="snum run-c">${rCount}</div><div class="slbl">Run</div></div>
+      <div class="scard"><div class="snum str-c">${sCount}</div><div class="slbl">Strength</div></div>
+    </div>
+    ${noThisWeek && !showPrev ? `<div class="wip-none">No sessions logged yet this week</div>` : ''}
+    ${showPrev ? `<div class="wip-prev-lbl">Last week</div>
+      <div class="sess-row">
+        <div class="scard" style="opacity:.6"><div class="snum run-c">${prCount}</div><div class="slbl">Run</div></div>
+        <div class="scard" style="opacity:.6"><div class="snum str-c">${psCount}</div><div class="slbl">Strength</div></div>
+      </div>` : ''}
+  </div>`;
 
   // ── Stale / last-week banner
   let staleBanner = '';
@@ -2821,25 +2612,12 @@ function buildFPCard(a, weekOffset = 0) {
     </div>`;
   }
 
-  // Week-in-progress
+  // Week-in-progress (always show for current week)
   let wipHtml = '';
-  if (!a.hasCurrentCheckin && ctx.weekOffset === 0) {
-    // Count completed planned sessions from athlete portal (ticked circles)
-    const _RUN_PT = new Set(['Run','Tempo','Speed','Long Run','Easy Effort','race','Recovery','Run + Strength']);
-    const _STR_PT = new Set(['Strength','Lift','Run + Strength']);
-    const _planRun = (a.thisWeekPlan||[]).filter(r => {
-      const st = (r['Status '] || r['Status'] || '').trim();
-      const ty = (r['Session Type'] || r['SessionType'] || '').trim();
-      return st === 'Completed' && _RUN_PT.has(ty);
-    }).length;
-    const _planStr = (a.thisWeekPlan||[]).filter(r => {
-      const st = (r['Status '] || r['Status'] || '').trim();
-      const ty = (r['Session Type'] || r['SessionType'] || '').trim();
-      return st === 'Completed' && _STR_PT.has(ty);
-    }).length;
-    // Use max of quality-data submissions vs portal ticks (no double-counting)
-    const rCount  = Math.max(a.currRunS.length, _planRun);
-    const sCount  = Math.max(a.currStrS.length, _planStr);
+  if (ctx.weekOffset === 0) {
+    // Use actual logged session counts only
+    const rCount  = a.currRunS.length;
+    const sCount  = a.currStrS.length;
     const prCount = a.prevRunS.length;
     const psCount = a.prevStrS.length;
     const noThisWeek = rCount === 0 && sCount === 0;
@@ -2943,45 +2721,25 @@ function buildFPCard(a, weekOffset = 0) {
       const _minV = Math.min(..._vals), _maxV = Math.max(..._vals);
       const _rng = _maxV - _minV || 1;
       const _xStep = (_W - _pad * 2) / (_wtPts.length - 1);
-      const _xyPts = _wtPts.map((p, i) => ({
-        x: _pad + i * _xStep,
-        y: _pad + (_H - _pad * 2) * (1 - (p.value - _minV) / _rng)
-      }));
-      const _pts = _xyPts.map(p => p.x.toFixed(1) + ',' + p.y.toFixed(1)).join(' ');
+      const _pts = _wtPts.map((p, i) => {
+        const x = _pad + i * _xStep;
+        const y = _pad + (_H - _pad * 2) * (1 - (p.value - _minV) / _rng);
+        return x.toFixed(1) + ',' + y.toFixed(1);
+      }).join(' ');
       const _last = _wtPts[_wtPts.length - 1];
       const _prev = _wtPts[0];
       const _diff = (_last.value - _prev.value).toFixed(1);
       const _diffTxt = (_diff > 0 ? '+' : '') + _diff + ' kg';
       const _diffCol = Math.abs(_diff) < 0.3 ? '#9ca3af' : (_diff < 0 ? '#22c55e' : '#ef4444');
-      // Short date label: "25 May"
-      const _fmtShort = d => { const mn=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; const[,mo,dy]=d.split('-'); return parseInt(dy)+' '+mn[parseInt(mo)-1]; };
-      // Which indices to label: first, middle (if ≥5 pts), last
-      const _lblIdx = new Set([0, _wtPts.length - 1]);
-      if (_wtPts.length >= 5) _lblIdx.add(Math.round((_wtPts.length - 1) / 2));
-      const _totalH = _H + 16;
-      // Dots for every entry
-      const _dots = _wtPts.map((p, i) => {
-        const cx = (_pad + i * _xStep).toFixed(1);
-        const cy = (_pad + (_H - _pad * 2) * (1 - (p.value - _minV) / _rng)).toFixed(1);
-        const isLast = i === _wtPts.length - 1;
-        return `<circle cx="${cx}" cy="${cy}" r="${isLast ? 4 : 2.8}" fill="var(--str)" opacity="${isLast ? 1 : 0.7}"/>`;
-      }).join('');
-      // Date labels along x-axis
-      const _dateLabels = [..._lblIdx].sort((a,b)=>a-b).map(i => {
-        const cx = (_pad + i * _xStep).toFixed(1);
-        const anchor = i === 0 ? 'start' : i === _wtPts.length - 1 ? 'end' : 'middle';
-        return `<text x="${cx}" y="${_H + 13}" font-family="var(--mono)" font-size="7" fill="var(--dim)" text-anchor="${anchor}">${_fmtShort(_wtPts[i].date)}</text>`;
-      }).join('');
-      _sparkSvg = '<div class="wh-spark-wrap" data-whid="' + esc(a.id) + '" onclick="showWH(this.dataset.whid)" title="View full body history" style="margin-bottom:10px">'
+      _sparkSvg = '<div style="margin-bottom:10px">'
         + '<div style="display:flex;align-items:baseline;gap:10px;margin-bottom:4px">'
         + '<span style="font-size:36px;font-weight:900;line-height:1;letter-spacing:-.02em">' + esc(String(_last.value)) + '</span>'
         + '<span style="font-family:var(--mono);font-size:11px;color:var(--dim)">kg</span>'
         + '<span style="font-family:var(--mono);font-size:10px;font-weight:700;color:' + _diffCol + ';margin-left:4px">' + _diffTxt + ' (28d)</span>'
         + '</div>'
-        + '<svg viewBox="0 0 ' + _W + ' ' + _totalH + '" width="100%" height="' + _totalH + '" style="display:block;overflow:visible">'
-        + '<path d="' + smoothPath(_xyPts) + '" fill="none" stroke="var(--str)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'
-        + _dots
-        + _dateLabels
+        + '<svg viewBox="0 0 ' + _W + ' ' + _H + '" width="100%" height="' + _H + '" style="display:block;overflow:visible">'
+        + '<polyline points="' + _pts + '" fill="none" stroke="var(--str)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'
+        + '<circle cx="' + (_pad + (_wtPts.length - 1) * _xStep).toFixed(1) + '" cy="' + (_pad + (_H - _pad * 2) * (1 - (_last.value - _minV) / _rng)).toFixed(1) + '" r="3.5" fill="var(--str)"/>'
         + '</svg>'
         + '</div>';
     }
@@ -3036,16 +2794,17 @@ function buildFPCard(a, weekOffset = 0) {
 
   const dailyInputsHtml = buildDailyInputsLedger(a, ctx);
 
-  // ── Day-by-day week detail ────────────────────────────────────────────────
+  // ── Day-by-day week detail (full week, newest first) ─────────────────────
   let weekDetailHtml = '';
   {
-    // Build a list of days from Mon of current week up to today (inclusive)
+    // Show full Mon–Sun so coaches see the complete week shape
     const days = [];
-    const todayStr = ctx.weekOffset === 0 ? localDateStr(new Date()) : ctx.weekEndStr;
+    const todayStr = localDateStr(new Date());
     const weekStartStr = ctx.weekStartStr;
+    // Calorie target for nutrition chip
     const _wdT = ctx.target || a.target;
-    const tCalTarget = _wdT && _wdT.Calories ? parseFloat(String(_wdT.Calories).replace(/[^\d.]/g,'')) || 0 : 0;
-    for (let d = new Date(ctx.weekStart); localDateStr(d) <= todayStr; d.setDate(d.getDate() + 1)) {
+    const tCalTarget = _wdT?.Calories ? parseFloat(String(_wdT.Calories).replace(/[^\d.]/g, '')) || 0 : 0;
+    for (let d = new Date(ctx.weekStart); localDateStr(d) <= ctx.weekEndStr; d.setDate(d.getDate() + 1)) {
       days.push(localDateStr(new Date(d)));
     }
 
@@ -3053,6 +2812,7 @@ function buildFPCard(a, weekOffset = 0) {
       const dayRows = days.map(dateStr => {
         const dt = new Date(dateStr + 'T12:00:00');
         const dayLabel = dt.toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' });
+        const isFuture = ctx.weekOffset === 0 && dateStr > todayStr;
 
         // Sessions for this day
         const daySessions = a.sessions.filter(s => s._d === dateStr);
@@ -3064,7 +2824,6 @@ function buildFPCard(a, weekOffset = 0) {
         const dayNutr = a.nutrition.find(r => (r['date:Date:start'] || r.Date || '').split('T')[0] === dateStr);
 
         const hasData = daySessions.length > 0 || dayBody || dayNutr;
-        const isFuture = ctx.weekOffset === 0 && dateStr > todayStr;
 
         if (!hasData) {
           return `<div class="wd-row empty">
@@ -3079,7 +2838,6 @@ function buildFPCard(a, weekOffset = 0) {
           const isStr = s._isStr;
           const cls = isRun ? 'run' : isStr ? 'str' : 'other';
           const catLabel = isRun ? 'Run' : isStr ? 'Lift' : esc(s._cat || '');
-          // Session name: use Session field (e.g. "Upper A", "🔥 3×3km Tempo")
           const rawName = s.Session || (s.Name || '').split('—').slice(1, -1).join('—').trim() || '';
           const exLog = s['Exercise Log'] || s.exerciseLog || s['Exercises'] || '';
           const notes = s.Notes || s.notes || '';
@@ -3092,12 +2850,12 @@ function buildFPCard(a, weekOffset = 0) {
           </div>`;
         }).join('');
 
-        // Body metrics
+        // Body metrics (Weight, Sleep, Energy, Stress, Soreness, Steps + notes)
         let bodyRowHtml = '';
         if (dayBody) {
           const bParts = [
             dayBody.Weight       ? `<span class="wd-metric"><strong>${esc(dayBody.Weight)}</strong> kg</span>` : '',
-            dayBody['Sleep Score'] !== undefined && dayBody['Sleep Score'] !== null
+            (dayBody['Sleep Score'] !== undefined && dayBody['Sleep Score'] !== null)
               ? `<span class="wd-metric">💤 <strong>${esc(dayBody['Sleep Score'])}</strong> sleep</span>` : '',
             dayBody.Energy       ? `<span class="wd-metric">⚡ <strong>${esc(dayBody.Energy)}</strong> energy</span>` : '',
             dayBody.Stress       ? `<span class="wd-metric">🧠 <strong>${esc(dayBody.Stress)}</strong> stress</span>` : '',
@@ -3110,7 +2868,7 @@ function buildFPCard(a, weekOffset = 0) {
             ${isBad(bNotes) ? `<div class="wd-sess-notes" style="margin-top:2px">${esc(bNotes)}</div>` : ''}`;
         }
 
-        // Nutrition metrics
+        // Nutrition metrics (Calories, Protein, Carbs, Fats, Water, Adherence + notes)
         let nutrRowHtml = '';
         if (dayNutr) {
           const adh = pickFirst(dayNutr, ['Adherence', 'Nutrition Adherence']);
@@ -3124,6 +2882,7 @@ function buildFPCard(a, weekOffset = 0) {
             adh              ? `<span class="wd-metric nutr"><strong>${esc(adh)}/10</strong> adherence</span>` : '',
           ];
           const _nPartsHtml = nParts.filter(Boolean).join('');
+          // Per-macro target chips
           let _macroChipsHtml = '';
           if (_wdT) {
             const _mDefs = [['kcal',dayNutr.Calories,_wdT.Calories],['P',dayNutr.Protein,_wdT.Protein],['C',dayNutr.Carbs,_wdT.Carbs],['F',dayNutr.Fats,_wdT.Fats]];
@@ -3133,7 +2892,7 @@ function buildFPCard(a, weekOffset = 0) {
               if(!_t||!_a||isNaN(_a)||isNaN(_t)) return '';
               const _r=_a/_t,_p=Math.round(_r*100);
               const _c=_r<0.8?'under':_r>1.15?'over':'ok';
-              const _i=_r<0.8?'\u2193':_r>1.15?'\u2191':'\u2713';
+              const _i=_r<0.8?'↓':_r>1.15?'↑':'✓';
               return `<span class="wd-macro-chip ${_c}"><span class="wd-macro-lbl">${esc(ml)}</span> ${_i} ${_p}%</span>`;
             }).filter(Boolean).join('');
             if (_chips) _macroChipsHtml = `<div class="wd-macro-row">${_chips}</div>`;
@@ -3156,7 +2915,7 @@ function buildFPCard(a, weekOffset = 0) {
       });
 
       weekDetailHtml = `<div class="fpc-section">
-        <div class="fpc-section-title">This Week — Day by Day · ${weekStartStr} → ${todayStr}</div>
+        <div class="fpc-section-title">This Week — Day by Day · ${weekStartStr} → ${ctx.weekEndStr}</div>
         <div class="wd-timeline">${dayRows.join('')}</div>
       </div>`;
     }
@@ -4008,248 +3767,13 @@ async function loadProgressPhotos(a, weekOffset = 0) {
   }
 }
 
-// ── Weight History Overlay ─────────────────────────────────────────────────
-let _whId = null;
-let _whRange = 28; // days — default 4 weeks
-let _whTheme = (typeof localStorage !== 'undefined' && localStorage.getItem('dp_wh_theme')) || 'dark';
-
-function showWH(id) {
-  _whId = id;
-  _drawWH();
-  const ol = document.getElementById('wh-overlay');
-  ol.style.display = 'block';
-  ol.scrollTop = 0;
-  document.body.style.overflow = 'hidden';
-}
-
-function hideWH() {
-  document.getElementById('wh-overlay').style.display = 'none';
-  document.body.style.overflow = '';
-}
-
-function setWHTheme(t) {
-  _whTheme = t;
-  try { localStorage.setItem('dp_wh_theme', t); } catch(e) {}
-  const ol = document.getElementById('wh-overlay');
-  ol.classList.toggle('wh-light', t === 'light');
-  document.getElementById('wh-btn-dark').classList.toggle('wh-active', t === 'dark');
-  document.getElementById('wh-btn-light').classList.toggle('wh-active', t === 'light');
-}
-
-function setWHRange(days) {
-  _whRange = days;
-  _drawWH();
-}
-
-function _drawWH() {
-  const a = _allAthletes.find(x => x.id === _whId) || _coaches.find(x => x.id === _whId);
-  if (!a) return;
-  const ol = document.getElementById('wh-overlay');
-  ol.classList.toggle('wh-light', _whTheme === 'light');
-  document.getElementById('wh-btn-dark').classList.toggle('wh-active', _whTheme === 'dark');
-  document.getElementById('wh-btn-light').classList.toggle('wh-active', _whTheme === 'light');
-  document.getElementById('wh-title').textContent = a.id + ' — Body & Nutrition History';
-  document.getElementById('wh-body').innerHTML = buildWeightHistory(a);
-}
-
-function buildWeightHistory(a) {
-  const _mn = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  const _fmtD = d => { if (!d) return '—'; const [,m,dy] = d.split('-'); return parseInt(dy) + ' ' + _mn[parseInt(m)-1]; };
-  const _fmtFull = d => { if (!d) return '—'; const [y,m,dy] = d.split('-'); return parseInt(dy) + ' ' + _mn[parseInt(m)-1] + ' ' + y; };
-
-  // ── Range cutoff ──────────────────────────────────────────────────────────
-  const _cutoff = dagoStr(_whRange - 1); // inclusive start date for selected window
-
-  // ── Weight chart ───────────────────────────────────────────────────────────
-  const wtPts = [...a.body]
-    .filter(r => r.Weight !== undefined && r.Weight !== null && !isNaN(parseFloat(r.Weight)))
-    .map(r => ({ date: (r['date:Date:start'] || r.Date || '').split('T')[0], value: parseFloat(r.Weight) }))
-    .filter(p => p.date && p.date >= _cutoff)
-    .sort((a, b) => a.date > b.date ? 1 : -1);
-
-  let chartHtml = '<p style="font-family:var(--mono);font-size:11px;color:var(--wh-dim)">No weight data available.</p>';
-  if (wtPts.length >= 2) {
-    const CW = 880, CH = 180, pL = 48, pR = 10, pT = 10, pB = 30;
-    const cW = CW - pL - pR;
-    const vals = wtPts.map(p => p.value);
-    const rawMin = Math.min(...vals), rawMax = Math.max(...vals);
-    const vRange = rawMax - rawMin || 1;
-    const vStep = vRange <= 1.5 ? 0.5 : vRange <= 4 ? 1 : vRange <= 8 ? 2 : 5;
-    const vMin = Math.floor(rawMin / vStep) * vStep;
-    const vMax = Math.ceil(rawMax / vStep) * vStep + vStep;
-    const vSpan = vMax - vMin;
-    const ticks = [];
-    for (let v = vMin; v <= vMax + 0.001; v = parseFloat((v + vStep).toFixed(4))) ticks.push(v);
-
-    const toX = i => pL + (i / (wtPts.length - 1)) * cW;
-    const toY = v => pT + CH - ((v - vMin) / vSpan) * CH;
-
-    const gridLines = ticks.map(v => {
-      const y = toY(v).toFixed(1);
-      return `<line x1="${pL}" y1="${y}" x2="${CW-pR}" y2="${y}" stroke="var(--wh-border)" stroke-width="1"/>` +
-             `<text x="${pL-5}" y="${y}" font-family="var(--mono)" font-size="8" fill="var(--wh-dim)" text-anchor="end" dominant-baseline="middle">${v % 1 === 0 ? v : v.toFixed(1)}</text>`;
-    }).join('');
-
-    const step = Math.max(1, Math.floor(wtPts.length / 8));
-    const xLabels = wtPts.map((p, i) => {
-      if (i % step !== 0 && i !== wtPts.length - 1) return '';
-      const x = toX(i).toFixed(1);
-      const anchor = i === 0 ? 'start' : i === wtPts.length - 1 ? 'end' : 'middle';
-      return `<text x="${x}" y="${pT+CH+18}" font-family="var(--mono)" font-size="8" fill="var(--wh-dim)" text-anchor="${anchor}">${_fmtD(p.date)}</text>`;
-    }).join('');
-
-    const _xyHistPts = wtPts.map((p, i) => ({ x: toX(i), y: toY(p.value) }));
-    const pathD = smoothPath(_xyHistPts);
-    const dots = wtPts.map((p, i) => {
-      const isLast = i === wtPts.length - 1;
-      return `<circle cx="${toX(i).toFixed(1)}" cy="${toY(p.value).toFixed(1)}" r="${isLast?5.5:3.5}" fill="var(--wh-str)" opacity="${isLast?1:0.8}"/>`;
-    }).join('');
-
-    const last = wtPts[wtPts.length-1], first = wtPts[0];
-    const diff = (last.value - first.value).toFixed(1);
-    const diffTxt = (diff > 0 ? '+' : '') + diff + ' kg';
-    const diffCls = Math.abs(diff) < 0.3 ? 'wh-fl' : diff < 0 ? 'wh-dn' : 'wh-up';
-
-    chartHtml = `<div class="wh-stat-row">
-      <div class="wh-stat"><div class="wh-stat-val">${last.value} kg</div><div class="wh-stat-lbl">Current</div></div>
-      <div class="wh-stat"><div class="wh-stat-val ${diffCls}">${diffTxt}</div><div class="wh-stat-lbl">${wtPts.length}d change</div></div>
-      <div class="wh-stat"><div class="wh-stat-val">${wtPts.length}</div><div class="wh-stat-lbl">Entries</div></div>
-      <div class="wh-stat"><div class="wh-stat-val">${rawMin.toFixed(1)}</div><div class="wh-stat-lbl">Low</div></div>
-      <div class="wh-stat"><div class="wh-stat-val">${rawMax.toFixed(1)}</div><div class="wh-stat-lbl">High</div></div>
-    </div>
-    <svg viewBox="0 0 ${CW} ${pT+CH+pB}" width="100%" style="display:block;overflow:visible;margin-top:8px">
-      ${gridLines}
-      <path d="${pathD}" fill="none" stroke="var(--wh-str)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-      ${dots}
-      ${xLabels}
-    </svg>`;
-  }
-
-  // ── Day-by-day log ─────────────────────────────────────────────────────────
-  const bodyMap = {}, nutrMap = {};
-  a.body.forEach(r => {
-    const d = (r['date:Date:start'] || r.Date || '').split('T')[0];
-    if (d) bodyMap[d] = r;
-  });
-  a.nutrition.forEach(r => {
-    const d = (r['date:Date:start'] || r.Date || '').split('T')[0];
-    if (d) nutrMap[d] = r;
-  });
-  const allDates = [...new Set([...Object.keys(bodyMap), ...Object.keys(nutrMap)])].filter(d => d >= _cutoff).sort((a,b) => b > a ? 1 : -1);
-
-  // Build weight delta map (for each date, delta from previous weight entry)
-  const wtByDate = {};
-  wtPts.forEach(p => { wtByDate[p.date] = p.value; });
-  const wtDates = wtPts.map(p => p.date);
-
-  const bodyRows = allDates.map(date => {
-    const b = bodyMap[date];
-    const n = nutrMap[date];
-    const wt = b?.Weight !== undefined ? parseFloat(b.Weight) : null;
-    // Find previous weight entry for delta
-    const wtIdx = wt !== null ? wtDates.indexOf(date) : -1;
-    let deltaTxt = '', deltaCls = 'wh-fl';
-    if (wt !== null && wtIdx > 0) {
-      const prev = wtPts[wtIdx - 1].value;
-      const d = (wt - prev);
-      deltaTxt = (d > 0 ? '+' : '') + d.toFixed(1);
-      deltaCls = Math.abs(d) < 0.15 ? 'wh-fl' : d < 0 ? 'wh-dn' : 'wh-up';
-    }
-    const cell = v => `<td>${v !== undefined && v !== null && v !== '' ? esc(String(v)) : '<span style="opacity:.3">—</span>'}</td>`;
-    return `<tr>
-      <td>${_fmtFull(date)}</td>
-      <td>${wt !== null ? `<span class="wh-wt">${wt}</span>` : '<span style="opacity:.3">—</span>'}</td>
-      <td>${deltaTxt ? `<span class="${deltaCls}">${deltaTxt}</span>` : '<span style="opacity:.3">—</span>'}</td>
-      ${cell(b?.['Sleep Score'])}${cell(b?.Energy)}${cell(b?.Stress)}${cell(b?.Soreness)}
-      <td>${n?.Calories !== undefined && n?.Calories !== null ? esc(String(n.Calories)) : '<span style="opacity:.3">—</span>'}</td>
-      <td>${n?.Protein  !== undefined && n?.Protein  !== null ? esc(String(n.Protein))+'g'  : '<span style="opacity:.3">—</span>'}</td>
-      <td>${n?.Carbs    !== undefined && n?.Carbs    !== null ? esc(String(n.Carbs))+'g'    : '<span style="opacity:.3">—</span>'}</td>
-      <td>${n?.Fats     !== undefined && n?.Fats     !== null ? esc(String(n.Fats))+'g'     : '<span style="opacity:.3">—</span>'}</td>
-    </tr>`;
-  }).join('');
-
-  const _ranges = [{d:7,l:'1W'},{d:14,l:'2W'},{d:28,l:'4W'},{d:56,l:'8W'},{d:90,l:'12W'}];
-  const _rangeBtns = _ranges.map(r =>
-    `<button class="wh-range-btn${_whRange===r.d?' wh-active':''}" onclick="setWHRange(${r.d})">${r.l}</button>`
-  ).join('');
-
-  return `
-    <div class="wh-section">
-      <div class="wh-section-title">
-        <span>Weight Trend${wtPts.length > 0 ? ' · <span style="font-weight:400;opacity:.7">' + _fmtFull(wtPts[0].date) + ' → ' + _fmtFull(wtPts[wtPts.length-1].date) + '</span>' : ''}</span>
-        <div class="wh-range-btns">${_rangeBtns}</div>
-      </div>
-      ${chartHtml}
-    </div>
-    <div class="wh-section">
-      <div class="wh-section-title">Full Log — ${allDates.length} days</div>
-      <div style="overflow-x:auto">
-        <table class="wh-table">
-          <thead><tr>
-            <th>Date</th><th>Weight</th><th>Δ</th>
-            <th>Sleep</th><th>Energy</th><th>Stress</th><th>Soreness</th>
-            <th>Cal</th><th>Protein</th><th>Carbs</th><th>Fat</th>
-          </tr></thead>
-          <tbody>${bodyRows}</tbody>
-        </table>
-      </div>
-    </div>`;
-}
-
 // Keyboard shortcuts: Escape = close, ←→ = navigate
 document.addEventListener('keydown', e => {
-  // WH overlay takes priority (it sits on top of fp-overlay)
-  const whOl = document.getElementById('wh-overlay');
-  if (whOl && whOl.style.display !== 'none') {
-    if (e.key === 'Escape') hideWH();
-    return;
-  }
   const overlay = document.getElementById('fp-overlay');
   if (overlay.style.display === 'none') return;
   if (e.key === 'Escape') hideFP();
   if (e.key === 'ArrowLeft'  && _fpIdx > 0)                  fpNav(-1);
   if (e.key === 'ArrowRight' && _fpIdx < _fpOrder.length - 1) fpNav(1);
-});
-
-// ── Global Theme ─────────────────────────────────────────────────────────────
-const UI_THEMES = ['dark', 'light', 'lgbt'];
-
-function applyTheme(theme) {
-  const nextTheme = UI_THEMES.includes(theme) ? theme : 'dark';
-  document.documentElement.classList.remove('light', 'lgbt');
-  if (nextTheme !== 'dark') document.documentElement.classList.add(nextTheme);
-  localStorage.setItem('dp_ui_theme', nextTheme);
-
-  // Keep WH overlay in sync
-  const whOl = document.getElementById('wh-overlay');
-  if (whOl) whOl.classList.toggle('wh-light', nextTheme === 'light');
-
-  // Update button label
-  const btn = document.getElementById('theme-toggle-btn');
-  if (btn) {
-    const nextIdx = (UI_THEMES.indexOf(nextTheme) + 1) % UI_THEMES.length;
-    const nextLabel = UI_THEMES[nextIdx];
-    btn.textContent = nextLabel === 'light' ? '☀ Light' : nextLabel === 'lgbt' ? 'LGBT' : '◑ Dark';
-  }
-}
-
-(function() {
-  applyTheme(localStorage.getItem('dp_ui_theme') || 'dark');
-})();
-
-function toggleTheme() {
-  const current = document.documentElement.classList.contains('lgbt')
-    ? 'lgbt'
-    : document.documentElement.classList.contains('light')
-      ? 'light'
-      : 'dark';
-  const nextIdx = (UI_THEMES.indexOf(current) + 1) % UI_THEMES.length;
-  applyTheme(UI_THEMES[nextIdx]);
-}
-
-// Apply correct button label on load
-document.addEventListener('DOMContentLoaded', () => {
-  applyTheme(localStorage.getItem('dp_ui_theme') || 'dark');
 });
 
 // ── Init ──────────────────────────────────────────────────────────────────────
