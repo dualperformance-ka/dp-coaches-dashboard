@@ -70,6 +70,19 @@ header{background:#0a0a0a;padding:0 18px;height:62px;display:flex;align-items:ce
 .filter-divider{width:1px;height:22px;background:var(--border-mid)}
 .filter-label{font-family:var(--mono);font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;white-space:nowrap}
 
+/* ── Dashboard Week Nav ── */
+.dash-week-nav{display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:9px 14px;margin-bottom:14px}
+.dwn-label{display:flex;flex-direction:column;gap:2px}
+.dwn-kicker{font-family:var(--mono);font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.12em}
+.dwn-main{font-family:var(--cond);font-size:20px;font-weight:900;text-transform:uppercase;letter-spacing:.05em;line-height:1;margin-top:1px}
+.dwn-sub{font-family:var(--mono);font-size:9px;color:var(--dim);margin-top:2px}
+.dwn-controls{display:flex;align-items:center;gap:6px}
+.dwn-btn{background:#0a0a0a;border:1px solid #0a0a0a;color:#fff;font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.08em;border-radius:6px;padding:6px 10px;cursor:pointer;transition:opacity .15s}
+.dwn-btn.secondary{background:transparent;color:var(--muted);border-color:var(--border-mid)}
+.dwn-btn:disabled{opacity:.3;cursor:not-allowed}
+.dwn-hist-badge{font-family:var(--mono);font-size:8px;background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.3);color:#fbbf24;border-radius:4px;padding:2px 7px;text-transform:uppercase;letter-spacing:.08em;white-space:nowrap}
+@media(max-width:600px){.dash-week-nav{flex-direction:column;align-items:flex-start}.dwn-controls{flex-wrap:wrap}}
+
 /* ── Layout ── */
 .main{padding:14px 14px 40px;max-width:1400px;margin:0 auto}
 
@@ -879,6 +892,12 @@ header{background:#0a0a0a;padding:0 18px;height:62px;display:flex;align-items:ce
     <option value="compliance">Sort: Compliance</option>
     <option value="checkin">Sort: Last Check-in</option>
   </select>
+  <div class="filter-divider"></div>
+  <div class="sf-group" id="dash-week-controls">
+    <button class="sf" id="dwc-prev" onclick="dashboardWeekNav(-1)">← Prev Week</button>
+    <button class="sf" id="dwc-next" onclick="dashboardWeekNav(1)" disabled>Next Week →</button>
+    <button class="sf" id="dwc-reset" onclick="dashboardWeekReset()" disabled>Current</button>
+  </div>
 </div>
 
 <!-- ATHLETES TAB -->
@@ -893,6 +912,7 @@ header{background:#0a0a0a;padding:0 18px;height:62px;display:flex;align-items:ce
       <button class="refresh-btn" style="color:#0a0a0a;border-color:#ccc;margin-top:14px" onclick="load()">↻ Retry</button>
     </div>
     <div id="content" style="display:none">
+      <div id="dash-week-nav" style="display:none"></div>
       <div id="command-center"></div>
       <div class="squad-brief" id="squad-brief">
         <div class="sb-title">⬡ Squad Brief — AI Coaching Summary</div>
@@ -1928,6 +1948,7 @@ let _allApplications = [];
 let _dataHealth = null;
 let _syncAudit = [];
 let _statusFilter = 'all';
+let _dashboardWeekOffset = 0;
 
 function render({ athletes, coaches, applications = [], dataHealth = null, syncAudit = [] }) {
   _allAthletes     = athletes;
@@ -2103,7 +2124,62 @@ function buildHealthCards(health, ath, apps) {
 }
 
 function renderGrid(ath) {
-  document.getElementById('grid').innerHTML = ath.map(buildCard).join('');
+  renderWeekNavBar();
+  document.getElementById('grid').innerHTML = ath.map(a => buildCard(a, _dashboardWeekOffset)).join('');
+}
+
+function renderWeekNavBar() {
+  const el = document.getElementById('dash-week-nav');
+  if (!el) return;
+  if (_dashboardWeekOffset === 0) {
+    el.style.display = 'none';
+    el.innerHTML = '';
+    return;
+  }
+  el.style.display = 'block';
+  // Compute the selected week's date range
+  const wStart = addDays(currentWeekStart, _dashboardWeekOffset * 7);
+  const wEnd   = addDays(wStart, 6);
+  const label  = `Week of ${fmtDate(localDateStr(wStart))} → ${fmtDate(localDateStr(wEnd))}`;
+  el.innerHTML = `<div class="dash-week-nav">
+    <div class="dwn-label">
+      <div class="dwn-kicker">Viewing Historical Week</div>
+      <div class="dwn-main">${label}</div>
+    </div>
+    <div class="dwn-controls">
+      <button class="dwn-btn secondary" onclick="dashboardWeekNav(-1)">← Prev Week</button>
+      <button class="dwn-btn secondary" onclick="dashboardWeekNav(1)" ${_dashboardWeekOffset >= 0 ? 'disabled' : ''}>Next Week →</button>
+      <button class="dwn-btn" onclick="dashboardWeekReset()">Current Week</button>
+    </div>
+  </div>`;
+}
+
+function dashboardWeekNav(dir) {
+  _dashboardWeekOffset = Math.min(0, _dashboardWeekOffset + dir);
+  renderGrid(_allAthletes);
+  _syncWeekNavButtons();
+  applyFilters();
+}
+
+function dashboardWeekReset() {
+  _dashboardWeekOffset = 0;
+  renderGrid(_allAthletes);
+  _syncWeekNavButtons();
+  applyFilters();
+}
+
+function _syncWeekNavButtons() {
+  const prev  = document.getElementById('dwc-prev');
+  const next  = document.getElementById('dwc-next');
+  const reset = document.getElementById('dwc-reset');
+  if (!prev) return;
+  // Next/Reset only active when we're in the past
+  next.disabled  = _dashboardWeekOffset >= 0;
+  reset.disabled = _dashboardWeekOffset === 0;
+  // Highlight the prev button when viewing historically
+  prev.classList.toggle('active', false);
+  next.classList.toggle('active', false);
+  reset.classList.toggle('active', _dashboardWeekOffset !== 0);
 }
 
 function renderCoaches(coaches) {
@@ -2122,8 +2198,11 @@ function renderCoaches(coaches) {
 }
 
 // ── Athlete Card ──────────────────────────────────────────────────────────────
-function buildCard(a) {
-  const w = a.weekly;
+function buildCard(a, weekOffset = 0) {
+  // Historical mode: use the weekly check-in that matches the selected week
+  const isHistorical = weekOffset < 0;
+  const histCtx = isHistorical ? getSelectedWeekContext(a, weekOffset) : null;
+  const w = isHistorical ? (histCtx.weekly || null) : a.weekly;
   const hW = !!w?.Name;
   const hR = a.flags.some(f => f.t === 'red');
   const hY = !hR && a.flags.some(f => f.t === 'yellow');
@@ -2133,7 +2212,11 @@ function buildCard(a) {
   // ── Meta text (check-in status)
   let metaText;
   const wkEndDisplay = fmtDate(a.expectedWeekEnd);
-  if (a.hasCurrentCheckin) {
+  if (isHistorical) {
+    metaText = hW
+      ? `Historical · check-in ${fmtDate(w['Week Ending'])}`
+      : `Historical · no check-in for ${fmtDate(histCtx.weekStartStr)} → ${fmtDate(histCtx.weekEndStr)}`;
+  } else if (a.hasCurrentCheckin) {
     metaText = `Week ending ${wkEndDisplay}`;
   } else if (a.hasLastWeekCheckin && hW) {
     metaText = `Submitted ${fmtDate(w['Week Ending'])} · wk ends ${wkEndDisplay}`;
@@ -2244,39 +2327,63 @@ function buildCard(a) {
     sparkStripHtml = `<div class="spark-strip">${cellsHtml}</div>`;
   }
 
-  // ── Week-in-progress (always show)
-  const rCount  = a.currRunS.length;
-  const sCount  = a.currStrS.length;
-  const prCount = a.prevRunS.length;
-  const psCount = a.prevStrS.length;
-  const noThisWeek = rCount === 0 && sCount === 0;
-  const showPrev = noThisWeek && (prCount > 0 || psCount > 0);
-  const weekInProgress = `<div class="wip-banner">
-    <div class="wip-label">Week ${a.weekNum ?? ''} in progress <span class="wip-ends">ends ${fmtDate(a.expectedWeekEnd)}</span></div>
-    <div class="sess-row" style="margin:6px 0 ${noThisWeek && !showPrev ? 0 : 2}px">
-      <div class="scard"><div class="snum run-c">${rCount}</div><div class="slbl">Run</div></div>
-      <div class="scard"><div class="snum str-c">${sCount}</div><div class="slbl">Strength</div></div>
-    </div>
-    ${noThisWeek && !showPrev ? `<div class="wip-none">No sessions logged yet this week</div>` : ''}
-    ${showPrev ? `<div class="wip-prev-lbl">Last week</div>
-      <div class="sess-row">
-        <div class="scard" style="opacity:.6"><div class="snum run-c">${prCount}</div><div class="slbl">Run</div></div>
-        <div class="scard" style="opacity:.6"><div class="snum str-c">${psCount}</div><div class="slbl">Strength</div></div>
-      </div>` : ''}
-  </div>`;
+  // ── Week-in-progress (current week only; historical shows sessions for that range)
+  let weekInProgress = '';
+  if (isHistorical && histCtx) {
+    // Sessions logged during the historical week
+    const hRun = (a.sessions || []).filter(s => {
+      const d = new Date(s._d);
+      return d >= histCtx.weekStart && d <= histCtx.weekEnd && s._isRun;
+    });
+    const hStr = (a.sessions || []).filter(s => {
+      const d = new Date(s._d);
+      return d >= histCtx.weekStart && d <= histCtx.weekEnd && s._isStr;
+    });
+    const weekLabel = histCtx.selectedWeekNum !== null ? `Week ${histCtx.selectedWeekNum}` : 'Historical Week';
+    weekInProgress = `<div class="wip-banner">
+      <div class="wip-label">${weekLabel} <span class="wip-ends">${fmtDate(histCtx.weekStartStr)} → ${fmtDate(histCtx.weekEndStr)}</span></div>
+      <div class="sess-row" style="margin:6px 0 2px">
+        <div class="scard"><div class="snum run-c">${hRun.length}</div><div class="slbl">Run</div></div>
+        <div class="scard"><div class="snum str-c">${hStr.length}</div><div class="slbl">Strength</div></div>
+      </div>
+      ${hRun.length === 0 && hStr.length === 0 ? `<div class="wip-none">No sessions logged for this week</div>` : ''}
+    </div>`;
+  } else {
+    const rCount  = a.currRunS.length;
+    const sCount  = a.currStrS.length;
+    const prCount = a.prevRunS.length;
+    const psCount = a.prevStrS.length;
+    const noThisWeek = rCount === 0 && sCount === 0;
+    const showPrev = noThisWeek && (prCount > 0 || psCount > 0);
+    weekInProgress = `<div class="wip-banner">
+      <div class="wip-label">Week ${a.weekNum ?? ''} in progress <span class="wip-ends">ends ${fmtDate(a.expectedWeekEnd)}</span></div>
+      <div class="sess-row" style="margin:6px 0 ${noThisWeek && !showPrev ? 0 : 2}px">
+        <div class="scard"><div class="snum run-c">${rCount}</div><div class="slbl">Run</div></div>
+        <div class="scard"><div class="snum str-c">${sCount}</div><div class="slbl">Strength</div></div>
+      </div>
+      ${noThisWeek && !showPrev ? `<div class="wip-none">No sessions logged yet this week</div>` : ''}
+      ${showPrev ? `<div class="wip-prev-lbl">Last week</div>
+        <div class="sess-row">
+          <div class="scard" style="opacity:.6"><div class="snum run-c">${prCount}</div><div class="slbl">Run</div></div>
+          <div class="scard" style="opacity:.6"><div class="snum str-c">${psCount}</div><div class="slbl">Strength</div></div>
+        </div>` : ''}
+    </div>`;
+  }
 
-  // ── Stale / last-week banner
+  // ── Stale / last-week banner (suppressed in historical view)
   let staleBanner = '';
-  if (hW && a.isStale) {
-    staleBanner = `<div class="status-banner status-banner--red">
-      <div class="status-banner-title">No check-in this week</div>
-      <div class="status-banner-sub">Last submission — week ending ${fmtDate(w['Week Ending'])}</div>
-    </div>`;
-  } else if (hW && a.hasLastWeekCheckin) {
-    staleBanner = `<div class="status-banner status-banner--blue">
-      <div class="status-banner-title">Last week's check-in</div>
-      <div class="status-banner-sub">Submitted ${fmtDate(w['Week Ending'])} · new week ends ${fmtDate(a.expectedWeekEnd)}</div>
-    </div>`;
+  if (!isHistorical) {
+    if (hW && a.isStale) {
+      staleBanner = `<div class="status-banner status-banner--red">
+        <div class="status-banner-title">No check-in this week</div>
+        <div class="status-banner-sub">Last submission — week ending ${fmtDate(w['Week Ending'])}</div>
+      </div>`;
+    } else if (hW && a.hasLastWeekCheckin) {
+      staleBanner = `<div class="status-banner status-banner--blue">
+        <div class="status-banner-title">Last week's check-in</div>
+        <div class="status-banner-sub">Submitted ${fmtDate(w['Week Ending'])} · new week ends ${fmtDate(a.expectedWeekEnd)}</div>
+      </div>`;
+    }
   }
 
   // ── This week's plan (inline schedule rows)
@@ -2456,12 +2563,12 @@ function buildCard(a) {
       <div class="card-head-top">
         <div>
           <div class="aname">${esc(a.id)}</div>
-          <div class="ameta ${a.isStale ? 'nocheckin' : ''}">${metaText}</div>
+          <div class="ameta ${isHistorical ? '' : a.isStale ? 'nocheckin' : ''}">${metaText}</div>
           ${fps || actDotHtml ? `<div class="pcard-tags">${fps}${actDotHtml ? `<span style="display:inline-flex;align-items:center;gap:4px;margin-left:${fps?'2':'0'}px">${actDotHtml}</span>` : ''}</div>` : ''}
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">
           <button class="fp-open-btn" onclick="showFP('${esc(a.id)}')">⤢ Full Page</button>
-          ${a.weekNum !== null ? `<div class="week-badge"><div class="wk-num">${a.weekNum}</div><div class="wk-lbl">${a.weekNum === 0 ? 'Discovery' : 'Week'}</div></div>` : ''}
+          ${(isHistorical ? histCtx.selectedWeekNum : a.weekNum) !== null ? `<div class="week-badge"><div class="wk-num">${isHistorical ? histCtx.selectedWeekNum : a.weekNum}</div><div class="wk-lbl">${(isHistorical ? histCtx.selectedWeekNum : a.weekNum) === 0 ? 'Discovery' : 'Week'}</div></div>` : ''}
         </div>
       </div>
     </div>
