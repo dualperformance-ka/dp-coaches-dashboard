@@ -1795,11 +1795,16 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [
   sessions.forEach(r => {
     const id = sid(r);
     if (!id) return;
-    // Reject r.Date if Make.com stored it as a future date (DD/MM misread as MM/DD, e.g. "12/05" → Dec 5)
+    // Priority: 1) Notion Date field (athlete-chosen), 2) date extracted from page title, 3) Submitted At / created time
+    // Make.com currently writes the date as text so date:Date:start is empty — title is always reliable.
     const _rawDate = parseSessionDate(r.Date);
+    // Extract YYYY-MM-DD from end of title e.g. "SHAUN — Easy Run — 2026-05-30"
+    const _titleDate = (() => { const m = (r.Name || r.name || '').match(/(\d{4}-\d{2}-\d{2})$/); return m ? m[1] : null; })();
     const ds = (_rawDate && _rawDate <= _todayStr)
       ? _rawDate
-      : (parseSessionDate(r['Submitted At']) || parseSessionDate(r._createdTime));
+      : (_titleDate && _titleDate <= _todayStr)
+        ? _titleDate
+        : (parseSessionDate(r['Submitted At']) || parseSessionDate(r._createdTime));
     if (!ds || new Date(ds) < c90) return;
     sessionCounts[id] = (sessionCounts[id] || 0) + 1;
     if (!map[id]) return;
