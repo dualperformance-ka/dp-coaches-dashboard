@@ -1587,16 +1587,12 @@ function buildActionList(a) {
     if (dAgo !== null && dAgo > 9) critical.push(`No check-in for ${dAgo}d`);
   }
 
-  // Compliance shortfall
-  if (a.compliance !== null && w) {
-    const rp = parseInt(w['Run Planned']) || 0;
-    const rc = parseInt(w['Run Completed']) || 0;
-    const lp = parseInt(w['Lift Planned']) || 0;
-    const lc = parseInt(w['Lift Completed']) || 0;
+  // Compliance shortfall (current week)
+  if (a.compliance !== null) {
     if (a.compliance < 50) {
-      critical.push(`Compliance ${a.compliance}% (${rc + lc}/${rp + lp} sessions)`);
+      critical.push(`This week compliance ${a.compliance}%`);
     } else if (a.compliance < 70) {
-      watch.push(`Compliance ${a.compliance}%`);
+      watch.push(`This week compliance ${a.compliance}%`);
     }
   }
 
@@ -1887,15 +1883,14 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [
     const prevRunS = sPrev.filter(s => s._isRun);
     const prevStrS = sPrev.filter(s => s._isStr);
 
-    // Compliance
+    // Weekly KM from run logs (current week)
+    const currRunKm = currRunS.reduce((sum, s) => {
+      const log = s['Exercise Log'] || '';
+      const m = log.match(/Distance:\s*([\d.]+)\s*km/i);
+      return sum + (m ? parseFloat(m[1]) : 0);
+    }, 0);
+
     const w = a.weekly;
-    const rp = parseInt(w?.['Run Planned']) || 0;
-    const rc = parseInt(w?.['Run Completed']) || 0;
-    const lp = parseInt(w?.['Lift Planned']) || 0;
-    const lc = parseInt(w?.['Lift Completed']) || 0;
-    const totalPlanned = rp + lp;
-    const totalDone = rc + lc;
-    const compliance = totalPlanned > 0 ? Math.round((totalDone / totalPlanned) * 100) : null;
 
     // Flags
     const flags = [];
@@ -1970,7 +1965,17 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [
       return dt >= currentWeekStart && dt <= new Date(currentWeekEnd + 'T23:59:59');
     }).sort((a,b) => (a['date:Planned Date:start']||'') > (b['date:Planned Date:start']||'') ? 1 : -1);
 
-    // Schedule compliance from planning (last 28 days)
+    // Current-week compliance: sessions due today or earlier vs completed
+    const dueSoFar = thisWeekPlan.filter(r => {
+      const d = r['date:Planned Date:start'] || r['Planned Date'] || '';
+      return d && d <= _todayStr;
+    });
+    const completedDue = dueSoFar.filter(r => (r['Status '] || r['Status'] || '').trim() === 'Completed').length;
+    const missedDue = dueSoFar.filter(r => (r['Status '] || r['Status'] || '').trim() === 'Missed').length;
+    const compliance = (completedDue + missedDue) > 0
+      ? Math.round((completedDue / (completedDue + missedDue)) * 100) : null;
+
+    // Schedule compliance from planning (last 28 days — historical reference)
     const c28 = dago(28);
     const pastPlan = athletePlan.filter(r => {
       const d = r['date:Planned Date:start'] || r['Planned Date'] || '';
@@ -2010,7 +2015,7 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [
 
     return {
       ...a, bAvg, nAvg, runS, strS,
-      currRunS, currStrS,
+      currRunS, currStrS, currRunKm,
       prevRunS, prevStrS,
       flags, alertScore,
       hasRecent, hasCurrentCheckin, hasLastWeekCheckin, isStale,
@@ -2140,10 +2145,7 @@ function renderSummary(ath) {
   const alertN   = ath.filter(a => a.actions?.severity === 'red').length;
   const watchN   = ath.filter(a => a.actions?.severity === 'amber').length;
   const checkedIn = ath.filter(a => a.hasCurrentCheckin || a.hasRecent).length;
-  const totalKm  = ath.reduce((s, a) => {
-    const k = parseFloat(a.weekly?.['Weekly Run KM'] || 0);
-    return s + (isNaN(k) ? 0 : k);
-  }, 0);
+  const totalKm  = ath.reduce((s, a) => s + (a.currRunKm || 0), 0);
   const compList = ath.filter(a => a.compliance !== null).map(a => a.compliance);
   const avgComp  = compList.length
     ? Math.round(compList.reduce((a, b) => a + b, 0) / compList.length)
@@ -2438,12 +2440,12 @@ function buildCard(a, weekOffset = 0) {
       <span class="pbar-val ${rc}">${a.recoveryScore}/10</span>
     </div>`);
   }
-  if (hW) {
-    const km = parseFloat(w['Weekly Run KM']) || 0;
+  {
+    const km = a.currRunKm || 0;
     const kmTarget = parseFloat(a.target?.['Weekly KM Target']) || 0;
     if (km > 0 || kmTarget > 0) {
       const kmPct = kmTarget > 0 ? Math.min(100, Math.round(km / kmTarget * 100)) : 100;
-      const kmLabel = kmTarget > 0 ? `${km} / ${kmTarget} km` : `${km} km`;
+      const kmLabel = kmTarget > 0 ? `${km.toFixed(1)} / ${kmTarget} km` : `${km.toFixed(1)} km`;
       barRows.push(`<div class="pbar-row">
         <span class="pbar-lbl">Weekly KM</span>
         <div class="pbar-track"><div class="pbar-fill run" style="width:${kmTarget > 0 ? kmPct : 100}%"></div></div>
