@@ -1906,8 +1906,10 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [
       const mo = parseInt(w.Motivation);
       if (mo && mo <= 5) flags.push({ t: 'yellow', l: 'Low Motiv ' + mo });
 
-      if (rp > 0 && rc < rp) flags.push({ t: 'yellow', l: `Run ${rc}/${rp}` });
-      if (lp > 0 && lc < lp) flags.push({ t: 'yellow', l: `Lift ${lc}/${lp}` });
+      const _rp = parseInt(w['Run Planned']) || 0, _rc = parseInt(w['Run Completed']) || 0;
+      const _lp = parseInt(w['Lift Planned']) || 0, _lc = parseInt(w['Lift Completed']) || 0;
+      if (_rp > 0 && _rc < _rp) flags.push({ t: 'yellow', l: `Run ${_rc}/${_rp}` });
+      if (_lp > 0 && _lc < _lp) flags.push({ t: 'yellow', l: `Lift ${_lc}/${_lp}` });
 
       const rf = parseInt(w['Run Feel /10']);
       if (rf >= 8) flags.push({ t: 'green', l: 'Run Feel ' + rf });
