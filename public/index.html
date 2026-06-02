@@ -2438,12 +2438,24 @@ function buildCard(a, weekOffset = 0) {
       <span class="pbar-val ${rc}">${a.recoveryScore}/10</span>
     </div>`);
   }
-  if (hW) {
-    const km = parseFloat(w['Weekly Run KM']) || 0;
+  {
+    // Weekly KM from tracked sessions (not self-reported check-in field)
+    const _wkOffset = typeof _dashboardWeekOffset === 'number' ? _dashboardWeekOffset : 0;
+    const _wkBase = new Date(currentWeekStart);
+    if (_wkOffset !== 0) _wkBase.setDate(_wkBase.getDate() + _wkOffset * 7);
+    const _wkStartStr = _wkBase.toISOString().slice(0, 10);
+    const _wkEndDate = new Date(_wkBase); _wkEndDate.setDate(_wkEndDate.getDate() + 6);
+    const _wkEndStr = _wkEndDate.toISOString().slice(0, 10);
+    const km = (a.sessions || []).filter(s => s._isRun && s._d >= _wkStartStr && s._d <= _wkEndStr).reduce((sum, s) => {
+      const log = s['Exercise Log'] || '';
+      const m = log.match(/Distance:\s*([\d.]+)/i);
+      return sum + (m ? parseFloat(m[1]) : 0);
+    }, 0);
+    const kmRounded = Math.round(km * 10) / 10;
     const kmTarget = parseFloat(a.target?.['Weekly KM Target']) || 0;
-    if (km > 0 || kmTarget > 0) {
-      const kmPct = kmTarget > 0 ? Math.min(100, Math.round(km / kmTarget * 100)) : 100;
-      const kmLabel = kmTarget > 0 ? `${km} / ${kmTarget} km` : `${km} km`;
+    if (kmRounded > 0 || kmTarget > 0) {
+      const kmPct = kmTarget > 0 ? Math.min(100, Math.round(kmRounded / kmTarget * 100)) : 100;
+      const kmLabel = kmTarget > 0 ? `${kmRounded} / ${kmTarget} km` : `${kmRounded} km`;
       barRows.push(`<div class="pbar-row">
         <span class="pbar-lbl">Weekly KM</span>
         <div class="pbar-track"><div class="pbar-fill run" style="width:${kmTarget > 0 ? kmPct : 100}%"></div></div>
