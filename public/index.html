@@ -810,6 +810,7 @@ body[data-theme="pride"] .dash-week-nav{border:2px solid transparent;border-imag
 .wd-ex-name{font-family:var(--mono);font-size:9px;color:var(--muted);width:160px;flex-shrink:0;line-height:1.4;padding-top:1px;text-transform:capitalize}
 .wd-ex-sets{display:flex;flex-wrap:wrap;gap:3px}
 .wd-ex-set{font-family:var(--mono);font-size:9px;background:var(--surface2);border:1px solid var(--border);padding:1px 6px;border-radius:4px;color:var(--text);white-space:nowrap;line-height:1.5}
+.wd-ex-set.pb-set{background:rgba(245,158,11,.15);border-color:#f59e0b;color:#b45309;font-weight:600}
 .wd-session.run .wd-ex-set{background:rgba(245,158,11,.12);border-color:var(--amber-border);color:var(--run)}
 .wd-run-stats{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
 .wd-run-stat{font-family:var(--mono);font-size:10px;color:var(--muted)}
@@ -2800,7 +2801,7 @@ function buildCallPrep(a) {
 // ── Exercise log renderer ─────────────────────────────────────────────────────
 // Strength log format: "ExerciseName: Set 1: 40kg × 12reps | Set 2: 65kg × 10reps\n..."
 // Run log format:      "Distance: 13km | Duration: 96min | Pace: 6:40 | RPE: 6.5/10 | Feel: 😐"
-function renderExerciseLog(logStr, isRun) {
+function renderExerciseLog(logStr, isRun, priorBests) {
   if (!logStr) return '';
   if (isRun) {
     // Parse flat key:value pairs separated by |
@@ -2825,12 +2826,28 @@ function renderExerciseLog(logStr, isRun) {
     }
     const exName = line.substring(0, colonSet).trim();
     const setsStr = line.substring(colonSet + 2); // "Set 1: Xkg × Yreps | Set 2: ..."
+    const priorBest = priorBests && priorBests[exName.toLowerCase()];
     const setBadges = setsStr.split('|').map(s => {
       const m = s.trim().match(/Set\s*\d+:\s*(.+)/);
       const val = m ? m[1].trim() : s.trim();
       // Compact: "40kg × 12reps" → "40×12"
       const compact = val.replace(/\s*×\s*/g, '×').replace('reps', '');
-      return compact ? `<span class="wd-ex-set">${esc(compact)}</span>` : '';
+      if (!compact) return '';
+      // PB detection: check if this set beats prior best by e1rm
+      const setM = val.match(/([\d.]+)\s*kg\s*[×x]\s*(\d+)/i);
+      let isPB = false;
+      if (setM && priorBest) {
+        const w = parseFloat(setM[1]), r = parseInt(setM[2]);
+        if (!isNaN(w) && !isNaN(r)) {
+          const e1rm = w * (1 + r / 30);
+          isPB = e1rm > priorBest.e1rm + 0.5;
+        }
+      } else if (setM && !priorBest) {
+        isPB = false; // no history yet, can't confirm PB
+      }
+      return isPB
+        ? `<span class="wd-ex-set pb-set" title="Personal Best">⭐ ${esc(compact)}</span>`
+        : `<span class="wd-ex-set">${esc(compact)}</span>`;
     }).filter(Boolean).join('');
     return `<div class="wd-ex-row">
       <span class="wd-ex-name">${esc(exName)}</span>
@@ -3188,7 +3205,13 @@ function buildFPCard(a, weekOffset = 0) {
           const rawName = s.Session || (s.Name || '').split('—').slice(1, -1).join('—').trim() || '';
           const exLog = s['Exercise Log'] || s.exerciseLog || s['Exercises'] || '';
           const notes = s.Notes || s.notes || '';
-          const logHtml = renderExerciseLog(exLog, isRun);
+          // Build prior-session bests for PB detection (sessions strictly before this day)
+          const priorBests = (() => {
+            if (!isStr) return null;
+            const prior = a.sessions.filter(ps => ps._isStr && ps._d < dateStr);
+            return detectPRs(prior).allTime;
+          })();
+          const logHtml = renderExerciseLog(exLog, isRun, priorBests);
           return `<div class="wd-session ${cls}">
             <div class="wd-sess-cat">${catLabel}</div>
             ${rawName ? `<div class="wd-sess-name">${esc(rawName)}</div>` : ''}
