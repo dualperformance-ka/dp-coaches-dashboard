@@ -1,94 +1,56 @@
 /**
- * GET /api/strava?athlete={name}
+ * GET /api/strava?athlete={athleteCode}  (or ?code={athleteCode})
  *
- * Returns recent Strava activities for the given athlete.
- * Tokens are stored in a Notion database (STRAVA_TOKENS_DB_ID).
+ * Coaches dashboard endpoint — reads Strava tokens from Supabase,
+ * refreshes if expired, returns recent activities + weekly summary stats.
  *
- * Response shapes:
- *   { connected: false, connectUrl: "https://strava.com/oauth/..." }
- *   { connected: true,  activities: [...] }
- *
- * Required env vars:
- *   NOTION_TOKEN          — existing Notion integration token
- *   STRAVA_TOKENS_DB_ID  — ID of the "Strava Tokens" Notion database
- *   STRAVA_CLIENT_ID     — Strava app client ID (254938)
+ * Required env vars (add to coaches dashboard Vercel project):
+ *   SUPABASE_URL         — Supabase project URL
+ *   SUPABASE_SERVICE_KEY — Supabase service role key
+ *   STRAVA_CLIENT_ID     — Strava app client ID
  *   STRAVA_CLIENT_SECRET — Strava app client secret
- *   PORTAL_URL           — full URL of this Vercel deployment, e.g. https://dp-athlete-portal.vercel.app
  */
 
-const NOTION_API  = 'https://api.notion.com/v1';
-const NOTION_VER  = '2022-06-28';
 const STRAVA_API  = 'https://www.strava.com/api/v3';
 const STRAVA_AUTH = 'https://www.strava.com/oauth/token';
 
-function portalUrl() {
-  return process.env.PORTAL_URL ||
-    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '');
+// ── Supabase ──────────────────────────────────────────────────────────────────
+
+async function getTokens(athleteCode) {
+  const res = await fetch(
+    `${process.env.SUPABASE_URL}/rest/v1/athlete_data?athlete_code=eq.${encodeURIComponent(athleteCode)}&key=eq.strava_tokens&select=value`,
+    {
+      headers: {
+        apikey: process.env.SUPABASE_SERVICE_KEY,
+        Authorization: `Bearer ${process.env.SUPABASE_SERVICE_KEY}`,
+      },
+    }
+  );
+  const rows = await res.json();
+  return rows[0]?.value || null;
 }
 
-function setCors(req, res) {
-  const allowed = (process.env.ALLOWED_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean);
-  const origin  = req.headers.origin;
-  if (!allowed.length || (origin && allowed.includes(origin))) {
-    res.setHeader('Access-Control-Allow-Origin', origin || '*');
-    res.setHeader('Vary', 'Origin');
-  }
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+async function updateTokens(athleteCode, accessToken, expiresAt, tokens) {
+  const updated = { ...tokens, access_token: accessToken, expires_at: expiresAt };
+
+  await fetch(
+    `${process.env.SUPABASE_URL}/rest/v1/athlete_data?athlete_code=eq.${encodeURIComponent(athleteCode)}&key=eq.strava_tokens`,
+    {
+      method: 'PATCH',
+      headers: {
+        apikey: process.env.SUPABASE_SERVICE_KEY,
+        Authorization: `Bearer ${process.env.SUPABASE_SERVICE_KEY}`,
+        'Content-Type': 'application/json',
+        Prefer: 'return=minimal',
+      },
+      body: JSON.stringify({ value: updated, updated_at: new Date().toISOString() }),
+    }
+  );
 }
 
-// ── Notion helpers ────────────────────────────────────────────────────────────
+// ── Strava ────────────────────────────────────────────────────────────────────
 
-async function notionReq(endpoint, method, body) {
-  const res = await fetch(`${NOTION_API}/${endpoint}`, {
-    method,
-    headers: {
-      Authorization: `Bearer ${process.env.NOTION_TOKEN}`,
-      'Content-Type': 'application/json',
-      'Notion-Version': NOTION_VER,
-    },
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  const text = await res.text();
-  return text ? JSON.parse(text) : {};
-}
-
-async function findAthleteToken(athleteName) {
-  const dbId = process.env.STRAVA_TOKENS_DB_ID;
-  if (!dbId) return null;
-
-  const data = await notionReq(`databases/${dbId}/query`, 'POST', {
-    filter: {
-      property: 'Name',
-      title: { equals: athleteName },
-    },
-    page_size: 1,
-  });
-
-  const page = data.results?.[0];
-  if (!page) return null;
-
-  const props = page.properties;
-  return {
-    pageId:       page.id,
-    accessToken:  props['Access Token']?.rich_text?.[0]?.plain_text  || null,
-    refreshToken: props['Refresh Token']?.rich_text?.[0]?.plain_text || null,
-    expiresAt:    props['Expires At']?.number || 0,
-  };
-}
-
-async function updateTokenInNotion(pageId, accessToken, expiresAt) {
-  await notionReq(`pages/${pageId}`, 'PATCH', {
-    properties: {
-      'Access Token': { rich_text: [{ text: { content: accessToken } }] },
-      'Expires At':   { number: expiresAt },
-    },
-  });
-}
-
-// ── Strava helpers ────────────────────────────────────────────────────────────
-
-async function refreshStravaToken(refreshToken) {
+async function doRefreshToken(refreshToken) {
   const res = await fetch(STRAVA_AUTH, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -99,64 +61,93 @@ async function refreshStravaToken(refreshToken) {
       refresh_token: refreshToken,
     }),
   });
-  if (!res.ok) throw new Error(`Strava token refresh failed: ${res.status}`);
+  if (!res.ok) throw new Error(`Token refresh failed: ${res.status}`);
   return res.json();
 }
 
-async function fetchActivities(accessToken) {
-  const res = await fetch(
-    `${STRAVA_API}/athlete/activities?per_page=10`,
-    { headers: { Authorization: `Bearer ${accessToken}` } }
-  );
-  if (!res.ok) throw new Error(`Strava activities fetch failed: ${res.status}`);
+async function fetchActivities(accessToken, perPage = 20) {
+  const res = await fetch(`${STRAVA_API}/athlete/activities?per_page=${perPage}`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!res.ok) throw new Error(`Strava activities failed: ${res.status}`);
   return res.json();
+}
+
+// ── Weekly stats helper ───────────────────────────────────────────────────────
+
+function weeklyStats(activities) {
+  const now = new Date();
+  const weekStart = new Date(now);
+  weekStart.setDate(now.getDate() - now.getDay()); // Sunday
+  weekStart.setHours(0, 0, 0, 0);
+
+  let weeklyKm = 0, weeklyRuns = 0;
+  for (const a of activities) {
+    if (new Date(a.start_date) >= weekStart &&
+        (a.type === 'Run' || a.sport_type === 'Run')) {
+      weeklyKm   += (a.distance || 0) / 1000;
+      weeklyRuns += 1;
+    }
+  }
+
+  const lastRun = activities.find(a => a.type === 'Run' || a.sport_type === 'Run');
+  const daysSince = lastRun
+    ? Math.floor((Date.now() - new Date(lastRun.start_date)) / 86400000)
+    : null;
+
+  return {
+    weeklyKm:        Math.round(weeklyKm * 10) / 10,
+    weeklyRuns,
+    daysSinceLastRun: daysSince,
+  };
 }
 
 // ── Handler ───────────────────────────────────────────────────────────────────
 
-export default async function handler(req, res) {
-  setCors(req, res);
-
+module.exports = async function handler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
-  const athlete = (req.query.athlete || '').trim();
-  if (!athlete) return res.status(400).json({ error: 'athlete param required' });
+  // Support both ?code= and legacy ?athlete= params
+  const athleteCode = ((req.query.code || req.query.athlete) || '').trim().toUpperCase();
+  if (!athleteCode) return res.status(400).json({ error: 'athlete/code param required' });
 
-  // Check required env vars
+  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY) {
+    return res.status(500).json({ error: 'SUPABASE_URL / SUPABASE_SERVICE_KEY not set' });
+  }
   if (!process.env.STRAVA_CLIENT_ID || !process.env.STRAVA_CLIENT_SECRET) {
-    return res.status(500).json({ error: 'Strava credentials not configured' });
+    return res.status(500).json({ error: 'STRAVA_CLIENT_ID / STRAVA_CLIENT_SECRET not set' });
   }
 
   try {
-    let tokenRow = await findAthleteToken(athlete);
+    const tokens = await getTokens(athleteCode);
 
-    // Not connected — return OAuth URL for this athlete
-    if (!tokenRow || !tokenRow.accessToken) {
-      const connectUrl =
-        `https://www.strava.com/oauth/authorize` +
-        `?client_id=${process.env.STRAVA_CLIENT_ID}` +
-        `&response_type=code` +
-        `&redirect_uri=${encodeURIComponent(portalUrl() + '/api/strava-callback')}` +
-        `&scope=activity:read_all` +
-        `&state=${encodeURIComponent(athlete)}`;
-
-      return res.status(200).json({ connected: false, connectUrl });
+    if (!tokens || !tokens.access_token) {
+      return res.status(200).json({ connected: false });
     }
 
-    // Refresh token if expired (with 5-min buffer)
-    let { accessToken } = tokenRow;
-    if (Date.now() / 1000 > tokenRow.expiresAt - 300) {
-      const refreshed = await refreshStravaToken(tokenRow.refreshToken);
-      accessToken = refreshed.access_token;
-      await updateTokenInNotion(tokenRow.pageId, accessToken, refreshed.expires_at);
+    // Refresh if within 5 min of expiry
+    let { access_token, refresh_token, expires_at } = tokens;
+    if (Date.now() / 1000 > expires_at - 300) {
+      const refreshed = await doRefreshToken(refresh_token);
+      access_token = refreshed.access_token;
+      await updateTokens(athleteCode, access_token, refreshed.expires_at, tokens);
     }
 
-    const activities = await fetchActivities(accessToken);
+    // Fetch raw activities — return full objects so existing dashboard UI works
+    const activities = await fetchActivities(access_token, 20);
+    const stats      = weeklyStats(activities);
 
-    return res.status(200).json({ connected: true, activities });
+    res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=60');
+    return res.status(200).json({
+      connected:  true,
+      stats,                        // weekly summary for coaches view
+      activities: activities.slice(0, 10), // raw Strava objects — frontend reads these directly
+    });
   } catch (err) {
-    console.error('[strava]', err);
+    console.error('[strava-coach]', err);
     return res.status(500).json({ error: err.message });
   }
-}
+};
