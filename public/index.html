@@ -932,6 +932,25 @@ body[data-theme="pride"] .dash-week-nav{border:2px solid transparent;border-imag
 .progress-photo-type{font-family:var(--mono);font-size:9px;font-weight:800;color:var(--text);text-transform:uppercase;letter-spacing:.08em}
 .progress-photo-date{font-family:var(--mono);font-size:8px;color:var(--dim);margin-top:3px}
 
+/* ── Strava section ── */
+.strava-panel{min-height:80px}
+.strava-state{font-family:var(--mono);font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;padding:10px 0}
+.strava-acts{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+.strava-act{display:grid;grid-template-columns:1fr auto;align-items:center;gap:12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px}
+.strava-act-left{display:flex;flex-direction:column;gap:3px}
+.strava-act-name{font-family:var(--cond);font-size:17px;font-weight:900;text-transform:uppercase;letter-spacing:.04em;line-height:1;color:var(--text)}
+.strava-act-date{font-family:var(--mono);font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;margin-top:2px}
+.strava-act-chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:5px}
+.strava-chip{font-family:var(--mono);font-size:9px;color:var(--muted);background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:3px 8px;white-space:nowrap}
+.strava-chip strong{color:var(--text)}
+.strava-act-dist{font-family:var(--cond);font-size:28px;font-weight:900;letter-spacing:-.01em;color:var(--run);line-height:1;text-align:right}
+.strava-act-dist span{font-size:11px;font-weight:600;color:var(--muted);display:block;text-align:right;margin-top:1px}
+.strava-connect-btn{display:inline-flex;align-items:center;gap:7px;background:#fc4c02;color:#fff;font-family:var(--mono);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;padding:8px 16px;border-radius:7px;text-decoration:none;border:none;cursor:pointer;margin-top:10px}
+.strava-connect-btn:hover{background:#e04400}
+.strava-connect-note{font-family:var(--mono);font-size:9px;color:var(--dim);margin-top:8px;line-height:1.5}
+body[data-theme="light"] .strava-act{background:#fff}
+body[data-theme="light"] .strava-chip{background:#f4f3f0}
+
 /* ── Daily input ledger ── */
 .daily-ledger{display:flex;flex-direction:column;gap:8px}
 .daily-ledger-row{display:grid;grid-template-columns:86px 1fr 1fr;gap:10px;padding:10px 0;border-top:1px solid var(--border)}
@@ -3484,6 +3503,11 @@ function buildFPCard(a, weekOffset = 0) {
     <div class="progress-photo-state" data-progress-photos="${esc(a.id)}">Loading progress photos…</div>
   </div>`;
 
+  const stravaHtml = `<div class="fpc-section strava-panel">
+    <div class="fpc-section-title">🟠 Strava Activities</div>
+    <div class="strava-state" data-strava-panel="${esc(a.id)}">Loading Strava data…</div>
+  </div>`;
+
   return `<div>
     ${buildWeekJump(a, ctx)}
     ${hero}
@@ -3494,6 +3518,7 @@ function buildFPCard(a, weekOffset = 0) {
     ${scoresHtml}
     ${trainingHtml}
     ${trendsHtml}
+    ${stravaHtml}
     ${progressPhotosHtml}
     ${dailyNutrHtml}
     ${weekDetailHtml}
@@ -4093,6 +4118,7 @@ function _drawFP() {
   document.getElementById('fp-body').innerHTML = buildFPCard(a, _fpWeekOffset);
   document.getElementById('fp-overlay').scrollTop = 0;
   loadProgressPhotos(a, _fpWeekOffset);
+  loadStravaData(a);
 
   // Restore saved note (fpc-note textarea uses onchange so pre-fill here)
   const ta = document.querySelector('#fp-body textarea.fpc-note');
@@ -4103,6 +4129,82 @@ function _drawFP() {
   document.getElementById('fp-next').disabled = _fpIdx === _fpOrder.length - 1;
   document.getElementById('fp-idx').textContent =
     _fpOrder.length > 1 ? `${_fpIdx + 1} / ${_fpOrder.length}` : '';
+}
+
+async function loadStravaData(a) {
+  const target = document.querySelector(`[data-strava-panel="${a.id}"]`);
+  if (!target) return;
+
+  try {
+    const res = await fetch(`/api/strava?athlete=${encodeURIComponent(a.id)}`);
+    if (!res.ok) {
+      const e = await res.json().catch(() => ({}));
+      throw new Error(e.error || `HTTP ${res.status}`);
+    }
+    const data = await res.json();
+
+    if (!data.connected) {
+      target.outerHTML = `<div>
+        <a class="strava-connect-btn" href="${esc(data.connectUrl || '#')}" target="_blank" rel="noopener">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066z"/><path d="M11.234 13.828L7.07 6h5.886l4.143 7.828z" opacity=".6"/></svg>
+          Connect Strava
+        </a>
+        <div class="strava-connect-note">Athlete needs to authorise Strava access. Share their connect link from Settings → Integrations.</div>
+      </div>`;
+      return;
+    }
+
+    const acts = (data.activities || []).slice(0, 6);
+    if (!acts.length) {
+      target.outerHTML = `<div class="strava-state">No activities found in Strava</div>`;
+      return;
+    }
+
+    const fmtDist = m => (m / 1000).toFixed(2);
+    const fmtPace = (speed) => {
+      if (!speed) return '—';
+      const secPerKm = 1000 / speed;
+      const m = Math.floor(secPerKm / 60);
+      const s = Math.round(secPerKm % 60).toString().padStart(2, '0');
+      return `${m}:${s}`;
+    };
+    const fmtTime = secs => {
+      const h = Math.floor(secs / 3600);
+      const m = Math.floor((secs % 3600) / 60);
+      return h > 0 ? `${h}h ${m}m` : `${m}m`;
+    };
+    const fmtActDate = iso => {
+      const d = new Date(iso);
+      return d.toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' });
+    };
+
+    const cards = acts.map(act => {
+      const dist = fmtDist(act.distance);
+      const pace = fmtPace(act.average_speed);
+      const time = fmtTime(act.moving_time);
+      const hr   = act.average_heartrate ? Math.round(act.average_heartrate) : null;
+      const elev = act.total_elevation_gain ? Math.round(act.total_elevation_gain) : null;
+      const chips = [
+        `<span class="strava-chip"><strong>${pace}</strong>/km</span>`,
+        `<span class="strava-chip"><strong>${time}</strong> moving</span>`,
+        hr   ? `<span class="strava-chip">♥ <strong>${hr}</strong> bpm avg</span>` : '',
+        elev ? `<span class="strava-chip">↑ <strong>${elev}</strong>m</span>` : '',
+      ].filter(Boolean).join('');
+
+      return `<div class="strava-act">
+        <div class="strava-act-left">
+          <div class="strava-act-name">${esc(act.name)}</div>
+          <div class="strava-act-date">${fmtActDate(act.start_date)} · ${esc(act.type || 'Activity')}</div>
+          <div class="strava-act-chips">${chips}</div>
+        </div>
+        <div class="strava-act-dist">${dist}<span>km</span></div>
+      </div>`;
+    }).join('');
+
+    target.outerHTML = `<div class="strava-acts">${cards}</div>`;
+  } catch (err) {
+    if (target) target.outerHTML = `<div class="strava-state">Could not load Strava data — check /api/strava is configured</div>`;
+  }
 }
 
 async function loadProgressPhotos(a, weekOffset = 0) {
