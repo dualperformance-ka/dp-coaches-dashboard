@@ -948,6 +948,11 @@ body[data-theme="pride"] .dash-week-nav{border:2px solid transparent;border-imag
 .strava-connect-btn{display:inline-flex;align-items:center;gap:7px;background:#fc4c02;color:#fff;font-family:var(--mono);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;padding:8px 16px;border-radius:7px;text-decoration:none;border:none;cursor:pointer;margin-top:10px}
 .strava-connect-btn:hover{background:#e04400}
 .strava-connect-note{font-family:var(--mono);font-size:9px;color:var(--dim);margin-top:8px;line-height:1.5}
+.strava-weekly-strip{display:flex;gap:0;margin-bottom:10px;border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.strava-wstat{flex:1;padding:10px 12px;display:flex;flex-direction:column;gap:3px;border-right:1px solid var(--border)}
+.strava-wstat:last-child{border-right:none}
+.strava-wval{font-family:var(--cond);font-size:22px;font-weight:900;color:var(--run);line-height:1}
+.strava-wlbl{font-family:var(--mono);font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.07em}
 body[data-theme="light"] .strava-act{background:#fff}
 body[data-theme="light"] .strava-chip{background:#f4f3f0}
 
@@ -4145,14 +4150,19 @@ async function loadStravaData(a) {
 
     if (!data.connected) {
       target.outerHTML = `<div>
-        <a class="strava-connect-btn" href="${esc(data.connectUrl || '#')}" target="_blank" rel="noopener">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066z"/><path d="M11.234 13.828L7.07 6h5.886l4.143 7.828z" opacity=".6"/></svg>
-          Connect Strava
-        </a>
-        <div class="strava-connect-note">Athlete needs to authorise Strava access. Share their connect link from Settings → Integrations.</div>
+        <div class="strava-connect-note" style="margin-bottom:8px">Athlete hasn't connected Strava yet. Once they authorise via the athlete portal, their activities will appear here automatically.</div>
       </div>`;
       return;
     }
+
+    // Weekly summary strip
+    const s = data.stats || {};
+    const weeklyStrip = s.weeklyKm != null ? `
+      <div class="strava-weekly-strip">
+        <div class="strava-wstat"><span class="strava-wval">${s.weeklyKm}</span><span class="strava-wlbl">km this week</span></div>
+        <div class="strava-wstat"><span class="strava-wval">${s.weeklyRuns}</span><span class="strava-wlbl">runs</span></div>
+        <div class="strava-wstat"><span class="strava-wval">${s.daysSinceLastRun != null ? s.daysSinceLastRun + 'd' : '—'}</span><span class="strava-wlbl">since last run</span></div>
+      </div>` : '';
 
     const acts = (data.activities || []).slice(0, 6);
     if (!acts.length) {
@@ -4201,7 +4211,7 @@ async function loadStravaData(a) {
       </div>`;
     }).join('');
 
-    target.outerHTML = `<div class="strava-acts">${cards}</div>`;
+    target.outerHTML = `<div>${weeklyStrip}<div class="strava-acts">${cards}</div></div>`;
   } catch (err) {
     if (target) target.outerHTML = `<div class="strava-state">Could not load Strava data — check /api/strava is configured</div>`;
   }
