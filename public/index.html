@@ -3541,14 +3541,14 @@ function buildFPCard(a, weekOffset = 0) {
     ${banner}
     ${fpActionHtml}
     ${wipHtml}
-    ${prsHtml}
+    ${weekDetailHtml}
     ${scoresHtml}
     ${trainingHtml}
+    ${prsHtml}
     ${trendsHtml}
     ${stravaHtml}
     ${progressPhotosHtml}
     ${dailyNutrHtml}
-    ${weekDetailHtml}
     ${bodyNutrPart}
     ${callPrepHtml}
   </div>`;
@@ -4145,6 +4145,7 @@ function initCollapsibleSections() {
     'watch list',
     '⚠',
     'training',
+    'this week',
   ];
   // Sections that can't be collapsed at all
   const NO_COLLAPSE = [
