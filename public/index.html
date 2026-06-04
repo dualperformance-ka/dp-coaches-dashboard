@@ -4778,12 +4778,12 @@ function copyDM(athleteId) {
 
   // Opener based on state
   if (a.isStale) {
-    lines.push(`Hey ${name}, haven't seen your check-in this week — everything okay?`);
+    lines.push(`Hey ${name}, haven't seen your check-in this week - everything okay?`);
   } else if (w) {
     const rf = w['Run Feel /10'];
     const runWins = w['Runs Wins'];
-    if (rf >= 8) lines.push(`Hey ${name}, great week — loved seeing that ${rf}/10 run feel! 🔥`);
-    else if (rf && rf <= 5) lines.push(`Hey ${name}, checking in — noticed a tough run feel this week (${rf}/10). How are you tracking?`);
+    if (rf >= 8) lines.push(`Hey ${name}, great week - loved seeing that ${rf}/10 run feel! 🔥`);
+    else if (rf && rf <= 5) lines.push(`Hey ${name}, checking in - noticed a tough run feel this week (${rf}/10). How are you tracking?`);
     else lines.push(`Hey ${name}, checking in on how the week went!`);
     if (runWins && runWins !== 'n/a') lines.push(`Loved hearing: "${runWins}"`);
   } else {
@@ -4793,21 +4793,21 @@ function copyDM(athleteId) {
   // Flag anything actionable
   const niggles = ((w?.['Run Niggles'] || '') + ' ' + (w?.['Lifts Niggles'] || '')).trim();
   if (niggles && niggles.toLowerCase() !== 'n/a' && niggles.toLowerCase() !== 'none') {
-    lines.push(`Want to chat about the niggle you mentioned — how's that feeling now?`);
+    lines.push(`Want to chat about the niggle you mentioned - how's that feeling now?`);
   }
 
   const stravaData = _stravaKmCache[athleteId];
   if (stravaData?.weeklyKm != null && stravaData?.lastWeekKm != null && stravaData.lastWeekKm > 0) {
     const pct = Math.round((stravaData.weeklyKm - stravaData.lastWeekKm) / stravaData.lastWeekKm * 100);
-    if (pct > 20) lines.push(`Noticed your km jumped ${pct}% this week — make sure you're managing recovery well 🙏`);
+    if (pct > 20) lines.push(`Noticed your km jumped ${pct}% this week - make sure you're managing recovery well 🙏`);
   }
 
   // Compliance nudge
   if (a.compliance !== null && a.compliance < 70) {
-    lines.push(`Let's talk about the sessions — anything blocking you from hitting the plan?`);
+    lines.push(`Let's talk about the sessions - anything blocking you from hitting the plan?`);
   }
 
-  lines.push(`Let me know how you're feeling! — Karl`);
+  lines.push(`Let me know how you're feeling! - Karl`);
 
   const msg = lines.join('\n\n');
   navigator.clipboard.writeText(msg).then(() => {
