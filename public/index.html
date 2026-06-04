@@ -1684,16 +1684,17 @@ function buildActionList(a) {
 // Requires the /api/notion backend to:
 //   • Accept ?cursor=<next_cursor> and pass it to the Notion API as start_cursor
 //   • Return has_more (boolean) and next_cursor (string) from the Notion response
-async function fetchDB(dbId) {
+async function fetchDB(dbId, bust = false) {
   const all = [];
   let cursor = null;
   let pages = 0;
   const MAX_PAGES = 40; // safety cap — 40 × 100 = 4 000 rows max
 
   do {
-    const url = cursor
+    let url = cursor
       ? `/api/notion?db=${dbId}&cursor=${encodeURIComponent(cursor)}`
       : `/api/notion?db=${dbId}`;
+    if (bust && !cursor) url += '&bust=1';
     const res = await fetch(url);
     if (!res.ok) {
       const e = await res.json().catch(() => ({}));
@@ -2494,7 +2495,7 @@ function buildCard(a, weekOffset = 0) {
     if (km > 0 || kmTarget > 0) {
       const kmPct = kmTarget > 0 ? Math.min(100, Math.round(km / kmTarget * 100)) : 100;
       const kmLabel = kmTarget > 0 ? `${km.toFixed(1)} / ${kmTarget} km` : `${km.toFixed(1)} km`;
-      barRows.push(`<div class="pbar-row">
+      barRows.push(`<div class="pbar-row" data-km-bar="${a.id}" data-km-target="${kmTarget}">
         <span class="pbar-lbl">Weekly KM</span>
         <div class="pbar-track"><div class="pbar-fill run" style="width:${kmTarget > 0 ? kmPct : 100}%"></div></div>
         <span class="pbar-val run">${kmLabel}</span>
@@ -3084,7 +3085,7 @@ function buildFPCard(a, weekOffset = 0) {
         <div class="fpc-train-block">
           <div class="fpc-train-label run">Run</div>
           <div class="fpc-train-stat"><strong>${rc}/${rp}</strong> sessions</div>
-          <div class="fpc-train-stat"><strong>${esc(w['Weekly Run KM'] || '—')} km</strong> this week</div>
+          <div class="fpc-train-stat" data-fp-km="${a.id}"><strong>${esc(w['Weekly Run KM'] || '—')} km</strong> <span style="font-size:10px;color:var(--dim)">notion</span> this week</div>
           <div class="fpc-pbar"><div class="fpc-pfill run" style="width:${rPct}%"></div></div>
           <div class="fpc-train-stat">Feel: <strong>${esc(w['Run Feel /10'] || '—')}/10</strong></div>
           ${isBad(w['Run Niggles']) ? `<div class="fpc-train-note bad">⚠ ${esc(w['Run Niggles'])}</div>` : ''}
@@ -3999,7 +4000,7 @@ function saveNote(athleteId, value) {
 }
 
 // ── Main load ─────────────────────────────────────────────────────────────────
-async function load() {
+async function load({ bust = false } = {}) {
   document.getElementById('loading').style.display = 'block';
   document.getElementById('content').style.display = 'none';
   document.getElementById('err').style.display = 'none';
@@ -4007,9 +4008,9 @@ async function load() {
 
   try {
     const [weekly, sessions, body, nutrition, athleteDb, targets, planning, applications] = await Promise.all([
-      fetchDB(DB.weekly), fetchDB(DB.sessions), fetchDB(DB.body),
-      fetchDB(DB.nutrition), fetchDB(DB.athletes), fetchDB(DB.targets),
-      fetchDB(DB.planning), fetchDB(DB.applications),
+      fetchDB(DB.weekly, bust), fetchDB(DB.sessions, bust), fetchDB(DB.body, bust),
+      fetchDB(DB.nutrition, bust), fetchDB(DB.athletes, bust), fetchDB(DB.targets, bust),
+      fetchDB(DB.planning, bust), fetchDB(DB.applications, bust),
     ]);
 
     const { athletes, coaches, syncAudit } = buildAll(weekly, sessions, body, nutrition, athleteDb, targets, planning, applications);
@@ -4030,6 +4031,10 @@ async function load() {
     document.getElementById('content').style.display = 'block';
     document.getElementById('updated').textContent =
       'Updated ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    // Background-fetch Strava km for all athletes so squad cards update live.
+    // Fire-and-forget — failures are silent so they don't affect the main load.
+    prefetchStravaKm(athletes);
   } catch (e) {
     document.getElementById('loading').style.display = 'none';
     document.getElementById('err').style.display = 'block';
@@ -4202,6 +4207,48 @@ function _drawFP() {
     _fpOrder.length > 1 ? `${_fpIdx + 1} / ${_fpOrder.length}` : '';
 }
 
+// ── Strava prefetch ───────────────────────────────────────────────────────────
+async function prefetchStravaKm(athletes) {
+  // Fetch in small batches so we don't hammer the API all at once
+  const BATCH = 3;
+  for (let i = 0; i < athletes.length; i += BATCH) {
+    const batch = athletes.slice(i, i + BATCH);
+    await Promise.allSettled(batch.map(async a => {
+      try {
+        const res = await fetch(`/api/strava?athlete=${encodeURIComponent(a.id)}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.connected && data.stats?.weeklyKm != null) {
+          applyStravaKm(a.id, data.stats.weeklyKm);
+        }
+      } catch (_) { /* silent */ }
+    }));
+  }
+}
+
+// ── Strava km cache + live updater ───────────────────────────────────────────
+const _stravaKmCache = {}; // athleteId → weeklyKm (number)
+
+function applyStravaKm(athleteId, weeklyKm) {
+  _stravaKmCache[athleteId] = weeklyKm;
+
+  // Full-page card training stat
+  const fpEl = document.querySelector(`[data-fp-km="${athleteId}"]`);
+  if (fpEl) {
+    fpEl.innerHTML = `<strong>${weeklyKm} km</strong> <span style="font-size:10px;color:var(--run)">strava</span> this week`;
+  }
+
+  // Squad card km bar
+  const barEl = document.querySelector(`[data-km-bar="${athleteId}"]`);
+  if (barEl) {
+    const kmTarget = parseFloat(barEl.dataset.kmTarget) || 0;
+    const pct = kmTarget > 0 ? Math.min(100, Math.round(weeklyKm / kmTarget * 100)) : 100;
+    const label = kmTarget > 0 ? `${weeklyKm} / ${kmTarget} km` : `${weeklyKm} km`;
+    barEl.querySelector('.pbar-fill').style.width = (kmTarget > 0 ? pct : 100) + '%';
+    barEl.querySelector('.pbar-val').textContent = label;
+  }
+}
+
 async function loadStravaData(a) {
   const target = document.querySelector(`[data-strava-panel="${a.id}"]`);
   if (!target) return;
@@ -4223,6 +4270,10 @@ async function loadStravaData(a) {
 
     // Weekly summary strip
     const s = data.stats || {};
+
+    // Push Strava km into training section + squad card bar
+    if (s.weeklyKm != null) applyStravaKm(a.id, s.weeklyKm);
+
     const weeklyStrip = s.weeklyKm != null ? `
       <div class="strava-weekly-strip">
         <div class="strava-wstat"><span class="strava-wval">${s.weeklyKm}</span><span class="strava-wlbl">km this week</span></div>
@@ -4603,7 +4654,7 @@ document.addEventListener('keydown', e => {
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', load);
-document.getElementById('refresh-btn').addEventListener('click', load);
+document.getElementById('refresh-btn').addEventListener('click', () => load({ bust: true }));
 document.getElementById('gen-btn').addEventListener('click', generateAI);
 
 // Coach selector — persists across sessions, shows "Coach: KARL" once chosen
