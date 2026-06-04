@@ -578,7 +578,12 @@ body[data-theme="pride"] .dash-week-nav{border:2px solid transparent;border-imag
 .fpc-banner-sub{font-family:var(--mono);font-size:10px;color:#6b7280}
 
 .fpc-section{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:22px 24px;margin-bottom:16px}
-.fpc-section-title{font-family:var(--mono);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.14em;color:var(--dim);margin-bottom:18px}
+.fpc-section-title{font-family:var(--mono);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.14em;color:var(--dim);margin-bottom:18px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;user-select:none}
+.fpc-section-title::after{content:'▾';font-size:11px;color:var(--dim);flex-shrink:0;margin-left:8px}
+.fpc-section.collapsed{padding-bottom:22px}
+.fpc-section.collapsed .fpc-section-title{margin-bottom:0}
+.fpc-section.collapsed .fpc-section-title::after{content:'▸'}
+.fpc-section.collapsed>*:not(.fpc-section-title){display:none!important}
 
 .fpc-scores{display:grid;grid-template-columns:repeat(6,1fr);gap:0;border-top:1px solid var(--border);margin:0 -24px}
 .fpc-score{text-align:center;padding:18px 8px;border-right:1px solid var(--border)}
@@ -4130,6 +4135,19 @@ function fpWeekReset() {
   _drawFP();
 }
 
+function initCollapsibleSections() {
+  document.querySelectorAll('#fp-body .fpc-section-title').forEach(title => {
+    const section = title.closest('.fpc-section');
+    if (!section) return;
+    // Start collapsed
+    section.classList.add('collapsed');
+    // Remove any existing listener by replacing node
+    const fresh = title.cloneNode(true);
+    title.replaceWith(fresh);
+    fresh.addEventListener('click', () => section.classList.toggle('collapsed'));
+  });
+}
+
 function _drawFP() {
   const id = _fpOrder[_fpIdx];
   const a  = _allAthletes.find(x => x.id === id) || _coaches.find(x => x.id === id);
@@ -4137,6 +4155,7 @@ function _drawFP() {
 
   document.getElementById('fp-body').innerHTML = buildFPCard(a, _fpWeekOffset);
   document.getElementById('fp-overlay').scrollTop = 0;
+  initCollapsibleSections();
   loadProgressPhotos(a, _fpWeekOffset);
   loadStravaData(a);
 
