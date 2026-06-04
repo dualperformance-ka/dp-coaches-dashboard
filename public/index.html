@@ -936,7 +936,12 @@ body[data-theme="pride"] .dash-week-nav{border:2px solid transparent;border-imag
 .strava-panel{min-height:80px}
 .strava-state{font-family:var(--mono);font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;padding:10px 0}
 .strava-acts{display:flex;flex-direction:column;gap:8px;margin-top:8px}
-.strava-act{display:grid;grid-template-columns:1fr auto;align-items:center;gap:12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px}
+.strava-act{background:var(--surface2);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.strava-act-summary{display:grid;grid-template-columns:1fr auto;align-items:center;gap:12px;padding:10px 12px;cursor:pointer;list-style:none;user-select:none}
+.strava-act-summary::-webkit-details-marker{display:none}
+.strava-act-summary:hover{background:var(--surface)}
+.strava-act-dist-inline{font-family:var(--cond);font-size:24px;font-weight:900;letter-spacing:-.01em;color:var(--run);line-height:1;text-align:right;white-space:nowrap}
+.strava-act-dist-inline span{font-size:10px;font-weight:600;color:var(--muted);display:block;text-align:right}
 .strava-act-left{display:flex;flex-direction:column;gap:3px}
 .strava-act-name{font-family:var(--cond);font-size:17px;font-weight:900;text-transform:uppercase;letter-spacing:.04em;line-height:1;color:var(--text)}
 .strava-act-date{font-family:var(--mono);font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;margin-top:2px}
@@ -955,8 +960,6 @@ body[data-theme="pride"] .dash-week-nav{border:2px solid transparent;border-imag
 .strava-splits th:first-child,.strava-splits td:first-child{text-align:left;color:var(--dim)}
 .strava-splits tr:last-child td{border-bottom:none}
 .strava-splits td strong{color:var(--text)}
-.strava-act-dist{font-family:var(--cond);font-size:28px;font-weight:900;letter-spacing:-.01em;color:var(--run);line-height:1;text-align:right}
-.strava-act-dist span{font-size:11px;font-weight:600;color:var(--muted);display:block;text-align:right;margin-top:1px}
 .strava-connect-btn{display:inline-flex;align-items:center;gap:7px;background:#fc4c02;color:#fff;font-family:var(--mono);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;padding:8px 16px;border-radius:7px;text-decoration:none;border:none;cursor:pointer;margin-top:10px}
 .strava-connect-btn:hover{background:#e04400}
 .strava-connect-note{font-family:var(--mono);font-size:9px;color:var(--dim);margin-top:8px;line-height:1.5}
@@ -4274,20 +4277,20 @@ async function loadStravaData(a) {
             }).join('')}</tbody>
           </table>` : '';
 
-      return `<div class="strava-act" style="display:block;padding:10px 12px">
-        <div style="display:grid;grid-template-columns:1fr auto;align-items:start;gap:12px">
-          <div class="strava-act-left">
-            <div class="strava-act-name">${esc(act.name)}</div>
-            <div class="strava-act-date">${fmtActDate(act.start_date)} · ${esc(act.type || 'Activity')}</div>
-            <div class="strava-act-chips">${chips}</div>
-            ${descHtml}
-            ${rpeHtml}
-          </div>
-          <div class="strava-act-dist">${dist}<span>km</span></div>
+      return `<details class="strava-act" style="display:block;padding:0">
+        <summary class="strava-act-summary">
+          <div class="strava-act-name">${esc(act.name)}</div>
+          <div class="strava-act-date">${fmtActDate(act.start_date)} · ${esc(act.type || 'Activity')}</div>
+          <div class="strava-act-dist-inline">${dist}<span>km</span></div>
+        </summary>
+        <div style="padding:0 12px 10px">
+          <div class="strava-act-chips" style="margin-top:6px">${chips}</div>
+          ${descHtml}
+          ${rpeHtml}
+          ${lapsHtml}
+          ${splitsHtml}
         </div>
-        ${lapsHtml}
-        ${splitsHtml}
-      </div>`;
+      </details>`;
     }).join('');
 
     target.outerHTML = `<div>${weeklyStrip}<div class="strava-acts">${cards}</div></div>`;
