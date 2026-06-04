@@ -567,6 +567,11 @@ body[data-theme="pride"] .dash-week-nav{border:2px solid transparent;border-imag
 .fpc-week-num{font-size:44px;font-weight:900;color:#fff;line-height:1;letter-spacing:-.01em}
 .fpc-week-lbl{font-family:var(--mono);font-size:9px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.14em;margin-top:4px}
 .fpc-flags{display:flex;gap:6px;flex-wrap:wrap;margin-top:16px}
+.fpc-stat-pills{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.fpc-stat-pill{font-family:var(--mono);font-size:10px;padding:4px 10px;border-radius:20px;background:rgba(255,255,255,.08);color:rgba(255,255,255,.6);border:1px solid rgba(255,255,255,.12)}
+.fpc-stat-pill.good{background:rgba(74,222,128,.12);color:#4ade80;border-color:rgba(74,222,128,.25)}
+.fpc-stat-pill.mid{background:rgba(251,191,36,.1);color:#fbbf24;border-color:rgba(251,191,36,.25)}
+.fpc-stat-pill.bad{background:rgba(248,113,113,.1);color:#f87171;border-color:rgba(248,113,113,.25)}
 
 .fpc-banner{border-radius:12px;padding:14px 18px;margin-bottom:18px;display:flex;align-items:flex-start;gap:12px}
 .fpc-banner.stale{background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.22)}
@@ -2062,6 +2067,42 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [
     const lastActivity = [_lastSess, _lastBody, _lastNutr].filter(Boolean).sort().pop() || null;
     const lastActivityMs = lastActivity ? new Date(lastActivity).getTime() : 0;
 
+    // ── Check-in streak (consecutive weeks with a submission) ──────────────
+    const _weeklies = (wh[a.id] || []).slice(); // already sorted desc by Week Ending
+    let checkinStreak = 0;
+    {
+      // Walk backwards through expected weeks from current and count consecutive hits
+      const _weekMs = 7 * 24 * 60 * 60 * 1000;
+      const _submittedEnds = new Set(_weeklies.map(w => w['Week Ending']).filter(Boolean));
+      // Start from the most recent expected week ending
+      let _cursor = new Date(expectedWeekEnd);
+      // If current week hasn't been submitted yet, don't penalise streak
+      if (!hasCurrentCheckin) _cursor = new Date(_cursor.getTime() - _weekMs);
+      for (let i = 0; i < 52; i++) {
+        const _key = _cursor.toISOString().slice(0, 10);
+        if (_submittedEnds.has(_key)) {
+          checkinStreak++;
+          _cursor = new Date(_cursor.getTime() - _weekMs);
+        } else {
+          break;
+        }
+      }
+    }
+
+    // ── 4-week rolling compliance (sessions completed vs planned) ──────────
+    const _compHistory = _weeklies.slice(0, 4).map(w => {
+      const rp = parseInt(w['Run Planned']) || 0;
+      const rc = parseInt(w['Run Completed']) || 0;
+      const lp = parseInt(w['Lift Planned']) || 0;
+      const lc = parseInt(w['Lift Completed']) || 0;
+      const total = rp + lp;
+      const done = rc + lc;
+      return total > 0 ? Math.round(Math.min(done, total) / total * 100) : null;
+    }).filter(v => v !== null);
+    const compliance4w = _compHistory.length
+      ? Math.round(_compHistory.reduce((s, v) => s + v, 0) / _compHistory.length)
+      : null;
+
     return {
       ...a, bAvg, nAvg, runS, strS,
       currRunS, currStrS, currRunKm,
@@ -2080,6 +2121,8 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [
       prs,
       trends,
       lastActivity, lastActivityMs,
+      checkinStreak,
+      compliance4w,
       isCoach: COACHES.has(a.id),
     };
   });
@@ -2774,10 +2817,13 @@ function buildCard(a, weekOffset = 0) {
         <div>
           <div class="aname">${esc(a.id)}</div>
           <div class="ameta ${isHistorical ? '' : a.isStale ? 'nocheckin' : ''}">${metaText}</div>
-          ${fps || actDotHtml ? `<div class="pcard-tags">${fps}${actDotHtml ? `<span style="display:inline-flex;align-items:center;gap:4px;margin-left:${fps?'2':'0'}px">${actDotHtml}</span>` : ''}</div>` : ''}
+          ${fps || actDotHtml ? `<div class="pcard-tags">${fps}${actDotHtml ? `<span style="display:inline-flex;align-items:center;gap:4px;margin-left:${fps?'2':'0'}px">${actDotHtml}</span>` : ''}${a.checkinStreak >= 2 ? `<span class="fp" style="background:rgba(251,191,36,.15);color:#fbbf24;border-color:rgba(251,191,36,.3)">🔥 ${a.checkinStreak}wk</span>` : ''}</div>` : (a.checkinStreak >= 2 ? `<div class="pcard-tags"><span class="fp" style="background:rgba(251,191,36,.15);color:#fbbf24;border-color:rgba(251,191,36,.3)">🔥 ${a.checkinStreak}wk</span></div>` : '')}
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">
-          <button class="fp-open-btn" onclick="showFP('${esc(a.id)}')">⤢ Full Page</button>
+          <div style="display:flex;gap:6px">
+            <button class="fp-open-btn" onclick="copyDM('${esc(a.id)}')" title="Copy DM to clipboard">💬 DM</button>
+            <button class="fp-open-btn" onclick="showFP('${esc(a.id)}')">⤢ Full Page</button>
+          </div>
           ${(isHistorical ? histCtx.selectedWeekNum : a.weekNum) !== null ? `<div class="week-badge"><div class="wk-num">${isHistorical ? histCtx.selectedWeekNum : a.weekNum}</div><div class="wk-lbl">${(isHistorical ? histCtx.selectedWeekNum : a.weekNum) === 0 ? 'Discovery' : 'Week'}</div></div>` : ''}
         </div>
       </div>
@@ -2990,6 +3036,10 @@ function buildFPCard(a, weekOffset = 0) {
       </div>` : ''}
     </div>
     ${a.flags.length ? `<div class="fpc-flags">${fps}</div>` : ''}
+    <div class="fpc-stat-pills">
+      ${a.checkinStreak > 0 ? `<div class="fpc-stat-pill ${a.checkinStreak >= 4 ? 'good' : a.checkinStreak >= 2 ? 'mid' : ''}">🔥 ${a.checkinStreak}wk streak</div>` : `<div class="fpc-stat-pill bad">No streak</div>`}
+      ${a.compliance4w !== null ? `<div class="fpc-stat-pill ${a.compliance4w >= 85 ? 'good' : a.compliance4w >= 65 ? 'mid' : 'bad'}">📊 ${a.compliance4w}% 4w compliance</div>` : ''}
+    </div>
   </div>`;
 
   // Banner
@@ -3526,9 +3576,29 @@ function buildFPCard(a, weekOffset = 0) {
     }
   }
 
+  const maxWeek = a.weekNum || 12;
+  const weekOptions = Array.from({ length: maxWeek + 1 }, (_, i) => i)
+    .map(i => `<option value="${i}" ${i === (ctx.selectedWeekNum || 0) ? 'selected' : ''}>Week ${i === 0 ? '0 (Discovery)' : i}</option>`)
+    .reverse().join('');
+
   const progressPhotosHtml = `<div class="fpc-section progress-photo-panel">
-    <div class="fpc-section-title">Progress Photos — ${ctx.weekLabel || 'Selected Week'}</div>
-    <div class="progress-photo-state" data-progress-photos="${esc(a.id)}">Loading progress photos…</div>
+    <div class="fpc-section-title">Progress Photos</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div>
+        <div style="font-family:var(--mono);font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px">Primary week</div>
+        <div class="progress-photo-state" data-progress-photos="${esc(a.id)}">Loading…</div>
+      </div>
+      <div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+          <span style="font-family:var(--mono);font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.1em">Compare</span>
+          <select id="photo-compare-select-${esc(a.id)}" style="font-family:var(--mono);font-size:9px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:3px 6px" onchange="loadComparePhoto('${esc(a.id)}', this.value)">
+            <option value="">— pick a week —</option>
+            ${weekOptions}
+          </select>
+        </div>
+        <div id="photo-compare-${esc(a.id)}" style="color:var(--dim);font-family:var(--mono);font-size:11px">Select a week to compare</div>
+      </div>
+    </div>
   </div>`;
 
   const stravaHtml = `<div class="fpc-section strava-panel">
@@ -4219,7 +4289,7 @@ async function prefetchStravaKm(athletes) {
         if (!res.ok) return;
         const data = await res.json();
         if (data.connected && data.stats?.weeklyKm != null) {
-          applyStravaKm(a.id, data.stats.weeklyKm);
+          applyStravaKm(a.id, data.stats.weeklyKm, data.stats.lastWeekKm ?? null);
         }
       } catch (_) { /* silent */ }
     }));
@@ -4229,13 +4299,24 @@ async function prefetchStravaKm(athletes) {
 // ── Strava km cache + live updater ───────────────────────────────────────────
 const _stravaKmCache = {}; // athleteId → weeklyKm (number)
 
-function applyStravaKm(athleteId, weeklyKm) {
-  _stravaKmCache[athleteId] = weeklyKm;
+function applyStravaKm(athleteId, weeklyKm, lastWeekKm) {
+  _stravaKmCache[athleteId] = { weeklyKm, lastWeekKm };
+
+  // Load change indicator
+  let loadHtml = '';
+  if (lastWeekKm != null && lastWeekKm > 0) {
+    const pctChange = Math.round((weeklyKm - lastWeekKm) / lastWeekKm * 100);
+    const absChange = Math.abs(pctChange);
+    const sign = pctChange >= 0 ? '+' : '';
+    const col = pctChange > 20 ? '#f87171' : pctChange > 10 ? '#fbbf24' : pctChange < -15 ? '#60a5fa' : '#4ade80';
+    const icon = pctChange > 20 ? '⚠' : pctChange > 10 ? '↑' : pctChange < -15 ? '↓' : '↑';
+    loadHtml = ` <span style="font-size:10px;color:${col};font-family:var(--mono)">${icon}${sign}${pctChange}% vs last wk</span>`;
+  }
 
   // Full-page card training stat
   const fpEl = document.querySelector(`[data-fp-km="${athleteId}"]`);
   if (fpEl) {
-    fpEl.innerHTML = `<strong>${weeklyKm} km</strong> <span style="font-size:10px;color:var(--run)">strava</span> this week`;
+    fpEl.innerHTML = `<strong>${weeklyKm} km</strong> <span style="font-size:10px;color:var(--run)">strava</span>${loadHtml} this week`;
   }
 
   // Squad card km bar
@@ -4272,11 +4353,18 @@ async function loadStravaData(a) {
     const s = data.stats || {};
 
     // Push Strava km into training section + squad card bar
-    if (s.weeklyKm != null) applyStravaKm(a.id, s.weeklyKm);
+    if (s.weeklyKm != null) applyStravaKm(a.id, s.weeklyKm, s.lastWeekKm ?? null);
 
+    const _loadChange = (s.lastWeekKm != null && s.lastWeekKm > 0)
+      ? (() => {
+          const pct = Math.round((s.weeklyKm - s.lastWeekKm) / s.lastWeekKm * 100);
+          const col = pct > 20 ? '#f87171' : pct > 10 ? '#fbbf24' : '#4ade80';
+          return `<span style="font-family:var(--mono);font-size:10px;color:${col}">${pct >= 0 ? '+' : ''}${pct}%</span>`;
+        })() : '';
     const weeklyStrip = s.weeklyKm != null ? `
       <div class="strava-weekly-strip">
         <div class="strava-wstat"><span class="strava-wval">${s.weeklyKm}</span><span class="strava-wlbl">km this week</span></div>
+        <div class="strava-wstat"><span class="strava-wval">${s.lastWeekKm ?? '—'}</span><span class="strava-wlbl">km last week ${_loadChange}</span></div>
         <div class="strava-wstat"><span class="strava-wval">${s.weeklyRuns}</span><span class="strava-wlbl">runs</span></div>
         <div class="strava-wstat"><span class="strava-wval">${s.daysSinceLastRun != null ? s.daysSinceLastRun + 'd' : '—'}</span><span class="strava-wlbl">since last run</span></div>
       </div>` : '';
@@ -4434,6 +4522,33 @@ async function loadProgressPhotos(a, weekOffset = 0) {
     </div>`;
   } catch (e) {
     target.textContent = `Progress photos unavailable: ${e.message}`;
+  }
+}
+
+async function loadComparePhoto(athleteId, weekNum) {
+  const target = document.getElementById(`photo-compare-${athleteId}`);
+  if (!target || weekNum === '') return;
+  target.innerHTML = `<span style="font-family:var(--mono);font-size:11px;color:var(--dim)">Loading…</span>`;
+  try {
+    const url = `/api/progress-photos?athlete=${encodeURIComponent(athleteId)}&week=${encodeURIComponent(weekNum)}`;
+    const res = await fetch(url);
+    const data = await res.json();
+    const photos = data.photos || [];
+    if (!photos.length) {
+      target.innerHTML = `<span style="font-family:var(--mono);font-size:11px;color:var(--dim)">No photos for week ${weekNum}</span>`;
+      return;
+    }
+    target.innerHTML = `<div class="progress-photo-grid">
+      ${photos.map(p => `<a class="progress-photo" href="${esc(p.url)}" target="_blank" rel="noopener">
+        <img src="${esc(p.thumbUrl || p.url)}" alt="Week ${weekNum}" loading="lazy">
+        <div class="progress-photo-meta">
+          <div class="progress-photo-type">${esc(p.type)}</div>
+          <div class="progress-photo-date">Wk ${weekNum}</div>
+        </div>
+      </a>`).join('')}
+    </div>`;
+  } catch (e) {
+    target.innerHTML = `<span style="font-family:var(--mono);font-size:11px;color:var(--alert)">${e.message}</span>`;
   }
 }
 
@@ -4651,6 +4766,58 @@ document.addEventListener('keydown', e => {
   if (e.key === 'ArrowLeft'  && _fpIdx > 0)                  fpNav(-1);
   if (e.key === 'ArrowRight' && _fpIdx < _fpOrder.length - 1) fpNav(1);
 });
+
+// ── Quick DM generator ───────────────────────────────────────────────────────
+function copyDM(athleteId) {
+  const a = _allAthletes.find(x => x.id === athleteId);
+  if (!a) return;
+
+  const w = a.weekly;
+  const name = a.id.charAt(0).toUpperCase() + a.id.slice(1).toLowerCase();
+  const lines = [];
+
+  // Opener based on state
+  if (a.isStale) {
+    lines.push(`Hey ${name}, haven't seen your check-in this week — everything okay?`);
+  } else if (w) {
+    const rf = w['Run Feel /10'];
+    const runWins = w['Runs Wins'];
+    if (rf >= 8) lines.push(`Hey ${name}, great week — loved seeing that ${rf}/10 run feel! 🔥`);
+    else if (rf && rf <= 5) lines.push(`Hey ${name}, checking in — noticed a tough run feel this week (${rf}/10). How are you tracking?`);
+    else lines.push(`Hey ${name}, checking in on how the week went!`);
+    if (runWins && runWins !== 'n/a') lines.push(`Loved hearing: "${runWins}"`);
+  } else {
+    lines.push(`Hey ${name}, quick check-in from me!`);
+  }
+
+  // Flag anything actionable
+  const niggles = ((w?.['Run Niggles'] || '') + ' ' + (w?.['Lifts Niggles'] || '')).trim();
+  if (niggles && niggles.toLowerCase() !== 'n/a' && niggles.toLowerCase() !== 'none') {
+    lines.push(`Want to chat about the niggle you mentioned — how's that feeling now?`);
+  }
+
+  const stravaData = _stravaKmCache[athleteId];
+  if (stravaData?.weeklyKm != null && stravaData?.lastWeekKm != null && stravaData.lastWeekKm > 0) {
+    const pct = Math.round((stravaData.weeklyKm - stravaData.lastWeekKm) / stravaData.lastWeekKm * 100);
+    if (pct > 20) lines.push(`Noticed your km jumped ${pct}% this week — make sure you're managing recovery well 🙏`);
+  }
+
+  // Compliance nudge
+  if (a.compliance !== null && a.compliance < 70) {
+    lines.push(`Let's talk about the sessions — anything blocking you from hitting the plan?`);
+  }
+
+  lines.push(`Let me know how you're feeling! — Karl`);
+
+  const msg = lines.join('\n\n');
+  navigator.clipboard.writeText(msg).then(() => {
+    // Brief visual feedback on the button
+    const btn = document.querySelector(`button[onclick="copyDM('${athleteId}')"]`);
+    if (btn) { btn.textContent = '✓ Copied'; setTimeout(() => { btn.textContent = '💬 DM'; }, 2000); }
+  }).catch(() => {
+    prompt('Copy this DM:', msg);
+  });
+}
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', load);
