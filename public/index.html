@@ -578,10 +578,12 @@ body[data-theme="pride"] .dash-week-nav{border:2px solid transparent;border-imag
 .fpc-banner-sub{font-family:var(--mono);font-size:10px;color:#6b7280}
 
 .fpc-section{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:22px 24px;margin-bottom:16px}
-.fpc-section-title{font-family:var(--mono);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.14em;color:var(--dim);margin-bottom:18px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;user-select:none}
-.fpc-section-title::after{content:'▾';font-size:11px;color:var(--dim);flex-shrink:0;margin-left:8px}
+.fpc-section-title{font-family:var(--cond);font-size:15px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--text);margin-bottom:18px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;user-select:none;border-bottom:1px solid var(--border);padding-bottom:12px}
+.fpc-section-title::after{content:'▾';font-size:12px;color:var(--dim);flex-shrink:0;margin-left:8px;font-family:sans-serif}
+.fpc-section.no-collapse .fpc-section-title{cursor:default;pointer-events:none;border-bottom:none;padding-bottom:0}
+.fpc-section.no-collapse .fpc-section-title::after{display:none}
 .fpc-section.collapsed{padding-bottom:22px}
-.fpc-section.collapsed .fpc-section-title{margin-bottom:0}
+.fpc-section.collapsed .fpc-section-title{margin-bottom:0;border-bottom:none;padding-bottom:0}
 .fpc-section.collapsed .fpc-section-title::after{content:'▸'}
 .fpc-section.collapsed>*:not(.fpc-section-title){display:none!important}
 
@@ -4136,11 +4138,38 @@ function fpWeekReset() {
 }
 
 function initCollapsibleSections() {
+  // Sections that start open (matched by title text prefix)
+  const OPEN_BY_DEFAULT = [
+    'weekly check-in scores',
+    'action required',
+    'watch list',
+    '⚠',
+    'training',
+  ];
+  // Sections that can't be collapsed at all
+  const NO_COLLAPSE = [
+    'action required',
+    'watch list',
+    '⚠',
+  ];
+
   document.querySelectorAll('#fp-body .fpc-section-title').forEach(title => {
     const section = title.closest('.fpc-section');
     if (!section) return;
-    // Start collapsed
-    section.classList.add('collapsed');
+
+    const titleText = title.textContent.trim().toLowerCase();
+    const isNoCollapse = NO_COLLAPSE.some(k => titleText.includes(k));
+    const isOpenByDefault = OPEN_BY_DEFAULT.some(k => titleText.includes(k));
+
+    if (isNoCollapse) {
+      section.classList.add('no-collapse');
+      return; // no listener needed
+    }
+
+    if (!isOpenByDefault) {
+      section.classList.add('collapsed');
+    }
+
     // Remove any existing listener by replacing node
     const fresh = title.cloneNode(true);
     title.replaceWith(fresh);
