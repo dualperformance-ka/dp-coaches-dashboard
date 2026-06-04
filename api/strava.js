@@ -172,7 +172,18 @@ module.exports = async function handler(req, res) {
     const enriched = activities.slice(0, 10).map(a => {
       const d = detailMap[a.id];
       if (!d) return a;
-      return { ...a, description: d.description || null, splits_metric: d.splits_metric || [] };
+      return {
+        ...a,
+        description:        d.description        || null,
+        splits_metric:      d.splits_metric       || [],
+        laps:               d.laps                || [],
+        perceived_exertion: d.perceived_exertion  ?? null,
+        average_cadence:    d.average_cadence     ?? null,
+        max_heartrate:      d.max_heartrate       ?? null,
+        calories:           d.calories            ?? null,
+        gear:               d.gear                || null,
+        workout_type:       d.workout_type        ?? null,
+      };
     });
 
     res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=60');
