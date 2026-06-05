@@ -779,6 +779,8 @@ body[data-theme="pride"] .dash-week-nav{border:2px solid transparent;border-imag
 .po-input{width:100%;background:#111;border:1px solid rgba(255,255,255,.15);border-radius:6px;color:#fff;font-family:var(--mono);font-size:12px;padding:7px 10px;box-sizing:border-box;outline:none;transition:border-color .15s}
 .po-input:focus{border-color:rgba(245,158,11,.6)}
 .po-input::placeholder{color:rgba(255,255,255,.2)}
+.po-field-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.po-modal-body{max-height:70vh;overflow-y:auto}
 .po-modal-foot{padding:0 16px 16px;display:flex;gap:8px}
 .po-btn{flex:1;padding:8px;border-radius:6px;font-family:var(--mono);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;cursor:pointer;border:none;transition:all .15s}
 .po-btn.save{background:#f59e0b;color:#000}.po-btn.save:hover{background:#fbbf24}
@@ -1050,16 +1052,44 @@ body[data-theme="light"] .strava-chip{background:#f4f3f0}
     </div>
     <div class="po-modal-body">
       <div class="po-field">
-        <div class="po-label">Workout / Session Name</div>
-        <input class="po-input" id="po-name" type="text" placeholder="e.g. 5×1km Intervals">
+        <div class="po-label">Session Name</div>
+        <input class="po-input" id="po-name" type="text" placeholder="e.g. 5×1km Threshold">
+      </div>
+      <div class="po-field-row">
+        <div class="po-field">
+          <div class="po-label">Total Distance (km)</div>
+          <input class="po-input" id="po-dist" type="number" step="0.1" min="0" placeholder="e.g. 10">
+        </div>
+        <div class="po-field">
+          <div class="po-label">Target Pace</div>
+          <input class="po-input" id="po-pace" type="text" placeholder="e.g. 5:30 /km">
+        </div>
       </div>
       <div class="po-field">
-        <div class="po-label">Distance (km)</div>
-        <input class="po-input" id="po-dist" type="number" step="0.1" min="0" placeholder="e.g. 10">
+        <div class="po-label">Warm Up</div>
+        <input class="po-input" id="po-warmup" type="text" placeholder="e.g. 2km easy jog">
+      </div>
+      <div class="po-field-row">
+        <div class="po-field">
+          <div class="po-label">Intervals / Sets</div>
+          <input class="po-input" id="po-intervals" type="text" placeholder="e.g. 5×1km">
+        </div>
+        <div class="po-field">
+          <div class="po-label">Working Pace</div>
+          <input class="po-input" id="po-workpace" type="text" placeholder="e.g. 4:20 /km">
+        </div>
       </div>
       <div class="po-field">
-        <div class="po-label">Target Pace / Speed</div>
-        <input class="po-input" id="po-pace" type="text" placeholder="e.g. 5:30 /km or 12 km/h">
+        <div class="po-label">Rest Between Sets</div>
+        <input class="po-input" id="po-rest" type="text" placeholder="e.g. 90s jog recovery">
+      </div>
+      <div class="po-field">
+        <div class="po-label">Cool Down</div>
+        <input class="po-input" id="po-cooldown" type="text" placeholder="e.g. 2km easy">
+      </div>
+      <div class="po-field">
+        <div class="po-label">Notes for Athlete</div>
+        <textarea class="po-input" id="po-notes" rows="2" placeholder="Any cues, context, or motivation…" style="resize:vertical;line-height:1.5"></textarea>
       </div>
     </div>
     <div class="po-modal-foot">
@@ -1251,6 +1281,7 @@ body[data-theme="light"] .strava-chip{background:#f4f3f0}
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>
 // ── Config ───────────────────────────────────────────────────────────────────
 const DB = {
@@ -1270,15 +1301,62 @@ const RUN_SESSION_TYPES = new Set([
   'Optional' // often run-optional
 ]);
 
-// ── Plan overrides (localStorage) ────────────────────────────────────────────
-function getPlanOverrides() {
-  try { return JSON.parse(localStorage.getItem('dp_plan_overrides') || '{}'); } catch { return {}; }
+// ── Supabase (overrides) ──────────────────────────────────────────────────────
+const SB_URL  = 'https://rugdupplsswxmpoudhpv.supabase.co';
+const SB_KEY  = 'sb_publishable_KJU_GYqUOwthiLo5WQjfog_MLaVKw5R';
+let _sbClient = null;
+function getSB() {
+  if (!_sbClient) try { _sbClient = window.supabase.createClient(SB_URL, SB_KEY); } catch(e) {}
+  return _sbClient;
 }
-function getPlanOverride(id) { return getPlanOverrides()[id] || null; }
-function setPlanOverride(id, data) {
-  const all = getPlanOverrides();
-  if (data === null) delete all[id]; else all[id] = { ...all[id], ...data };
-  localStorage.setItem('dp_plan_overrides', JSON.stringify(all));
+
+// ── Plan overrides (Supabase-backed, local cache) ─────────────────────────────
+let _ovCache = {};  // notion_page_id → { name, dist, pace }
+
+async function loadAllOverrides() {
+  try {
+    const sb = getSB(); if (!sb) return;
+    const { data } = await sb.from('session_overrides').select('*');
+    _ovCache = {};
+    (data || []).forEach(r => {
+      _ovCache[r.notion_page_id] = {
+        name:      r.name       || '',
+        dist:      r.distance_km != null ? String(r.distance_km) : '',
+        pace:      r.target_pace  || '',
+        warmup:    r.warm_up      || '',
+        intervals: r.intervals    || '',
+        workpace:  r.working_pace || '',
+        rest:      r.rest         || '',
+        cooldown:  r.cool_down    || '',
+        notes:     r.notes        || '',
+      };
+    });
+  } catch(e) { console.warn('Override load failed', e); }
+}
+function getPlanOverride(id) { return _ovCache[id] || null; }
+async function setPlanOverride(id, data) {
+  if (data === null) {
+    delete _ovCache[id];
+    try { const sb = getSB(); if (sb) await sb.from('session_overrides').delete().eq('notion_page_id', id); } catch(e) {}
+  } else {
+    _ovCache[id] = { ..._ovCache[id], ...data };
+    try {
+      const sb = getSB(); if (!sb) return;
+      await sb.from('session_overrides').upsert({
+        notion_page_id: id,
+        name:         data.name      || null,
+        distance_km:  data.dist      ? parseFloat(data.dist) || null : null,
+        target_pace:  data.pace      || null,
+        warm_up:      data.warmup    || null,
+        intervals:    data.intervals || null,
+        working_pace: data.workpace  || null,
+        rest:         data.rest      || null,
+        cool_down:    data.cooldown  || null,
+        notes:        data.notes     || null,
+        updated_at:   new Date().toISOString(),
+      }, { onConflict: 'notion_page_id' });
+    } catch(e) { console.warn('Override save failed', e); }
+  }
 }
 
 // ── Plan override modal state ─────────────────────────────────────────────────
@@ -1293,9 +1371,15 @@ function openPlanOverride(el) {
   _poCurrentId = id;
   _poOrigName  = orig;
   const ov = getPlanOverride(id) || {};
-  document.getElementById('po-name').value = ov.name  !== undefined ? ov.name  : orig;
-  document.getElementById('po-dist').value = ov.dist  !== undefined ? ov.dist  : '';
-  document.getElementById('po-pace').value = ov.pace  !== undefined ? ov.pace  : '';
+  document.getElementById('po-name').value     = ov.name     !== undefined ? ov.name     : orig;
+  document.getElementById('po-dist').value     = ov.dist     !== undefined ? ov.dist     : '';
+  document.getElementById('po-pace').value     = ov.pace     !== undefined ? ov.pace     : '';
+  document.getElementById('po-warmup').value   = ov.warmup   !== undefined ? ov.warmup   : '';
+  document.getElementById('po-intervals').value= ov.intervals!== undefined ? ov.intervals: '';
+  document.getElementById('po-workpace').value = ov.workpace !== undefined ? ov.workpace : '';
+  document.getElementById('po-rest').value     = ov.rest     !== undefined ? ov.rest     : '';
+  document.getElementById('po-cooldown').value = ov.cooldown !== undefined ? ov.cooldown : '';
+  document.getElementById('po-notes').value    = ov.notes    !== undefined ? ov.notes    : '';
   document.getElementById('po-sub').textContent = date ? fmtDate(date.split('T')[0]) + ' · ' + orig : orig;
   document.getElementById('po-overlay').classList.remove('hidden');
   setTimeout(() => document.getElementById('po-name').focus(), 60);
@@ -1304,22 +1388,25 @@ function closePlanOverride() {
   document.getElementById('po-overlay').classList.add('hidden');
   _poCurrentId = null;
 }
-function savePlanOverride() {
+async function savePlanOverride() {
   if (!_poCurrentId) return;
-  const name = document.getElementById('po-name').value.trim();
-  const dist = document.getElementById('po-dist').value.trim();
-  const pace = document.getElementById('po-pace').value.trim();
-  setPlanOverride(_poCurrentId, {
-    name: name || _poOrigName,
-    dist: dist || '',
-    pace: pace || '',
+  await setPlanOverride(_poCurrentId, {
+    name:      document.getElementById('po-name').value.trim()      || _poOrigName,
+    dist:      document.getElementById('po-dist').value.trim()      || '',
+    pace:      document.getElementById('po-pace').value.trim()      || '',
+    warmup:    document.getElementById('po-warmup').value.trim()    || '',
+    intervals: document.getElementById('po-intervals').value.trim() || '',
+    workpace:  document.getElementById('po-workpace').value.trim()  || '',
+    rest:      document.getElementById('po-rest').value.trim()      || '',
+    cooldown:  document.getElementById('po-cooldown').value.trim()  || '',
+    notes:     document.getElementById('po-notes').value.trim()     || '',
   });
   closePlanOverride();
   rerenderPlanRows();
 }
-function clearPlanOverride() {
+async function clearPlanOverride() {
   if (!_poCurrentId) return;
-  setPlanOverride(_poCurrentId, null);
+  await setPlanOverride(_poCurrentId, null);
   closePlanOverride();
   rerenderPlanRows();
 }
@@ -4256,6 +4343,7 @@ async function load({ bust = false } = {}) {
       fetchDB(DB.weekly, bust), fetchDB(DB.sessions, bust), fetchDB(DB.body, bust),
       fetchDB(DB.nutrition, bust), fetchDB(DB.athletes, bust), fetchDB(DB.targets, bust),
       fetchDB(DB.planning, bust), fetchDB(DB.applications, bust),
+      loadAllOverrides(),
     ]);
 
     const { athletes, coaches, syncAudit } = buildAll(weekly, sessions, body, nutrition, athleteDb, targets, planning, applications);
