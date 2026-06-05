@@ -982,6 +982,7 @@ body[data-theme="pride"] .dash-week-nav{border:2px solid transparent;border-imag
 .strava-wlbl{font-family:var(--mono);font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.07em}
 body[data-theme="light"] .strava-act{background:#fff}
 body[data-theme="light"] .strava-chip{background:#f4f3f0}
+.strava-linked-badge{background:rgba(252,76,2,.15);color:#fc4c02;border-color:rgba(252,76,2,.35)}
 
 /* ── Daily input ledger ── */
 .daily-ledger{display:flex;flex-direction:column;gap:8px}
@@ -2817,7 +2818,7 @@ function buildCard(a, weekOffset = 0) {
         <div>
           <div class="aname">${esc(a.id)}</div>
           <div class="ameta ${isHistorical ? '' : a.isStale ? 'nocheckin' : ''}">${metaText}</div>
-          ${fps || actDotHtml ? `<div class="pcard-tags">${fps}${actDotHtml ? `<span style="display:inline-flex;align-items:center;gap:4px;margin-left:${fps?'2':'0'}px">${actDotHtml}</span>` : ''}${a.checkinStreak >= 2 ? `<span class="fp" style="background:rgba(251,191,36,.15);color:#fbbf24;border-color:rgba(251,191,36,.3)">🔥 ${a.checkinStreak}wk</span>` : ''}</div>` : (a.checkinStreak >= 2 ? `<div class="pcard-tags"><span class="fp" style="background:rgba(251,191,36,.15);color:#fbbf24;border-color:rgba(251,191,36,.3)">🔥 ${a.checkinStreak}wk</span></div>` : '')}
+          <div class="pcard-tags">${fps}${actDotHtml ? `<span style="display:inline-flex;align-items:center;gap:4px;margin-left:${fps?'2':'0'}px">${actDotHtml}</span>` : ''}${a.checkinStreak >= 2 ? `<span class="fp" style="background:rgba(251,191,36,.15);color:#fbbf24;border-color:rgba(251,191,36,.3)">🔥 ${a.checkinStreak}wk</span>` : ''}<span data-strava-tag="${esc(a.id)}"></span></div>
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">
           <div style="display:flex;gap:6px">
@@ -4288,8 +4289,12 @@ async function prefetchStravaKm(athletes) {
         const res = await fetch(`/api/strava?athlete=${encodeURIComponent(a.id)}`);
         if (!res.ok) return;
         const data = await res.json();
-        if (data.connected && data.stats?.weeklyKm != null) {
-          applyStravaKm(a.id, data.stats.weeklyKm, data.stats.lastWeekKm ?? null);
+        if (data.connected) {
+          const stravaTag = document.querySelector(`[data-strava-tag="${a.id}"]`);
+          if (stravaTag) stravaTag.innerHTML = `<span class="fp strava-linked-badge">🟠 Strava</span>`;
+          if (data.stats?.weeklyKm != null) {
+            applyStravaKm(a.id, data.stats.weeklyKm, data.stats.lastWeekKm ?? null);
+          }
         }
       } catch (_) { /* silent */ }
     }));
