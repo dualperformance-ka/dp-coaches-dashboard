@@ -2797,7 +2797,7 @@ function buildCard(a, weekOffset = 0) {
       const badge = sessionBadgeHTML(r['Session Type'] || r['SessionType'], r['Status '] || r['Status'], r.Session);
       const origName = r.Session || r['Session Type'] || 'Session';
       const sType = r['Session Type'] || r['SessionType'] || '';
-      const rowId = r.id || '';
+      const rowId = r._id || r.id || '';
       const isRunRow = rowId && RUN_SESSION_TYPES.has(sType);
       const ov = isRunRow ? getPlanOverride(rowId) : null;
       const dispName = ov?.name || origName;
@@ -4103,7 +4103,7 @@ function renderSchedule(athletes) {
       const badge = sessionBadgeHTML(r['Session Type'], r['Status ']||r['Status'], r.Session);
       const origName = r.Session || r['Session Type'] || 'Session';
       const sType = r['Session Type'] || '';
-      const rowId = r.id || '';
+      const rowId = r._id || r.id || '';
       const isRunRow = rowId && RUN_SESSION_TYPES.has(sType);
       const ov = isRunRow ? getPlanOverride(rowId) : null;
       const dispName = ov?.name || origName;
