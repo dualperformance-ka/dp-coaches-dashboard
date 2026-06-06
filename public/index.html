@@ -2809,18 +2809,72 @@ function buildTableExpandPanel(a) {
     ? `<div class="texp-section"><div class="texp-label">Body Stats (7 day avg)</div><div class="texp-stats" style="grid-template-columns:repeat(${bStats.length},1fr)">${bStats.join('')}</div></div>`
     : '';
 
-  // Niggles note
+  // Training sessions planned vs completed
+  let trainingSplitHtml = '';
+  if (hW) {
+    const rp = parseInt(w['Run Planned']) || 0;
+    const rc = parseInt(w['Run Completed']) || 0;
+    const lp = parseInt(w['Lift Planned']) || 0;
+    const lc = parseInt(w['Lift Completed']) || 0;
+    if (rp > 0 || lp > 0) {
+      const rPct = rp > 0 ? Math.min(100, Math.round(rc / rp * 100)) : 0;
+      const lPct = lp > 0 ? Math.min(100, Math.round(lc / lp * 100)) : 0;
+      const rCls = rPct >= 100 ? 'good' : rPct >= 67 ? 'mid' : 'bad';
+      const lCls = lPct >= 100 ? 'good' : lPct >= 67 ? 'mid' : 'bad';
+      const rf = parseFloat(w['Run Feel /10']);
+      const lf = parseFloat(w['Lift Feel /10']);
+      const feelParts = [];
+      if (!isNaN(rf)) feelParts.push(`<span style="color:var(--run)">Run feel ${rf}/10</span>`);
+      if (!isNaN(lf)) feelParts.push(`<span style="color:var(--str)">Lift feel ${lf}/10</span>`);
+      trainingSplitHtml = `<div class="texp-section"><div class="texp-label">Training Split</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px">
+          <div>
+            <div style="font-family:var(--mono);font-size:9px;color:var(--run);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">Running</div>
+            <div style="font-family:var(--mono);font-size:13px;font-weight:700;color:var(--text)">${rc}<span style="color:var(--dim);font-weight:400">/${rp}</span></div>
+            <div style="height:3px;background:rgba(255,255,255,.08);border-radius:2px;margin-top:3px"><div style="height:100%;width:${rPct}%;border-radius:2px;background:var(--run)"></div></div>
+          </div>
+          <div>
+            <div style="font-family:var(--mono);font-size:9px;color:var(--str);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">Lifting</div>
+            <div style="font-family:var(--mono);font-size:13px;font-weight:700;color:var(--text)">${lc}<span style="color:var(--dim);font-weight:400">/${lp}</span></div>
+            <div style="height:3px;background:rgba(255,255,255,.08);border-radius:2px;margin-top:3px"><div style="height:100%;width:${lPct}%;border-radius:2px;background:var(--str)"></div></div>
+          </div>
+        </div>
+        ${feelParts.length ? `<div style="font-family:var(--mono);font-size:10px;margin-top:6px;display:flex;gap:12px">${feelParts.join('')}</div>` : ''}
+      </div>`;
+    }
+  }
+
+  // Niggles
   const rNig = w?.['Run Niggles'] || '';
   const lNig = w?.['Lifts Niggles'] || '';
   const nigText = [rNig, lNig].filter(isBad).join(' · ');
-  const nigHtml = nigText ? `<div class="texp-section"><div class="texp-label">Niggles</div><div style="font-family:var(--mono);font-size:10px;color:var(--alert);line-height:1.4">${esc(nigText)}</div></div>` : '';
+  const nigHtml = nigText ? `<div class="texp-section"><div class="texp-label">Niggles</div><div style="font-family:var(--mono);font-size:10px;color:var(--alert);line-height:1.5">${esc(nigText)}</div></div>` : '';
+
+  // Wins / quote
+  const winTexts = [w?.['Runs Wins'], w?.['Lift Wins']].filter(isBad);
+  const testimonial = isBad(w?.['Testimonial']) ? w['Testimonial'] : '';
+  const winsHtml = (winTexts.length || testimonial) ? `<div class="texp-section"><div class="texp-label">Wins</div>
+    ${winTexts.map(t => `<div style="font-family:var(--mono);font-size:10px;color:var(--ok);margin-bottom:3px">✓ ${esc(t)}</div>`).join('')}
+    ${testimonial ? `<div style="font-family:var(--sans);font-size:10px;font-style:italic;color:var(--muted);margin-top:4px;line-height:1.4">"${esc(testimonial)}"</div>` : ''}
+  </div>` : '';
+
+  // Notes / upcoming
+  const notesText = isBad(w?.['Notes']) ? w['Notes'] : '';
+  const upcomingText = isBad(w?.['Upcoming Impact']) ? w['Upcoming Impact'] : '';
+  const notesHtml = (notesText || upcomingText) ? `<div class="texp-section"><div class="texp-label">Notes</div>
+    ${notesText ? `<div style="font-family:var(--sans);font-size:10px;color:var(--muted);line-height:1.4;margin-bottom:4px">${esc(notesText)}</div>` : ''}
+    ${upcomingText ? `<div style="font-family:var(--mono);font-size:9px;color:var(--warn);line-height:1.4">⚑ ${esc(upcomingText)}</div>` : ''}
+  </div>` : '';
 
   const leftPanel = `<div class="texp-left">
     ${ribbonHtml}
     ${recovBar || kmBar ? `<div class="texp-section"><div class="texp-label">Performance</div>${recovBar}${kmBar}</div>` : ''}
     ${metricsGrid}
+    ${trainingSplitHtml}
     ${bodyStatsHtml}
     ${nigHtml}
+    ${winsHtml}
+    ${notesHtml}
   </div>`;
 
   // ── Right panel: WIP counts + plan rows
@@ -2859,42 +2913,49 @@ function buildTableExpandPanel(a) {
     </div>`;
   }
 
-  // Plan rows
+  // Plan rows — with day name + run override support
+  const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  function fmtPlanDate(raw) {
+    if (!raw) return '—';
+    const iso = raw.split('T')[0];
+    const dt = new Date(iso + 'T12:00:00');
+    const day = DAYS[dt.getDay()] || '';
+    return `${day} ${fmtDate(iso)}`;
+  }
+
   const activePlan = isFuture ? (futCtx?.plan || []) : (a.thisWeekPlan || []);
   let planRowsHtml = '';
   if (activePlan.length) {
     planRowsHtml = activePlan.map(r => {
       const d = r['date:Planned Date:start'] || r['Planned Date'] || '';
-      const dateStr = d ? fmtDate(d.split('T')[0]) : '—';
+      const dateStr = fmtPlanDate(d);
       const status = (r['Status '] || r['Status'] || 'planned').trim().toLowerCase();
       const icon = status === 'completed' ? '<span style="color:var(--ok)">✓</span>' : status === 'missed' ? '<span style="color:var(--alert)">✗</span>' : '<span style="color:var(--dim)">→</span>';
       const badge = sessionBadgeHTML(r['Session Type'] || r['SessionType'], r['Status '] || r['Status'], r.Session);
-      const name = r.Session || r['Session Type'] || 'Session';
-      return `<div class="texp-plan-row">${icon}<span class="texp-plan-date">${dateStr}</span>${badge}<span class="texp-plan-name">${esc(name)}</span></div>`;
+      const origName = r.Session || r['Session Type'] || 'Session';
+      const sType = r['Session Type'] || r['SessionType'] || '';
+      const rowId = r._id || r.id || '';
+      const isRunRow = rowId && RUN_SESSION_TYPES.has(sType);
+      const ov = isRunRow ? getPlanOverride(rowId) : null;
+      const dispName = ov?.name || origName;
+      const distChip = ov?.dist ? `<span class="po-chip dist-chip overridden">${esc(ov.dist)} km</span>` : '';
+      const paceChip = ov?.pace ? `<span class="po-chip pace-chip overridden">${esc(ov.pace)}</span>` : '';
+      if (isRunRow) {
+        return `<div class="texp-plan-row sched-session-row--editable" data-po-id="${esc(rowId)}" data-po-orig="${esc(origName)}" data-po-date="${esc(d)}" onclick="openPlanOverride(this)" title="Click to override session">
+          <span class="texp-plan-date">${dateStr}</span>${badge}
+          <span class="texp-plan-name sched-session-name"><span class="po-name-text">${esc(dispName)}</span>${distChip}${paceChip}</span>
+          <span class="po-edit-icon">✎</span>
+        </div>`;
+      }
+      return `<div class="texp-plan-row">${icon}<span class="texp-plan-date">${dateStr}</span>${badge}<span class="texp-plan-name">${esc(origName)}</span></div>`;
     }).join('');
   } else {
     planRowsHtml = `<div class="texp-plan-none">No plan set for this week</div>`;
   }
 
-  // Training split (run vs lift feel from check-in)
-  let feelHtml = '';
-  if (hW) {
-    const rf = parseFloat(w['Run Feel /10']);
-    const lf = parseFloat(w['Lift Feel /10']);
-    if (!isNaN(rf) || !isNaN(lf)) {
-      feelHtml = `<div class="texp-section" style="margin-top:12px"><div class="texp-label">Last Check-in Feel</div>
-        <div style="display:flex;gap:12px;margin-top:4px">
-          ${!isNaN(rf) ? `<div class="texp-stat"><div class="texp-stat-val" style="color:var(--run)">${rf}</div><div class="texp-stat-lbl">Run Feel</div></div>` : ''}
-          ${!isNaN(lf) ? `<div class="texp-stat"><div class="texp-stat-val" style="color:var(--str)">${lf}</div><div class="texp-stat-lbl">Lift Feel</div></div>` : ''}
-        </div>
-      </div>`;
-    }
-  }
-
   const rightPanel = `<div class="texp-right">
     <div class="texp-section">${wipHtml}</div>
     <div class="texp-section"><div class="texp-label">${isFuture ? 'Upcoming Plan' : "This Week's Plan"}</div>${planRowsHtml}</div>
-    ${feelHtml}
   </div>`;
 
   return `${header}<div class="texp-panel">${leftPanel}${rightPanel}</div>`;
