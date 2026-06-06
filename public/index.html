@@ -380,7 +380,7 @@ body[data-theme="pride"] .dash-week-nav{border:2px solid transparent;border-imag
 .slbl{font-family:var(--mono);font-size:7px;color:var(--dim);text-transform:uppercase;letter-spacing:.05em;margin-top:2px}
 
 /* ── Call Prep ── */
-.call-prep{border-top:2px solid #0a0a0a}
+.card-details-btn{width:100%;background:transparent;border:none;border-top:1px solid var(--border);padding:8px 13px;font-family:var(--mono);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:color .15s}.card-details-btn:hover{color:var(--text)}.card-details-chevron{font-size:8px;transition:transform .2s}.card-details-chevron.open{transform:rotate(180deg)}.call-prep{border-top:2px solid #0a0a0a}
 .cp-header{background:#0a0a0a;padding:8px 13px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none}
 .cp-title{font-family:var(--mono);font-size:9px;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:.12em;display:flex;align-items:center;gap:7px}
 .cp-icon{font-size:11px}
@@ -2753,12 +2753,13 @@ function buildCard(a, weekOffset = 0) {
     ).join('')}</div>`;
   }
 
-  // ── Progress bars: Recovery · Weekly KM · Compliance
-  const barRows = [];
+  // ── Progress bars: Recovery · Weekly KM (main) · Compliance (detail)
+  const mainBarRows = [];
+  const extraBarRows = [];
   if (a.recoveryScore !== null) {
     const rc = a.recoveryScore >= 7.5 ? 'good' : a.recoveryScore >= 5 ? 'mid' : 'bad';
     const pct = Math.round((a.recoveryScore / 10) * 100);
-    barRows.push(`<div class="pbar-row">
+    mainBarRows.push(`<div class="pbar-row">
       <span class="pbar-lbl">Recovery</span>
       <div class="pbar-track"><div class="pbar-fill ${rc}" style="width:${pct}%"></div></div>
       <span class="pbar-val ${rc}">${a.recoveryScore}/10</span>
@@ -2770,7 +2771,7 @@ function buildCard(a, weekOffset = 0) {
     if (km > 0 || kmTarget > 0) {
       const kmPct = kmTarget > 0 ? Math.min(100, Math.round(km / kmTarget * 100)) : 100;
       const kmLabel = kmTarget > 0 ? `${km.toFixed(1)} / ${kmTarget} km` : `${km.toFixed(1)} km`;
-      barRows.push(`<div class="pbar-row" data-km-bar="${a.id}" data-km-target="${kmTarget}">
+      mainBarRows.push(`<div class="pbar-row" data-km-bar="${a.id}" data-km-target="${kmTarget}">
         <span class="pbar-lbl">Weekly KM</span>
         <div class="pbar-track"><div class="pbar-fill run" style="width:${kmTarget > 0 ? kmPct : 100}%"></div></div>
         <span class="pbar-val run">${kmLabel}</span>
@@ -2779,13 +2780,14 @@ function buildCard(a, weekOffset = 0) {
   }
   if (a.compliance !== null) {
     const cc = a.compliance >= 90 ? 'good' : a.compliance >= 70 ? 'mid' : 'bad';
-    barRows.push(`<div class="pbar-row">
+    extraBarRows.push(`<div class="pbar-row">
       <span class="pbar-lbl">Compliance</span>
       <div class="pbar-track"><div class="pbar-fill ${cc}" style="width:${a.compliance}%"></div></div>
       <span class="pbar-val ${cc}">${a.compliance}%</span>
     </div>`);
   }
-  const barsHtml = barRows.length ? `<div class="pcard-bars">${barRows.join('')}</div>` : '';
+  const mainBarsHtml = mainBarRows.length ? `<div class="pcard-bars">${mainBarRows.join('')}</div>` : '';
+  const extraBarsHtml = extraBarRows.length ? `<div class="pcard-bars">${extraBarRows.join('')}</div>` : '';
 
   // ── Sparkline strip
   let sparkStripHtml = '';
@@ -2951,41 +2953,34 @@ function buildCard(a, weekOffset = 0) {
     </div>`;
   }
 
-  // ── Bottom stats strip: Weight · Compliance · Energy · Calories
-  const statCells = [];
+  // ── Bottom stats strip: Weight · Energy · Calories (main) · Compliance (detail)
+  const mainStatCells = [];
   if (a.bAvg.wt !== undefined) {
     const wtTrend = a.trends?.weight ? trendDelta(a.trends.weight, false) : { dir: 'flat' };
     const wtArrow = wtTrend.dir === 'up' ? '↑' : wtTrend.dir === 'dn' ? '↓' : '';
     const wtCls   = wtTrend.dir === 'up' ? 'up' : wtTrend.dir === 'dn' ? 'dn' : 'flat';
-    statCells.push(`<div class="pstat">
+    mainStatCells.push(`<div class="pstat">
       <div class="pstat-lbl">Weight</div>
       <div><span class="pstat-val">${esc(a.bAvg.wt)}</span><span class="pstat-unit"> kg</span><span class="pstat-trend ${wtCls}">${wtArrow}</span></div>
-    </div>`);
-  }
-  if (a.compliance !== null) {
-    const cCls = a.compliance >= 90 ? 'var(--ok)' : a.compliance >= 70 ? 'var(--warn)' : 'var(--alert)';
-    statCells.push(`<div class="pstat">
-      <div class="pstat-lbl">Compliance</div>
-      <div><span class="pstat-val" style="color:${cCls}">${a.compliance}</span><span class="pstat-unit">%</span></div>
     </div>`);
   }
   if (a.bAvg.energy !== null) {
     const eTrend = a.trends?.energy ? trendDelta(a.trends.energy, false) : { dir: 'flat' };
     const eArrow = eTrend.dir === 'up' ? '↑' : eTrend.dir === 'dn' ? '↓' : '';
     const eCls   = eTrend.dir === 'up' ? 'up' : eTrend.dir === 'dn' ? 'dn' : 'flat';
-    statCells.push(`<div class="pstat">
+    mainStatCells.push(`<div class="pstat">
       <div class="pstat-lbl">Energy</div>
       <div><span class="pstat-val">${a.bAvg.energy}</span><span class="pstat-unit">/10</span><span class="pstat-trend ${eCls}">${eArrow}</span></div>
     </div>`);
   }
   if (a.nAvg.cal !== null) {
-    statCells.push(`<div class="pstat">
+    mainStatCells.push(`<div class="pstat">
       <div class="pstat-lbl">Calories</div>
       <div><span class="pstat-val">${Number(a.nAvg.cal).toLocaleString()}</span><span class="pstat-unit"> kcal</span></div>
     </div>`);
   }
-  const statsStripHtml = statCells.length >= 2
-    ? `<div class="pcard-stats" style="grid-template-columns:repeat(${statCells.length},1fr)">${statCells.join('')}</div>`
+  const mainStatsHtml = mainStatCells.length >= 1
+    ? `<div class="pcard-stats" style="grid-template-columns:repeat(${mainStatCells.length},1fr)">${mainStatCells.join('')}</div>`
     : '';
 
   // ── Nutrition target (compact)
@@ -3058,6 +3053,7 @@ function buildCard(a, weekOffset = 0) {
     </div>`;
 
   // ── Assemble card
+  const safeCardId = a.id.replace(/\W+/g, '-').toLowerCase();
   return `<div class="card ${bcls}" data-card="${esc(a.id)}" data-alert="${a.alertScore}" data-name="${esc(a.id)}" data-week="${a.weekNum ?? 0}" data-compliance="${a.compliance ?? 0}" data-checkin="${w?.['Week Ending'] || ''}" data-lastactive="${a.lastActivity || ''}">
     <div class="card-head">
       <div class="card-head-top">
@@ -3075,13 +3071,22 @@ function buildCard(a, weekOffset = 0) {
         </div>
       </div>
     </div>
-    ${actionRibbonHtml}
-    ${metricsHtml}
-    ${barsHtml}
-    ${sparkStripHtml}
-    ${weekInProgress}${staleBanner}${planHtml}${trainingHtml}${statsStripHtml}${nutrTargetHtml}${sessHtml}
-    <div class="ai-sec"></div>
-    ${callPrepHtml}
+    ${mainBarsHtml}
+    ${weekInProgress}
+    ${mainStatsHtml}
+    <button class="card-details-btn" onclick="toggleCardDetails('${safeCardId}')">
+      <span id="cdl-${safeCardId}">More details</span>
+      <span id="cdi-${safeCardId}" class="card-details-chevron">▼</span>
+    </button>
+    <div class="card-details" id="cd-${safeCardId}" style="display:none">
+      ${actionRibbonHtml}
+      ${metricsHtml}
+      ${extraBarsHtml}
+      ${sparkStripHtml}
+      ${staleBanner}${planHtml}${trainingHtml}${nutrTargetHtml}${sessHtml}
+      <div class="ai-sec"></div>
+      ${callPrepHtml}
+    </div>
   </div>`;
 }
 
@@ -4317,6 +4322,17 @@ function switchTab(tab) {
 }
 
 // ── Call Prep toggle ──────────────────────────────────────────────────────────
+function toggleCardDetails(id) {
+  const el = document.getElementById('cd-' + id);
+  const lbl = document.getElementById('cdl-' + id);
+  const icon = document.getElementById('cdi-' + id);
+  if (!el) return;
+  const isOpen = el.style.display !== 'none';
+  el.style.display = isOpen ? 'none' : 'block';
+  if (lbl) lbl.textContent = isOpen ? 'More details' : 'Less';
+  if (icon) icon.classList.toggle('open', !isOpen);
+}
+
 function toggleCallPrep(id) {
   const body = document.getElementById(id);
   const toggle = document.getElementById(id + '-toggle');
