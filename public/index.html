@@ -2648,7 +2648,6 @@ function setDashboardView(v) {
   _dashboardView = v;
   document.getElementById('view-cards-btn').classList.toggle('active', v === 'cards');
   document.getElementById('view-table-btn').classList.toggle('active', v === 'table');
-  renderGrid(_allAthletes);
   applyFilters();
 }
 
@@ -2779,14 +2778,14 @@ function renderWeekNavBar() {
 
 function dashboardWeekNav(dir) {
   _dashboardWeekOffset = Math.max(-52, Math.min(4, _dashboardWeekOffset + dir));
-  renderGrid(_allAthletes);
+  renderWeekNavBar();
   _syncWeekNavButtons();
   applyFilters();
 }
 
 function dashboardWeekReset() {
   _dashboardWeekOffset = 0;
-  renderGrid(_allAthletes);
+  renderWeekNavBar();
   _syncWeekNavButtons();
   applyFilters();
 }
@@ -4313,23 +4312,16 @@ function applyFilters() {
     visible = [...visible].sort((a, b) => b.alertScore - a.alertScore);
   }
 
-  // Show/hide cards
-  const cards = document.querySelectorAll('#grid .card');
-  const visibleIds = new Set(visible.map(a => a.id));
-  cards.forEach(card => {
-    const id = card.getAttribute('data-card');
-    card.classList.toggle('hidden', !visibleIds.has(id));
-  });
-
-  // Sort DOM order
-  const grid = document.getElementById('grid');
-  visible.forEach(a => {
-    const card = grid.querySelector(`[data-card="${a.id}"]`);
-    if (card) grid.appendChild(card);
-  });
-
   // No-results message
   document.getElementById('no-results').style.display = visible.length === 0 ? 'block' : 'none';
+
+  if (_dashboardView === 'table') {
+    renderTableView(visible);
+    return;
+  }
+
+  // Card mode: always re-render so week changes, filters, and sorts all apply correctly
+  document.getElementById('grid').innerHTML = visible.map(a => buildCard(a, _dashboardWeekOffset)).join('');
 }
 
 // ── renderSchedule ────────────────────────────────────────────────────────────
