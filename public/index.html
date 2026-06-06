@@ -1425,21 +1425,22 @@ function getSB() {
 
 // ── Plan overrides (Supabase-backed, local cache) ─────────────────────────────
 let _ovCache = {};  // notion_page_id → { name, dist, pace }
-let _sessLogs = new Set(); // notion_page_ids completed via athlete portal
+let _tickedMap = new Map(); // athleteCode → Set<notionPageId>
 
 async function loadSessionLogs() {
   try {
     const sb = getSB(); if (!sb) return;
-    const { data } = await sb.from('session_logs').select('session_key');
-    _sessLogs = new Set();
+    const { data } = await sb.from('athlete_data').select('athlete_code,value').eq('key','ticked');
+    _tickedMap = new Map();
     (data || []).forEach(r => {
-      // session_key format: session_{ATHLETE_CODE}_{NOTION_PAGE_ID}
-      const m = r.session_key?.match(/^session_[^_]+_(.+)$/);
-      if (m) _sessLogs.add(m[1]);
+      const ids = new Set(Object.keys(r.value || {}));
+      _tickedMap.set(r.athlete_code, ids);
     });
-  } catch(e) { console.warn('Session logs load failed', e); }
+  } catch(e) { console.warn('Ticked sessions load failed', e); }
 }
-function isSessionLogged(notionPageId) { return _sessLogs.has(notionPageId); }
+function isSessionLogged(athleteCode, notionPageId) {
+  return _tickedMap.get(athleteCode)?.has(notionPageId) ?? false;
+}
 
 async function loadAllOverrides() {
   try {
@@ -2930,7 +2931,7 @@ function buildTableExpandPanel(a) {
   const planDone   = activePlan.filter(r => {
     const id = r._id || r.id || '';
     const notionStatus = (r['Status '] || r['Status'] || '').trim().toLowerCase();
-    return isSessionLogged(id) || notionStatus === 'completed';
+    return isSessionLogged(a.code, id) || notionStatus === 'completed';
   }).length;
   const planMissed = activePlan.filter(r => (r['Status '] || r['Status'] || '').trim().toLowerCase() === 'missed').length;
   const planTotal  = activePlan.length;
@@ -2982,7 +2983,7 @@ function buildTableExpandPanel(a) {
       const dateStr = fmtPlanDate(d);
       const rowId2 = r._id || r.id || '';
       const notionStatus = (r['Status '] || r['Status'] || '').trim().toLowerCase();
-      const isDone   = isSessionLogged(rowId2) || notionStatus === 'completed';
+      const isDone   = isSessionLogged(a.code, rowId2) || notionStatus === 'completed';
       const isMissed = !isDone && notionStatus === 'missed';
       const isSick   = !isDone && notionStatus === 'sick';
       // Row class based on completion
