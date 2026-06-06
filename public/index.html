@@ -960,6 +960,11 @@ body[data-theme="pride"] .texp-name{background:linear-gradient(90deg,#FF8C00,#FF
 .wd-strava-act[open] .wd-strava-chevron{transform:rotate(180deg)}
 .wd-strava-detail{padding-top:8px;border-top:1px solid var(--border);margin-top:8px}
 .wd-strava-desc{font-size:11px;color:var(--muted);font-style:italic;margin-top:6px;padding:5px 8px;background:rgba(255,255,255,.03);border-radius:5px;border-left:2px solid var(--border);line-height:1.45}
+.wd-splits-scroll{max-height:160px;overflow-y:auto;border-radius:6px;border:1px solid var(--border);scrollbar-width:thin;scrollbar-color:var(--border-mid) transparent}
+.wd-splits-scroll::-webkit-scrollbar{width:4px}
+.wd-splits-scroll::-webkit-scrollbar-thumb{background:var(--border-mid);border-radius:2px}
+.wd-splits-scroll .strava-splits{margin-top:0}
+.wd-splits-scroll .strava-splits th{position:sticky;top:0;z-index:1;background:var(--surface2)}
 .wd-session{border-radius:8px;padding:10px 12px}
 .wd-session.run{background:var(--amber-bg);border-left:3px solid var(--run)}
 .wd-session.str{background:rgba(96,165,250,.08);border-left:3px solid var(--str)}
@@ -5480,7 +5485,7 @@ async function loadStravaData(a) {
         const descHtml = act.description
           ? `<div class="wd-strava-desc">"${esc(act.description)}"</div>` : '';
 
-        // Splits table with pace bars
+        // Splits table — scrollable fixed-height box
         let splitsHtml = '';
         if (act.splits_metric && act.splits_metric.length) {
           const speeds = act.splits_metric.map(sp => sp.average_speed).filter(Boolean);
@@ -5498,13 +5503,15 @@ async function loadStravaData(a) {
               <td>${spElev}m</td>
             </tr>`;
           }).join('');
-          splitsHtml = `<table class="strava-splits" style="margin-top:8px">
-            <thead><tr><th>km</th><th>pace</th><th>hr</th><th>elev</th></tr></thead>
-            <tbody>${rows}</tbody>
-          </table>`;
+          splitsHtml = `<div class="wd-splits-scroll" style="margin-top:8px">
+            <table class="strava-splits">
+              <thead><tr><th>km</th><th>pace</th><th>hr</th><th>elev</th></tr></thead>
+              <tbody>${rows}</tbody>
+            </table>
+          </div>`;
         }
 
-        // Laps table (interval sessions)
+        // Laps table (interval sessions) — same scrollable box
         let lapsHtml = '';
         if (act.laps && act.laps.length > 3) {
           const lapSpeeds = act.laps.map(lp => lp.average_speed).filter(Boolean);
@@ -5516,11 +5523,12 @@ async function loadStravaData(a) {
             const barW   = lapSpeeds.length > 1 && lp.average_speed ? Math.round(((lp.average_speed - minLS) / (maxLS - minLS || 1)) * 60) + 20 : 0;
             return `<tr><td>${i + 1}</td><td>${lpDist}km</td><td><span class="split-pace-wrap"><span class="split-pace-bar" style="width:${barW}%"></span><strong>${fmtSplitPace(lp.average_speed)}</strong></span></td><td>${lpHr}</td><td>${lpElev}m</td></tr>`;
           }).join('');
-          lapsHtml = `<details class="strava-laps-wrap" style="margin-top:8px"><summary class="strava-laps-toggle">▾ Laps (${act.laps.length})</summary>
-            <table class="strava-splits" style="margin-top:6px">
+          lapsHtml = `<div class="wd-splits-scroll" style="margin-top:8px">
+            <table class="strava-splits">
               <thead><tr><th>#</th><th>dist</th><th>pace</th><th>hr</th><th>elev</th></tr></thead>
               <tbody>${lapRows}</tbody>
-            </table></details>`;
+            </table>
+          </div>`;
         }
 
         const hasDetail = detailChips || descHtml || splitsHtml || lapsHtml;
