@@ -2705,14 +2705,31 @@ function buildTableRow(a) {
     enHtml = `<span class="tcell-num ${ec}">${a.bAvg.energy}</span>`;
   }
 
+  // Sleep — from weekly check-in
+  let sleepHtml = '<span class="tdim">—</span>';
+  const sleepVal = parseFloat(a.weekly?.['Sleep hrs']);
+  if (!isNaN(sleepVal)) {
+    const sc = sleepVal >= 7.5 ? 'good' : sleepVal >= 6 ? 'mid' : 'bad';
+    sleepHtml = `<span class="tcell-num ${sc}">${sleepVal}</span>`;
+  }
+
+  // Stress — from weekly check-in (inverted: high = bad)
+  let stressHtml = '<span class="tdim">—</span>';
+  const stressVal = parseInt(a.weekly?.['Stress']);
+  if (!isNaN(stressVal)) {
+    const stc = stressVal <= 4 ? 'good' : stressVal <= 6 ? 'mid' : 'bad';
+    stressHtml = `<span class="tcell-num ${stc}">${stressVal}</span>`;
+  }
+
   // Calories — plain number
   let calHtml = '<span class="tdim">—</span>';
   if (a.nAvg.cal !== null) {
     calHtml = `<span class="tcell-num">${Number(a.nAvg.cal).toLocaleString()}</span>`;
   }
 
-  // Sessions
-  const sessHtml = `<span class="tsess run">${a.currRunS.length}r</span> <span class="tsess str">${a.currStrS.length}s</span>`;
+  // Sessions — split run / strength
+  const runHtml = `<span class="tcell-num run">${a.currRunS.length}</span>`;
+  const strHtml = `<span class="tcell-num" style="color:#818cf8">${a.currStrS.length}</span>`;
 
   // Status
   let statusHtml = '<span class="tstatus ok">On track</span>';
@@ -2731,8 +2748,11 @@ function buildTableRow(a) {
     <td>${kmHtml}</td>
     <td>${wtHtml}</td>
     <td>${enHtml}</td>
+    <td>${sleepHtml}</td>
+    <td>${stressHtml}</td>
     <td>${calHtml}</td>
-    <td>${sessHtml}</td>
+    <td>${runHtml}</td>
+    <td>${strHtml}</td>
     <td>${statusHtml}</td>
   </tr>
   <tr class="trow-expand" id="texp-${safeId}" style="display:none">
@@ -2750,13 +2770,15 @@ function renderTableView(ath) {
   grid.innerHTML = `<div class="dash-table-wrap">
     <table class="dash-table">
       <colgroup>
-        <col style="width:220px"><col style="width:50px"><col style="width:130px">
-        <col style="width:130px"><col style="width:95px"><col style="width:80px">
-        <col style="width:105px"><col style="width:88px"><col style="width:auto">
+        <col style="width:200px"><col style="width:46px"><col style="width:118px">
+        <col style="width:118px"><col style="width:88px"><col style="width:72px">
+        <col style="width:72px"><col style="width:68px"><col style="width:95px">
+        <col style="width:52px"><col style="width:52px"><col style="width:auto">
       </colgroup>
       <thead><tr>
         <th>Athlete</th><th>Wk</th><th>Recovery</th><th>Weekly KM</th>
-        <th>Weight</th><th>Energy</th><th>Calories</th><th>Sessions</th><th>Status</th>
+        <th>Weight</th><th>Energy</th><th>Sleep</th><th>Stress</th><th>Calories</th>
+        <th>Run</th><th>Str</th><th>Status</th>
       </tr></thead>
       <tbody>${sorted.map(a => buildTableRow(a)).join('')}</tbody>
     </table>
