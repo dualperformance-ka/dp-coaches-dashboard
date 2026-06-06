@@ -1084,41 +1084,67 @@ body[data-theme="pride"] .texp-name{background:linear-gradient(90deg,#FF8C00,#FF
 /* ── Strava section ── */
 .strava-panel{min-height:80px}
 .strava-state{font-family:var(--mono);font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;padding:10px 0}
-.strava-acts{display:flex;flex-direction:column;gap:8px;margin-top:8px}
-.strava-act{background:var(--surface2);border:1px solid var(--border);border-radius:10px;overflow:hidden}
-.strava-act-summary{display:grid;grid-template-columns:1fr auto;align-items:center;gap:12px;padding:10px 12px;cursor:pointer;list-style:none;user-select:none}
+.strava-acts{display:flex;flex-direction:column;gap:10px;margin-top:8px}
+.strava-act{background:var(--surface2);border:1px solid var(--border);border-left:3px solid var(--border);border-radius:10px;overflow:hidden;transition:border-color .15s,box-shadow .15s}
+.strava-act:hover{box-shadow:0 2px 12px rgba(0,0,0,.18)}
+.strava-act[data-atype="Run"],.strava-act[data-atype="VirtualRun"],.strava-act[data-atype="TrailRun"]{border-left-color:#fc4c02}
+.strava-act[data-atype="WeightTraining"],.strava-act[data-atype="Workout"],.strava-act[data-atype="Crossfit"]{border-left-color:#818cf8}
+.strava-act[data-atype="Ride"],.strava-act[data-atype="VirtualRide"],.strava-act[data-atype="EBikeRide"]{border-left-color:#3b82f6}
+.strava-act[data-atype="Swim"]{border-left-color:#06b6d4}
+.strava-act-summary{display:flex;align-items:center;gap:10px;padding:11px 14px;cursor:pointer;list-style:none;user-select:none}
 .strava-act-summary::-webkit-details-marker{display:none}
-.strava-act-summary:hover{background:var(--surface)}
-.strava-act-dist-inline{font-family:var(--cond);font-size:24px;font-weight:900;letter-spacing:-.01em;color:var(--run);line-height:1;text-align:right;white-space:nowrap}
-.strava-act-dist-inline span{font-size:10px;font-weight:600;color:var(--muted);display:block;text-align:right}
-.strava-act-left{display:flex;flex-direction:column;gap:3px}
-.strava-act-name{font-family:var(--cond);font-size:17px;font-weight:900;text-transform:uppercase;letter-spacing:.04em;line-height:1;color:var(--text)}
+.strava-act-summary:hover{background:rgba(255,255,255,.03)}
+.strava-act-left{flex:1;display:flex;flex-direction:column;gap:3px;min-width:0}
+.strava-act-name{font-family:var(--cond);font-size:17px;font-weight:900;text-transform:uppercase;letter-spacing:.04em;line-height:1;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .strava-act-date{font-family:var(--mono);font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;margin-top:2px}
-.strava-act-chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:5px}
+.strava-act-dist-inline{font-family:var(--cond);font-size:26px;font-weight:900;letter-spacing:-.02em;color:var(--run);line-height:1;text-align:right;white-space:nowrap;flex-shrink:0}
+.strava-act-dist-inline span{font-size:10px;font-weight:600;color:var(--muted);display:block;text-align:right;margin-top:1px}
+.strava-act-chevron{font-size:9px;color:var(--dim);transition:transform .2s;flex-shrink:0;margin-left:2px}
+.strava-act[open] .strava-act-chevron{transform:rotate(180deg)}
+.strava-act-chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:2px}
 .strava-chip{font-family:var(--mono);font-size:9px;color:var(--muted);background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:3px 8px;white-space:nowrap}
 .strava-chip strong{color:var(--text)}
-.strava-act-desc{font-size:12px;color:var(--muted);margin-top:6px;font-style:italic;line-height:1.45}
-.strava-act-rpe{font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:5px}
+.strava-chip-primary{background:rgba(252,76,2,.08);border-color:rgba(252,76,2,.25);color:var(--text)}
+.strava-chip-primary strong{color:#fc4c02}
+.strava-chip-hr{background:rgba(248,113,113,.08);border-color:rgba(248,113,113,.25)}
+.strava-chip-hr strong{color:#f87171}
+.strava-chip-pr{background:rgba(245,158,11,.15);border-color:#f59e0b;color:#f59e0b;font-weight:700;font-size:10px}
+.strava-chip-pr strong{color:#f59e0b}
+.strava-act-desc{font-size:11px;color:var(--muted);margin-top:8px;font-style:italic;line-height:1.5;padding:7px 10px;background:rgba(255,255,255,.03);border-radius:6px;border-left:2px solid var(--border)}
+.strava-act-rpe{font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:6px}
 .strava-act-rpe strong{color:var(--run)}
-.strava-laps-wrap{grid-column:1/-1;margin-top:6px}
-.strava-laps-toggle{font-family:var(--mono);font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;cursor:pointer;user-select:none;list-style:none}
+.strava-laps-wrap{margin-top:10px}
+.strava-laps-toggle{font-family:var(--mono);font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;cursor:pointer;user-select:none;list-style:none;display:inline-flex;align-items:center;gap:5px;padding:3px 8px;border:1px solid var(--border);border-radius:20px;transition:color .1s,border-color .1s}
 .strava-laps-toggle::-webkit-details-marker{display:none}
-.strava-splits{margin-top:8px;width:100%;border-collapse:collapse;grid-column:1/-1}
-.strava-splits th{font-family:var(--mono);font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;padding:3px 6px;text-align:right;border-bottom:2px solid var(--border-mid)}
-.strava-splits td{font-family:var(--mono);font-size:9px;padding:3px 6px;text-align:right;border-bottom:1px solid var(--border)}
+.strava-laps-toggle:hover{color:var(--text);border-color:var(--border-mid)}
+.strava-splits{margin-top:8px;width:100%;border-collapse:collapse}
+.strava-splits th{font-family:var(--mono);font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;padding:5px 8px;text-align:right;border-bottom:1px solid var(--border-mid);background:rgba(255,255,255,.02)}
+.strava-splits td{font-family:var(--mono);font-size:10px;padding:5px 8px;text-align:right;border-bottom:1px solid rgba(255,255,255,.04)}
+.strava-splits tbody tr:nth-child(even) td{background:rgba(255,255,255,.015)}
 .strava-splits th:first-child,.strava-splits td:first-child{text-align:left;color:var(--dim)}
 .strava-splits tr:last-child td{border-bottom:none}
 .strava-splits td strong{color:var(--text)}
+.strava-splits td.pace-fast strong{color:#4ade80}
+.strava-splits td.pace-slow strong{color:var(--muted)}
+.split-pace-wrap{position:relative;display:inline-block;min-width:40px}
+.split-pace-bar{position:absolute;left:0;top:1px;bottom:1px;background:rgba(252,76,2,.15);border-radius:2px;pointer-events:none}
+.split-pace-wrap strong{position:relative;z-index:1}
 .strava-connect-btn{display:inline-flex;align-items:center;gap:7px;background:#fc4c02;color:#fff;font-family:var(--mono);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;padding:8px 16px;border-radius:7px;text-decoration:none;border:none;cursor:pointer;margin-top:10px}
 .strava-connect-btn:hover{background:#e04400}
 .strava-connect-note{font-family:var(--mono);font-size:9px;color:var(--dim);margin-top:8px;line-height:1.5}
-.strava-weekly-strip{display:flex;gap:0;margin-bottom:10px;border:1px solid var(--border);border-radius:10px;overflow:hidden}
-.strava-wstat{flex:1;padding:10px 12px;display:flex;flex-direction:column;gap:3px;border-right:1px solid var(--border)}
+.strava-weekly-strip{display:flex;gap:0;margin-bottom:12px;border:1px solid var(--border);border-radius:10px;overflow:hidden;background:var(--surface2)}
+.strava-wstat{flex:1;padding:10px 12px;display:flex;flex-direction:column;gap:4px;border-right:1px solid var(--border);position:relative}
 .strava-wstat:last-child{border-right:none}
+.strava-wstat:first-child{border-bottom:2px solid rgba(252,76,2,.4)}
 .strava-wval{font-family:var(--cond);font-size:22px;font-weight:900;color:var(--run);line-height:1}
-.strava-wlbl{font-family:var(--mono);font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.07em}
+.strava-wstat:first-child .strava-wval{font-size:26px;color:#fc4c02}
+.strava-wlbl{font-family:var(--mono);font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.07em;line-height:1.2}
 body[data-theme="light"] .strava-act{background:#fff}
 body[data-theme="light"] .strava-chip{background:#f4f3f0}
+body[data-theme="light"] .strava-splits th{background:rgba(0,0,0,.02)}
+body[data-theme="light"] .strava-splits tbody tr:nth-child(even) td{background:rgba(0,0,0,.02)}
+body[data-theme="light"] .strava-act-desc{background:rgba(0,0,0,.02)}
+body[data-theme="light"] .strava-weekly-strip{background:#fff}
 .strava-linked-badge{background:rgba(252,76,2,.15);color:#fc4c02;border-color:rgba(252,76,2,.35)}
 
 /* ── Daily input ledger ── */
@@ -5293,16 +5319,16 @@ async function loadStravaData(a) {
       const wtypeLabel = wtype === 1 ? 'Race' : wtype === 2 ? 'Long Run' : wtype === 3 ? 'Workout' : null;
 
       const chips = [
-        `<span class="strava-chip"><strong>${pace}</strong>/km</span>`,
-        `<span class="strava-chip"><strong>${time}</strong> moving</span>`,
-        hr    ? `<span class="strava-chip">♥ <strong>${hr}</strong>${maxHr ? `–${maxHr}` : ''} bpm</span>` : '',
+        pace !== '—' ? `<span class="strava-chip strava-chip-primary"><strong>${pace}</strong>/km</span>` : '',
+        `<span class="strava-chip strava-chip-primary"><strong>${time}</strong> moving</span>`,
+        hr    ? `<span class="strava-chip strava-chip-hr">♥ <strong>${hr}</strong>${maxHr ? `–${maxHr}` : ''} bpm</span>` : '',
         elev  ? `<span class="strava-chip">↑ <strong>${elev}</strong>m</span>` : '',
         cadence ? `<span class="strava-chip">⟳ <strong>${cadence}</strong> spm</span>` : '',
         suffer  ? `<span class="strava-chip">⚡ <strong>${suffer}</strong> effort</span>` : '',
         cals    ? `<span class="strava-chip">🔥 <strong>${cals}</strong> kcal</span>` : '',
         gear    ? `<span class="strava-chip">👟 ${esc(gear)}</span>` : '',
-        prCount ? `<span class="strava-chip" style="color:#f59e0b;border-color:#f59e0b">🏆 <strong>${prCount}</strong> PR${prCount > 1 ? 's' : ''}</span>` : '',
-        wtypeLabel ? `<span class="strava-chip" style="color:#f59e0b;border-color:#f59e0b">${esc(wtypeLabel)}</span>` : '',
+        prCount ? `<span class="strava-chip strava-chip-pr">🏆 <strong>${prCount}</strong> PR${prCount > 1 ? 's' : ''}</span>` : '',
+        wtypeLabel ? `<span class="strava-chip strava-chip-pr">${esc(wtypeLabel)}</span>` : '',
       ].filter(Boolean).join('');
 
       const descHtml = act.description
@@ -5313,43 +5339,60 @@ async function loadStravaData(a) {
 
       // Show laps table only if it looks like an interval session (>3 laps and not just km splits)
       const lapsHtml = (act.laps && act.laps.length > 3)
-        ? `<details class="strava-laps-wrap"><summary class="strava-laps-toggle">Laps (${act.laps.length})</summary>
-            <table class="strava-splits" style="margin-top:6px">
-              <thead><tr><th>#</th><th>dist</th><th>pace</th><th>hr</th><th>elev</th></tr></thead>
-              <tbody>${act.laps.map((lp, i) => {
-                const lpDist = lp.distance ? (lp.distance / 1000).toFixed(2) : '—';
-                const lpPace = fmtSplitPace(lp.average_speed);
-                const lpHr   = lp.average_heartrate ? Math.round(lp.average_heartrate) : '—';
-                const lpElev = lp.total_elevation_gain != null ? `+${Math.round(lp.total_elevation_gain)}` : '—';
-                return `<tr><td>${i + 1}</td><td>${lpDist}km</td><td><strong>${lpPace}</strong></td><td>${lpHr}</td><td>${lpElev}m</td></tr>`;
-              }).join('')}</tbody>
-            </table></details>` : '';
+        ? (() => {
+            const lapSpeeds = act.laps.map(lp => lp.average_speed).filter(Boolean);
+            const maxLapSpd = Math.max(...lapSpeeds);
+            const minLapSpd = Math.min(...lapSpeeds);
+            const rows = act.laps.map((lp, i) => {
+              const lpDist = lp.distance ? (lp.distance / 1000).toFixed(2) : '—';
+              const lpPace = fmtSplitPace(lp.average_speed);
+              const lpHr   = lp.average_heartrate ? Math.round(lp.average_heartrate) : '—';
+              const lpElev = lp.total_elevation_gain != null ? `${lp.total_elevation_gain > 0 ? '+' : ''}${Math.round(lp.total_elevation_gain)}` : '—';
+              const barW = lapSpeeds.length > 1 && lp.average_speed ? Math.round(((lp.average_speed - minLapSpd) / (maxLapSpd - minLapSpd || 1)) * 60) + 20 : 0;
+              return `<tr><td>${i + 1}</td><td>${lpDist}km</td><td><span class="split-pace-wrap"><span class="split-pace-bar" style="width:${barW}%"></span><strong>${lpPace}</strong></span></td><td>${lpHr}</td><td>${lpElev}m</td></tr>`;
+            }).join('');
+            return `<details class="strava-laps-wrap"><summary class="strava-laps-toggle">▾ Laps (${act.laps.length})</summary>
+              <table class="strava-splits" style="margin-top:6px">
+                <thead><tr><th>#</th><th>dist</th><th>pace</th><th>hr</th><th>elev</th></tr></thead>
+                <tbody>${rows}</tbody>
+              </table></details>`;
+          })() : '';
 
       const splitsHtml = (act.splits_metric && act.splits_metric.length)
-        ? `<table class="strava-splits">
-            <thead><tr>
-              <th>km</th><th>pace</th><th>hr</th><th>elev</th>
-            </tr></thead>
-            <tbody>${act.splits_metric.map(sp => {
+        ? (() => {
+            const speeds = act.splits_metric.map(sp => sp.average_speed).filter(Boolean);
+            const maxSpd = Math.max(...speeds);
+            const minSpd = Math.min(...speeds);
+            const bestIdx = speeds.indexOf(maxSpd);
+            const rows = act.splits_metric.map((sp, i) => {
               const spHr   = sp.average_heartrate ? Math.round(sp.average_heartrate) : '—';
               const spElev = sp.elevation_difference != null ? (sp.elevation_difference > 0 ? `+${Math.round(sp.elevation_difference)}` : Math.round(sp.elevation_difference)) : '—';
+              const barW = speeds.length > 1 && sp.average_speed ? Math.round(((sp.average_speed - minSpd) / (maxSpd - minSpd || 1)) * 60) + 20 : 0;
+              const paceClass = i === bestIdx ? ' pace-fast' : (i === speeds.indexOf(minSpd) && speeds.length > 1 ? ' pace-slow' : '');
               return `<tr>
                 <td>${sp.split}</td>
-                <td><strong>${fmtSplitPace(sp.average_speed)}</strong></td>
+                <td class="${paceClass}"><span class="split-pace-wrap"><span class="split-pace-bar" style="width:${barW}%"></span><strong>${fmtSplitPace(sp.average_speed)}</strong></span></td>
                 <td>${spHr}</td>
                 <td>${spElev}m</td>
               </tr>`;
-            }).join('')}</tbody>
-          </table>` : '';
+            }).join('');
+            return `<table class="strava-splits">
+              <thead><tr><th>km</th><th>pace</th><th>hr</th><th>elev</th></tr></thead>
+              <tbody>${rows}</tbody>
+            </table>`;
+          })() : '';
 
-      return `<details class="strava-act" style="display:block;padding:0">
+      return `<details class="strava-act" data-atype="${esc(act.type || '')}" style="display:block;padding:0">
         <summary class="strava-act-summary">
-          <div class="strava-act-name">${esc(act.name)}</div>
-          <div class="strava-act-date">${fmtActDate(act.start_date)} · ${esc(act.type || 'Activity')}</div>
+          <div class="strava-act-left">
+            <div class="strava-act-name">${esc(act.name)}</div>
+            <div class="strava-act-date">${fmtActDate(act.start_date)} · ${esc(act.type || 'Activity')}</div>
+          </div>
           <div class="strava-act-dist-inline">${dist}<span>km</span></div>
+          <span class="strava-act-chevron">▾</span>
         </summary>
-        <div style="padding:0 12px 10px">
-          <div class="strava-act-chips" style="margin-top:6px">${chips}</div>
+        <div style="padding:0 14px 12px">
+          <div class="strava-act-chips">${chips}</div>
           ${descHtml}
           ${rpeHtml}
           ${lapsHtml}
