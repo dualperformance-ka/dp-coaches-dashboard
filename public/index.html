@@ -2931,15 +2931,18 @@ function buildTableRow(a) {
     recovHtml = `<div class="tcell"><span class="tcell-num ${rc}">${a.recoveryScore}</span><div class="tcell-bar ${rc}" style="width:${pct}%"></div></div>`;
   }
 
-  // Weekly KM — fraction + proportional bar
-  const km = a.currRunKm || 0;
+  // Weekly KM — prefer Strava cache, fall back to session accumulation
+  const _skm = typeof _stravaKmCache !== 'undefined' ? _stravaKmCache[a.id] : null;
+  const km = _skm?.weeklyKm != null ? _skm.weeklyKm : (a.currRunKm || 0);
   const kmTarget = parseFloat(a.target?.['Weekly KM Target']) || 0;
   let kmHtml = '<span class="tdim">—</span>';
+  let kmTdAttr = '';
   if (km > 0 || kmTarget > 0) {
     const pct = kmTarget > 0 ? Math.min(100, Math.round(km / kmTarget * 100)) : 100;
-    const numPart = km.toFixed(1);
+    const numStr = typeof km === 'number' && !Number.isInteger(km) ? km.toFixed(1) : String(km);
     const subPart = kmTarget > 0 ? `/ ${kmTarget}` : '';
-    kmHtml = `<div class="tcell"><span class="tcell-num run">${numPart}<span class="tcell-sub"> ${subPart}</span></span><div class="tcell-bar run" style="width:${pct}%"></div></div>`;
+    kmHtml = `<div class="tcell"><span class="tcell-num run pbar-val">${numStr}<span class="tcell-sub"> ${subPart}</span></span><div class="tcell-bar pbar-fill run" style="width:${pct}%"></div></div>`;
+    kmTdAttr = `data-km-bar="${esc(a.id)}" data-km-target="${kmTarget}"`;
   }
 
   // Weight — number + trend arrow
@@ -2997,7 +3000,7 @@ function buildTableRow(a) {
     <td><div class="tname">${esc(a.id)}${fps}</div><div class="tmeta">${metaStr}${checkinStr}</div></td>
     <td>${a.weekNum !== null ? `<span class="twkbadge">${a.weekNum}</span>` : '<span class="tdim">—</span>'}</td>
     <td>${recovHtml}</td>
-    <td>${kmHtml}</td>
+    <td ${kmTdAttr}>${kmHtml}</td>
     <td>${wtHtml}</td>
     <td>${enHtml}</td>
     <td>${sleepHtml}</td>
@@ -5048,15 +5051,27 @@ function applyStravaKm(athleteId, weeklyKm, lastWeekKm) {
     fpEl.innerHTML = `<strong>${weeklyKm} km</strong> <span style="font-size:10px;color:var(--run)">strava</span>${loadHtml} this week`;
   }
 
-  // Squad card km bar
-  const barEl = document.querySelector(`[data-km-bar="${athleteId}"]`);
-  if (barEl) {
+  // Squad card km bar + table km cell + expand panel km bar
+  document.querySelectorAll(`[data-km-bar="${athleteId}"]`).forEach(barEl => {
     const kmTarget = parseFloat(barEl.dataset.kmTarget) || 0;
     const pct = kmTarget > 0 ? Math.min(100, Math.round(weeklyKm / kmTarget * 100)) : 100;
     const label = kmTarget > 0 ? `${weeklyKm} / ${kmTarget} km` : `${weeklyKm} km`;
-    barEl.querySelector('.pbar-fill').style.width = (kmTarget > 0 ? pct : 100) + '%';
-    barEl.querySelector('.pbar-val').textContent = label;
-  }
+    const fill = barEl.querySelector('.pbar-fill');
+    const val = barEl.querySelector('.pbar-val');
+    if (fill) fill.style.width = (kmTarget > 0 ? pct : 100) + '%';
+    if (val) {
+      // Preserve any child spans (e.g. tcell-sub) by updating only a text node,
+      // or just set innerHTML if it's a simple label span
+      const sub = val.querySelector('.tcell-sub');
+      if (sub) {
+        // Table cell: update the text node before the sub span
+        val.childNodes[0].textContent = String(weeklyKm);
+        sub.textContent = kmTarget > 0 ? ` / ${kmTarget}` : '';
+      } else {
+        val.textContent = label;
+      }
+    }
+  });
 }
 
 async function loadStravaData(a) {
