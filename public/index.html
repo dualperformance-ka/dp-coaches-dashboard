@@ -954,6 +954,12 @@ body[data-theme="pride"] .texp-name{background:linear-gradient(90deg,#FF8C00,#FF
 .wd-strava-stat strong{color:var(--text)}
 .wd-strava-stat.primary{background:rgba(252,76,2,.08);border-color:rgba(252,76,2,.25)}
 .wd-strava-stat.primary strong{color:#fc4c02}
+.wd-strava-summary{list-style:none;cursor:pointer;user-select:none}
+.wd-strava-summary::-webkit-details-marker{display:none}
+.wd-strava-chevron{font-size:8px;color:var(--dim);transition:transform .2s;display:inline-block}
+.wd-strava-act[open] .wd-strava-chevron{transform:rotate(180deg)}
+.wd-strava-detail{padding-top:8px;border-top:1px solid var(--border);margin-top:8px}
+.wd-strava-desc{font-size:11px;color:var(--muted);font-style:italic;margin-top:6px;padding:5px 8px;background:rgba(255,255,255,.03);border-radius:5px;border-left:2px solid var(--border);line-height:1.45}
 .wd-session{border-radius:8px;padding:10px 12px}
 .wd-session.run{background:var(--amber-bg);border-left:3px solid var(--run)}
 .wd-session.str{background:rgba(96,165,250,.08);border-left:3px solid var(--str)}
@@ -5417,43 +5423,121 @@ async function loadStravaData(a) {
     target.outerHTML = `<div>${weeklyStrip}<div class="strava-acts">${cards}</div></div>`;
 
     // ── Populate day-by-day Strava columns ──────────────────────────────────
+    // Use start_date_local (athlete's local timezone) so the date matches the
+    // calendar day the athlete actually ran on, not the UTC date.
     const _actsByDate = {};
     (data.activities || []).forEach(act => {
-      const d = act.start_date ? act.start_date.split('T')[0] : null;
+      const d = (act.start_date_local || act.start_date || '').split('T')[0];
       if (d) { if (!_actsByDate[d]) _actsByDate[d] = []; _actsByDate[d].push(act); }
     });
+
     document.querySelectorAll(`[data-wd-strava-id="${a.id}"]`).forEach(col => {
       const dateStr = col.dataset.wdStravaDate;
       if (!dateStr) return;
       const dayActs = _actsByDate[dateStr] || [];
       if (!dayActs.length) { col.innerHTML = ''; return; }
+
       col.innerHTML = dayActs.map(act => {
-        const dist  = act.distance > 10 ? (act.distance / 1000).toFixed(2) : null;
-        const pace  = (() => {
-          if (!act.average_speed || !act.distance) return null;
-          const spm = 1000 / act.average_speed;
-          return `${Math.floor(spm/60)}:${Math.round(spm%60).toString().padStart(2,'0')}`;
-        })();
-        const hr    = act.average_heartrate ? Math.round(act.average_heartrate) : null;
-        const secs  = act.moving_time || 0;
-        const time  = secs ? (Math.floor(secs/3600) > 0 ? `${Math.floor(secs/3600)}h ${Math.floor((secs%3600)/60)}m` : `${Math.floor(secs/60)}m`) : null;
-        const elev  = act.total_elevation_gain > 0 ? Math.round(act.total_elevation_gain) : null;
-        const isRun = /run/i.test(act.type || '');
+        const dist    = act.distance > 10 ? (act.distance / 1000).toFixed(2) : null;
+        const pace    = fmtPace(act.average_speed);
+        const hr      = act.average_heartrate ? Math.round(act.average_heartrate) : null;
+        const maxHr   = act.max_heartrate     ? Math.round(act.max_heartrate)     : null;
+        const timeStr = fmtTime(act.moving_time || 0);
+        const elev    = act.total_elevation_gain > 0 ? Math.round(act.total_elevation_gain) : null;
+        const cadence = act.average_cadence   ? Math.round(act.average_cadence * 2) : null;
+        const cals    = act.calories          ? Math.round(act.calories) : null;
+        const suffer  = act.suffer_score      ?? null;
+        const gear    = act.gear              ? act.gear.name : null;
+        const rpe     = act.perceived_exertion != null ? act.perceived_exertion : null;
+        const prCount = act.pr_count          || 0;
+        const wtype   = act.workout_type;
+        const wtypeLabel = wtype === 1 ? 'Race' : wtype === 2 ? 'Long Run' : wtype === 3 ? 'Workout' : null;
+
+        const isRun  = /run/i.test(act.type || '');
         const isLift = /weight|crossfit|workout/i.test(act.type || '');
         const accent = isRun ? '#fc4c02' : isLift ? '#818cf8' : '#3b82f6';
-        const stats = [
-          dist  ? `<span class="wd-strava-stat primary"><strong>${dist}</strong>km</span>` : '',
-          pace  ? `<span class="wd-strava-stat primary"><strong>${pace}</strong>/km</span>` : '',
-          hr    ? `<span class="wd-strava-stat">♥ <strong>${hr}</strong></span>` : '',
-          time  ? `<span class="wd-strava-stat"><strong>${time}</strong></span>` : '',
-          elev  ? `<span class="wd-strava-stat">↑ <strong>${elev}</strong>m</span>` : '',
-          act.pr_count ? `<span class="wd-strava-stat" style="color:#f59e0b;border-color:#f59e0b">🏆 ${act.pr_count} PR</span>` : '',
+
+        // Summary chips (shown always)
+        const summaryChips = [
+          dist && pace !== '—' ? `<span class="wd-strava-stat primary"><strong>${pace}</strong>/km</span>` : '',
+          dist                 ? `<span class="wd-strava-stat primary"><strong>${dist}</strong>km</span>` : '',
+          hr                   ? `<span class="wd-strava-stat">♥ <strong>${hr}</strong>${maxHr ? `–${maxHr}` : ''}</span>` : '',
+          `<span class="wd-strava-stat"><strong>${timeStr}</strong></span>`,
+          prCount ? `<span class="wd-strava-stat" style="color:#f59e0b;border-color:#f59e0b">🏆 ${prCount} PR</span>` : '',
+          wtypeLabel ? `<span class="wd-strava-stat" style="color:#f59e0b;border-color:#f59e0b">${esc(wtypeLabel)}</span>` : '',
         ].filter(Boolean).join('');
-        return `<div class="wd-strava-act" style="border-left-color:${accent}">
-          <div class="wd-strava-act-type" style="color:${accent}">${esc(act.type || 'Activity')}</div>
-          <div class="wd-strava-act-name">${esc(act.name)}</div>
-          <div class="wd-strava-stats">${stats}</div>
-        </div>`;
+
+        // Expanded detail chips
+        const detailChips = [
+          elev    ? `<span class="wd-strava-stat">↑ <strong>${elev}</strong>m</span>` : '',
+          cadence ? `<span class="wd-strava-stat">⟳ <strong>${cadence}</strong> spm</span>` : '',
+          suffer  ? `<span class="wd-strava-stat">⚡ <strong>${suffer}</strong> effort</span>` : '',
+          cals    ? `<span class="wd-strava-stat">🔥 <strong>${cals}</strong> kcal</span>` : '',
+          gear    ? `<span class="wd-strava-stat">👟 ${esc(gear)}</span>` : '',
+          rpe     ? `<span class="wd-strava-stat">RPE <strong>${rpe}</strong>/10</span>` : '',
+        ].filter(Boolean).join('');
+
+        const descHtml = act.description
+          ? `<div class="wd-strava-desc">"${esc(act.description)}"</div>` : '';
+
+        // Splits table with pace bars
+        let splitsHtml = '';
+        if (act.splits_metric && act.splits_metric.length) {
+          const speeds = act.splits_metric.map(sp => sp.average_speed).filter(Boolean);
+          const maxSpd = Math.max(...speeds), minSpd = Math.min(...speeds);
+          const bestIdx = speeds.indexOf(maxSpd);
+          const rows = act.splits_metric.map((sp, i) => {
+            const spHr   = sp.average_heartrate ? Math.round(sp.average_heartrate) : '—';
+            const spElev = sp.elevation_difference != null ? (sp.elevation_difference > 0 ? `+${Math.round(sp.elevation_difference)}` : Math.round(sp.elevation_difference)) : '—';
+            const barW   = speeds.length > 1 && sp.average_speed ? Math.round(((sp.average_speed - minSpd) / (maxSpd - minSpd || 1)) * 60) + 20 : 0;
+            const pCls   = i === bestIdx ? ' pace-fast' : '';
+            return `<tr>
+              <td>${sp.split}</td>
+              <td class="${pCls}"><span class="split-pace-wrap"><span class="split-pace-bar" style="width:${barW}%"></span><strong>${fmtSplitPace(sp.average_speed)}</strong></span></td>
+              <td>${spHr}</td>
+              <td>${spElev}m</td>
+            </tr>`;
+          }).join('');
+          splitsHtml = `<table class="strava-splits" style="margin-top:8px">
+            <thead><tr><th>km</th><th>pace</th><th>hr</th><th>elev</th></tr></thead>
+            <tbody>${rows}</tbody>
+          </table>`;
+        }
+
+        // Laps table (interval sessions)
+        let lapsHtml = '';
+        if (act.laps && act.laps.length > 3) {
+          const lapSpeeds = act.laps.map(lp => lp.average_speed).filter(Boolean);
+          const maxLS = Math.max(...lapSpeeds), minLS = Math.min(...lapSpeeds);
+          const lapRows = act.laps.map((lp, i) => {
+            const lpDist = lp.distance ? (lp.distance / 1000).toFixed(2) : '—';
+            const lpHr   = lp.average_heartrate ? Math.round(lp.average_heartrate) : '—';
+            const lpElev = lp.total_elevation_gain != null ? `${lp.total_elevation_gain > 0 ? '+' : ''}${Math.round(lp.total_elevation_gain)}` : '—';
+            const barW   = lapSpeeds.length > 1 && lp.average_speed ? Math.round(((lp.average_speed - minLS) / (maxLS - minLS || 1)) * 60) + 20 : 0;
+            return `<tr><td>${i + 1}</td><td>${lpDist}km</td><td><span class="split-pace-wrap"><span class="split-pace-bar" style="width:${barW}%"></span><strong>${fmtSplitPace(lp.average_speed)}</strong></span></td><td>${lpHr}</td><td>${lpElev}m</td></tr>`;
+          }).join('');
+          lapsHtml = `<details class="strava-laps-wrap" style="margin-top:8px"><summary class="strava-laps-toggle">▾ Laps (${act.laps.length})</summary>
+            <table class="strava-splits" style="margin-top:6px">
+              <thead><tr><th>#</th><th>dist</th><th>pace</th><th>hr</th><th>elev</th></tr></thead>
+              <tbody>${lapRows}</tbody>
+            </table></details>`;
+        }
+
+        const hasDetail = detailChips || descHtml || splitsHtml || lapsHtml;
+
+        return `<details class="wd-strava-act" style="border-left-color:${accent}">
+          <summary class="wd-strava-summary">
+            <div class="wd-strava-act-type" style="color:${accent}">${esc(act.type || 'Activity')}${hasDetail ? ' <span class="wd-strava-chevron">▾</span>' : ''}</div>
+            <div class="wd-strava-act-name">${esc(act.name)}</div>
+            <div class="wd-strava-stats">${summaryChips}</div>
+          </summary>
+          ${hasDetail ? `<div class="wd-strava-detail">
+            ${detailChips ? `<div class="wd-strava-stats" style="margin-top:6px">${detailChips}</div>` : ''}
+            ${descHtml}
+            ${lapsHtml}
+            ${splitsHtml}
+          </div>` : ''}
+        </details>`;
       }).join('');
     });
 
