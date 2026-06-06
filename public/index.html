@@ -292,6 +292,35 @@ body[data-theme="pride"] .dash-week-nav{border:2px solid transparent;border-imag
 /* ── Grid ── */
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:11px}
 
+/* ── Table view ── */
+.dash-table-wrap{width:100%;overflow-x:auto}
+.dash-table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:11px}
+.dash-table thead tr{background:var(--header);border-bottom:2px solid #0a0a0a}
+.dash-table th{padding:8px 10px;font-size:8px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.35);text-align:left;white-space:nowrap}
+.dash-table th:not(:first-child){text-align:right}
+.dash-trow{border-bottom:1px solid var(--border);cursor:pointer;transition:background .1s}
+.dash-trow:hover{background:rgba(255,255,255,.03)}
+.dash-trow.trow-red{border-left:2px solid rgba(220,38,38,.5)}
+.dash-trow.trow-amber{border-left:2px solid rgba(245,158,11,.4)}
+.dash-table td{padding:9px 10px;vertical-align:middle;color:var(--text)}
+.dash-table td:not(:first-child){text-align:right}
+.tname{font-family:var(--cond);font-size:16px;font-weight:900;text-transform:uppercase;letter-spacing:.04em;color:#fff;line-height:1;display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.tmeta{font-size:8px;color:var(--dim);margin-top:2px;letter-spacing:.04em}
+.tflag{display:inline-flex;font-size:7px;font-weight:700;padding:1px 5px;border-radius:3px;letter-spacing:.06em;text-transform:uppercase}
+.tflag.red{background:rgba(239,68,68,.15);color:#fca5a5;border:1px solid rgba(239,68,68,.3)}
+.tflag.yellow{background:rgba(245,158,11,.15);color:#fcd34d;border:1px solid rgba(245,158,11,.3)}
+.tbar-wrap{display:inline-flex;align-items:center;gap:5px;justify-content:flex-end}
+.tbar{width:40px;height:3px;background:rgba(255,255,255,.1);border-radius:2px;overflow:hidden;flex-shrink:0}
+.tbar-fill{height:100%;border-radius:2px}.tbar-fill.good{background:var(--ok)}.tbar-fill.mid{background:var(--warn)}.tbar-fill.bad{background:var(--alert)}.tbar-fill.run{background:var(--run)}
+.tval{font-size:12px;font-weight:700;font-family:var(--mono)}.tval.good{color:var(--ok)}.tval.mid{color:var(--warn)}.tval.bad{color:var(--alert)}.tval.run{color:var(--run)}.tval.up{color:var(--ok)}.tval.dn{color:var(--alert)}
+.tdim{color:var(--dim);font-family:var(--mono);font-size:11px}
+.twkbadge{font-size:13px;font-weight:900;color:#fff;font-family:var(--cond)}
+.tsess{font-size:10px;font-weight:700}.tsess.run{color:var(--run)}.tsess.str{color:#818cf8}
+.tstatus{font-size:9px;font-weight:600;letter-spacing:.04em}.tstatus.red{color:#fca5a5}.tstatus.amber{color:#fcd34d}.tstatus.ok{color:var(--ok)}.tstatus.dim{color:var(--dim)}
+.trow-expand td{padding:0!important;background:var(--surface2)}
+.trow-card>.card{border-radius:0;border-left:none;border-right:none;border-bottom:none}
+.ttrend-up{color:var(--ok);font-size:9px}.ttrend-dn{color:var(--alert);font-size:9px}
+
 /* ── Card ── */
 .card{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;display:flex;flex-direction:column;transition:box-shadow .15s}
 .card:hover{box-shadow:0 4px 18px rgba(0,0,0,.08)}
@@ -1191,6 +1220,11 @@ body[data-theme="light"] .strava-chip{background:#f4f3f0}
     <button class="sf" id="dwc-prev" onclick="dashboardWeekNav(-1)">← Prev Week</button>
     <button class="sf" id="dwc-next" onclick="dashboardWeekNav(1)" disabled>Next Week →</button>
     <button class="sf" id="dwc-reset" onclick="dashboardWeekReset()" disabled>Current</button>
+  </div>
+  <div class="filter-divider"></div>
+  <div class="sf-group">
+    <button class="sf active" id="view-cards-btn" onclick="setDashboardView('cards')">Cards</button>
+    <button class="sf" id="view-table-btn" onclick="setDashboardView('table')">Table</button>
   </div>
 </div>
 
@@ -2608,9 +2642,112 @@ function buildHealthCards(health, ath, apps) {
   </div>`).join('');
 }
 
+let _dashboardView = 'cards';
+
+function setDashboardView(v) {
+  _dashboardView = v;
+  document.getElementById('view-cards-btn').classList.toggle('active', v === 'cards');
+  document.getElementById('view-table-btn').classList.toggle('active', v === 'table');
+  renderGrid(_allAthletes);
+  applyFilters();
+}
+
+function toggleTableRow(safeId) {
+  const exp = document.getElementById('texp-' + safeId);
+  if (!exp) return;
+  const open = exp.style.display !== 'none';
+  exp.style.display = open ? 'none' : 'table-row';
+}
+
+function buildTableRow(a) {
+  const hR = a.flags.some(f => f.t === 'red');
+  const hY = !hR && a.flags.some(f => f.t === 'yellow');
+  const rowCls = hR ? 'trow-red' : hY ? 'trow-amber' : '';
+  const fps = a.flags.map(f => `<span class="tflag ${f.t}">${esc(f.l)}</span>`).join('');
+
+  let recovHtml = '<span class="tdim">—</span>';
+  if (a.recoveryScore !== null) {
+    const rc = a.recoveryScore >= 7.5 ? 'good' : a.recoveryScore >= 5 ? 'mid' : 'bad';
+    recovHtml = `<div class="tbar-wrap"><div class="tbar"><div class="tbar-fill ${rc}" style="width:${Math.round(a.recoveryScore/10*100)}%"></div></div><span class="tval ${rc}">${a.recoveryScore}</span></div>`;
+  }
+
+  const km = a.currRunKm || 0;
+  const kmTarget = parseFloat(a.target?.['Weekly KM Target']) || 0;
+  let kmHtml = '<span class="tdim">—</span>';
+  if (km > 0 || kmTarget > 0) {
+    const pct = kmTarget > 0 ? Math.min(100, Math.round(km/kmTarget*100)) : 100;
+    const lbl = kmTarget > 0 ? `${km.toFixed(1)}/${kmTarget}` : `${km.toFixed(1)}`;
+    kmHtml = `<div class="tbar-wrap"><div class="tbar"><div class="tbar-fill run" style="width:${pct}%"></div></div><span class="tval run">${lbl}</span></div>`;
+  }
+
+  let wtHtml = '<span class="tdim">—</span>';
+  if (a.bAvg.wt !== undefined) {
+    const wt = a.trends?.weight ? trendDelta(a.trends.weight, false) : { dir: 'flat' };
+    const arrow = wt.dir === 'up' ? '<span class="ttrend-up">↑</span>' : wt.dir === 'dn' ? '<span class="ttrend-dn">↓</span>' : '';
+    wtHtml = `<span class="tval">${esc(a.bAvg.wt)}${arrow}</span>`;
+  }
+
+  let enHtml = '<span class="tdim">—</span>';
+  if (a.bAvg.energy !== null) {
+    const ec = a.bAvg.energy >= 7 ? 'good' : a.bAvg.energy >= 5 ? 'mid' : 'bad';
+    enHtml = `<span class="tval ${ec}">${a.bAvg.energy}</span>`;
+  }
+
+  let calHtml = '<span class="tdim">—</span>';
+  if (a.nAvg.cal !== null) {
+    calHtml = `<span class="tval">${Number(a.nAvg.cal).toLocaleString()}</span>`;
+  }
+
+  const sessHtml = `<span class="tsess run">${a.currRunS.length}r</span> <span class="tsess str">${a.currStrS.length}s</span>`;
+
+  let statusHtml = '<span class="tstatus ok">On track</span>';
+  if (!a.weekly && !a.body?.length) statusHtml = '<span class="tstatus dim">No data</span>';
+  else if (hR && a.actions?.critical?.length) statusHtml = `<span class="tstatus red">${esc(a.actions.critical[0].slice(0,30))}</span>`;
+  else if (hY && a.actions?.watch?.length) statusHtml = `<span class="tstatus amber">${esc(a.actions.watch[0].slice(0,30))}</span>`;
+
+  const metaStr = a.weekNum !== null ? `Wk ${a.weekNum} · ` : '';
+  const checkinStr = a.hasCurrentCheckin ? 'Checked in' : a.isStale ? 'No check-in' : a.weekly ? 'Last week' : 'No data';
+  const safeId = a.id.replace(/\W+/g, '-').toLowerCase();
+
+  return `<tr class="dash-trow ${rowCls}" onclick="toggleTableRow('${safeId}')">
+    <td><div class="tname">${esc(a.id)}${fps}</div><div class="tmeta">${metaStr}${checkinStr}</div></td>
+    <td>${a.weekNum !== null ? `<span class="twkbadge">${a.weekNum}</span>` : '<span class="tdim">—</span>'}</td>
+    <td>${recovHtml}</td>
+    <td>${kmHtml}</td>
+    <td>${wtHtml}</td>
+    <td>${enHtml}</td>
+    <td>${calHtml}</td>
+    <td>${sessHtml}</td>
+    <td>${statusHtml}</td>
+  </tr>
+  <tr class="trow-expand" id="texp-${safeId}" style="display:none">
+    <td colspan="9"><div class="trow-card">${buildCard(a, _dashboardWeekOffset)}</div></td>
+  </tr>`;
+}
+
+function renderTableView(ath) {
+  const sorted = [...ath].sort((a, b) => {
+    const sev = x => x.actions?.severity === 'red' ? 0 : x.actions?.severity === 'amber' ? 1 : 2;
+    return sev(a) - sev(b);
+  });
+  document.getElementById('grid').innerHTML = `<div class="dash-table-wrap">
+    <table class="dash-table">
+      <thead><tr>
+        <th>Athlete</th><th>Wk</th><th>Recovery</th><th>Weekly KM</th>
+        <th>Weight</th><th>Energy</th><th>Calories</th><th>Sessions</th><th>Status</th>
+      </tr></thead>
+      <tbody>${sorted.map(a => buildTableRow(a)).join('')}</tbody>
+    </table>
+  </div>`;
+}
+
 function renderGrid(ath) {
   renderWeekNavBar();
-  document.getElementById('grid').innerHTML = ath.map(a => buildCard(a, _dashboardWeekOffset)).join('');
+  if (_dashboardView === 'table') {
+    renderTableView(ath);
+  } else {
+    document.getElementById('grid').innerHTML = ath.map(a => buildCard(a, _dashboardWeekOffset)).join('');
+  }
 }
 
 function renderWeekNavBar() {
@@ -2626,21 +2763,22 @@ function renderWeekNavBar() {
   const wStart = addDays(currentWeekStart, _dashboardWeekOffset * 7);
   const wEnd   = addDays(wStart, 6);
   const label  = `Week of ${fmtDate(localDateStr(wStart))} → ${fmtDate(localDateStr(wEnd))}`;
+  const isFutureNav = _dashboardWeekOffset > 0;
   el.innerHTML = `<div class="dash-week-nav">
     <div class="dwn-label">
-      <div class="dwn-kicker">Viewing Historical Week</div>
+      <div class="dwn-kicker">${isFutureNav ? 'Viewing Upcoming Week' : 'Viewing Historical Week'}</div>
       <div class="dwn-main">${label}</div>
     </div>
     <div class="dwn-controls">
       <button class="dwn-btn secondary" onclick="dashboardWeekNav(-1)">← Prev Week</button>
-      <button class="dwn-btn secondary" onclick="dashboardWeekNav(1)" ${_dashboardWeekOffset >= 0 ? 'disabled' : ''}>Next Week →</button>
+      <button class="dwn-btn secondary" onclick="dashboardWeekNav(1)" ${_dashboardWeekOffset >= 4 ? 'disabled' : ''}>Next Week →</button>
       <button class="dwn-btn" onclick="dashboardWeekReset()">Current Week</button>
     </div>
   </div>`;
 }
 
 function dashboardWeekNav(dir) {
-  _dashboardWeekOffset = Math.min(0, _dashboardWeekOffset + dir);
+  _dashboardWeekOffset = Math.max(-52, Math.min(4, _dashboardWeekOffset + dir));
   renderGrid(_allAthletes);
   _syncWeekNavButtons();
   applyFilters();
@@ -2658,8 +2796,7 @@ function _syncWeekNavButtons() {
   const next  = document.getElementById('dwc-next');
   const reset = document.getElementById('dwc-reset');
   if (!prev) return;
-  // Next/Reset only active when we're in the past
-  next.disabled  = _dashboardWeekOffset >= 0;
+  next.disabled  = _dashboardWeekOffset >= 4;
   reset.disabled = _dashboardWeekOffset === 0;
   // Highlight the prev button when viewing historically
   prev.classList.toggle('active', false);
@@ -2684,10 +2821,12 @@ function renderCoaches(coaches) {
 
 // ── Athlete Card ──────────────────────────────────────────────────────────────
 function buildCard(a, weekOffset = 0) {
-  // Historical mode: use the weekly check-in that matches the selected week
+  // Historical / future mode
   const isHistorical = weekOffset < 0;
+  const isFuture = weekOffset > 0;
   const histCtx = isHistorical ? getSelectedWeekContext(a, weekOffset) : null;
-  const w = isHistorical ? (histCtx.weekly || null) : a.weekly;
+  const futCtx  = isFuture     ? getSelectedWeekContext(a, weekOffset) : null;
+  const w = isHistorical ? (histCtx.weekly || null) : isFuture ? null : a.weekly;
   const hW = !!w?.Name;
   const hR = a.flags.some(f => f.t === 'red');
   const hY = !hR && a.flags.some(f => f.t === 'yellow');
@@ -2697,7 +2836,10 @@ function buildCard(a, weekOffset = 0) {
   // ── Meta text (check-in status)
   let metaText;
   const wkEndDisplay = fmtDate(a.expectedWeekEnd);
-  if (isHistorical) {
+  if (isFuture) {
+    const fWkNum = a.weekNum !== null ? a.weekNum + weekOffset : null;
+    metaText = `Upcoming${fWkNum !== null ? ` · Wk ${fWkNum}` : ''} · ${fmtDate(futCtx.weekStartStr)} → ${fmtDate(futCtx.weekEndStr)}`;
+  } else if (isHistorical) {
     metaText = hW
       ? `Historical · check-in ${fmtDate(w['Week Ending'])}`
       : `Historical · no check-in for ${fmtDate(histCtx.weekStartStr)} → ${fmtDate(histCtx.weekEndStr)}`;
@@ -2835,6 +2977,18 @@ function buildCard(a, weekOffset = 0) {
       </div>
       ${hRun.length === 0 && hStr.length === 0 ? `<div class="wip-none">No sessions logged for this week</div>` : ''}
     </div>`;
+  } else if (isFuture) {
+    const fWkNum = a.weekNum !== null ? a.weekNum + weekOffset : null;
+    const fPlan = futCtx.plan || [];
+    const fRun = fPlan.filter(r => RUN_SESSION_TYPES.has(r['Session Type'] || r['SessionType'] || ''));
+    const fStr = fPlan.filter(r => !RUN_SESSION_TYPES.has(r['Session Type'] || r['SessionType'] || '') && (r['Session Type'] || r['SessionType']));
+    weekInProgress = `<div class="wip-banner" style="border-color:rgba(99,102,241,.3)">
+      <div class="wip-label" style="color:#a5b4fc">Week ${fWkNum ?? ''} upcoming <span class="wip-ends">${fmtDate(futCtx.weekStartStr)} → ${fmtDate(futCtx.weekEndStr)}</span></div>
+      ${fPlan.length ? `<div class="sess-row" style="margin:6px 0 2px">
+        <div class="scard"><div class="snum run-c">${fRun.length}</div><div class="slbl">Run planned</div></div>
+        <div class="scard"><div class="snum str-c">${fStr.length}</div><div class="slbl">Strength planned</div></div>
+      </div>` : `<div class="wip-none">No sessions planned yet</div>`}
+    </div>`;
   } else {
     const rCount  = a.currRunS.length;
     const sCount  = a.currStrS.length;
@@ -2857,9 +3011,9 @@ function buildCard(a, weekOffset = 0) {
     </div>`;
   }
 
-  // ── Stale / last-week banner (suppressed in historical view)
+  // ── Stale / last-week banner (suppressed in historical/future view)
   let staleBanner = '';
-  if (!isHistorical) {
+  if (!isHistorical && !isFuture) {
     if (hW && a.isStale) {
       staleBanner = `<div class="status-banner status-banner--red">
         <div class="status-banner-title">No check-in this week</div>
@@ -2873,12 +3027,13 @@ function buildCard(a, weekOffset = 0) {
     }
   }
 
-  // ── This week's plan (inline schedule rows)
+  // ── This week's plan (inline schedule rows) — or upcoming plan for future weeks
   let planHtml = '';
-  if (a.thisWeekPlan && a.thisWeekPlan.length) {
-    const comp = a.scheduleCompliance;
+  const activePlan = isFuture ? (futCtx.plan || []) : (a.thisWeekPlan || []);
+  if (activePlan.length) {
+    const comp = isFuture ? null : a.scheduleCompliance;
     const cc = comp !== null ? (comp>=80?'good':comp>=60?'mid':'bad') : '';
-    const rows = a.thisWeekPlan.map(r => {
+    const rows = activePlan.map(r => {
       const d = r['date:Planned Date:start'] || r['Planned Date'] || '';
       const dateStr = d ? fmtDate(d.split('T')[0]) : '—';
       const status = (r['Status '] || r['Status'] || 'planned').trim().toLowerCase();
@@ -2908,7 +3063,7 @@ function buildCard(a, weekOffset = 0) {
       </div>`;
     }).join('');
     planHtml = `<div class="plan-sec">
-      <div class="plan-sec-ttl">This Week's Plan${comp!==null?`<span class="plan-sec-comp ${cc}">${comp}%</span>`:''}</div>
+      <div class="plan-sec-ttl">${isFuture ? 'Upcoming Plan' : `This Week's Plan`}${comp!==null?`<span class="plan-sec-comp ${cc}">${comp}%</span>`:''}</div>
       <div class="sched-card-body" style="padding:0 0 4px">${rows}</div>
     </div>`;
   }
@@ -3246,7 +3401,7 @@ function buildWeekJump(a, ctx) {
     </div>
     <div class="week-jump-controls">
       <button class="week-jump-btn secondary" onclick="fpWeekNav(-1)">← Previous Week</button>
-      <button class="week-jump-btn secondary" onclick="fpWeekNav(1)" ${ctx.weekOffset >= 0 ? 'disabled' : ''}>Next Week →</button>
+      <button class="week-jump-btn secondary" onclick="fpWeekNav(1)" ${ctx.weekOffset >= 4 ? 'disabled' : ''}>Next Week →</button>
       <button class="week-jump-btn" onclick="fpWeekReset()" ${ctx.weekOffset === 0 ? 'disabled' : ''}>Current Week</button>
     </div>
   </div>`;
