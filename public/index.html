@@ -2751,17 +2751,20 @@ function buildTableExpandPanel(a) {
     </div>`;
   }
 
-  // Weekly KM bar
+  // Weekly KM bar — prefer live Strava cache, fall back to session accumulation
   let kmBar = '';
-  const km = a.currRunKm || 0;
+  const _stravaKm = _stravaKmCache[a.id];
+  const km = _stravaKm?.weeklyKm != null ? _stravaKm.weeklyKm : (a.currRunKm || 0);
+  const kmSource = _stravaKm?.weeklyKm != null ? 'strava' : null;
   const kmTarget = parseFloat(a.target?.['Weekly KM Target']) || 0;
   if (km > 0 || kmTarget > 0) {
     const pct = kmTarget > 0 ? Math.min(100, Math.round(km / kmTarget * 100)) : 100;
-    const label = kmTarget > 0 ? `${km.toFixed(1)} / ${kmTarget} km` : `${km.toFixed(1)} km`;
-    kmBar = `<div class="texp-bar-row">
+    const label = kmTarget > 0 ? `${km} / ${kmTarget} km` : `${km} km`;
+    const srcChip = kmSource ? `<span style="font-size:8px;color:var(--run);font-family:var(--mono);margin-left:4px">${kmSource}</span>` : '';
+    kmBar = `<div class="texp-bar-row" data-km-bar="${esc(a.id)}" data-km-target="${kmTarget}">
       <span class="texp-bar-lbl">Weekly KM</span>
-      <div class="texp-bar-track"><div class="texp-bar-fill run" style="width:${pct}%"></div></div>
-      <span class="texp-bar-val run">${label}</span>
+      <div class="texp-bar-track"><div class="texp-bar-fill pbar-fill run" style="width:${pct}%"></div></div>
+      <span class="texp-bar-val pbar-val run">${label}${srcChip}</span>
     </div>`;
   }
 
