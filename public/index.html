@@ -1425,6 +1425,21 @@ function getSB() {
 
 // ── Plan overrides (Supabase-backed, local cache) ─────────────────────────────
 let _ovCache = {};  // notion_page_id → { name, dist, pace }
+let _sessLogs = new Set(); // notion_page_ids completed via athlete portal
+
+async function loadSessionLogs() {
+  try {
+    const sb = getSB(); if (!sb) return;
+    const { data } = await sb.from('session_logs').select('session_key');
+    _sessLogs = new Set();
+    (data || []).forEach(r => {
+      // session_key format: session_{ATHLETE_CODE}_{NOTION_PAGE_ID}
+      const m = r.session_key?.match(/^session_[^_]+_(.+)$/);
+      if (m) _sessLogs.add(m[1]);
+    });
+  } catch(e) { console.warn('Session logs load failed', e); }
+}
+function isSessionLogged(notionPageId) { return _sessLogs.has(notionPageId); }
 
 async function loadAllOverrides() {
   try {
@@ -2911,8 +2926,12 @@ function buildTableExpandPanel(a) {
 
   const activePlan = isFuture ? (futCtx?.plan || []) : (a.thisWeekPlan || []);
 
-  // Completion counts from plan data (live from Supabase via thisWeekPlan)
-  const planDone   = activePlan.filter(r => (r['Status '] || r['Status'] || '').trim().toLowerCase() === 'completed').length;
+  // Completion counts — session_logs (Supabase, athlete portal ticks) takes priority over Notion Status
+  const planDone   = activePlan.filter(r => {
+    const id = r._id || r.id || '';
+    const notionStatus = (r['Status '] || r['Status'] || '').trim().toLowerCase();
+    return isSessionLogged(id) || notionStatus === 'completed';
+  }).length;
   const planMissed = activePlan.filter(r => (r['Status '] || r['Status'] || '').trim().toLowerCase() === 'missed').length;
   const planTotal  = activePlan.length;
 
@@ -2961,10 +2980,11 @@ function buildTableExpandPanel(a) {
     planRowsHtml = activePlan.map(r => {
       const d = r['date:Planned Date:start'] || r['Planned Date'] || '';
       const dateStr = fmtPlanDate(d);
-      const status = (r['Status '] || r['Status'] || 'planned').trim().toLowerCase();
-      const isDone   = status === 'completed';
-      const isMissed = status === 'missed';
-      const isSick   = status === 'sick';
+      const rowId2 = r._id || r.id || '';
+      const notionStatus = (r['Status '] || r['Status'] || '').trim().toLowerCase();
+      const isDone   = isSessionLogged(rowId2) || notionStatus === 'completed';
+      const isMissed = !isDone && notionStatus === 'missed';
+      const isSick   = !isDone && notionStatus === 'sick';
       // Row class based on completion
       const rowCls2 = isDone ? 'texp-row-done' : isMissed ? 'texp-row-missed' : isSick ? 'texp-row-sick' : 'texp-row-pending';
       // Status chip
@@ -4918,7 +4938,7 @@ async function load({ bust = false } = {}) {
       fetchDB(DB.weekly, bust), fetchDB(DB.sessions, bust), fetchDB(DB.body, bust),
       fetchDB(DB.nutrition, bust), fetchDB(DB.athletes, bust), fetchDB(DB.targets, bust),
       fetchDB(DB.planning, bust), fetchDB(DB.applications, bust),
-      loadAllOverrides(),
+      loadAllOverrides(), loadSessionLogs(),
     ]);
 
     const { athletes, coaches, syncAudit } = buildAll(weekly, sessions, body, nutrition, athleteDb, targets, planning, applications);
