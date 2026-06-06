@@ -2826,7 +2826,8 @@ function buildTableExpandPanel(a) {
       const feelParts = [];
       if (!isNaN(rf)) feelParts.push(`<span style="color:var(--run)">Run feel ${rf}/10</span>`);
       if (!isNaN(lf)) feelParts.push(`<span style="color:var(--str)">Lift feel ${lf}/10</span>`);
-      trainingSplitHtml = `<div class="texp-section"><div class="texp-label">Training Split</div>
+      const splitWkLabel = w['Week Ending'] ? `Last check-in · ${fmtDate(w['Week Ending'])}` : 'Last check-in';
+      trainingSplitHtml = `<div class="texp-section"><div class="texp-label">${splitWkLabel}</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px">
           <div>
             <div style="font-family:var(--mono);font-size:9px;color:var(--run);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">Running</div>
@@ -2878,6 +2879,22 @@ function buildTableExpandPanel(a) {
   </div>`;
 
   // ── Right panel: WIP counts + plan rows
+  const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  function fmtPlanDate(raw) {
+    if (!raw) return '—';
+    const iso = raw.split('T')[0];
+    const dt = new Date(iso + 'T12:00:00');
+    const day = DAYS[dt.getDay()] || '';
+    return `<span style="font-weight:700;color:var(--muted)">${day}</span> <span style="color:var(--dim)">${fmtDate(iso)}</span>`;
+  }
+
+  const activePlan = isFuture ? (futCtx?.plan || []) : (a.thisWeekPlan || []);
+
+  // Completion counts from plan data (live from Supabase via thisWeekPlan)
+  const planDone   = activePlan.filter(r => (r['Status '] || r['Status'] || '').trim().toLowerCase() === 'completed').length;
+  const planMissed = activePlan.filter(r => (r['Status '] || r['Status'] || '').trim().toLowerCase() === 'missed').length;
+  const planTotal  = activePlan.length;
+
   let wipHtml = '';
   if (isFuture && futCtx) {
     const fPlan = futCtx.plan || [];
@@ -2897,12 +2914,16 @@ function buildTableExpandPanel(a) {
     const psCount = a.prevStrS.length;
     const noThis = rCount === 0 && sCount === 0;
     const showPrev = noThis && (prCount > 0 || psCount > 0);
+    // Plan completion pill
+    const compPill = planTotal > 0
+      ? `<span style="font-family:var(--mono);font-size:10px;margin-left:auto;color:${planDone===planTotal?'var(--ok)':planMissed>0?'var(--alert)':'var(--muted)'}">${planDone}/${planTotal} done${planMissed>0?` · <span style="color:var(--alert)">${planMissed} missed</span>`:''}</span>`
+      : '';
     wipHtml = `<div class="texp-wip">
-      <div class="texp-wip-label">Wk ${a.weekNum ?? '—'} in progress · ends ${fmtDate(a.expectedWeekEnd)}</div>
+      <div class="texp-wip-label" style="display:flex;align-items:center">Wk ${a.weekNum ?? '—'} in progress · ends ${fmtDate(a.expectedWeekEnd)}${compPill}</div>
       <div class="texp-sess-row">
-        <div class="texp-scard"><div class="texp-snum run">${rCount}</div><div class="texp-slbl">Run</div></div>
-        <div class="texp-scard"><div class="texp-snum str">${sCount}</div><div class="texp-slbl">Strength</div></div>
-        ${noThis ? '' : `<div class="texp-scard" style="margin-left:auto"><div class="texp-snum" style="font-size:14px;color:var(--muted)">${a.scheduleCompliance !== null ? a.scheduleCompliance + '%' : '—'}</div><div class="texp-slbl">Compliance</div></div>`}
+        <div class="texp-scard"><div class="texp-snum run">${rCount}</div><div class="texp-slbl">Run logged</div></div>
+        <div class="texp-scard"><div class="texp-snum str">${sCount}</div><div class="texp-slbl">Str logged</div></div>
+        ${a.scheduleCompliance !== null ? `<div class="texp-scard" style="margin-left:auto"><div class="texp-snum" style="font-size:14px;color:var(--muted)">${a.scheduleCompliance}%</div><div class="texp-slbl">Compliance</div></div>` : ''}
       </div>
       ${noThis && !showPrev ? `<div style="font-family:var(--mono);font-size:9px;color:var(--dim);margin-top:6px;text-transform:uppercase;letter-spacing:.06em">No sessions logged yet</div>` : ''}
       ${showPrev ? `<div style="font-family:var(--mono);font-size:8px;color:var(--dim);margin-top:8px;text-transform:uppercase;letter-spacing:.06em">Last week</div>
@@ -2913,41 +2934,54 @@ function buildTableExpandPanel(a) {
     </div>`;
   }
 
-  // Plan rows — with day name + run override support
-  const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-  function fmtPlanDate(raw) {
-    if (!raw) return '—';
-    const iso = raw.split('T')[0];
-    const dt = new Date(iso + 'T12:00:00');
-    const day = DAYS[dt.getDay()] || '';
-    return `${day} ${fmtDate(iso)}`;
-  }
-
-  const activePlan = isFuture ? (futCtx?.plan || []) : (a.thisWeekPlan || []);
+  // Plan rows — status-highlighted + run override
   let planRowsHtml = '';
   if (activePlan.length) {
     planRowsHtml = activePlan.map(r => {
       const d = r['date:Planned Date:start'] || r['Planned Date'] || '';
       const dateStr = fmtPlanDate(d);
       const status = (r['Status '] || r['Status'] || 'planned').trim().toLowerCase();
-      const icon = status === 'completed' ? '<span style="color:var(--ok)">✓</span>' : status === 'missed' ? '<span style="color:var(--alert)">✗</span>' : '<span style="color:var(--dim)">→</span>';
+      const isDone   = status === 'completed';
+      const isMissed = status === 'missed';
+      const isSick   = status === 'sick';
+      // Row style based on completion
+      const rowStyle = isDone
+        ? 'background:rgba(74,222,128,.07);border-left:3px solid var(--ok);padding-left:7px;border-bottom-color:rgba(74,222,128,.15)'
+        : isMissed
+        ? 'background:rgba(239,68,68,.06);border-left:3px solid var(--alert);padding-left:7px;border-bottom-color:rgba(239,68,68,.15)'
+        : isSick
+        ? 'background:rgba(99,102,241,.06);border-left:3px solid #818cf8;padding-left:7px'
+        : 'padding-left:10px';
+      // Status chip
+      const statusChip = isDone
+        ? `<span style="flex-shrink:0;font-family:var(--mono);font-size:8px;font-weight:700;color:var(--ok);background:rgba(74,222,128,.12);border:1px solid rgba(74,222,128,.25);border-radius:4px;padding:1px 5px;text-transform:uppercase;letter-spacing:.06em">✓ Done</span>`
+        : isMissed
+        ? `<span style="flex-shrink:0;font-family:var(--mono);font-size:8px;font-weight:700;color:var(--alert);background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);border-radius:4px;padding:1px 5px;text-transform:uppercase;letter-spacing:.06em">✗ Missed</span>`
+        : isSick
+        ? `<span style="flex-shrink:0;font-family:var(--mono);font-size:8px;font-weight:700;color:#a5b4fc;background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.2);border-radius:4px;padding:1px 5px;text-transform:uppercase;letter-spacing:.06em">SICK</span>`
+        : '';
       const badge = sessionBadgeHTML(r['Session Type'] || r['SessionType'], r['Status '] || r['Status'], r.Session);
       const origName = r.Session || r['Session Type'] || 'Session';
+      const nameStyle = isDone ? 'text-decoration:line-through;opacity:.55' : '';
       const sType = r['Session Type'] || r['SessionType'] || '';
       const rowId = r._id || r.id || '';
-      const isRunRow = rowId && RUN_SESSION_TYPES.has(sType);
+      const isRunRow = !isDone && rowId && RUN_SESSION_TYPES.has(sType);
       const ov = isRunRow ? getPlanOverride(rowId) : null;
       const dispName = ov?.name || origName;
       const distChip = ov?.dist ? `<span class="po-chip dist-chip overridden">${esc(ov.dist)} km</span>` : '';
       const paceChip = ov?.pace ? `<span class="po-chip pace-chip overridden">${esc(ov.pace)}</span>` : '';
       if (isRunRow) {
-        return `<div class="texp-plan-row sched-session-row--editable" data-po-id="${esc(rowId)}" data-po-orig="${esc(origName)}" data-po-date="${esc(d)}" onclick="openPlanOverride(this)" title="Click to override session">
+        return `<div class="texp-plan-row sched-session-row--editable" style="${rowStyle}" data-po-id="${esc(rowId)}" data-po-orig="${esc(origName)}" data-po-date="${esc(d)}" onclick="openPlanOverride(this)" title="Click to override session">
           <span class="texp-plan-date">${dateStr}</span>${badge}
-          <span class="texp-plan-name sched-session-name"><span class="po-name-text">${esc(dispName)}</span>${distChip}${paceChip}</span>
-          <span class="po-edit-icon">✎</span>
+          <span class="texp-plan-name sched-session-name" style="${nameStyle}"><span class="po-name-text">${esc(dispName)}</span>${distChip}${paceChip}</span>
+          ${statusChip}<span class="po-edit-icon">✎</span>
         </div>`;
       }
-      return `<div class="texp-plan-row">${icon}<span class="texp-plan-date">${dateStr}</span>${badge}<span class="texp-plan-name">${esc(origName)}</span></div>`;
+      return `<div class="texp-plan-row" style="${rowStyle}">
+        <span class="texp-plan-date">${dateStr}</span>${badge}
+        <span class="texp-plan-name" style="${nameStyle}">${esc(origName)}</span>
+        ${statusChip}
+      </div>`;
     }).join('');
   } else {
     planRowsHtml = `<div class="texp-plan-none">No plan set for this week</div>`;
