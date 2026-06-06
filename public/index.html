@@ -366,12 +366,33 @@ body[data-theme="light"] .texp-bar-track{background:rgba(0,0,0,.08)}
 .texp-action-ribbon.red{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);color:#fca5a5}
 .texp-action-ribbon.amber{background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);color:#fcd34d}
 .texp-action-title{font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;font-size:8px}
+/* Training split bar track */
+.texp-split-track{height:3px;border-radius:2px;margin-top:3px;background:rgba(255,255,255,.1)}
+body[data-theme="light"] .texp-split-track{background:rgba(0,0,0,.1)}
+/* Plan row status */
+.texp-row-done{background:rgba(74,222,128,.07);border-left:3px solid var(--ok);padding-left:7px;border-bottom-color:rgba(74,222,128,.15)}
+.texp-row-missed{background:rgba(239,68,68,.06);border-left:3px solid var(--alert);padding-left:7px;border-bottom-color:rgba(239,68,68,.15)}
+.texp-row-sick{background:rgba(99,102,241,.06);border-left:3px solid #818cf8;padding-left:7px}
+.texp-row-pending{padding-left:10px}
+body[data-theme="light"] .texp-row-done{background:rgba(22,163,74,.08);border-bottom-color:rgba(22,163,74,.15)}
+body[data-theme="light"] .texp-row-missed{background:rgba(220,38,38,.06);border-bottom-color:rgba(220,38,38,.15)}
+body[data-theme="light"] .texp-row-sick{background:rgba(99,102,241,.07)}
+/* Status chips */
+.texp-chip{flex-shrink:0;font-family:var(--mono);font-size:8px;font-weight:700;border-radius:4px;padding:1px 5px;text-transform:uppercase;letter-spacing:.06em;border:1px solid transparent}
+.texp-chip-done{color:var(--ok);background:rgba(74,222,128,.12);border-color:rgba(74,222,128,.25)}
+.texp-chip-missed{color:var(--alert);background:rgba(239,68,68,.1);border-color:rgba(239,68,68,.2)}
+.texp-chip-sick{color:#a5b4fc;background:rgba(99,102,241,.1);border-color:rgba(99,102,241,.2)}
+body[data-theme="light"] .texp-chip-done{background:rgba(22,163,74,.1);border-color:rgba(22,163,74,.25)}
+body[data-theme="light"] .texp-chip-missed{background:rgba(220,38,38,.08);border-color:rgba(220,38,38,.2)}
+body[data-theme="light"] .texp-chip-sick{color:#4338ca;background:rgba(99,102,241,.08);border-color:rgba(99,102,241,.2)}
 /* Light theme overrides */
 body[data-theme="light"] .texp-panel{background:var(--surface2)}
 body[data-theme="light"] .texp-header{background:var(--surface2)}
 body[data-theme="light"] .texp-metric{background:var(--surface)}
 body[data-theme="light"] .texp-wip{background:var(--surface)}
 body[data-theme="light"] .texp-name{color:var(--text)}
+body[data-theme="light"] .texp-action-ribbon.red{color:#b91c1c}
+body[data-theme="light"] .texp-action-ribbon.amber{color:#92400e}
 /* Pride theme */
 body[data-theme="pride"] .texp-name{background:linear-gradient(90deg,#FF8C00,#FFD700,#00DD88,#0080FF,#FF69B4);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
 .ttrend-up{color:var(--ok);font-size:10px;margin-left:1px}.ttrend-dn{color:var(--alert);font-size:10px;margin-left:1px}
@@ -2832,12 +2853,12 @@ function buildTableExpandPanel(a) {
           <div>
             <div style="font-family:var(--mono);font-size:9px;color:var(--run);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">Running</div>
             <div style="font-family:var(--mono);font-size:13px;font-weight:700;color:var(--text)">${rc}<span style="color:var(--dim);font-weight:400">/${rp}</span></div>
-            <div style="height:3px;background:rgba(255,255,255,.08);border-radius:2px;margin-top:3px"><div style="height:100%;width:${rPct}%;border-radius:2px;background:var(--run)"></div></div>
+            <div class="texp-split-track"><div style="height:100%;width:${rPct}%;border-radius:2px;background:var(--run)"></div></div>
           </div>
           <div>
             <div style="font-family:var(--mono);font-size:9px;color:var(--str);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">Lifting</div>
             <div style="font-family:var(--mono);font-size:13px;font-weight:700;color:var(--text)">${lc}<span style="color:var(--dim);font-weight:400">/${lp}</span></div>
-            <div style="height:3px;background:rgba(255,255,255,.08);border-radius:2px;margin-top:3px"><div style="height:100%;width:${lPct}%;border-radius:2px;background:var(--str)"></div></div>
+            <div class="texp-split-track"><div style="height:100%;width:${lPct}%;border-radius:2px;background:var(--str)"></div></div>
           </div>
         </div>
         ${feelParts.length ? `<div style="font-family:var(--mono);font-size:10px;margin-top:6px;display:flex;gap:12px">${feelParts.join('')}</div>` : ''}
@@ -2944,21 +2965,15 @@ function buildTableExpandPanel(a) {
       const isDone   = status === 'completed';
       const isMissed = status === 'missed';
       const isSick   = status === 'sick';
-      // Row style based on completion
-      const rowStyle = isDone
-        ? 'background:rgba(74,222,128,.07);border-left:3px solid var(--ok);padding-left:7px;border-bottom-color:rgba(74,222,128,.15)'
-        : isMissed
-        ? 'background:rgba(239,68,68,.06);border-left:3px solid var(--alert);padding-left:7px;border-bottom-color:rgba(239,68,68,.15)'
-        : isSick
-        ? 'background:rgba(99,102,241,.06);border-left:3px solid #818cf8;padding-left:7px'
-        : 'padding-left:10px';
+      // Row class based on completion
+      const rowCls2 = isDone ? 'texp-row-done' : isMissed ? 'texp-row-missed' : isSick ? 'texp-row-sick' : 'texp-row-pending';
       // Status chip
       const statusChip = isDone
-        ? `<span style="flex-shrink:0;font-family:var(--mono);font-size:8px;font-weight:700;color:var(--ok);background:rgba(74,222,128,.12);border:1px solid rgba(74,222,128,.25);border-radius:4px;padding:1px 5px;text-transform:uppercase;letter-spacing:.06em">✓ Done</span>`
+        ? `<span class="texp-chip texp-chip-done">✓ Done</span>`
         : isMissed
-        ? `<span style="flex-shrink:0;font-family:var(--mono);font-size:8px;font-weight:700;color:var(--alert);background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);border-radius:4px;padding:1px 5px;text-transform:uppercase;letter-spacing:.06em">✗ Missed</span>`
+        ? `<span class="texp-chip texp-chip-missed">✗ Missed</span>`
         : isSick
-        ? `<span style="flex-shrink:0;font-family:var(--mono);font-size:8px;font-weight:700;color:#a5b4fc;background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.2);border-radius:4px;padding:1px 5px;text-transform:uppercase;letter-spacing:.06em">SICK</span>`
+        ? `<span class="texp-chip texp-chip-sick">SICK</span>`
         : '';
       const badge = sessionBadgeHTML(r['Session Type'] || r['SessionType'], r['Status '] || r['Status'], r.Session);
       const origName = r.Session || r['Session Type'] || 'Session';
@@ -2971,13 +2986,13 @@ function buildTableExpandPanel(a) {
       const distChip = ov?.dist ? `<span class="po-chip dist-chip overridden">${esc(ov.dist)} km</span>` : '';
       const paceChip = ov?.pace ? `<span class="po-chip pace-chip overridden">${esc(ov.pace)}</span>` : '';
       if (isRunRow) {
-        return `<div class="texp-plan-row sched-session-row--editable" style="${rowStyle}" data-po-id="${esc(rowId)}" data-po-orig="${esc(origName)}" data-po-date="${esc(d)}" onclick="openPlanOverride(this)" title="Click to override session">
+        return `<div class="texp-plan-row ${rowCls2} sched-session-row--editable" data-po-id="${esc(rowId)}" data-po-orig="${esc(origName)}" data-po-date="${esc(d)}" onclick="openPlanOverride(this)" title="Click to override session">
           <span class="texp-plan-date">${dateStr}</span>${badge}
           <span class="texp-plan-name sched-session-name" style="${nameStyle}"><span class="po-name-text">${esc(dispName)}</span>${distChip}${paceChip}</span>
           ${statusChip}<span class="po-edit-icon">✎</span>
         </div>`;
       }
-      return `<div class="texp-plan-row" style="${rowStyle}">
+      return `<div class="texp-plan-row ${rowCls2}">
         <span class="texp-plan-date">${dateStr}</span>${badge}
         <span class="texp-plan-name" style="${nameStyle}">${esc(origName)}</span>
         ${statusChip}
