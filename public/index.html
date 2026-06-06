@@ -293,16 +293,17 @@ body[data-theme="pride"] .dash-week-nav{border:2px solid transparent;border-imag
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:11px}
 
 /* ── Table view ── */
+.grid.table-mode{display:block}
 .dash-table-wrap{width:100%;overflow-x:auto}
-.dash-table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:11px}
+.dash-table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:11px;table-layout:fixed}
 .dash-table thead tr{background:var(--header);border-bottom:2px solid #0a0a0a}
-.dash-table th{padding:8px 10px;font-size:8px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.35);text-align:left;white-space:nowrap}
+.dash-table th{padding:7px 8px;font-size:7px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.35);text-align:left;white-space:nowrap;overflow:hidden}
 .dash-table th:not(:first-child){text-align:right}
 .dash-trow{border-bottom:1px solid var(--border);cursor:pointer;transition:background .1s}
 .dash-trow:hover{background:rgba(255,255,255,.03)}
 .dash-trow.trow-red{border-left:2px solid rgba(220,38,38,.5)}
 .dash-trow.trow-amber{border-left:2px solid rgba(245,158,11,.4)}
-.dash-table td{padding:9px 10px;vertical-align:middle;color:var(--text)}
+.dash-table td{padding:8px 8px;vertical-align:middle;color:var(--text);overflow:hidden}
 .dash-table td:not(:first-child){text-align:right}
 .tname{font-family:var(--cond);font-size:16px;font-weight:900;text-transform:uppercase;letter-spacing:.04em;color:#fff;line-height:1;display:flex;align-items:center;gap:5px;flex-wrap:wrap}
 .tmeta{font-size:8px;color:var(--dim);margin-top:2px;letter-spacing:.04em}
@@ -2729,8 +2730,15 @@ function renderTableView(ath) {
     const sev = x => x.actions?.severity === 'red' ? 0 : x.actions?.severity === 'amber' ? 1 : 2;
     return sev(a) - sev(b);
   });
-  document.getElementById('grid').innerHTML = `<div class="dash-table-wrap">
+  const grid = document.getElementById('grid');
+  grid.classList.add('table-mode');
+  grid.innerHTML = `<div class="dash-table-wrap">
     <table class="dash-table">
+      <colgroup>
+        <col style="width:200px"><col style="width:44px"><col style="width:110px">
+        <col style="width:110px"><col style="width:80px"><col style="width:68px">
+        <col style="width:88px"><col style="width:72px"><col style="width:auto">
+      </colgroup>
       <thead><tr>
         <th>Athlete</th><th>Wk</th><th>Recovery</th><th>Weekly KM</th>
         <th>Weight</th><th>Energy</th><th>Calories</th><th>Sessions</th><th>Status</th>
@@ -4321,7 +4329,9 @@ function applyFilters() {
   }
 
   // Card mode: always re-render so week changes, filters, and sorts all apply correctly
-  document.getElementById('grid').innerHTML = visible.map(a => buildCard(a, _dashboardWeekOffset)).join('');
+  const grid = document.getElementById('grid');
+  grid.classList.remove('table-mode');
+  grid.innerHTML = visible.map(a => buildCard(a, _dashboardWeekOffset)).join('');
 }
 
 // ── renderSchedule ────────────────────────────────────────────────────────────
