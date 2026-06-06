@@ -2931,7 +2931,7 @@ function buildTableExpandPanel(a) {
   const planDone   = activePlan.filter(r => {
     const id = r._id || r.id || '';
     const notionStatus = (r['Status '] || r['Status'] || '').trim().toLowerCase();
-    return isSessionLogged(a.code, id) || notionStatus === 'completed';
+    return isSessionLogged(a.id, id) || notionStatus === 'completed';
   }).length;
   const planMissed = activePlan.filter(r => (r['Status '] || r['Status'] || '').trim().toLowerCase() === 'missed').length;
   const planTotal  = activePlan.length;
@@ -2983,7 +2983,7 @@ function buildTableExpandPanel(a) {
       const dateStr = fmtPlanDate(d);
       const rowId2 = r._id || r.id || '';
       const notionStatus = (r['Status '] || r['Status'] || '').trim().toLowerCase();
-      const isDone   = isSessionLogged(a.code, rowId2) || notionStatus === 'completed';
+      const isDone   = isSessionLogged(a.id, rowId2) || notionStatus === 'completed';
       const isMissed = !isDone && notionStatus === 'missed';
       const isSick   = !isDone && notionStatus === 'sick';
       // Row class based on completion
