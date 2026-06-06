@@ -939,12 +939,21 @@ body[data-theme="pride"] .texp-name{background:linear-gradient(90deg,#FF8C00,#FF
 
 /* ── Week detail (day-by-day timeline in FP card) ── */
 .wd-timeline{display:flex;flex-direction:column;gap:0;margin:0 -24px}
-.wd-row{display:flex;gap:0;border-top:1px solid var(--border);padding:12px 24px}
+.wd-row{display:grid;grid-template-columns:80px 1fr 1fr;gap:0;border-top:1px solid var(--border);padding:12px 24px}
 .wd-row:first-child{border-top:none}
 .wd-row.empty{opacity:.45}
-.wd-date{font-family:var(--mono);font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;width:80px;flex-shrink:0;padding-top:2px;line-height:1.4}
+.wd-date{font-family:var(--mono);font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;padding-top:2px;line-height:1.4}
 .wd-rest{font-family:var(--mono);font-size:9px;color:var(--dim);font-style:italic;padding-top:2px}
-.wd-day-content{flex:1;display:flex;flex-direction:column;gap:8px}
+.wd-day-content{display:flex;flex-direction:column;gap:8px;padding-right:14px}
+.wd-strava-col{border-left:1px solid var(--border);padding-left:14px;display:flex;flex-direction:column;gap:6px;min-height:1px}
+.wd-strava-act{background:var(--surface2);border-left:3px solid #fc4c02;border-radius:8px;padding:8px 10px}
+.wd-strava-act-type{font-family:var(--mono);font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-bottom:2px}
+.wd-strava-act-name{font-family:var(--cond);font-size:14px;font-weight:900;text-transform:uppercase;letter-spacing:.04em;line-height:1.2;color:var(--text);margin-bottom:5px}
+.wd-strava-stats{display:flex;flex-wrap:wrap;gap:3px}
+.wd-strava-stat{font-family:var(--mono);font-size:9px;color:var(--muted);background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:2px 7px;white-space:nowrap}
+.wd-strava-stat strong{color:var(--text)}
+.wd-strava-stat.primary{background:rgba(252,76,2,.08);border-color:rgba(252,76,2,.25)}
+.wd-strava-stat.primary strong{color:#fc4c02}
 .wd-session{border-radius:8px;padding:10px 12px}
 .wd-session.run{background:var(--amber-bg);border-left:3px solid var(--run)}
 .wd-session.str{background:rgba(96,165,250,.08);border-left:3px solid var(--str)}
@@ -1008,6 +1017,8 @@ body[data-theme="pride"] .texp-name{background:linear-gradient(90deg,#FF8C00,#FF
   .fpc-body-nutr{grid-template-columns:1fr}
   .fpc-scores{grid-template-columns:repeat(3,1fr)}
   .wd-date{width:60px}
+  .wd-row{grid-template-columns:60px 1fr}
+  .wd-strava-col{display:none}
 }
 
 /* ── Action Required Ribbon (squad card + full-page) ── */
@@ -4157,6 +4168,7 @@ function buildFPCard(a, weekOffset = 0) {
           return `<div class="wd-row empty">
             <div class="wd-date">${dayLabel}</div>
             <div class="wd-rest">${isFuture ? '—' : 'No data logged'}</div>
+            <div class="wd-strava-col" data-wd-strava-id="${esc(a.id)}" data-wd-strava-date="${dateStr}"></div>
           </div>`;
         }
 
@@ -4245,6 +4257,7 @@ function buildFPCard(a, weekOffset = 0) {
             ${bodyRowHtml}
             ${nutrRowHtml}
           </div>
+          <div class="wd-strava-col" data-wd-strava-id="${esc(a.id)}" data-wd-strava-date="${dateStr}"></div>
         </div>`;
       });
 
@@ -5402,6 +5415,48 @@ async function loadStravaData(a) {
     }).join('');
 
     target.outerHTML = `<div>${weeklyStrip}<div class="strava-acts">${cards}</div></div>`;
+
+    // ── Populate day-by-day Strava columns ──────────────────────────────────
+    const _actsByDate = {};
+    (data.activities || []).forEach(act => {
+      const d = act.start_date ? act.start_date.split('T')[0] : null;
+      if (d) { if (!_actsByDate[d]) _actsByDate[d] = []; _actsByDate[d].push(act); }
+    });
+    document.querySelectorAll(`[data-wd-strava-id="${a.id}"]`).forEach(col => {
+      const dateStr = col.dataset.wdStravaDate;
+      if (!dateStr) return;
+      const dayActs = _actsByDate[dateStr] || [];
+      if (!dayActs.length) { col.innerHTML = ''; return; }
+      col.innerHTML = dayActs.map(act => {
+        const dist  = act.distance > 10 ? (act.distance / 1000).toFixed(2) : null;
+        const pace  = (() => {
+          if (!act.average_speed || !act.distance) return null;
+          const spm = 1000 / act.average_speed;
+          return `${Math.floor(spm/60)}:${Math.round(spm%60).toString().padStart(2,'0')}`;
+        })();
+        const hr    = act.average_heartrate ? Math.round(act.average_heartrate) : null;
+        const secs  = act.moving_time || 0;
+        const time  = secs ? (Math.floor(secs/3600) > 0 ? `${Math.floor(secs/3600)}h ${Math.floor((secs%3600)/60)}m` : `${Math.floor(secs/60)}m`) : null;
+        const elev  = act.total_elevation_gain > 0 ? Math.round(act.total_elevation_gain) : null;
+        const isRun = /run/i.test(act.type || '');
+        const isLift = /weight|crossfit|workout/i.test(act.type || '');
+        const accent = isRun ? '#fc4c02' : isLift ? '#818cf8' : '#3b82f6';
+        const stats = [
+          dist  ? `<span class="wd-strava-stat primary"><strong>${dist}</strong>km</span>` : '',
+          pace  ? `<span class="wd-strava-stat primary"><strong>${pace}</strong>/km</span>` : '',
+          hr    ? `<span class="wd-strava-stat">♥ <strong>${hr}</strong></span>` : '',
+          time  ? `<span class="wd-strava-stat"><strong>${time}</strong></span>` : '',
+          elev  ? `<span class="wd-strava-stat">↑ <strong>${elev}</strong>m</span>` : '',
+          act.pr_count ? `<span class="wd-strava-stat" style="color:#f59e0b;border-color:#f59e0b">🏆 ${act.pr_count} PR</span>` : '',
+        ].filter(Boolean).join('');
+        return `<div class="wd-strava-act" style="border-left-color:${accent}">
+          <div class="wd-strava-act-type" style="color:${accent}">${esc(act.type || 'Activity')}</div>
+          <div class="wd-strava-act-name">${esc(act.name)}</div>
+          <div class="wd-strava-stats">${stats}</div>
+        </div>`;
+      }).join('');
+    });
+
   } catch (err) {
     if (target) target.outerHTML = `<div class="strava-state">Could not load Strava data — check /api/strava is configured</div>`;
   }
