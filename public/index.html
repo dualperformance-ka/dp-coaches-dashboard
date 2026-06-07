@@ -564,6 +564,20 @@ body[data-theme="pride"] .texp-name{background:linear-gradient(90deg,#FF8C00,#FF
 
 /* 6-metric scores row */
 .pcard-metrics{display:flex;border-bottom:1px solid var(--border)}
+.prev-ci-sec{border-top:1px solid var(--border);margin-top:8px}
+.fp-prev-row{padding:12px 0;border-bottom:1px solid var(--border)}
+.fp-prev-row:last-child{border-bottom:none}
+.fp-prev-row-date{font-family:var(--mono);font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px}
+.prev-ci-toggle{display:flex;align-items:center;justify-content:space-between;padding:8px 13px;cursor:pointer;font-family:var(--mono);font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.09em;user-select:none}
+.prev-ci-toggle:hover{background:rgba(255,255,255,.03)}
+.prev-ci-chevron{font-size:9px;opacity:.5}
+.prev-ci-body{padding:4px 0 8px}
+.prev-ci-row{padding:8px 13px;border-bottom:1px solid var(--border)}
+.prev-ci-row:last-child{border-bottom:none}
+.prev-ci-date{font-family:var(--mono);font-size:9px;color:var(--dim);margin-bottom:4px}
+.prev-ci-metrics{display:flex;gap:10px;flex-wrap:wrap}
+.prev-ci-metrics .pm{flex:none;padding:4px 8px;border-right:none;text-align:left;background:rgba(255,255,255,.03);border-radius:4px;border:1px solid var(--border)}
+.prev-ci-metrics .pm-val{font-size:14px}
 .pm{flex:1;padding:11px 2px;text-align:center;border-right:1px solid var(--border)}
 .pm:last-child{border-right:none}
 .pm-lbl{font-family:var(--mono);font-size:7px;color:var(--dim);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}
@@ -3357,9 +3371,9 @@ function buildCard(a, weekOffset = 0) {
     }
   }
 
-  // ── Premium 6-metric row
+  // ── Premium 6-metric row (only show if check-in is for current week, or historical view)
   let metricsHtml = '';
-  if (hW) {
+  if (hW && (isHistorical || a.hasCurrentCheckin)) {
     const sx = [
       { l: 'Sleep',   v: w['Sleep hrs'],               inv: false },
       { l: 'Energy',  v: w['Energy /10'],               inv: false },
@@ -3546,9 +3560,9 @@ function buildCard(a, weekOffset = 0) {
     </div>`;
   }
 
-  // ── Premium training split: Run | Lift
+  // ── Premium training split: Run | Lift (only show if current week's check-in, or historical)
   let trainingHtml = '';
-  if (hW) {
+  if (hW && (isHistorical || a.hasCurrentCheckin)) {
     const rp = parseInt(w['Run Planned']) || 0, rc2 = parseInt(w['Run Completed']) || 0;
     const lp = parseInt(w['Lift Planned']) || 0, lc2 = parseInt(w['Lift Completed']) || 0;
     const rPct = rp > 0 ? Math.min(100, Math.round(rc2 / rp * 100)) : 0;
@@ -3685,6 +3699,47 @@ function buildCard(a, weekOffset = 0) {
       </div>
     </div>`;
 
+  // ── Previous Weekly Check-ins (collapsed history — always available as a record)
+  let previousCheckinsHtml = '';
+  if (!isHistorical && !isFuture) {
+    // If current week is checked in, skip it from history (it's already shown above)
+    const prevWeeklies = a.hasCurrentCheckin
+      ? (a.weeklies || []).slice(1)
+      : (a.weeklies || []);
+    if (prevWeeklies.length > 0) {
+      const prevId = `prev-ci-${a.id.replace(/\W+/g,'-').toLowerCase()}`;
+      const rows = prevWeeklies.slice(0, 8).map(pw => {
+        const pwEnd = pw['Week Ending'];
+        const rp = parseInt(pw['Run Planned']) || 0, rc2 = parseInt(pw['Run Completed']) || 0;
+        const lp = parseInt(pw['Lift Planned']) || 0, lc2 = parseInt(pw['Lift Completed']) || 0;
+        const mets = [
+          { l: 'Sleep',  v: pw['Sleep hrs'] },
+          { l: 'Energy', v: pw['Energy /10'], inv: false },
+          { l: 'Stress', v: pw['Stress'],     inv: true  },
+          { l: 'Motiv',  v: pw['Motivation'], inv: false },
+        ].filter(x => x.v != null && x.v !== '');
+        const metHtml = mets.map(x =>
+          `<span class="pm"><span class="pm-lbl">${x.l}</span><span class="pm-val ${scoreClass(x.v, x.inv)}">${esc(x.v)}</span></span>`
+        ).join('');
+        const trainLine = (rp || lp || rc2 || lc2)
+          ? `<div style="font-family:var(--mono);font-size:9px;color:var(--dim);margin-top:3px">Run ${rc2}/${rp} · Lift ${lc2}/${lp}${pw['Weekly Run KM'] ? ' · ' + pw['Weekly Run KM'] + ' km' : ''}</div>`
+          : '';
+        return `<div class="prev-ci-row">
+          <div class="prev-ci-date">Wk ending ${fmtDate(pwEnd)}</div>
+          <div class="prev-ci-metrics">${metHtml}</div>
+          ${trainLine}
+        </div>`;
+      }).join('');
+      previousCheckinsHtml = `<div class="sec prev-ci-sec">
+        <div class="prev-ci-toggle" onclick="togglePrevCI('${prevId}')">
+          <span>Previous Check-ins</span>
+          <span id="${prevId}-icon" class="prev-ci-chevron">▼</span>
+        </div>
+        <div id="${prevId}" class="prev-ci-body" style="display:none">${rows}</div>
+      </div>`;
+    }
+  }
+
   // ── Assemble card
   const safeCardId = a.id.replace(/\W+/g, '-').toLowerCase();
   return `<div class="card ${bcls}" data-card="${esc(a.id)}" data-alert="${a.alertScore}" data-name="${esc(a.id)}" data-week="${a.weekNum ?? 0}" data-compliance="${a.compliance ?? 0}" data-checkin="${w?.['Week Ending'] || ''}" data-lastactive="${a.lastActivity || ''}">
@@ -3717,6 +3772,7 @@ function buildCard(a, weekOffset = 0) {
       ${extraBarsHtml}
       ${sparkStripHtml}
       ${staleBanner}${planHtml}${trainingHtml}${nutrTargetHtml}${sessHtml}
+      ${previousCheckinsHtml}
       <div class="ai-sec"></div>
       ${callPrepHtml}
     </div>
@@ -3972,9 +4028,9 @@ function buildFPCard(a, weekOffset = 0) {
     </div>`;
   }
 
-  // Scores
+  // Scores (only show if this week's check-in, or we explicitly navigated to a historical week)
   let scoresHtml = '';
-  if (hW) {
+  if (hW && (ctx.weekOffset !== 0 || a.hasCurrentCheckin)) {
     const sx = [
       { l: 'Energy',  v: w['Energy /10'],             inv: false },
       { l: 'Sleep',   v: w['Sleep hrs'],               inv: false },
@@ -3994,9 +4050,9 @@ function buildFPCard(a, weekOffset = 0) {
     </div>`;
   }
 
-  // Training
+  // Training (only show if this week's check-in, or navigated to a historical week)
   let trainingHtml = '';
-  if (hW) {
+  if (hW && (ctx.weekOffset !== 0 || a.hasCurrentCheckin)) {
     const rp = parseInt(w['Run Planned']) || 0, rc = parseInt(w['Run Completed']) || 0;
     const lp = parseInt(w['Lift Planned']) || 0, lc = parseInt(w['Lift Completed']) || 0;
     const rPct = rp > 0 ? Math.min(100, Math.round(rc / rp * 100)) : 0;
@@ -4493,6 +4549,54 @@ function buildFPCard(a, weekOffset = 0) {
     <div class="strava-state" data-strava-panel="${esc(a.id)}">Loading Strava data…</div>
   </div>`;
 
+  // ── Previous Check-ins (fully expanded in full-page view)
+  let fpPrevCheckinsHtml = '';
+  if (ctx.weekOffset === 0) {
+    const prevWeeklies = a.hasCurrentCheckin
+      ? (a.weeklies || []).slice(1)
+      : (a.weeklies || []);
+    if (prevWeeklies.length > 0) {
+      const rows = prevWeeklies.slice(0, 10).map(pw => {
+        const pwEnd = pw['Week Ending'];
+        const rp = parseInt(pw['Run Planned']) || 0, rc2 = parseInt(pw['Run Completed']) || 0;
+        const lp = parseInt(pw['Lift Planned']) || 0, lc2 = parseInt(pw['Lift Completed']) || 0;
+        const rPct = rp > 0 ? Math.min(100, Math.round(rc2 / rp * 100)) : 0;
+        const lPct = lp > 0 ? Math.min(100, Math.round(lc2 / lp * 100)) : 0;
+        const sx = [
+          { l: 'Sleep',  v: pw['Sleep hrs'],               inv: false },
+          { l: 'Energy', v: pw['Energy /10'],               inv: false },
+          { l: 'Stress', v: pw['Stress'],                   inv: true  },
+          { l: 'Sore',   v: pw['Soreness /10'],             inv: true  },
+          { l: 'Motiv',  v: pw['Motivation'],               inv: false },
+          { l: 'Nutr',   v: pw['Nutrition Adherence /10'],  inv: false },
+        ].filter(x => x.v != null && x.v !== '');
+        const scoresRow = sx.length ? `<div class="fpc-scores" style="margin-bottom:8px">${sx.map(x =>
+          `<div class="fpc-score"><div class="fpc-score-lbl">${esc(x.l)}</div><div class="fpc-score-val ${scoreClass(x.v, x.inv)}">${esc(x.v) || '—'}</div></div>`
+        ).join('')}</div>` : '';
+        const trainRow = (rp || lp || rc2 || lc2) ? `<div class="fpc-train-pair" style="margin-bottom:0">
+          <div class="fpc-train-block">
+            <div class="fpc-train-label run">Run</div>
+            <div class="fpc-train-stat"><strong>${rc2}/${rp}</strong> sessions${pw['Weekly Run KM'] ? ` · <strong>${esc(pw['Weekly Run KM'])} km</strong>` : ''}</div>
+            <div class="fpc-pbar"><div class="fpc-pfill run" style="width:${rPct}%"></div></div>
+          </div>
+          <div class="fpc-train-block">
+            <div class="fpc-train-label str">Lift</div>
+            <div class="fpc-train-stat"><strong>${lc2}/${lp}</strong> sessions</div>
+            <div class="fpc-pbar"><div class="fpc-pfill str" style="width:${lPct}%"></div></div>
+          </div>
+        </div>` : '';
+        return `<div class="fp-prev-row">
+          <div class="fp-prev-row-date">Week ending ${fmtDate(pwEnd)}</div>
+          ${scoresRow}${trainRow}
+        </div>`;
+      }).join('');
+      fpPrevCheckinsHtml = `<div class="fpc-section">
+        <div class="fpc-section-title">Previous Check-ins</div>
+        ${rows}
+      </div>`;
+    }
+  }
+
   return `<div>
     ${buildWeekJump(a, ctx)}
     ${hero}
@@ -4508,6 +4612,7 @@ function buildFPCard(a, weekOffset = 0) {
     ${progressPhotosHtml}
     ${dailyNutrHtml}
     ${bodyNutrPart}
+    ${fpPrevCheckinsHtml}
     ${callPrepHtml}
   </div>`;
 }
@@ -4961,6 +5066,15 @@ function toggleCardDetails(id) {
   el.style.display = isOpen ? 'none' : 'block';
   if (lbl) lbl.textContent = isOpen ? 'More details' : 'Less';
   if (icon) icon.classList.toggle('open', !isOpen);
+}
+
+function togglePrevCI(id) {
+  const el = document.getElementById(id);
+  const icon = document.getElementById(id + '-icon');
+  if (!el) return;
+  const isOpen = el.style.display !== 'none';
+  el.style.display = isOpen ? 'none' : 'block';
+  if (icon) icon.textContent = isOpen ? '▼' : '▲';
 }
 
 function toggleCallPrep(id) {
