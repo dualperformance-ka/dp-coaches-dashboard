@@ -5489,7 +5489,7 @@ async function loadStravaData(a) {
               const barW = lapSpeeds.length > 1 && lp.average_speed ? Math.round(((lp.average_speed - minLapSpd) / (maxLapSpd - minLapSpd || 1)) * 60) + 20 : 0;
               return `<tr><td>${i + 1}</td><td>${lpDist}km</td><td><span class="split-pace-wrap"><span class="split-pace-bar" style="width:${barW}%"></span><strong>${lpPace}</strong></span></td><td>${lpHr}</td><td>${lpElev}m</td></tr>`;
             }).join('');
-            return `<details class="strava-laps-wrap"><summary class="strava-laps-toggle">▾ Laps (${act.laps.length})</summary>
+            return `<details class="strava-laps-wrap"><summary class="strava-laps-toggle">▾ Interval Laps (${act.laps.length})</summary>
               <table class="strava-splits" style="margin-top:6px">
                 <thead><tr><th>#</th><th>dist</th><th>pace</th><th>hr</th><th>elev</th></tr></thead>
                 <tbody>${rows}</tbody>
@@ -5514,10 +5514,11 @@ async function loadStravaData(a) {
                 <td>${spElev}m</td>
               </tr>`;
             }).join('');
-            return `<table class="strava-splits">
+            return `<div class="strava-laps-wrap"><div class="strava-laps-toggle" style="cursor:default;pointer-events:none">KM Splits</div>
+            <table class="strava-splits" style="margin-top:6px">
               <thead><tr><th>km</th><th>pace</th><th>hr</th><th>elev</th></tr></thead>
               <tbody>${rows}</tbody>
-            </table>`;
+            </table></div>`;
           })() : '';
 
       return `<details class="strava-act" data-atype="${esc(act.type || '')}" style="display:block;padding:0">
@@ -5617,12 +5618,12 @@ async function loadStravaData(a) {
               <td>${spElev}m</td>
             </tr>`;
           }).join('');
-          splitsHtml = `<div class="wd-splits-scroll" style="margin-top:8px">
+          splitsHtml = `<div style="margin-top:8px"><div class="strava-laps-toggle" style="cursor:default;pointer-events:none;margin-bottom:4px">KM Splits</div><div class="wd-splits-scroll">
             <table class="strava-splits">
               <thead><tr><th>km</th><th>pace</th><th>hr</th><th>elev</th></tr></thead>
               <tbody>${rows}</tbody>
             </table>
-          </div>`;
+          </div></div>`;
         }
 
         // Laps table (interval sessions) — same scrollable box
@@ -5637,12 +5638,12 @@ async function loadStravaData(a) {
             const barW   = lapSpeeds.length > 1 && lp.average_speed ? Math.round(((lp.average_speed - minLS) / (maxLS - minLS || 1)) * 60) + 20 : 0;
             return `<tr><td>${i + 1}</td><td>${lpDist}km</td><td><span class="split-pace-wrap"><span class="split-pace-bar" style="width:${barW}%"></span><strong>${fmtSplitPace(lp.average_speed)}</strong></span></td><td>${lpHr}</td><td>${lpElev}m</td></tr>`;
           }).join('');
-          lapsHtml = `<div class="wd-splits-scroll" style="margin-top:8px">
+          lapsHtml = `<div style="margin-top:8px"><div class="strava-laps-toggle" style="cursor:default;pointer-events:none;margin-bottom:4px">Interval Laps</div><div class="wd-splits-scroll">
             <table class="strava-splits">
               <thead><tr><th>#</th><th>dist</th><th>pace</th><th>hr</th><th>elev</th></tr></thead>
               <tbody>${lapRows}</tbody>
             </table>
-          </div>`;
+          </div></div>`;
         }
 
         const hasDetail = detailChips || descHtml || splitsHtml || lapsHtml;
