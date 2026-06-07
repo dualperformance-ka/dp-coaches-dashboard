@@ -362,11 +362,11 @@ body[data-theme="light"] .texp-bar-track{background:rgba(0,0,0,.08)}
 .texp-plan-date{color:var(--dim);width:48px;flex-shrink:0}
 .texp-plan-name{color:var(--text);flex:1}
 .texp-plan-none{font-family:var(--mono);font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;padding:8px 0}
-.texp-ci-header{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);padding-bottom:9px;margin-bottom:12px}
+.texp-ci-header{display:flex;align-items:baseline;gap:6px;border-bottom:1px solid var(--border);padding-bottom:9px;margin-bottom:12px;flex-wrap:wrap}
 .texp-ci-header-label{font-family:var(--mono);font-size:8px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:.12em}
-.texp-ci-header-right{display:flex;align-items:center;gap:7px}
-.texp-ci-wk{font-family:var(--cond);font-size:14px;font-weight:900;text-transform:uppercase;color:var(--amber);letter-spacing:.05em;line-height:1}
-.texp-ci-date{font-family:var(--mono);font-size:9px;color:var(--muted)}
+.texp-ci-header-right{display:none}
+.texp-ci-wk{font-family:var(--cond);font-size:15px;font-weight:900;text-transform:uppercase;color:var(--amber);letter-spacing:.05em;line-height:1}
+.texp-ci-date{font-family:var(--mono);font-size:8px;color:var(--dim)}
 .texp-action-ribbon{border-radius:6px;padding:8px 10px;margin-bottom:10px;font-family:var(--mono);font-size:9px;line-height:1.5}
 .texp-action-ribbon.red{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);color:#fca5a5}
 .texp-action-ribbon.amber{background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);color:#fcd34d}
@@ -2982,11 +2982,9 @@ function buildTableExpandPanel(a) {
     const ciWkStr = ciWkNum !== null ? (ciWkNum === 0 ? 'Discovery' : `Wk ${ciWkNum}`) : '';
     const ciStatusLabel = a.hasCurrentCheckin ? 'Current Check-in' : 'Last Check-in';
     checkinPanelHeader = `<div class="texp-ci-header">
-      <div class="texp-ci-header-label">${ciStatusLabel}</div>
-      <div class="texp-ci-header-right">
-        ${ciWkStr ? `<span class="texp-ci-wk">${ciWkStr}</span>` : ''}
-        ${cwEnd ? `<span class="texp-ci-date">${fmtDate(cwEnd)}</span>` : ''}
-      </div>
+      ${ciWkStr ? `<span class="texp-ci-wk">${ciWkStr}</span>` : ''}
+      <span class="texp-ci-header-label">${ciStatusLabel}</span>
+      ${cwEnd ? `<span class="texp-ci-date">${fmtDate(cwEnd)}</span>` : ''}
     </div>`;
   }
 
@@ -3114,8 +3112,8 @@ function buildTableExpandPanel(a) {
     ? (a.weekNum !== null ? `Wk ${a.weekNum + weekOffset}` : 'Upcoming')
     : (a.weekNum !== null ? `Wk ${a.weekNum}` : 'This Week');
   const rightPanelHeader = `<div class="texp-ci-header">
-    <div class="texp-ci-header-label">${isFuture ? 'Upcoming Week' : 'This Week'}</div>
-    <div class="texp-ci-header-right"><span class="texp-ci-wk">${thisWkLabel}</span></div>
+    <span class="texp-ci-header-label">${isFuture ? 'Upcoming Week' : 'This Week'}</span>
+    <span class="texp-ci-wk">${thisWkLabel}</span>
   </div>`;
 
   const rightPanel = `<div class="texp-right">
