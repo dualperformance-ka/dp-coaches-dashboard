@@ -4558,6 +4558,13 @@ function buildFPCard(a, weekOffset = 0) {
     if (prevWeeklies.length > 0) {
       const rows = prevWeeklies.slice(0, 10).map(pw => {
         const pwEnd = pw['Week Ending'];
+        // Derive program week for this historical check-in
+        let pwWeekLabel = '';
+        if (a.weekNum !== null && a.weekNum !== undefined && pwEnd && a.expectedWeekEnd) {
+          const weeksBehind = Math.round((new Date(a.expectedWeekEnd) - new Date(pwEnd)) / (7 * 86400000));
+          const histWk = a.weekNum - weeksBehind;
+          if (histWk >= 0) pwWeekLabel = histWk === 0 ? 'Discovery · ' : `Wk ${histWk} · `;
+        }
         const rp = parseInt(pw['Run Planned']) || 0, rc2 = parseInt(pw['Run Completed']) || 0;
         const lp = parseInt(pw['Lift Planned']) || 0, lc2 = parseInt(pw['Lift Completed']) || 0;
         const rPct = rp > 0 ? Math.min(100, Math.round(rc2 / rp * 100)) : 0;
@@ -4586,7 +4593,7 @@ function buildFPCard(a, weekOffset = 0) {
           </div>
         </div>` : '';
         return `<div class="fp-prev-row">
-          <div class="fp-prev-row-date">Week ending ${fmtDate(pwEnd)}</div>
+          <div class="fp-prev-row-date">${pwWeekLabel}Week ending ${fmtDate(pwEnd)}</div>
           ${scoresRow}${trainRow}
         </div>`;
       }).join('');
