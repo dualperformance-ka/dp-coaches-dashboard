@@ -362,6 +362,11 @@ body[data-theme="light"] .texp-bar-track{background:rgba(0,0,0,.08)}
 .texp-plan-date{color:var(--dim);width:48px;flex-shrink:0}
 .texp-plan-name{color:var(--text);flex:1}
 .texp-plan-none{font-family:var(--mono);font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;padding:8px 0}
+.texp-ci-header{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);padding-bottom:9px;margin-bottom:12px}
+.texp-ci-header-label{font-family:var(--mono);font-size:8px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:.12em}
+.texp-ci-header-right{display:flex;align-items:center;gap:7px}
+.texp-ci-wk{font-family:var(--cond);font-size:14px;font-weight:900;text-transform:uppercase;color:var(--amber);letter-spacing:.05em;line-height:1}
+.texp-ci-date{font-family:var(--mono);font-size:9px;color:var(--muted)}
 .texp-action-ribbon{border-radius:6px;padding:8px 10px;margin-bottom:10px;font-family:var(--mono);font-size:9px;line-height:1.5}
 .texp-action-ribbon.red{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);color:#fca5a5}
 .texp-action-ribbon.amber{background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);color:#fcd34d}
@@ -2925,8 +2930,7 @@ function buildTableExpandPanel(a) {
       const feelParts = [];
       if (!isNaN(rf)) feelParts.push(`<span style="color:var(--run)">Run feel ${rf}/10</span>`);
       if (!isNaN(lf)) feelParts.push(`<span style="color:var(--str)">Lift feel ${lf}/10</span>`);
-      const splitWkLabel = w['Week Ending'] ? `Last check-in · ${fmtDate(w['Week Ending'])}` : 'Last check-in';
-      trainingSplitHtml = `<div class="texp-section"><div class="texp-label">${splitWkLabel}</div>
+      trainingSplitHtml = `<div class="texp-section"><div class="texp-label">Training</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px">
           <div>
             <div style="font-family:var(--mono);font-size:9px;color:var(--run);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">Running</div>
@@ -2966,8 +2970,29 @@ function buildTableExpandPanel(a) {
     ${upcomingText ? `<div style="font-family:var(--mono);font-size:9px;color:var(--warn);line-height:1.4">⚑ ${esc(upcomingText)}</div>` : ''}
   </div>` : '';
 
+  // ── Left panel check-in header
+  let checkinPanelHeader = '';
+  if (hW) {
+    const cwEnd = w['Week Ending'];
+    let ciWkNum = null;
+    if (a.weekNum !== null && cwEnd && a.expectedWeekEnd) {
+      const weeksBack = Math.round((new Date(a.expectedWeekEnd) - new Date(cwEnd)) / (7 * 86400000));
+      ciWkNum = a.weekNum - weeksBack;
+    }
+    const ciWkStr = ciWkNum !== null ? (ciWkNum === 0 ? 'Discovery' : `Wk ${ciWkNum}`) : '';
+    const ciStatusLabel = a.hasCurrentCheckin ? 'Current Check-in' : 'Last Check-in';
+    checkinPanelHeader = `<div class="texp-ci-header">
+      <div class="texp-ci-header-label">${ciStatusLabel}</div>
+      <div class="texp-ci-header-right">
+        ${ciWkStr ? `<span class="texp-ci-wk">${ciWkStr}</span>` : ''}
+        ${cwEnd ? `<span class="texp-ci-date">${fmtDate(cwEnd)}</span>` : ''}
+      </div>
+    </div>`;
+  }
+
   const leftPanel = `<div class="texp-left">
     ${ribbonHtml}
+    ${checkinPanelHeader}
     ${recovBar || kmBar ? `<div class="texp-section"><div class="texp-label">Performance</div>${recovBar}${kmBar}</div>` : ''}
     ${metricsGrid}
     ${trainingSplitHtml}
@@ -3085,7 +3110,16 @@ function buildTableExpandPanel(a) {
     planRowsHtml = `<div class="texp-plan-none">No plan set for this week</div>`;
   }
 
+  const thisWkLabel = isFuture
+    ? (a.weekNum !== null ? `Wk ${a.weekNum + weekOffset}` : 'Upcoming')
+    : (a.weekNum !== null ? `Wk ${a.weekNum}` : 'This Week');
+  const rightPanelHeader = `<div class="texp-ci-header">
+    <div class="texp-ci-header-label">${isFuture ? 'Upcoming Week' : 'This Week'}</div>
+    <div class="texp-ci-header-right"><span class="texp-ci-wk">${thisWkLabel}</span></div>
+  </div>`;
+
   const rightPanel = `<div class="texp-right">
+    ${rightPanelHeader}
     <div class="texp-section">${wipHtml}</div>
     <div class="texp-section"><div class="texp-label">${isFuture ? 'Upcoming Plan' : "This Week's Plan"}</div>${planRowsHtml}</div>
   </div>`;
