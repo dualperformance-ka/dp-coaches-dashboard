@@ -3235,10 +3235,7 @@ function buildTableRow(a) {
 }
 
 function renderTableView(ath) {
-  const sorted = [...ath].sort((a, b) => {
-    const sev = x => x.actions?.severity === 'red' ? 0 : x.actions?.severity === 'amber' ? 1 : 2;
-    return sev(a) - sev(b);
-  });
+  const sorted = ath;
   const grid = document.getElementById('grid');
   grid.classList.add('table-mode');
   grid.innerHTML = `<div class="dash-table-wrap">
