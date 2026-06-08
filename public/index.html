@@ -210,6 +210,36 @@ body[data-theme="light"] .sbadge-runstr{color:#4c1d95;background:rgba(76,29,149,
 body[data-theme="light"] .sbadge-runstr .sdot{background:#7c3aed}
 body[data-theme="light"] .sbadge-easy{color:#14532d;background:rgba(21,128,61,.08);border-color:rgba(21,128,61,.22)}
 body[data-theme="light"] .sbadge-easy .sdot{background:#15803d}
+/* table status/flag/session colors */
+body[data-theme="light"] .tstatus.red{color:#991b1b}
+body[data-theme="light"] .tstatus.amber{color:#92400e}
+body[data-theme="light"] .tsess.str{color:#1d4ed8}
+body[data-theme="light"] .tflag.red{background:rgba(220,38,38,.1);color:#991b1b;border-color:rgba(220,38,38,.3)}
+body[data-theme="light"] .tflag.yellow{background:rgba(217,119,6,.1);color:#92400e;border-color:rgba(217,119,6,.3)}
+/* status banner */
+body[data-theme="light"] .status-banner--red .status-banner-title{color:#991b1b}
+/* stat pills */
+body[data-theme="light"] .fpc-stat-pill.good{background:rgba(21,128,61,.1);color:#15803d;border-color:rgba(21,128,61,.25)}
+body[data-theme="light"] .fpc-stat-pill.mid{background:rgba(180,83,9,.1);color:#92400e;border-color:rgba(180,83,9,.25)}
+body[data-theme="light"] .fpc-stat-pill.bad{background:rgba(153,27,27,.08);color:#991b1b;border-color:rgba(153,27,27,.22)}
+/* score numbers */
+body[data-theme="light"] .cc-score-num.red{color:#991b1b}
+body[data-theme="light"] .cc-score-num.amber{color:#92400e}
+body[data-theme="light"] .cc-score-num.green{color:#15803d}
+/* chips */
+body[data-theme="light"] .dwn-hist-badge{color:#92400e;background:rgba(180,83,9,.1);border-color:rgba(180,83,9,.25)}
+body[data-theme="light"] .po-chip{color:#92400e;background:rgba(180,83,9,.1);border-color:rgba(180,83,9,.25)}
+body[data-theme="light"] .po-chip.overridden{color:#78350f;background:rgba(180,83,9,.18);border-color:rgba(180,83,9,.45)}
+/* fp flag pills on cards */
+body[data-theme="light"] .fp.red{background:rgba(220,38,38,.08);color:#991b1b;border-color:rgba(220,38,38,.25)}
+body[data-theme="light"] .fp.yellow{background:rgba(217,119,6,.08);color:#92400e;border-color:rgba(217,119,6,.25)}
+/* impact notes */
+body[data-theme="light"] .fpc-impact{color:#92400e;background:rgba(180,83,9,.08);border-left-color:#d97706}
+/* PR delta */
+body[data-theme="light"] .fpc-pr-prev .delta{color:#15803d}
+/* strava */
+body[data-theme="light"] .strava-chip-hr strong{color:#dc2626}
+body[data-theme="light"] .strava-splits td.pace-fast strong{color:#15803d}
 
 /* ── Pride Theme ── */
 @keyframes pride-shift{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
@@ -3241,7 +3271,7 @@ function buildTableRow(a) {
 
   // Sessions — split run / strength
   const runHtml = `<span class="tcell-num run">${a.currRunS.length}</span>`;
-  const strHtml = `<span class="tcell-num" style="color:#818cf8">${a.currStrS.length}</span>`;
+  const strHtml = `<span class="tcell-num" style="color:var(--str)">${a.currStrS.length}</span>`;
 
   // Status
   let statusHtml = '<span class="tstatus ok">On track</span>';
