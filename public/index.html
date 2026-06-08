@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>DP Coaches Dashboard</title>
+<link rel="icon" type="image/png" href="https://raw.githubusercontent.com/dualperformance-ka/dp-coaches-dashboard/main/public/4E115942-2F65-4370-B508-DF07FB1AF417.PNG">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800;900&family=Barlow:ital,wght@0,400;0,500;0,600;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -82,6 +83,10 @@ body[data-theme="light"]{
   --bg:#f4f3f0;--surface:#fff;--surface2:#ede9e3;
   --border:rgba(0,0,0,.08);--border-mid:rgba(0,0,0,.13);
   --text:#1a1a1a;--muted:#333;--dim:#555;
+  /* semantic colors darkened for legibility on white */
+  --ok:#15803d;--warn:#b45309;--alert:#dc2626;
+  --run:#b45309;--str:#1d4ed8;
+  --amber:#b45309;--amber-dim:#d97706;
   --green-bg:rgba(22,163,74,.08);--green-border:rgba(22,163,74,.22);--green-text:#15803d;
   --amber-bg:rgba(217,119,6,.08);--amber-border:rgba(217,119,6,.22);--amber-text:#b45309;
   --red-bg:rgba(220,38,38,.08);--red-border:rgba(220,38,38,.22);--red-text:#dc2626;
@@ -172,6 +177,39 @@ body[data-theme="light"] .sf{background:transparent}
 /* Light: gen-btn */
 body[data-theme="light"] .gen-btn{background:#f4f3f0;border-color:rgba(0,0,0,.2);color:#1a1a1a}
 body[data-theme="light"] .gen-btn:hover{background:#e8e6e2}
+/* Light: table expand panel */
+body[data-theme="light"] .trow-expand td{background:#f9f8f5}
+body[data-theme="light"] .texp-header{background:#fff;border-bottom-color:rgba(0,0,0,.08)}
+body[data-theme="light"] .texp-left{border-right-color:rgba(0,0,0,.08)}
+body[data-theme="light"] .texp-bar-track{background:rgba(0,0,0,.08)}
+body[data-theme="light"] .texp-daily-chip{background:#eeecea;border-color:rgba(0,0,0,.1);color:#1a1a1a}
+body[data-theme="light"] .texp-wip{background:#f0efe9;border-color:rgba(0,0,0,.1)}
+body[data-theme="light"] .texp-wip-label{color:#1d4ed8}
+body[data-theme="light"] .texp-metric{background:#f0efe9;border-color:rgba(0,0,0,.1)}
+body[data-theme="light"] .texp-action-ribbon.red{background:rgba(220,38,38,.07);color:#991b1b}
+body[data-theme="light"] .texp-action-ribbon.amber{background:rgba(217,119,6,.07);color:#78350f}
+body[data-theme="light"] .texp-plan-row{color:#1a1a1a}
+body[data-theme="light"] .texp-plan-date{color:#555}
+body[data-theme="light"] .texp-plan-name{color:#1a1a1a}
+body[data-theme="light"] .texp-daily-avg-val{color:#1a1a1a}
+body[data-theme="light"] .texp-ci-header{border-bottom-color:rgba(0,0,0,.1)}
+body[data-theme="light"] .texp-daily-row{border-bottom-color:rgba(0,0,0,.07)}
+body[data-theme="light"] .texp-daily-summary{border-top-color:rgba(0,0,0,.07)}
+/* Light: session badge colours — darken pastel text for legibility on white */
+body[data-theme="light"] .sbadge-run{color:#92400e;background:rgba(180,83,9,.1);border-color:rgba(180,83,9,.25)}
+body[data-theme="light"] .sbadge-run .sdot{background:#b45309}
+body[data-theme="light"] .sbadge-tempo{color:#9a3412;background:rgba(194,65,12,.1);border-color:rgba(194,65,12,.25)}
+body[data-theme="light"] .sbadge-tempo .sdot{background:#c2410c}
+body[data-theme="light"] .sbadge-speed{color:#991b1b;background:rgba(153,27,27,.08);border-color:rgba(153,27,27,.22)}
+body[data-theme="light"] .sbadge-speed .sdot{background:#dc2626}
+body[data-theme="light"] .sbadge-longrun{color:#6b21a8;background:rgba(107,33,168,.08);border-color:rgba(107,33,168,.22)}
+body[data-theme="light"] .sbadge-longrun .sdot{background:#9333ea}
+body[data-theme="light"] .sbadge-strength{color:#1e3a8a;background:rgba(29,78,216,.08);border-color:rgba(29,78,216,.22)}
+body[data-theme="light"] .sbadge-strength .sdot{background:#1d4ed8}
+body[data-theme="light"] .sbadge-runstr{color:#4c1d95;background:rgba(76,29,149,.08);border-color:rgba(76,29,149,.22)}
+body[data-theme="light"] .sbadge-runstr .sdot{background:#7c3aed}
+body[data-theme="light"] .sbadge-easy{color:#14532d;background:rgba(21,128,61,.08);border-color:rgba(21,128,61,.22)}
+body[data-theme="light"] .sbadge-easy .sdot{background:#15803d}
 
 /* ── Pride Theme ── */
 @keyframes pride-shift{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
