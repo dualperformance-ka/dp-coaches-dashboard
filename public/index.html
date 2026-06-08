@@ -2882,7 +2882,11 @@ function setDashboardView(v) {
 }
 
 function buildTableExpandPanel(a) {
-  const w = a.weekly;
+  // Left panel always shows the previous completed week's check-in.
+  // If athlete has checked in this week (hasCurrentCheckin), prev = weeklies[1].
+  // Otherwise their most recent check-in (weeklies[0]) is already from a past week.
+  const _weekliesAll = a.weeklies || [];
+  const w = a.hasCurrentCheckin ? (_weekliesAll[1] || null) : (_weekliesAll[0] || null);
   const hW = !!w;
   const weekOffset = _dashboardWeekOffset;
   const isFuture = weekOffset > 0;
@@ -2923,17 +2927,19 @@ function buildTableExpandPanel(a) {
     </div>`;
   }
 
-  // Weekly KM bar — prefer live Strava cache, fall back to session accumulation
+  // Weekly KM bar — left panel shows PREVIOUS week KM from Notion check-in (or Strava lastWeekKm fallback)
   let kmBar = '';
   const _stravaKm = _stravaKmCache[a.id];
-  const km = _stravaKm?.weeklyKm != null ? _stravaKm.weeklyKm : (a.currRunKm || 0);
-  const kmSource = _stravaKm?.weeklyKm != null ? 'strava' : null;
   const kmTarget = parseFloat(a.target?.['Weekly KM Target']) || 0;
-  if (km > 0 || kmTarget > 0) {
-    const pct = kmTarget > 0 ? Math.min(100, Math.round(km / kmTarget * 100)) : 100;
-    const label = kmTarget > 0 ? `${km} / ${kmTarget} km` : `${km} km`;
-    const srcChip = kmSource ? `<span style="font-size:8px;color:var(--run);font-family:var(--mono);margin-left:4px">${kmSource}</span>` : '';
-    kmBar = `<div class="texp-bar-row" data-km-bar="${esc(a.id)}" data-km-target="${kmTarget}">
+  const prevNotionKm = parseFloat(w?.['Weekly Run KM']) || null;
+  const prevKm = prevNotionKm != null ? prevNotionKm : (_stravaKm?.lastWeekKm ?? null);
+  const prevKmSource = prevNotionKm != null ? 'notion' : (_stravaKm?.lastWeekKm != null ? 'strava' : null);
+  if ((prevKm != null && prevKm > 0) || kmTarget > 0) {
+    const displayKm = prevKm ?? 0;
+    const pct = kmTarget > 0 ? Math.min(100, Math.round(displayKm / kmTarget * 100)) : 100;
+    const label = kmTarget > 0 ? `${displayKm} / ${kmTarget} km` : `${displayKm} km`;
+    const srcChip = prevKmSource ? `<span style="font-size:8px;color:var(--run);font-family:var(--mono);margin-left:4px">${prevKmSource}</span>` : '';
+    kmBar = `<div class="texp-bar-row">
       <span class="texp-bar-lbl">Weekly KM</span>
       <div class="texp-bar-track"><div class="texp-bar-fill pbar-fill run" style="width:${pct}%"></div></div>
       <span class="texp-bar-val pbar-val run">${label}${srcChip}</span>
@@ -3048,7 +3054,7 @@ function buildTableExpandPanel(a) {
       ciWkNum = a.weekNum - weeksBack;
     }
     const ciWkStr = ciWkNum !== null ? (ciWkNum === 0 ? 'Discovery' : `Wk ${ciWkNum}`) : '';
-    const ciStatusLabel = a.hasCurrentCheckin ? 'Current Check-in' : 'Last Check-in';
+    const ciStatusLabel = a.hasCurrentCheckin ? 'Prev Check-in' : 'Last Check-in';
     checkinPanelHeader = `<div class="texp-ci-header">
       ${ciWkStr ? `<span class="texp-ci-wk">${ciWkStr}</span>` : ''}
       <span class="texp-ci-header-label">${ciStatusLabel}</span>
@@ -3184,8 +3190,66 @@ function buildTableExpandPanel(a) {
     <span class="texp-ci-wk">${thisWkLabel}</span>
   </div>`;
 
+  // If athlete has checked in this week, surface current check-in scores in the right panel
+  let currentCiHtml = '';
+  if (!isFuture && a.hasCurrentCheckin) {
+    const cw = _weekliesAll[0];
+    if (cw) {
+      const cwMetrics = [
+        { l: 'Sleep',    v: cw['Sleep hrs'],               inv: false, div: 8 },
+        { l: 'Energy',   v: cw['Energy /10'],               inv: false, div: 10 },
+        { l: 'Stress',   v: cw['Stress'],                   inv: true,  div: 10 },
+        { l: 'Soreness', v: cw['Soreness /10'],             inv: true,  div: 10 },
+        { l: 'Motiv',    v: cw['Motivation'],               inv: false, div: 10 },
+        { l: 'Nutr',     v: cw['Nutrition Adherence /10'],  inv: false, div: 10 },
+      ];
+      const cwCards = cwMetrics.map(m => {
+        const val = parseFloat(m.v);
+        if (isNaN(val)) return `<div class="texp-metric"><div class="texp-metric-val" style="color:var(--dim)">—</div><div class="texp-metric-lbl">${m.l}</div></div>`;
+        const norm = Math.min(1, val / m.div);
+        const cls = m.inv
+          ? (norm <= 0.4 ? 'good' : norm <= 0.6 ? 'mid' : 'bad')
+          : (norm >= 0.75 ? 'good' : norm >= 0.5 ? 'mid' : 'bad');
+        return `<div class="texp-metric"><div class="texp-metric-val ${cls}">${val}</div><div class="texp-metric-lbl">${m.l}</div></div>`;
+      }).join('');
+      const cwEnd = cw['Week Ending'];
+      currentCiHtml = `<div class="texp-section">
+        <div class="texp-label" style="display:flex;align-items:center;justify-content:space-between">Check-in Scores${cwEnd ? `<span style="font-family:var(--mono);font-size:9px;color:var(--dim)">${fmtDate(cwEnd)}</span>` : ''}</div>
+        <div class="texp-metrics">${cwCards}</div>
+      </div>`;
+    }
+  }
+
+  // Current week Strava KM bar for right panel
+  let stravaKmHtml = '';
+  if (!isFuture) {
+    const _sk = _stravaKmCache[a.id];
+    const currKm = _sk?.weeklyKm != null ? _sk.weeklyKm : (a.currRunKm || 0);
+    const currKmSrc = _sk?.weeklyKm != null ? 'strava' : 'sessions';
+    if (currKm > 0 || kmTarget > 0) {
+      const pct = kmTarget > 0 ? Math.min(100, Math.round(currKm / kmTarget * 100)) : 100;
+      const label = kmTarget > 0 ? `${currKm} / ${kmTarget} km` : `${currKm} km`;
+      const pctDelta = (_sk?.lastWeekKm != null && _sk.lastWeekKm > 0)
+        ? Math.round((currKm - _sk.lastWeekKm) / _sk.lastWeekKm * 100) : null;
+      const deltaChip = pctDelta != null
+        ? `<span style="font-size:9px;font-family:var(--mono);margin-left:6px;color:${pctDelta >= 0 ? 'var(--ok)' : 'var(--alert)'}">${pctDelta >= 0 ? '+' : ''}${pctDelta}% vs last wk</span>`
+        : '';
+      stravaKmHtml = `<div class="texp-section">
+        <div class="texp-label" style="display:flex;align-items:center;justify-content:space-between">
+          Weekly KM <span style="font-family:var(--mono);font-size:9px;color:var(--run)">${currKmSrc}</span>
+        </div>
+        <div class="texp-bar-row" data-km-bar="${esc(a.id)}" data-km-target="${kmTarget}" style="margin-top:4px">
+          <div class="texp-bar-track" style="flex:1"><div class="texp-bar-fill pbar-fill run" style="width:${pct}%"></div></div>
+          <span class="texp-bar-val pbar-val run" style="font-size:13px">${label}${deltaChip}</span>
+        </div>
+      </div>`;
+    }
+  }
+
   const rightPanel = `<div class="texp-right">
     ${rightPanelHeader}
+    ${currentCiHtml}
+    ${stravaKmHtml}
     <div class="texp-section">${wipHtml}</div>
     <div class="texp-section"><div class="texp-label">${isFuture ? 'Upcoming Plan' : "This Week's Plan"}</div>${planRowsHtml}</div>
   </div>`;
