@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DP Coaches Dashboard</title>
+<title>Dual Performance | Coaches Dashboard</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800;900&family=Barlow:ital,wght@0,400;0,500;0,600;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -2903,9 +2903,97 @@ function buildTableExpandPanel(a) {
     <div class="texp-actions">${wkBadge}${dmBtn}${fullBtn}</div>
   </div>`;
 
-  // ── Left panel: action ribbon + bars + metric grid + body stats
+  // ── Left panel: previous week training summary
+  const prevWeekStartDt = new Date(currentWeekStart);
+  prevWeekStartDt.setDate(prevWeekStartDt.getDate() - 7);
+  const prevWeekEndDt = new Date(currentWeekStart); // exclusive
 
-  // Action ribbon
+  // Prev week logged sessions (already on athlete object)
+  const prRun = a.prevRunS || [];
+  const prStr = a.prevStrS || [];
+
+  // KM from prev week sessions — prefer distance_km field, fallback to Exercise Log parse
+  const prevSessionKm = prRun.reduce((sum, s) => {
+    if (s.distance_km != null) return sum + parseFloat(s.distance_km);
+    const m = (s['Exercise Log'] || '').match(/Distance:\s*([\d.]+)\s*km/i);
+    return sum + (m ? parseFloat(m[1]) : 0);
+  }, 0);
+  const prevSessionKmRounded = Math.round(prevSessionKm * 10) / 10;
+
+  // Strava lastWeekKm as authoritative fallback
+  const _stravaKm = _stravaKmCache[a.id];
+  const kmTarget = parseFloat(a.target?.['Weekly KM Target']) || 0;
+  const prevKmDisplay = prevSessionKmRounded > 0
+    ? prevSessionKmRounded
+    : (_stravaKm?.lastWeekKm ?? null);
+  const prevKmSource = prevSessionKmRounded > 0
+    ? 'sessions'
+    : (_stravaKm?.lastWeekKm != null ? 'strava' : null);
+
+  // Prev week KM bar
+  let kmBar = '';
+  if (prevKmDisplay != null && prevKmDisplay > 0 || kmTarget > 0) {
+    const displayKm = prevKmDisplay ?? 0;
+    const pct = kmTarget > 0 ? Math.min(100, Math.round(displayKm / kmTarget * 100)) : 100;
+    const label = kmTarget > 0 ? `${displayKm} / ${kmTarget} km` : `${displayKm} km`;
+    const srcChip = prevKmSource ? `<span style="font-size:8px;color:var(--run);font-family:var(--mono);margin-left:4px">${prevKmSource}</span>` : '';
+    kmBar = `<div class="texp-bar-row">
+      <span class="texp-bar-lbl">Run KM</span>
+      <div class="texp-bar-track"><div class="texp-bar-fill pbar-fill run" style="width:${pct}%"></div></div>
+      <span class="texp-bar-val pbar-val run">${label}${srcChip}</span>
+    </div>`;
+  }
+
+  // Session count cards
+  const prevSessHtml = `<div class="texp-sess-row">
+    <div class="texp-scard"><div class="texp-snum run">${prRun.length}</div><div class="texp-slbl">Run</div></div>
+    <div class="texp-scard"><div class="texp-snum str">${prStr.length}</div><div class="texp-slbl">Strength</div></div>
+    ${prRun.length === 0 && prStr.length === 0 ? `<div style="font-family:var(--mono);font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;padding:8px 0">No sessions logged</div>` : ''}
+  </div>`;
+
+  // Prev week plan rows from allPlan
+  const prevPlan = (a.allPlan || []).filter(r => {
+    const d = r['date:Planned Date:start'] || r['Planned Date'] || '';
+    if (!d) return false;
+    const dt = new Date(d);
+    return dt >= prevWeekStartDt && dt < prevWeekEndDt;
+  }).sort((x, y) => (x['date:Planned Date:start'] || '') > (y['date:Planned Date:start'] || '') ? 1 : -1);
+
+  let prevPlanRowsHtml = '';
+  if (prevPlan.length) {
+    const DAYS2 = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    prevPlanRowsHtml = prevPlan.map(r => {
+      const d = r['date:Planned Date:start'] || r['Planned Date'] || '';
+      let dateStr = '—';
+      if (d) {
+        const iso = d.split('T')[0];
+        const dt2 = new Date(iso + 'T12:00:00');
+        dateStr = `<span style="font-weight:700;color:var(--muted)">${DAYS2[dt2.getDay()] || ''}</span> <span style="color:var(--dim)">${fmtDate(iso)}</span>`;
+      }
+      const notionStatus = (r['Status '] || r['Status'] || '').trim().toLowerCase();
+      const rowId2 = r._id || r.id || '';
+      const isDone = isSessionLogged(a.id, rowId2) || notionStatus === 'completed';
+      const isMissed = !isDone && notionStatus === 'missed';
+      const isSick = !isDone && notionStatus === 'sick';
+      const rowCls2 = isDone ? 'texp-row-done' : isMissed ? 'texp-row-missed' : isSick ? 'texp-row-sick' : 'texp-row-pending';
+      const statusChip = isDone
+        ? `<span class="texp-chip texp-chip-done">✓</span>`
+        : isMissed ? `<span class="texp-chip texp-chip-missed">✗</span>`
+        : isSick ? `<span class="texp-chip texp-chip-sick">SICK</span>` : '';
+      const badge = sessionBadgeHTML(r['Session Type'] || r['SessionType'], r['Status '] || r['Status'], r.Session);
+      const origName = r.Session || r['Session Type'] || 'Session';
+      const nameStyle = isDone ? 'text-decoration:line-through;opacity:.55' : '';
+      return `<div class="texp-plan-row ${rowCls2}">
+        <span class="texp-plan-date">${dateStr}</span>${badge}
+        <span class="texp-plan-name" style="${nameStyle}">${esc(origName)}</span>
+        ${statusChip}
+      </div>`;
+    }).join('');
+  } else {
+    prevPlanRowsHtml = `<div class="texp-plan-none">No plan found for last week</div>`;
+  }
+
+  // Action ribbon (flags still relevant)
   let ribbonHtml = '';
   if (a.actions?.severity === 'red' && a.actions.critical?.length) {
     const items = a.actions.critical.map(t => `• ${esc(t)}`).join('<br>');
@@ -2915,163 +3003,26 @@ function buildTableExpandPanel(a) {
     ribbonHtml = `<div class="texp-action-ribbon amber"><div class="texp-action-title">⚠ Watch</div>${items}</div>`;
   }
 
-  // Recovery bar
-  let recovBar = '';
-  if (a.recoveryScore !== null) {
-    const rc = a.recoveryScore >= 7.5 ? 'good' : a.recoveryScore >= 5 ? 'mid' : 'bad';
-    const pct = Math.round(a.recoveryScore / 10 * 100);
-    recovBar = `<div class="texp-bar-row">
-      <span class="texp-bar-lbl">Recovery</span>
-      <div class="texp-bar-track"><div class="texp-bar-fill ${rc}" style="width:${pct}%"></div></div>
-      <span class="texp-bar-val ${rc}">${a.recoveryScore}/10</span>
-    </div>`;
-  }
-
-  // Weekly KM bar — left panel shows PREVIOUS week KM from Notion check-in (or Strava lastWeekKm fallback)
-  let kmBar = '';
-  const _stravaKm = _stravaKmCache[a.id];
-  const kmTarget = parseFloat(a.target?.['Weekly KM Target']) || 0;
-  const prevNotionKm = parseFloat(w?.['Weekly Run KM']) || null;
-  const prevKm = prevNotionKm != null ? prevNotionKm : (_stravaKm?.lastWeekKm ?? null);
-  const prevKmSource = prevNotionKm != null ? 'notion' : (_stravaKm?.lastWeekKm != null ? 'strava' : null);
-  if ((prevKm != null && prevKm > 0) || kmTarget > 0) {
-    const displayKm = prevKm ?? 0;
-    const pct = kmTarget > 0 ? Math.min(100, Math.round(displayKm / kmTarget * 100)) : 100;
-    const label = kmTarget > 0 ? `${displayKm} / ${kmTarget} km` : `${displayKm} km`;
-    const srcChip = prevKmSource ? `<span style="font-size:8px;color:var(--run);font-family:var(--mono);margin-left:4px">${prevKmSource}</span>` : '';
-    kmBar = `<div class="texp-bar-row">
-      <span class="texp-bar-lbl">Weekly KM</span>
-      <div class="texp-bar-track"><div class="texp-bar-fill pbar-fill run" style="width:${pct}%"></div></div>
-      <span class="texp-bar-val pbar-val run">${label}${srcChip}</span>
-    </div>`;
-  }
-
-  // 6-metric grid from weekly check-in
-  const metrics6 = [
-    { l: 'Sleep',   v: w?.['Sleep hrs'],               inv: false, unit: 'hrs', div: 8 },
-    { l: 'Energy',  v: w?.['Energy /10'],               inv: false, unit: '/10', div: 10 },
-    { l: 'Stress',  v: w?.['Stress'],                   inv: true,  unit: '/10', div: 10 },
-    { l: 'Soreness',v: w?.['Soreness /10'],             inv: true,  unit: '/10', div: 10 },
-    { l: 'Motiv',   v: w?.['Motivation'],               inv: false, unit: '/10', div: 10 },
-    { l: 'Nutr',    v: w?.['Nutrition Adherence /10'],  inv: false, unit: '/10', div: 10 },
-  ];
-  const metricCards = metrics6.map(m => {
-    const val = parseFloat(m.v);
-    if (isNaN(val)) return `<div class="texp-metric"><div class="texp-metric-val" style="color:var(--dim)">—</div><div class="texp-metric-lbl">${m.l}</div></div>`;
-    const norm = Math.min(1, val / (m.div));
-    const cls = m.inv
-      ? (norm <= 0.4 ? 'good' : norm <= 0.6 ? 'mid' : 'bad')
-      : (norm >= 0.75 ? 'good' : norm >= 0.5 ? 'mid' : 'bad');
-    return `<div class="texp-metric"><div class="texp-metric-val ${cls}">${val}</div><div class="texp-metric-lbl">${m.l}</div></div>`;
-  }).join('');
-  const metricsGrid = hW
-    ? `<div class="texp-section"><div class="texp-label">Check-in Scores</div><div class="texp-metrics">${metricCards}</div></div>`
-    : '';
-
-  // Body stats
-  const bStats = [];
-  if (a.bAvg.wt !== undefined) {
-    const wt = a.trends?.weight ? trendDelta(a.trends.weight, false) : { dir: 'flat' };
-    const arrow = wt.dir === 'up' ? '↑' : wt.dir === 'dn' ? '↓' : '';
-    const cls = wt.dir === 'up' ? 'up' : wt.dir === 'dn' ? 'dn' : '';
-    bStats.push(`<div class="texp-stat"><div class="texp-stat-val">${esc(a.bAvg.wt)}<span class="pstat-trend ${cls}" style="font-size:12px">${arrow}</span></div><div class="texp-stat-lbl">Weight kg</div></div>`);
-  }
-  if (a.bAvg.energy !== null) {
-    const ec = a.bAvg.energy >= 7 ? 'good' : a.bAvg.energy >= 5 ? 'mid' : 'bad';
-    bStats.push(`<div class="texp-stat"><div class="texp-stat-val" style="color:var(--${ec === 'good' ? 'ok' : ec === 'mid' ? 'warn' : 'alert'})">${a.bAvg.energy}</div><div class="texp-stat-lbl">Energy 7d</div></div>`);
-  }
-  if (a.nAvg.cal !== null) {
-    bStats.push(`<div class="texp-stat"><div class="texp-stat-val">${Number(a.nAvg.cal).toLocaleString()}</div><div class="texp-stat-lbl">Cal/day</div></div>`);
-  }
-  const bodyStatsHtml = bStats.length
-    ? `<div class="texp-section"><div class="texp-label">Body Stats (7 day avg)</div><div class="texp-stats" style="grid-template-columns:repeat(${bStats.length},1fr)">${bStats.join('')}</div></div>`
-    : '';
-
-  // Training sessions planned vs completed
-  let trainingSplitHtml = '';
-  if (hW) {
-    const rp = parseInt(w['Run Planned']) || 0;
-    const rc = parseInt(w['Run Completed']) || 0;
-    const lp = parseInt(w['Lift Planned']) || 0;
-    const lc = parseInt(w['Lift Completed']) || 0;
-    if (rp > 0 || lp > 0) {
-      const rPct = rp > 0 ? Math.min(100, Math.round(rc / rp * 100)) : 0;
-      const lPct = lp > 0 ? Math.min(100, Math.round(lc / lp * 100)) : 0;
-      const rCls = rPct >= 100 ? 'good' : rPct >= 67 ? 'mid' : 'bad';
-      const lCls = lPct >= 100 ? 'good' : lPct >= 67 ? 'mid' : 'bad';
-      const rf = parseFloat(w['Run Feel /10']);
-      const lf = parseFloat(w['Lift Feel /10']);
-      const feelParts = [];
-      if (!isNaN(rf)) feelParts.push(`<span style="color:var(--run)">Run feel ${rf}/10</span>`);
-      if (!isNaN(lf)) feelParts.push(`<span style="color:var(--str)">Lift feel ${lf}/10</span>`);
-      trainingSplitHtml = `<div class="texp-section"><div class="texp-label">Training</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px">
-          <div>
-            <div style="font-family:var(--mono);font-size:9px;color:var(--run);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">Running</div>
-            <div style="font-family:var(--mono);font-size:13px;font-weight:700;color:var(--text)">${rc}<span style="color:var(--dim);font-weight:400">/${rp}</span></div>
-            <div class="texp-split-track"><div style="height:100%;width:${rPct}%;border-radius:2px;background:var(--run)"></div></div>
-          </div>
-          <div>
-            <div style="font-family:var(--mono);font-size:9px;color:var(--str);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">Lifting</div>
-            <div style="font-family:var(--mono);font-size:13px;font-weight:700;color:var(--text)">${lc}<span style="color:var(--dim);font-weight:400">/${lp}</span></div>
-            <div class="texp-split-track"><div style="height:100%;width:${lPct}%;border-radius:2px;background:var(--str)"></div></div>
-          </div>
-        </div>
-        ${feelParts.length ? `<div style="font-family:var(--mono);font-size:10px;margin-top:6px;display:flex;gap:12px">${feelParts.join('')}</div>` : ''}
-      </div>`;
-    }
-  }
-
-  // Niggles
-  const rNig = w?.['Run Niggles'] || '';
-  const lNig = w?.['Lifts Niggles'] || '';
-  const nigText = [rNig, lNig].filter(isBad).join(' · ');
-  const nigHtml = nigText ? `<div class="texp-section"><div class="texp-label">Niggles</div><div style="font-family:var(--mono);font-size:10px;color:var(--alert);line-height:1.5">${esc(nigText)}</div></div>` : '';
-
-  // Wins / quote
-  const winTexts = [w?.['Runs Wins'], w?.['Lift Wins']].filter(isBad);
-  const testimonial = isBad(w?.['Testimonial']) ? w['Testimonial'] : '';
-  const winsHtml = (winTexts.length || testimonial) ? `<div class="texp-section"><div class="texp-label">Wins</div>
-    ${winTexts.map(t => `<div style="font-family:var(--mono);font-size:10px;color:var(--ok);margin-bottom:3px">✓ ${esc(t)}</div>`).join('')}
-    ${testimonial ? `<div style="font-family:var(--sans);font-size:10px;font-style:italic;color:var(--muted);margin-top:4px;line-height:1.4">"${esc(testimonial)}"</div>` : ''}
-  </div>` : '';
-
-  // Notes / upcoming
-  const notesText = isBad(w?.['Notes']) ? w['Notes'] : '';
-  const upcomingText = isBad(w?.['Upcoming Impact']) ? w['Upcoming Impact'] : '';
-  const notesHtml = (notesText || upcomingText) ? `<div class="texp-section"><div class="texp-label">Notes</div>
-    ${notesText ? `<div style="font-family:var(--sans);font-size:10px;color:var(--muted);line-height:1.4;margin-bottom:4px">${esc(notesText)}</div>` : ''}
-    ${upcomingText ? `<div style="font-family:var(--mono);font-size:9px;color:var(--warn);line-height:1.4">⚑ ${esc(upcomingText)}</div>` : ''}
-  </div>` : '';
-
-  // ── Left panel check-in header
-  let checkinPanelHeader = '';
-  if (hW) {
-    const cwEnd = w['Week Ending'];
-    let ciWkNum = null;
-    if (a.weekNum !== null && cwEnd && a.expectedWeekEnd) {
-      const weeksBack = Math.round((new Date(a.expectedWeekEnd) - new Date(cwEnd)) / (7 * 86400000));
-      ciWkNum = a.weekNum - weeksBack;
-    }
-    const ciWkStr = ciWkNum !== null ? (ciWkNum === 0 ? 'Discovery' : `Wk ${ciWkNum}`) : '';
-    const ciStatusLabel = a.hasCurrentCheckin ? 'Prev Check-in' : 'Last Check-in';
-    checkinPanelHeader = `<div class="texp-ci-header">
-      ${ciWkStr ? `<span class="texp-ci-wk">${ciWkStr}</span>` : ''}
-      <span class="texp-ci-header-label">${ciStatusLabel}</span>
-      ${cwEnd ? `<span class="texp-ci-date">${fmtDate(cwEnd)}</span>` : ''}
-    </div>`;
-  }
+  // Left panel header — show prev week number
+  const prevWkNum = a.weekNum !== null ? a.weekNum - 1 : null;
+  const prevWkLabel = prevWkNum !== null ? (prevWkNum <= 0 ? 'Discovery' : `Wk ${prevWkNum}`) : 'Last Week';
+  const leftPanelHeader = `<div class="texp-ci-header">
+    <span class="texp-ci-wk">${prevWkLabel}</span>
+    <span class="texp-ci-header-label">Last Week Training</span>
+  </div>`;
 
   const leftPanel = `<div class="texp-left">
     ${ribbonHtml}
-    ${checkinPanelHeader}
-    ${recovBar || kmBar ? `<div class="texp-section"><div class="texp-label">Performance</div>${recovBar}${kmBar}</div>` : ''}
-    ${metricsGrid}
-    ${trainingSplitHtml}
-    ${bodyStatsHtml}
-    ${nigHtml}
-    ${winsHtml}
-    ${notesHtml}
+    ${leftPanelHeader}
+    ${kmBar ? `<div class="texp-section"><div class="texp-label">Performance</div>${kmBar}</div>` : ''}
+    <div class="texp-section">
+      <div class="texp-label">Sessions</div>
+      ${prevSessHtml}
+    </div>
+    <div class="texp-section">
+      <div class="texp-label">Last Week's Plan</div>
+      ${prevPlanRowsHtml}
+    </div>
   </div>`;
 
   // ── Right panel: WIP counts + plan rows
