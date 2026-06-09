@@ -2753,13 +2753,13 @@ function render({ athletes, coaches, applications = [], dataHealth = null, syncA
   document.getElementById('tab-apps-count').textContent  = applications.length || '—';
   document.getElementById('tab-sync-count').textContent  = syncAudit.filter(r => r.severity !== 'good').length || '✓';
 
-  // Notification badge — new apps since last time the notifications tab was opened
+  // Notification badge — new apps since last "mark all seen", defaulting to 7 days
   const lastSeen = localStorage.getItem('dp_notif_last_seen');
-  if (!lastSeen) localStorage.setItem('dp_notif_last_seen', new Date().toISOString());
-  const newApps = lastSeen ? applications.filter(r => {
+  const cutoff = lastSeen ? new Date(lastSeen) : new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  const newApps = applications.filter(r => {
     const submitted = r['date:Submitted at:start'] || r['Submitted at'] || '';
-    return submitted && new Date(submitted) > new Date(lastSeen);
-  }) : [];
+    return submitted && new Date(submitted) > cutoff;
+  });
   const notifBadge = document.getElementById('tab-notif-count');
   if (notifBadge) {
     notifBadge.textContent = newApps.length || '—';
