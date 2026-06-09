@@ -55,6 +55,14 @@ header{background:#0a0a0a;padding:0 18px;height:62px;display:flex;align-items:ce
 .tab.active .tab-badge{background:rgba(255,255,255,.22)}
 .tab-badge.red{background:rgba(220,38,38,.5);color:#fca5a5}
 
+/* ── Notifications Tab ── */
+.notif-section{padding:24px 20px;max-width:900px}
+.notif-empty{font-family:var(--mono);font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;padding:40px 0}
+.notif-header{font-family:var(--mono);font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.1em;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.notif-dot{width:6px;height:6px;border-radius:50%;background:#f59e0b;flex-shrink:0}
+.notif-mark-seen{background:transparent;border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.4);font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.08em;padding:3px 10px;border-radius:4px;cursor:pointer;transition:all .15s;margin-left:auto}
+.notif-mark-seen:hover{border-color:rgba(255,255,255,.35);color:rgba(255,255,255,.7)}
+
 /* ── Filter Bar ── */
 .filter-bar{background:var(--surface);border-bottom:1px solid var(--border);padding:8px 18px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;position:sticky;top:94px;z-index:98}
 .search-input{border:1px solid var(--border-mid);border-radius:7px;padding:6px 12px;font-family:var(--mono);font-size:11px;color:var(--text);background:var(--surface);outline:none;min-width:180px;transition:border .15s}
@@ -1424,6 +1432,9 @@ body[data-theme="light"] .strava-weekly-strip{background:#fff}
   <button class="tab" id="tab-apps-btn" onclick="switchTab('applications')">
     Pipeline <span class="tab-badge" id="tab-apps-count">—</span>
   </button>
+  <button class="tab" id="tab-notif-btn" onclick="switchTab('notifications')">
+    New <span class="tab-badge" id="tab-notif-count">—</span>
+  </button>
 </div>
 
 <!-- Filter bar (athletes only) -->
@@ -1525,6 +1536,13 @@ body[data-theme="light"] .strava-weekly-strip{background:#fff}
     <div class="apps-grid" id="apps-grid">
       <div class="state-box"><div class="state-txt">Loading applications…</div></div>
     </div>
+  </div>
+</div>
+
+<!-- NOTIFICATIONS TAB -->
+<div id="tab-notif-content" style="display:none">
+  <div class="notif-section">
+    <div id="notif-grid"></div>
   </div>
 </div>
 
@@ -2735,12 +2753,26 @@ function render({ athletes, coaches, applications = [], dataHealth = null, syncA
   document.getElementById('tab-apps-count').textContent  = applications.length || '—';
   document.getElementById('tab-sync-count').textContent  = syncAudit.filter(r => r.severity !== 'good').length || '✓';
 
+  // Notification badge — new apps since last time the notifications tab was opened
+  const lastSeen = localStorage.getItem('dp_notif_last_seen');
+  if (!lastSeen) localStorage.setItem('dp_notif_last_seen', new Date().toISOString());
+  const newApps = lastSeen ? applications.filter(r => {
+    const submitted = r['date:Submitted at:start'] || r['Submitted at'] || '';
+    return submitted && new Date(submitted) > new Date(lastSeen);
+  }) : [];
+  const notifBadge = document.getElementById('tab-notif-count');
+  if (notifBadge) {
+    notifBadge.textContent = newApps.length || '—';
+    if (newApps.length > 0) notifBadge.classList.add('red'); else notifBadge.classList.remove('red');
+  }
+
   renderCommandCenter(athletes, applications, dataHealth);
   renderSummary(athletes);
   renderGrid(athletes);
   renderCoaches(coaches);
   renderSyncAudit(syncAudit);
   renderApplications(applications);
+  renderNotifications(newApps);
 
   document.getElementById('gen-btn').style.display = 'block';
   document.getElementById('squad-brief').classList.remove('visible');
@@ -5153,18 +5185,76 @@ function renderApplications(apps) {
   }).join('');
 }
 
+// ── renderNotifications ───────────────────────────────────────────────────────
+function renderNotifications(newApps) {
+  const grid = document.getElementById('notif-grid');
+  if (!grid) return;
+  if (!newApps || !newApps.length) {
+    grid.innerHTML = `<div class="notif-empty">No new applications since your last visit</div>`;
+    return;
+  }
+  const cards = newApps.map(r => {
+    const name     = r['Name'] || r['Full Name'] || '—';
+    const age      = r['Age'] || '';
+    const occ      = r['Occupation'] || '';
+    const goal     = r['3-Month Goal'] || r['Goal'] || '';
+    const barrier  = r['Biggest Barrier'] || r['Barrier'] || '';
+    const daysWk   = r['Days per week'] || r['Training Days'] || '';
+    const injuries = r['Injuries'] || '';
+    const submitted = r['date:Submitted at:start'] || r['Submitted at'] || '';
+    const status   = r['Status'] || r['Application Status'] || '';
+    const statusCls = status.toLowerCase().includes('accept') ? 'accepted' : status.toLowerCase().includes('reject') ? 'rejected' : 'new';
+    return `<div class="app-card">
+      <div class="app-card-head">
+        <div class="app-name">${esc(name)}</div>
+        <div class="app-meta">${[age, occ, submitted ? `Applied ${fmtDate(submitted.split('T')[0])}` : ''].filter(Boolean).join(' · ')}</div>
+      </div>
+      <div class="app-body">
+        ${status ? `<div class="app-field"><span class="app-status ${statusCls}">${esc(status)}</span></div>` : ''}
+        ${goal ? `<div class="app-field"><div class="app-field-lbl">3-Month Goal</div><div class="app-field-val strong">${esc(goal)}</div></div>` : ''}
+        ${barrier ? `<div class="app-field"><div class="app-field-lbl">Biggest Barrier</div><div class="app-field-val">${esc(barrier)}</div></div>` : ''}
+        ${daysWk ? `<div class="app-field"><div class="app-field-lbl">Days / Week</div><div class="app-field-val">${esc(daysWk)}</div></div>` : ''}
+        ${injuries && isBad(injuries) ? `<div class="app-field"><div class="app-field-lbl">Injuries / History</div><div class="app-field-val">${esc(injuries)}</div></div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+  grid.innerHTML = `
+    <div class="notif-header">
+      <span class="notif-dot"></span>
+      ${newApps.length} new application${newApps.length !== 1 ? 's' : ''} since your last visit
+      <button class="notif-mark-seen" onclick="markAllSeen()">Mark all seen</button>
+    </div>
+    <div class="apps-grid">${cards}</div>`;
+}
+
+function markAllSeen() {
+  localStorage.setItem('dp_notif_last_seen', new Date().toISOString());
+  const badge = document.getElementById('tab-notif-count');
+  if (badge) { badge.textContent = '✓'; badge.classList.remove('red'); }
+  renderNotifications([]);
+}
+
 // ── Tab switching ─────────────────────────────────────────────────────────────
 function switchTab(tab) {
-  const tabs = ['athletes','coaches','sync','applications'];
+  const idMap = { applications: 'apps', notifications: 'notif' };
+  const tabs = ['athletes','coaches','sync','applications','notifications'];
   tabs.forEach(t => {
-    const btn = document.getElementById(`tab-${t === 'applications' ? 'apps' : t}-btn`);
-    const content = document.getElementById(`tab-${t === 'applications' ? 'apps' : t}-content`);
-    const active = t === tab;
+    const key = idMap[t] || t;
+    const btn     = document.getElementById(`tab-${key}-btn`);
+    const content = document.getElementById(`tab-${key}-content`);
+    const active  = t === tab;
     if (btn) btn.classList.toggle('active', active);
     if (content) content.style.display = active ? '' : 'none';
   });
   document.getElementById('filter-bar').style.display = tab === 'athletes' ? '' : 'none';
   document.getElementById('gen-btn').style.display    = tab === 'athletes' && _allAthletes.length ? 'block' : 'none';
+
+  // Mark notifications as seen when tab is opened
+  if (tab === 'notifications') {
+    localStorage.setItem('dp_notif_last_seen', new Date().toISOString());
+    const badge = document.getElementById('tab-notif-count');
+    if (badge) { badge.textContent = '✓'; badge.classList.remove('red'); }
+  }
 }
 
 // ── Call Prep toggle ──────────────────────────────────────────────────────────
