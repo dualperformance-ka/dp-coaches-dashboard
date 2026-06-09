@@ -5249,12 +5249,6 @@ function switchTab(tab) {
   document.getElementById('filter-bar').style.display = tab === 'athletes' ? '' : 'none';
   document.getElementById('gen-btn').style.display    = tab === 'athletes' && _allAthletes.length ? 'block' : 'none';
 
-  // Mark notifications as seen when tab is opened
-  if (tab === 'notifications') {
-    localStorage.setItem('dp_notif_last_seen', new Date().toISOString());
-    const badge = document.getElementById('tab-notif-count');
-    if (badge) { badge.textContent = '✓'; badge.classList.remove('red'); }
-  }
 }
 
 // ── Call Prep toggle ──────────────────────────────────────────────────────────
