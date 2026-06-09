@@ -3065,10 +3065,32 @@ function buildTableExpandPanel(a) {
   const avgCal  = _avgVal(cwNutrEntries, 'Calories');
   const avgPro  = _avgVal(cwNutrEntries, 'Protein');
   const avgEn   = _avgVal(cwBodyEntries, 'Energy');
+  // Target lookup for macro signals
+  const _t = a.target;
+  const _tCal = _t?.Calories ? parseFloat(String(_t.Calories).replace(/[^\d.]/g,'')) : null;
+  const _tPro = _t?.Protein  ? parseFloat(String(_t.Protein).replace(/[^\d.]/g,''))  : null;
   const summaryItems = [];
   if (avgWt  !== null) summaryItems.push(`<div class="texp-daily-avg"><div class="texp-daily-avg-val">${avgWt.toFixed(1)}</div><div class="texp-daily-avg-lbl">Avg wt kg</div></div>`);
-  if (avgCal !== null) summaryItems.push(`<div class="texp-daily-avg"><div class="texp-daily-avg-val">${Math.round(avgCal).toLocaleString()}</div><div class="texp-daily-avg-lbl">Avg cal</div></div>`);
-  if (avgPro !== null) summaryItems.push(`<div class="texp-daily-avg"><div class="texp-daily-avg-val">${Math.round(avgPro)}g</div><div class="texp-daily-avg-lbl">Avg protein</div></div>`);
+  if (avgCal !== null) {
+    let calColor = 'var(--text)';
+    let calLbl = 'Avg cal';
+    if (_tCal) {
+      const pct = (avgCal - _tCal) / _tCal * 100;
+      calColor = Math.abs(pct) <= 10 ? 'var(--ok)' : pct < -10 ? 'var(--alert)' : 'var(--warn)';
+      calLbl = `Avg cal <span style="font-size:6px;opacity:.7">${_tCal >= 1000 ? Math.round(_tCal/100)*100 : Math.round(_tCal)} tgt</span>`;
+    }
+    summaryItems.push(`<div class="texp-daily-avg"><div class="texp-daily-avg-val" style="color:${calColor}">${Math.round(avgCal).toLocaleString()}</div><div class="texp-daily-avg-lbl">${calLbl}</div></div>`);
+  }
+  if (avgPro !== null) {
+    let proColor = 'var(--text)';
+    let proLbl = 'Avg protein';
+    if (_tPro) {
+      const pct = (avgPro - _tPro) / _tPro * 100;
+      proColor = pct >= -10 ? 'var(--ok)' : pct >= -25 ? 'var(--warn)' : 'var(--alert)';
+      proLbl = `Avg protein <span style="font-size:6px;opacity:.7">${Math.round(_tPro)}g tgt</span>`;
+    }
+    summaryItems.push(`<div class="texp-daily-avg"><div class="texp-daily-avg-val" style="color:${proColor}">${Math.round(avgPro)}g</div><div class="texp-daily-avg-lbl">${proLbl}</div></div>`);
+  }
   if (avgEn  !== null) {
     const ec = avgEn >= 7 ? 'var(--ok)' : avgEn >= 5 ? 'var(--warn)' : 'var(--alert)';
     summaryItems.push(`<div class="texp-daily-avg"><div class="texp-daily-avg-val" style="color:${ec}">${avgEn.toFixed(1)}</div><div class="texp-daily-avg-lbl">Avg energy</div></div>`);
