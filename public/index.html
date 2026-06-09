@@ -2997,12 +2997,18 @@ function buildTableExpandPanel(a) {
       const slVal = parseFloat(b?.['Sleep Score']);
       const stVal = parseFloat(b?.Stress);
       const soVal = parseFloat(b?.Soreness);
-      const calVal = n?.Calories;
-      const proVal = n?.Protein;
+      const calVal  = n?.Calories;
+      const proVal  = n?.Protein;
+      const carbVal = n?.Carbs;
+      const fatVal  = n?.Fats;
+      const fibreVal= n?.Fibre;
       const chips = [];
       if (wt != null && wt !== '')  chips.push(`<span class="texp-daily-chip"><span style="color:var(--dim)">wt</span> ${esc(String(wt))} kg</span>`);
       if (calVal != null)           chips.push(`<span class="texp-daily-chip"><span style="color:var(--dim)">cal</span> ${Number(calVal).toLocaleString()}</span>`);
       if (proVal != null)           chips.push(`<span class="texp-daily-chip"><span style="color:var(--dim)">P</span> ${esc(String(proVal))}g</span>`);
+      if (carbVal != null)          chips.push(`<span class="texp-daily-chip"><span style="color:var(--dim)">C</span> ${esc(String(carbVal))}g</span>`);
+      if (fatVal != null)           chips.push(`<span class="texp-daily-chip"><span style="color:var(--dim)">F</span> ${esc(String(fatVal))}g</span>`);
+      if (fibreVal != null)         chips.push(`<span class="texp-daily-chip"><span style="color:var(--dim)">fibre</span> ${esc(String(fibreVal))}g</span>`);
       if (!isNaN(enVal)) {
         const ec = enVal >= 7 ? 'var(--ok)' : enVal >= 5 ? 'var(--warn)' : 'var(--alert)';
         chips.push(`<span class="texp-daily-chip"><span style="color:var(--dim)">nrg</span> <span style="color:${ec}">${enVal}</span></span>`);
@@ -4388,6 +4394,7 @@ function buildFPCard(a, weekOffset = 0) {
             dayNutr.Protein  ? `<span class="wd-metric nutr"><strong>${esc(dayNutr.Protein)}g</strong> P</span>` : '',
             dayNutr.Carbs    ? `<span class="wd-metric nutr"><strong>${esc(dayNutr.Carbs)}g</strong> C</span>` : '',
             dayNutr.Fats     ? `<span class="wd-metric nutr"><strong>${esc(dayNutr.Fats)}g</strong> F</span>` : '',
+            dayNutr.Fibre    ? `<span class="wd-metric nutr"><strong>${esc(dayNutr.Fibre)}g</strong> fibre</span>` : '',
             water            ? `<span class="wd-metric nutr"><strong>${esc(water)}</strong> water</span>` : '',
             adh              ? `<span class="wd-metric nutr"><strong>${esc(adh)}/10</strong> adherence</span>` : '',
           ];
