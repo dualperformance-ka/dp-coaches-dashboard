@@ -2983,6 +2983,11 @@ function buildTableExpandPanel(a) {
     : '';
 
   // ── Daily log: current-week body + nutrition entries merged by date
+  // Target macros (used for per-day chip signals)
+  const _dT = a.target;
+  const _dTCal = _dT?.Calories ? parseFloat(String(_dT.Calories).replace(/[^\d.]/g,'')) : null;
+  const _dTPro = _dT?.Protein  ? parseFloat(String(_dT.Protein).replace(/[^\d.]/g,''))  : null;
+
   const _DAYS_S = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   const cwBodyEntries = (a.body || []).filter(r => {
     const d = new Date(r['date:Date:start'] || r.Date || '');
@@ -3027,8 +3032,16 @@ function buildTableExpandPanel(a) {
       const fibreVal= n?.Fibre;
       const chips = [];
       if (wt != null && wt !== '')  chips.push(`<span class="texp-daily-chip"><span style="color:var(--dim)">wt</span> ${esc(String(wt))} kg</span>`);
-      if (calVal != null)           chips.push(`<span class="texp-daily-chip"><span style="color:var(--dim)">cal</span> ${Number(calVal).toLocaleString()}</span>`);
-      if (proVal != null)           chips.push(`<span class="texp-daily-chip"><span style="color:var(--dim)">P</span> ${esc(String(proVal))}g</span>`);
+      if (calVal != null) {
+        let _calC = 'var(--text)';
+        if (_dTCal) { const _p = (parseFloat(calVal) - _dTCal) / _dTCal * 100; _calC = Math.abs(_p) <= 10 ? 'var(--ok)' : _p < -10 ? 'var(--alert)' : 'var(--warn)'; }
+        chips.push(`<span class="texp-daily-chip"><span style="color:var(--dim)">cal</span> <span style="color:${_calC}">${Number(calVal).toLocaleString()}</span></span>`);
+      }
+      if (proVal != null) {
+        let _proC = 'var(--text)';
+        if (_dTPro) { const _p = (parseFloat(proVal) - _dTPro) / _dTPro * 100; _proC = _p >= -10 ? 'var(--ok)' : _p >= -25 ? 'var(--warn)' : 'var(--alert)'; }
+        chips.push(`<span class="texp-daily-chip"><span style="color:var(--dim)">P</span> <span style="color:${_proC}">${esc(String(proVal))}g</span></span>`);
+      }
       if (carbVal != null)          chips.push(`<span class="texp-daily-chip"><span style="color:var(--dim)">C</span> ${esc(String(carbVal))}g</span>`);
       if (fatVal != null)           chips.push(`<span class="texp-daily-chip"><span style="color:var(--dim)">F</span> ${esc(String(fatVal))}g</span>`);
       if (fibreVal != null)         chips.push(`<span class="texp-daily-chip"><span style="color:var(--dim)">fibre</span> ${esc(String(fibreVal))}g</span>`);
