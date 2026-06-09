@@ -62,6 +62,11 @@ header{background:#0a0a0a;padding:0 18px;height:62px;display:flex;align-items:ce
 .notif-dot{width:6px;height:6px;border-radius:50%;background:#f59e0b;flex-shrink:0}
 .notif-mark-seen{background:transparent;border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.4);font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.08em;padding:3px 10px;border-radius:4px;cursor:pointer;transition:all .15s;margin-left:auto}
 .notif-mark-seen:hover{border-color:rgba(255,255,255,.35);color:rgba(255,255,255,.7)}
+.app-actions{display:flex;gap:8px;padding:12px 16px 14px;border-top:1px solid rgba(255,255,255,.06)}
+.app-accept-btn{background:rgba(245,158,11,.15);border:1px solid rgba(245,158,11,.35);color:#f59e0b;font-family:var(--mono);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;padding:6px 16px;border-radius:5px;cursor:pointer;transition:all .15s}
+.app-accept-btn:hover{background:rgba(245,158,11,.28);border-color:#f59e0b}
+.app-reject-btn{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.35);font-family:var(--mono);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;padding:6px 14px;border-radius:5px;cursor:pointer;transition:all .15s}
+.app-reject-btn:hover{background:rgba(220,38,38,.12);border-color:rgba(220,38,38,.3);color:#fca5a5}
 
 /* ── Filter Bar ── */
 .filter-bar{background:var(--surface);border-bottom:1px solid var(--border);padding:8px 18px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;position:sticky;top:94px;z-index:98}
@@ -2753,26 +2758,12 @@ function render({ athletes, coaches, applications = [], dataHealth = null, syncA
   document.getElementById('tab-apps-count').textContent  = applications.length || '—';
   document.getElementById('tab-sync-count').textContent  = syncAudit.filter(r => r.severity !== 'good').length || '✓';
 
-  // Notification badge — new apps since last "mark all seen", defaulting to 7 days
-  const lastSeen = localStorage.getItem('dp_notif_last_seen');
-  const cutoff = lastSeen ? new Date(lastSeen) : new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-  const newApps = applications.filter(r => {
-    const submitted = r['date:Submitted at:start'] || r['Submitted at'] || '';
-    return submitted && new Date(submitted) > cutoff;
-  });
-  const notifBadge = document.getElementById('tab-notif-count');
-  if (notifBadge) {
-    notifBadge.textContent = newApps.length || '—';
-    if (newApps.length > 0) notifBadge.classList.add('red'); else notifBadge.classList.remove('red');
-  }
-
   renderCommandCenter(athletes, applications, dataHealth);
   renderSummary(athletes);
   renderGrid(athletes);
   renderCoaches(coaches);
   renderSyncAudit(syncAudit);
   renderApplications(applications);
-  renderNotifications(newApps);
 
   document.getElementById('gen-btn').style.display = 'block';
   document.getElementById('squad-brief').classList.remove('visible');
@@ -5186,52 +5177,93 @@ function renderApplications(apps) {
 }
 
 // ── renderNotifications ───────────────────────────────────────────────────────
-function renderNotifications(newApps) {
+function renderNotifications(applications, decisions = []) {
   const grid = document.getElementById('notif-grid');
   if (!grid) return;
-  if (!newApps || !newApps.length) {
-    grid.innerHTML = `<div class="notif-empty">No new applications since your last visit</div>`;
+
+  const decidedIds = new Set((decisions || []).map(d => d.notion_id));
+  const pending = (applications || []).filter(r => r._id && !decidedIds.has(r._id));
+
+  // Update badge
+  const notifBadge = document.getElementById('tab-notif-count');
+  if (notifBadge) {
+    notifBadge.textContent = pending.length || '—';
+    if (pending.length > 0) notifBadge.classList.add('red'); else notifBadge.classList.remove('red');
+  }
+
+  if (!pending.length) {
+    grid.innerHTML = `<div class="notif-empty">No pending applications</div>`;
     return;
   }
-  const cards = newApps.map(r => {
-    const name     = r['Name'] || r['Full Name'] || '—';
-    const age      = r['Age'] || '';
-    const occ      = r['Occupation'] || '';
-    const goal     = r['3-Month Goal'] || r['Goal'] || '';
-    const barrier  = r['Biggest Barrier'] || r['Barrier'] || '';
-    const daysWk   = r['Days per week'] || r['Training Days'] || '';
-    const injuries = r['Injuries'] || '';
+
+  const cards = pending.map(r => {
+    const name      = r['Name'] || r['Full Name'] || '—';
+    const age       = r['Age'] || '';
+    const occ       = r['Occupation'] || '';
+    const goal      = r['3-Month Goal'] || r['Goal'] || '';
+    const barrier   = r['Biggest Barrier'] || r['Barrier'] || '';
+    const daysWk    = r['Days per week'] || r['Training Days'] || '';
+    const injuries  = r['Injuries'] || '';
     const submitted = r['date:Submitted at:start'] || r['Submitted at'] || '';
-    const status   = r['Status'] || r['Application Status'] || '';
-    const statusCls = status.toLowerCase().includes('accept') ? 'accepted' : status.toLowerCase().includes('reject') ? 'rejected' : 'new';
-    return `<div class="app-card">
+    const notionId  = r._id || '';
+    return `<div class="app-card" id="notif-card-${notionId}">
       <div class="app-card-head">
         <div class="app-name">${esc(name)}</div>
         <div class="app-meta">${[age, occ, submitted ? `Applied ${fmtDate(submitted.split('T')[0])}` : ''].filter(Boolean).join(' · ')}</div>
       </div>
       <div class="app-body">
-        ${status ? `<div class="app-field"><span class="app-status ${statusCls}">${esc(status)}</span></div>` : ''}
         ${goal ? `<div class="app-field"><div class="app-field-lbl">3-Month Goal</div><div class="app-field-val strong">${esc(goal)}</div></div>` : ''}
         ${barrier ? `<div class="app-field"><div class="app-field-lbl">Biggest Barrier</div><div class="app-field-val">${esc(barrier)}</div></div>` : ''}
         ${daysWk ? `<div class="app-field"><div class="app-field-lbl">Days / Week</div><div class="app-field-val">${esc(daysWk)}</div></div>` : ''}
         ${injuries && isBad(injuries) ? `<div class="app-field"><div class="app-field-lbl">Injuries / History</div><div class="app-field-val">${esc(injuries)}</div></div>` : ''}
       </div>
+      <div class="app-actions">
+        <button class="app-accept-btn" onclick="decideApplication('${notionId}','${esc(name)}','accepted')">✓ Accept</button>
+        <button class="app-reject-btn" onclick="decideApplication('${notionId}','${esc(name)}','rejected')">✕ Pass</button>
+      </div>
     </div>`;
   }).join('');
+
   grid.innerHTML = `
     <div class="notif-header">
       <span class="notif-dot"></span>
-      ${newApps.length} new application${newApps.length !== 1 ? 's' : ''} since your last visit
-      <button class="notif-mark-seen" onclick="markAllSeen()">Mark all seen</button>
+      ${pending.length} pending application${pending.length !== 1 ? 's' : ''}
     </div>
     <div class="apps-grid">${cards}</div>`;
 }
 
-function markAllSeen() {
-  localStorage.setItem('dp_notif_last_seen', new Date().toISOString());
-  const badge = document.getElementById('tab-notif-count');
-  if (badge) { badge.textContent = '✓'; badge.classList.remove('red'); }
-  renderNotifications([]);
+async function decideApplication(notionId, name, decision) {
+  const coach = document.getElementById('coach-select')?.value;
+  if (!coach) { alert('Select a coach first (top right)'); return; }
+  const btn = document.querySelector(`#notif-card-${notionId} .app-accept-btn, #notif-card-${notionId} .app-reject-btn`);
+  const card = document.getElementById(`notif-card-${notionId}`);
+  if (card) card.style.opacity = '0.5';
+
+  const sb = getSB();
+  const { error } = await sb.from('application_decisions').upsert({
+    notion_id: notionId,
+    decision,
+    decided_by: coach,
+    decided_at: new Date().toISOString(),
+  }, { onConflict: 'notion_id' });
+
+  if (error) {
+    if (card) card.style.opacity = '1';
+    alert('Error saving decision: ' + error.message);
+    return;
+  }
+
+  // Remove card from view and update badge
+  if (card) card.remove();
+  const remaining = document.querySelectorAll('#notif-grid .app-card').length;
+  const notifBadge = document.getElementById('tab-notif-count');
+  if (notifBadge) {
+    notifBadge.textContent = remaining || '—';
+    if (remaining === 0) {
+      notifBadge.classList.remove('red');
+      document.getElementById('notif-grid').innerHTML = `<div class="notif-empty">No pending applications</div>`;
+    }
+  }
 }
 
 // ── Tab switching ─────────────────────────────────────────────────────────────
@@ -5294,12 +5326,15 @@ async function load({ bust = false } = {}) {
   document.getElementById('refresh-btn').disabled = true;
 
   try {
-    const [weekly, sessions, body, nutrition, athleteDb, targets, planning, applications] = await Promise.all([
+    const [weekly, sessions, body, nutrition, athleteDb, targets, planning, applications, , , decisionsRes] = await Promise.all([
       fetchDB(DB.weekly, bust), fetchDB(DB.sessions, bust), fetchDB(DB.body, bust),
       fetchDB(DB.nutrition, bust), fetchDB(DB.athletes, bust), fetchDB(DB.targets, bust),
       fetchDB(DB.planning, bust), fetchDB(DB.applications, bust),
       loadAllOverrides(), loadSessionLogs(),
+      getSB().from('application_decisions').select('notion_id,decision,decided_by,decided_at'),
     ]);
+
+    const decisions = decisionsRes?.data || [];
 
     const { athletes, coaches, syncAudit } = buildAll(weekly, sessions, body, nutrition, athleteDb, targets, planning, applications);
     const dataHealth = {
@@ -5314,6 +5349,7 @@ async function load({ bust = false } = {}) {
       loadedAt: new Date(),
     };
     render({ athletes, coaches, applications, dataHealth, syncAudit });
+    renderNotifications(applications, decisions);
 
     document.getElementById('loading').style.display = 'none';
     document.getElementById('content').style.display = 'block';
