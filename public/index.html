@@ -2183,20 +2183,20 @@ function buildActionList(a) {
     }
   }
 
-  // Nutrition vs target — under/over by 25%+ averaged 7d
+  // Nutrition vs target — absolute thresholds: cal ±100, protein -5g
   if (a.target && a.nAvg.cal) {
     const tCal = parseFloat(String(a.target.Calories || '').replace(/[^\d.]/g, ''));
     const aCal = parseFloat(a.nAvg.cal);
     if (tCal && aCal) {
-      const pct = ((aCal - tCal) / tCal) * 100;
-      if (pct < -25) critical.push(`Calories ${Math.round(pct)}% vs target — under-fuelling`);
-      else if (pct > 25) watch.push(`Calories ${Math.round(pct)}% vs target`);
-      else if (pct < -15) watch.push(`Calories ${Math.round(pct)}% vs target`);
+      const diff = aCal - tCal;
+      if (diff < -300) critical.push(`Calories ${Math.round(diff)} vs target — under-fuelling`);
+      else if (diff < -100) watch.push(`Calories ${Math.round(diff)} vs target`);
+      else if (diff > 100) watch.push(`Calories +${Math.round(diff)} vs target — over`);
     }
     // Protein
     const tPro = parseFloat(String(a.target.Protein || '').replace(/[^\d.]/g, ''));
     const aPro = parseFloat(a.nAvg.pro);
-    if (tPro && aPro && aPro < tPro * 0.75) {
+    if (tPro && aPro && aPro < tPro - 5) {
       watch.push(`Protein ${Math.round(aPro)}g vs ${Math.round(tPro)}g target`);
     }
   }
@@ -2985,8 +2985,11 @@ function buildTableExpandPanel(a) {
   // ── Daily log: current-week body + nutrition entries merged by date
   // Target macros (used for per-day chip signals)
   const _dT = a.target;
-  const _dTCal = _dT?.Calories ? parseFloat(String(_dT.Calories).replace(/[^\d.]/g,'')) : null;
-  const _dTPro = _dT?.Protein  ? parseFloat(String(_dT.Protein).replace(/[^\d.]/g,''))  : null;
+  const _dTCal   = _dT?.Calories ? parseFloat(String(_dT.Calories).replace(/[^\d.]/g,'')) : null;
+  const _dTPro   = _dT?.Protein  ? parseFloat(String(_dT.Protein).replace(/[^\d.]/g,''))  : null;
+  const _dTCarb  = _dT?.Carbs    ? parseFloat(String(_dT.Carbs).replace(/[^\d.]/g,''))    : null;
+  const _dTFat   = _dT?.Fats     ? parseFloat(String(_dT.Fats).replace(/[^\d.]/g,''))     : null;
+  const _dTFibre = _dT?.Fibre    ? parseFloat(String(_dT.Fibre).replace(/[^\d.]/g,''))    : null;
 
   const _DAYS_S = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   const cwBodyEntries = (a.body || []).filter(r => {
@@ -3034,17 +3037,29 @@ function buildTableExpandPanel(a) {
       if (wt != null && wt !== '')  chips.push(`<span class="texp-daily-chip"><span style="color:var(--dim)">wt</span> ${esc(String(wt))} kg</span>`);
       if (calVal != null) {
         let _calC = 'var(--text)';
-        if (_dTCal) { const _p = (parseFloat(calVal) - _dTCal) / _dTCal * 100; _calC = Math.abs(_p) <= 10 ? 'var(--ok)' : _p < -10 ? 'var(--alert)' : 'var(--warn)'; }
+        if (_dTCal) { const _d = parseFloat(calVal) - _dTCal; _calC = Math.abs(_d) <= 100 ? 'var(--ok)' : _d < -100 ? 'var(--alert)' : 'var(--warn)'; }
         chips.push(`<span class="texp-daily-chip"><span style="color:var(--dim)">cal</span> <span style="color:${_calC}">${Number(calVal).toLocaleString()}</span></span>`);
       }
       if (proVal != null) {
         let _proC = 'var(--text)';
-        if (_dTPro) { const _p = (parseFloat(proVal) - _dTPro) / _dTPro * 100; _proC = _p >= -10 ? 'var(--ok)' : _p >= -25 ? 'var(--warn)' : 'var(--alert)'; }
+        if (_dTPro) { const _d = parseFloat(proVal) - _dTPro; _proC = _d >= -5 ? 'var(--ok)' : 'var(--alert)'; }
         chips.push(`<span class="texp-daily-chip"><span style="color:var(--dim)">P</span> <span style="color:${_proC}">${esc(String(proVal))}g</span></span>`);
       }
-      if (carbVal != null)          chips.push(`<span class="texp-daily-chip"><span style="color:var(--dim)">C</span> ${esc(String(carbVal))}g</span>`);
-      if (fatVal != null)           chips.push(`<span class="texp-daily-chip"><span style="color:var(--dim)">F</span> ${esc(String(fatVal))}g</span>`);
-      if (fibreVal != null)         chips.push(`<span class="texp-daily-chip"><span style="color:var(--dim)">fibre</span> ${esc(String(fibreVal))}g</span>`);
+      if (carbVal != null) {
+        let _carbC = 'var(--text)';
+        if (_dTCarb) { const _d = parseFloat(carbVal) - _dTCarb; _carbC = Math.abs(_d) <= 10 ? 'var(--ok)' : _d < -10 ? 'var(--alert)' : 'var(--warn)'; }
+        chips.push(`<span class="texp-daily-chip"><span style="color:var(--dim)">C</span> <span style="color:${_carbC}">${esc(String(carbVal))}g</span></span>`);
+      }
+      if (fatVal != null) {
+        let _fatC = 'var(--text)';
+        if (_dTFat) { const _d = parseFloat(fatVal) - _dTFat; _fatC = Math.abs(_d) <= 5 ? 'var(--ok)' : _d < -5 ? 'var(--alert)' : 'var(--warn)'; }
+        chips.push(`<span class="texp-daily-chip"><span style="color:var(--dim)">F</span> <span style="color:${_fatC}">${esc(String(fatVal))}g</span></span>`);
+      }
+      if (fibreVal != null) {
+        let _fibC = 'var(--text)';
+        if (_dTFibre) { const _d = parseFloat(fibreVal) - _dTFibre; _fibC = _d >= -3 ? 'var(--ok)' : 'var(--alert)'; }
+        chips.push(`<span class="texp-daily-chip"><span style="color:var(--dim)">fibre</span> <span style="color:${_fibC}">${esc(String(fibreVal))}g</span></span>`);
+      }
       if (!isNaN(enVal)) {
         const ec = enVal >= 7 ? 'var(--ok)' : enVal >= 5 ? 'var(--warn)' : 'var(--alert)';
         chips.push(`<span class="texp-daily-chip"><span style="color:var(--dim)">nrg</span> <span style="color:${ec}">${enVal}</span></span>`);
@@ -3078,29 +3093,26 @@ function buildTableExpandPanel(a) {
   const avgCal  = _avgVal(cwNutrEntries, 'Calories');
   const avgPro  = _avgVal(cwNutrEntries, 'Protein');
   const avgEn   = _avgVal(cwBodyEntries, 'Energy');
-  // Target lookup for macro signals
-  const _t = a.target;
-  const _tCal = _t?.Calories ? parseFloat(String(_t.Calories).replace(/[^\d.]/g,'')) : null;
-  const _tPro = _t?.Protein  ? parseFloat(String(_t.Protein).replace(/[^\d.]/g,''))  : null;
+  // Summary averages use same targets as daily chips (_dT*)
   const summaryItems = [];
   if (avgWt  !== null) summaryItems.push(`<div class="texp-daily-avg"><div class="texp-daily-avg-val">${avgWt.toFixed(1)}</div><div class="texp-daily-avg-lbl">Avg wt kg</div></div>`);
   if (avgCal !== null) {
     let calColor = 'var(--text)';
     let calLbl = 'Avg cal';
-    if (_tCal) {
-      const pct = (avgCal - _tCal) / _tCal * 100;
-      calColor = Math.abs(pct) <= 10 ? 'var(--ok)' : pct < -10 ? 'var(--alert)' : 'var(--warn)';
-      calLbl = `Avg cal <span style="font-size:6px;opacity:.7">${_tCal >= 1000 ? Math.round(_tCal/100)*100 : Math.round(_tCal)} tgt</span>`;
+    if (_dTCal) {
+      const _d = avgCal - _dTCal;
+      calColor = Math.abs(_d) <= 100 ? 'var(--ok)' : _d < -100 ? 'var(--alert)' : 'var(--warn)';
+      calLbl = `Avg cal <span style="font-size:6px;opacity:.7">${Math.round(_dTCal).toLocaleString()} tgt</span>`;
     }
     summaryItems.push(`<div class="texp-daily-avg"><div class="texp-daily-avg-val" style="color:${calColor}">${Math.round(avgCal).toLocaleString()}</div><div class="texp-daily-avg-lbl">${calLbl}</div></div>`);
   }
   if (avgPro !== null) {
     let proColor = 'var(--text)';
     let proLbl = 'Avg protein';
-    if (_tPro) {
-      const pct = (avgPro - _tPro) / _tPro * 100;
-      proColor = pct >= -10 ? 'var(--ok)' : pct >= -25 ? 'var(--warn)' : 'var(--alert)';
-      proLbl = `Avg protein <span style="font-size:6px;opacity:.7">${Math.round(_tPro)}g tgt</span>`;
+    if (_dTPro) {
+      const _d = avgPro - _dTPro;
+      proColor = _d >= -5 ? 'var(--ok)' : 'var(--alert)';
+      proLbl = `Avg protein <span style="font-size:6px;opacity:.7">${Math.round(_dTPro)}g tgt</span>`;
     }
     summaryItems.push(`<div class="texp-daily-avg"><div class="texp-daily-avg-val" style="color:${proColor}">${Math.round(avgPro)}g</div><div class="texp-daily-avg-lbl">${proLbl}</div></div>`);
   }
@@ -4460,15 +4472,27 @@ function buildFPCard(a, weekOffset = 0) {
           // Per-macro target chips
           let _macroChipsHtml = '';
           if (_wdT) {
-            const _mDefs = [['kcal',dayNutr.Calories,_wdT.Calories],['P',dayNutr.Protein,_wdT.Protein],['C',dayNutr.Carbs,_wdT.Carbs],['F',dayNutr.Fats,_wdT.Fats]];
-            const _chips = _mDefs.map(([ml,ma,mt]) => {
+            // Absolute tolerances: kcal ±100, P -5g only, C ±10g, F ±5g
+            const _mDefs = [
+              ['kcal', dayNutr.Calories, _wdT.Calories, 100, 'sym'],
+              ['P',    dayNutr.Protein,  _wdT.Protein,    5, 'low'],
+              ['C',    dayNutr.Carbs,    _wdT.Carbs,     10, 'sym'],
+              ['F',    dayNutr.Fats,     _wdT.Fats,       5, 'sym'],
+            ];
+            const _chips = _mDefs.map(([ml,ma,mt,tol,mode]) => {
               if (!ma||!mt) return '';
               const _a=parseFloat(String(ma).replace(/[^\d.]/g,'')),_t=parseFloat(String(mt).replace(/[^\d.]/g,''));
               if(!_t||!_a||isNaN(_a)||isNaN(_t)) return '';
-              const _r=_a/_t,_p=Math.round(_r*100);
-              const _c=_r<0.8?'under':_r>1.15?'over':'ok';
-              const _i=_r<0.8?'↓':_r>1.15?'↑':'✓';
-              return `<span class="wd-macro-chip ${_c}"><span class="wd-macro-lbl">${esc(ml)}</span> ${_i} ${_p}%</span>`;
+              const _d = _a - _t;
+              let _c, _i;
+              if (mode === 'low') {
+                _c = _d >= -tol ? 'ok' : 'under'; _i = _d >= -tol ? '✓' : '↓';
+              } else {
+                _c = Math.abs(_d) <= tol ? 'ok' : _d < -tol ? 'under' : 'over';
+                _i = Math.abs(_d) <= tol ? '✓' : _d < -tol ? '↓' : '↑';
+              }
+              const _sign = _d > 0 ? '+' : '';
+              return `<span class="wd-macro-chip ${_c}"><span class="wd-macro-lbl">${esc(ml)}</span> ${_i} ${_sign}${Math.round(_d)}</span>`;
             }).filter(Boolean).join('');
             if (_chips) _macroChipsHtml = `<div class="wd-macro-row">${_chips}</div>`;
           }
@@ -4651,12 +4675,13 @@ function buildFPCard(a, weekOffset = 0) {
           </div>`;
         }
         const pct = (p.value / yMax) * 100;
-        const ratio = p.value / tCal;
+        const _diff = p.value - tCal;
         let cls = '';
-        if (ratio < 0.8) cls = 'under';
-        else if (ratio > 1.15) cls = 'over';
+        if (_diff < -100) cls = 'under';
+        else if (_diff > 100) cls = 'over';
+        const _sign = _diff > 0 ? '+' : '';
         return `<div class="dnb ${cls}">
-          <div class="dnb-tip">${Math.round(p.value)} kcal · ${Math.round(ratio * 100)}% of target</div>
+          <div class="dnb-tip">${Math.round(p.value)} kcal · ${_sign}${Math.round(_diff)} vs target</div>
           <div class="dnb-bar" style="height:${pct.toFixed(1)}%"></div>
           <div class="dnb-day ${isToday ? 'today' : ''}">${esc(dayLbl)}</div>
         </div>`;
