@@ -2737,6 +2737,7 @@ function buildSyncAudit(ctx) {
 let _allAthletes = [];
 let _coaches = [];
 let _allApplications = [];
+let _decisions = [];
 let _dataHealth = null;
 let _syncAudit = [];
 let _statusFilter = 'all';
@@ -2763,7 +2764,6 @@ function render({ athletes, coaches, applications = [], dataHealth = null, syncA
   renderGrid(athletes);
   renderCoaches(coaches);
   renderSyncAudit(syncAudit);
-  renderApplications(applications);
 
   document.getElementById('gen-btn').style.display = 'block';
   document.getElementById('squad-brief').classList.remove('visible');
@@ -5141,37 +5141,54 @@ function renderSyncAudit(rows) {
   }).join('');
 }
 
+// ── Application card helpers ──────────────────────────────────────────────────
+// Fields to use as the card header (extracted before the body loop)
+const APP_HEADER_FIELDS = new Set(['Name','Full Name','Age','Occupation','date:Submitted at:start','Submitted at','Submitted At']);
+// Internal / redundant fields to skip entirely
+const APP_SKIP_FIELDS   = new Set(['_id','_url','_createdTime']);
+
+function buildAppCardBody(r) {
+  // Collect all filled, non-header, non-skip fields
+  const lines = [];
+  for (const [k, v] of Object.entries(r)) {
+    if (APP_SKIP_FIELDS.has(k)) continue;
+    if (k.startsWith('date:') && (k.endsWith(':end') || k.endsWith(':is_datetime'))) continue;
+    if (APP_HEADER_FIELDS.has(k)) continue;
+    if (v === null || v === undefined || v === '' || v === false) continue;
+    // Skip the raw date duplicate if the date: variant exists
+    if (k === 'Submitted at' && r['date:Submitted at:start']) continue;
+    const label = k.replace(/^date:/, '').replace(/:start$/, '');
+    const val   = typeof v === 'boolean' ? (v ? 'Yes' : 'No') : String(v);
+    lines.push(`<div class="app-field"><div class="app-field-lbl">${esc(label)}</div><div class="app-field-val">${esc(val)}</div></div>`);
+  }
+  return lines.join('');
+}
+
 // ── renderApplications ────────────────────────────────────────────────────────
-function renderApplications(apps) {
+function renderApplications(apps, decisions = []) {
   const grid = document.getElementById('apps-grid');
   if (!grid) return;
-  if (!apps || !apps.length) {
-    grid.innerHTML = `<div style="font-family:var(--mono);font-size:11px;color:var(--dim);padding:20px 0;text-transform:uppercase;letter-spacing:.08em">No applications found</div>`;
+  const acceptedIds = new Set((decisions || []).filter(d => d.decision === 'accepted').map(d => d.notion_id));
+  apps = (apps || []).filter(r => r._id && acceptedIds.has(r._id));
+  // Update Pipeline badge to accepted count
+  const appsBadge = document.getElementById('tab-apps-count');
+  if (appsBadge) appsBadge.textContent = apps.length || '—';
+  if (!apps.length) {
+    grid.innerHTML = `<div style="font-family:var(--mono);font-size:11px;color:var(--dim);padding:20px 0;text-transform:uppercase;letter-spacing:.08em">No accepted applications yet — accept from the New tab</div>`;
     return;
   }
   grid.innerHTML = apps.map(r => {
-    const name      = r.Name || r['name'] || 'Unknown';
+    const name      = r.Name || r['Full Name'] || 'Unknown';
     const age       = r.Age ? `${r.Age} yrs` : '';
     const occ       = r.Occupation || '';
-    const goal      = r['Three Month Goal'] || '';
-    const barrier   = r['Biggest Barrier'] || '';
-    const daysWk    = r['Days Per Week'] || '';
-    const status    = r['Current Status'] || '';
-    const injuries  = r.Injuries || '';
     const submitted = r['date:Submitted at:start'] || r['Submitted at'] || '';
-    const statusCls = status.toLowerCase().includes('accept') ? 'accepted' : status.toLowerCase().includes('reject') ? 'rejected' : 'new';
+    const decision  = decisions.find(d => d.notion_id === r._id);
     return `<div class="app-card">
       <div class="app-card-head">
         <div class="app-name">${esc(name)}</div>
-        <div class="app-meta">${[age, occ, submitted ? `Applied ${fmtDate(submitted.split('T')[0])}` : ''].filter(Boolean).join(' · ')}</div>
+        <div class="app-meta">${[age, occ, submitted ? `Applied ${fmtDate(submitted.split('T')[0])}` : '', decision ? `Accepted by ${decision.decided_by}` : ''].filter(Boolean).join(' · ')}</div>
       </div>
-      <div class="app-body">
-        ${status ? `<div class="app-field"><span class="app-status ${statusCls}">${esc(status)}</span></div>` : ''}
-        ${goal ? `<div class="app-field"><div class="app-field-lbl">3-Month Goal</div><div class="app-field-val strong">${esc(goal)}</div></div>` : ''}
-        ${barrier ? `<div class="app-field"><div class="app-field-lbl">Biggest Barrier</div><div class="app-field-val">${esc(barrier)}</div></div>` : ''}
-        ${daysWk ? `<div class="app-field"><div class="app-field-lbl">Days / Week</div><div class="app-field-val">${esc(daysWk)}</div></div>` : ''}
-        ${injuries && isBad(injuries) ? `<div class="app-field"><div class="app-field-lbl">Injuries / History</div><div class="app-field-val">${esc(injuries)}</div></div>` : ''}
-      </div>
+      <div class="app-body">${buildAppCardBody(r)}</div>
     </div>`;
   }).join('');
 }
@@ -5198,12 +5215,8 @@ function renderNotifications(applications, decisions = []) {
 
   const cards = pending.map(r => {
     const name      = r['Name'] || r['Full Name'] || '—';
-    const age       = r['Age'] || '';
+    const age       = r['Age'] ? `${r['Age']} yrs` : '';
     const occ       = r['Occupation'] || '';
-    const goal      = r['3-Month Goal'] || r['Goal'] || '';
-    const barrier   = r['Biggest Barrier'] || r['Barrier'] || '';
-    const daysWk    = r['Days per week'] || r['Training Days'] || '';
-    const injuries  = r['Injuries'] || '';
     const submitted = r['date:Submitted at:start'] || r['Submitted at'] || '';
     const notionId  = r._id || '';
     return `<div class="app-card" id="notif-card-${notionId}">
@@ -5211,12 +5224,7 @@ function renderNotifications(applications, decisions = []) {
         <div class="app-name">${esc(name)}</div>
         <div class="app-meta">${[age, occ, submitted ? `Applied ${fmtDate(submitted.split('T')[0])}` : ''].filter(Boolean).join(' · ')}</div>
       </div>
-      <div class="app-body">
-        ${goal ? `<div class="app-field"><div class="app-field-lbl">3-Month Goal</div><div class="app-field-val strong">${esc(goal)}</div></div>` : ''}
-        ${barrier ? `<div class="app-field"><div class="app-field-lbl">Biggest Barrier</div><div class="app-field-val">${esc(barrier)}</div></div>` : ''}
-        ${daysWk ? `<div class="app-field"><div class="app-field-lbl">Days / Week</div><div class="app-field-val">${esc(daysWk)}</div></div>` : ''}
-        ${injuries && isBad(injuries) ? `<div class="app-field"><div class="app-field-lbl">Injuries / History</div><div class="app-field-val">${esc(injuries)}</div></div>` : ''}
-      </div>
+      <div class="app-body">${buildAppCardBody(r)}</div>
       <div class="app-actions">
         <button class="app-accept-btn" onclick="decideApplication('${notionId}','${esc(name)}','accepted')">✓ Accept</button>
         <button class="app-reject-btn" onclick="decideApplication('${notionId}','${esc(name)}','rejected')">✕ Pass</button>
@@ -5253,17 +5261,13 @@ async function decideApplication(notionId, name, decision) {
     return;
   }
 
-  // Remove card from view and update badge
-  if (card) card.remove();
-  const remaining = document.querySelectorAll('#notif-grid .app-card').length;
-  const notifBadge = document.getElementById('tab-notif-count');
-  if (notifBadge) {
-    notifBadge.textContent = remaining || '—';
-    if (remaining === 0) {
-      notifBadge.classList.remove('red');
-      document.getElementById('notif-grid').innerHTML = `<div class="notif-empty">No pending applications</div>`;
-    }
-  }
+  // Update local decisions cache so Pipeline reflects the change immediately
+  _decisions = _decisions.filter(d => d.notion_id !== notionId);
+  _decisions.push({ notion_id: notionId, decision, decided_by: coach, decided_at: new Date().toISOString() });
+
+  // Re-render both tabs from the updated cache
+  renderNotifications(_allApplications, _decisions);
+  renderApplications(_allApplications, _decisions);
 }
 
 // ── Tab switching ─────────────────────────────────────────────────────────────
@@ -5334,7 +5338,7 @@ async function load({ bust = false } = {}) {
       getSB().from('application_decisions').select('notion_id,decision,decided_by,decided_at'),
     ]);
 
-    const decisions = decisionsRes?.data || [];
+    _decisions = decisionsRes?.data || [];
 
     const { athletes, coaches, syncAudit } = buildAll(weekly, sessions, body, nutrition, athleteDb, targets, planning, applications);
     const dataHealth = {
@@ -5349,7 +5353,8 @@ async function load({ bust = false } = {}) {
       loadedAt: new Date(),
     };
     render({ athletes, coaches, applications, dataHealth, syncAudit });
-    renderNotifications(applications, decisions);
+    renderNotifications(applications, _decisions);
+    renderApplications(applications, _decisions);
 
     document.getElementById('loading').style.display = 'none';
     document.getElementById('content').style.display = 'block';
