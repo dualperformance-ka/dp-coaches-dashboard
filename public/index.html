@@ -1003,6 +1003,28 @@ body[data-theme="pride"] .texp-name{background:linear-gradient(90deg,#FF8C00,#FF
 .plan-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:8px}
 @media(max-width:980px){.plan-grid{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:560px){.plan-grid{grid-template-columns:1fr}}
+
+/* ── Nutrition planning tab ── */
+.nut-meta{font-family:var(--mono);font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px}
+.nut-table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow-x:auto}
+.nut-table{width:100%;border-collapse:collapse;min-width:860px}
+.nut-table th{font-family:var(--mono);font-size:9px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:.07em;padding:10px 8px;border-bottom:1px solid var(--border-mid);text-align:left;white-space:nowrap}
+.nut-table td{padding:7px 8px;border-bottom:1px solid var(--border);vertical-align:middle}
+.nut-table tr:last-child td{border-bottom:none}
+.nut-wk{font-family:var(--cond);font-size:15px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text);white-space:nowrap}
+.nut-row.current td{background:var(--amber-bg)}
+.nut-row.current .nut-wk{color:var(--amber-dim)}
+.nut-now{font-family:var(--mono);font-size:8px;color:var(--amber);border:1px solid var(--amber-border);border-radius:4px;padding:1px 5px;margin-left:6px;vertical-align:middle;letter-spacing:.06em}
+.nut-input{font-family:var(--mono);font-size:12px;color:var(--text);background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:6px 8px;width:84px;transition:border-color .15s}
+.nut-input:focus{outline:none;border-color:var(--amber)}
+.nut-input.wide{width:160px}
+.nut-input.km{width:64px}
+.nut-km-auto{font-family:var(--mono);font-size:11px;color:var(--muted);white-space:nowrap}
+.nut-km-auto .src{font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;display:block}
+.nut-save{font-family:var(--mono);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:6px 10px;border-radius:6px;border:1px solid var(--border-mid);background:transparent;color:var(--dim);cursor:pointer;transition:all .15s;white-space:nowrap}
+.nut-save.dirty{border-color:rgba(245,158,11,.4);background:var(--amber-bg);color:var(--amber-text)}
+.nut-save:disabled{opacity:.6;cursor:default}
+.nut-empty{padding:32px;text-align:center;font-family:var(--mono);font-size:11px;color:var(--dim)}
 .plan-day{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:8px;min-height:120px;display:flex;flex-direction:column;gap:6px}
 .plan-day.today{border-color:rgba(245,158,11,.45)}
 .plan-day-head{display:flex;align-items:baseline;justify-content:space-between;font-family:var(--mono);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--dim);padding-bottom:4px;border-bottom:1px solid var(--border)}
@@ -1486,6 +1508,9 @@ body[data-theme="light"] .strava-weekly-strip{background:#fff}
   <button class="tab" id="tab-planning-btn" onclick="switchTab('planning')">
     Planning <span class="tab-badge" id="tab-planning-count">—</span>
   </button>
+  <button class="tab" id="tab-nut-btn" onclick="switchTab('nutrition')">
+    Nutrition <span class="tab-badge" id="tab-nut-count">—</span>
+  </button>
   <button class="tab" id="tab-coaches-btn" onclick="switchTab('coaches')">
     Coaches <span class="tab-badge">2</span>
   </button>
@@ -1579,6 +1604,20 @@ body[data-theme="light"] .strava-weekly-strip{background:#fff}
     <div class="plan-week-meta" id="plan-week-meta"></div>
     <div class="plan-grid" id="plan-grid"></div>
     <div class="plan-lib" id="plan-lib" style="display:none"></div>
+  </div>
+</div>
+
+<!-- NUTRITION TAB -->
+<div id="tab-nut-content" style="display:none">
+  <div class="plan-section">
+    <div class="plan-toolbar">
+      <div class="plan-ath-chips" id="nut-ath-chips"></div>
+      <div class="plan-toolbar-right">
+        <button class="plan-action-btn" onclick="addNutWeek()">+ Week</button>
+      </div>
+    </div>
+    <div class="nut-meta" id="nut-meta"></div>
+    <div class="nut-table-wrap" id="nut-table-wrap"></div>
   </div>
 </div>
 
@@ -2070,6 +2109,179 @@ function _planAthleteCodes() {
   _allAthletes.forEach(a => codes.add(a.id));
   COACHES.forEach(c => codes.add(c));
   return [...codes].filter(Boolean).sort();
+}
+
+// ── Nutrition planning (Supabase nutrition_plans) ─────────────────────────────
+let _nutPlans = [];
+let _nutAthlete = null;
+
+// Loads nutrition_plans and returns rows shaped like the old Notion targets DB
+// so every existing consumer (targetMap, macro compliance, KM bars) works unchanged.
+async function fetchTargetsSB() {
+  const sb = getSB(); if (!sb) return [];
+  try {
+    const { data, error } = await sb.from('nutrition_plans').select('*');
+    if (error) throw error;
+    _nutPlans = data || [];
+  } catch (e) { console.warn('nutrition_plans load failed', e); _nutPlans = []; }
+  const badge = document.getElementById('tab-nut-count');
+  if (badge) badge.textContent = new Set(_nutPlans.map(r => r.athlete_code)).size || '—';
+  return _nutPlans.map(r => ({
+    Name: r.athlete_code, Week: r.week_label,
+    Calories: r.calories || '', Protein: r.protein || '', Carbs: r.carbs || '',
+    Fats: r.fats || '', Fibre: r.fibre || '',
+    'Weekly KM Target': r.weekly_km_target != null ? r.weekly_km_target : null,
+    Notes: r.notes || '', _id: r.id,
+  }));
+}
+
+// Sum planned run km for an athlete-week from planned_sessions.
+// Per-session distance_km wins; "Weekly KM Total: 65km" rows act as a floor.
+function _plannedKmForWeek(code, weekLabel) {
+  if (!code || !weekLabel) return 0;
+  let sum = 0, declared = 0;
+  _planRowsSB.forEach(r => {
+    if (r.athlete_code !== code || (r.week_label || '').trim() !== weekLabel) return;
+    const d = parseFloat(r.distance_km);
+    if (!isNaN(d) && d > 0) sum += d;
+    if (r.session_type === 'Weekly KM Total' || /km total/i.test(r.title || '')) {
+      const m = (r.title || '').match(/(\d+(?:\.\d+)?)\s*km/i);
+      if (m) declared = Math.max(declared, parseFloat(m[1]));
+    }
+  });
+  return Math.round(Math.max(sum, declared) * 10) / 10;
+}
+
+// Fill any targets row that has no manual KM with the auto-computed planned KM
+function _fillTargetsKm(targets) {
+  targets.forEach(t => {
+    if (t['Weekly KM Target'] == null) {
+      const km = _plannedKmForWeek(t.Name, t.Week);
+      if (km > 0) t['Weekly KM Target'] = km;
+    }
+  });
+  return targets;
+}
+
+function _nutAthleteCodes() {
+  const codes = new Set(_planAthleteCodes());
+  _nutPlans.forEach(r => codes.add(r.athlete_code));
+  return [...codes].filter(Boolean).sort();
+}
+
+function _nutWkNum(label) { const m = String(label || '').match(/(\d+)/); return m ? parseInt(m[1], 10) : -1; }
+
+function _nutCurrentWeekLabel(code) {
+  const a = _allAthletes.find(x => x.id === code);
+  return (a && a.weekNum != null) ? `Week ${a.weekNum}` : null;
+}
+
+function renderNutritionTab() {
+  const codes = _nutAthleteCodes();
+  if (!_nutAthlete || !codes.includes(_nutAthlete)) {
+    _nutAthlete = localStorage.getItem('dp_nut_athlete');
+    if (!_nutAthlete || !codes.includes(_nutAthlete)) _nutAthlete = codes[0] || null;
+  }
+  document.getElementById('nut-ath-chips').innerHTML = codes.map(c =>
+    `<button class="plan-chip${c === _nutAthlete ? ' active' : ''}" onclick="setNutAthlete('${esc(c)}')">${esc(c)}</button>`
+  ).join('');
+  renderNutTable();
+}
+function setNutAthlete(code) {
+  _nutAthlete = code;
+  try { localStorage.setItem('dp_nut_athlete', code); } catch {}
+  renderNutritionTab();
+}
+
+let _nutRenderRows = [];
+function renderNutTable() {
+  const wrap = document.getElementById('nut-table-wrap');
+  const meta = document.getElementById('nut-meta');
+  if (!_nutAthlete) { wrap.innerHTML = '<div class="nut-empty">No athletes found</div>'; meta.textContent = ''; return; }
+
+  const curWk = _nutCurrentWeekLabel(_nutAthlete);
+  _nutRenderRows = _nutPlans
+    .filter(r => r.athlete_code === _nutAthlete)
+    .sort((a, b) => _nutWkNum(b.week_label) - _nutWkNum(a.week_label));
+
+  meta.textContent = `${_nutAthlete} — weekly macro & KM targets · KM auto-fills from the training plan when no manual target is set`;
+
+  if (!_nutRenderRows.length) {
+    wrap.innerHTML = '<div class="nut-empty">No nutrition plan yet — use + Week to add the first week</div>';
+    return;
+  }
+
+  const iv = v => esc(v == null ? '' : String(v));
+  const rowsHtml = _nutRenderRows.map((r, i) => {
+    const isCur = curWk && r.week_label === curWk;
+    const autoKm = _plannedKmForWeek(r.athlete_code, r.week_label);
+    return `<tr class="nut-row${isCur ? ' current' : ''}">
+      <td><span class="nut-wk">${esc(r.week_label)}</span>${isCur ? '<span class="nut-now">NOW</span>' : ''}</td>
+      <td><input class="nut-input" id="nut-${i}-cal"   value="${iv(r.calories)}" placeholder="kcal" oninput="nutDirty(${i})"></td>
+      <td><input class="nut-input" id="nut-${i}-pro"   value="${iv(r.protein)}"  placeholder="g"    oninput="nutDirty(${i})"></td>
+      <td><input class="nut-input" id="nut-${i}-carb"  value="${iv(r.carbs)}"    placeholder="g"    oninput="nutDirty(${i})"></td>
+      <td><input class="nut-input" id="nut-${i}-fat"   value="${iv(r.fats)}"     placeholder="g"    oninput="nutDirty(${i})"></td>
+      <td><input class="nut-input" id="nut-${i}-fib"   value="${iv(r.fibre)}"    placeholder="g"    oninput="nutDirty(${i})"></td>
+      <td><input class="nut-input km" id="nut-${i}-km" value="${iv(r.weekly_km_target)}" placeholder="auto" oninput="nutDirty(${i})"></td>
+      <td><span class="nut-km-auto">${autoKm > 0 ? autoKm + ' km' : '—'}<span class="src">from plan</span></span></td>
+      <td><input class="nut-input wide" id="nut-${i}-notes" value="${iv(r.notes)}" placeholder="Coach note" oninput="nutDirty(${i})"></td>
+      <td><button class="nut-save" id="nut-${i}-save" onclick="saveNutRow(${i})">Save</button></td>
+    </tr>`;
+  }).join('');
+
+  wrap.innerHTML = `<table class="nut-table">
+    <thead><tr>
+      <th>Week</th><th>Calories</th><th>Protein</th><th>Carbs</th><th>Fats</th><th>Fibre</th>
+      <th>KM Target</th><th>Planned KM</th><th>Notes</th><th></th>
+    </tr></thead>
+    <tbody>${rowsHtml}</tbody>
+  </table>`;
+}
+
+function nutDirty(i) {
+  const btn = document.getElementById(`nut-${i}-save`);
+  if (btn) { btn.classList.add('dirty'); btn.textContent = 'Save'; btn.disabled = false; }
+}
+
+async function saveNutRow(i) {
+  const r = _nutRenderRows[i]; if (!r) return;
+  const sb = getSB(); if (!sb) return;
+  const val = id => { const el = document.getElementById(`nut-${i}-${id}`); const v = el ? el.value.trim() : ''; return v === '' ? null : v; };
+  const kmRaw = val('km');
+  const patch = {
+    athlete_code: r.athlete_code,
+    week_label:   r.week_label,
+    calories: val('cal'), protein: val('pro'), carbs: val('carb'),
+    fats: val('fat'), fibre: val('fib'), notes: val('notes'),
+    weekly_km_target: kmRaw == null ? null : (isNaN(parseFloat(kmRaw)) ? null : parseFloat(kmRaw)),
+    updated_at: new Date().toISOString(),
+  };
+  const btn = document.getElementById(`nut-${i}-save`);
+  if (btn) { btn.textContent = 'Saving…'; btn.disabled = true; }
+  try {
+    const { error } = await sb.from('nutrition_plans').upsert(patch, { onConflict: 'athlete_code,week_label' });
+    if (error) throw error;
+    Object.assign(r, patch);
+    if (btn) {
+      btn.textContent = '✓ Saved'; btn.classList.remove('dirty');
+      setTimeout(() => { btn.textContent = 'Save'; btn.disabled = false; }, 1400);
+    }
+  } catch (e) {
+    console.warn('nutrition_plans save failed', e);
+    if (btn) { btn.textContent = 'Retry'; btn.disabled = false; }
+  }
+}
+
+function addNutWeek() {
+  if (!_nutAthlete) return;
+  const maxWk = _nutPlans.filter(r => r.athlete_code === _nutAthlete)
+    .reduce((m, r) => Math.max(m, _nutWkNum(r.week_label)), 0);
+  _nutPlans.push({
+    athlete_code: _nutAthlete, week_label: `Week ${maxWk + 1}`,
+    calories: null, protein: null, carbs: null, fats: null, fibre: null,
+    weekly_km_target: null, notes: null,
+  });
+  renderNutTable();
 }
 
 function renderPlanning() {
@@ -6258,9 +6470,10 @@ async function decideApplication(notionId, name, decision) {
 
 // ── Tab switching ─────────────────────────────────────────────────────────────
 function switchTab(tab) {
-  const idMap = { applications: 'apps', notifications: 'notif' };
-  const tabs = ['athletes','planning','coaches','sync','applications','notifications'];
+  const idMap = { applications: 'apps', notifications: 'notif', nutrition: 'nut' };
+  const tabs = ['athletes','planning','nutrition','coaches','sync','applications','notifications'];
   if (tab === 'planning') renderPlanning();
+  if (tab === 'nutrition') renderNutritionTab();
   tabs.forEach(t => {
     const key = idMap[t] || t;
     const btn     = document.getElementById(`tab-${key}-btn`);
@@ -6319,13 +6532,16 @@ async function load({ bust = false } = {}) {
   try {
     const [weekly, sessions, body, nutrition, athleteDb, targets, planning, applications, , libRows, decisionsRes] = await Promise.all([
       fetchDB(DB.weekly, bust), fetchDB(DB.sessions, bust), fetchDB(DB.body, bust),
-      fetchDB(DB.nutrition, bust), fetchDB(DB.athletes, bust), fetchDB(DB.targets, bust),
+      fetchDB(DB.nutrition, bust), fetchDB(DB.athletes, bust), fetchTargetsSB(),
       fetchPlanningSB(), fetchDB(DB.applications, bust),
       loadSessionLogs(), loadSessionLibrary(),
       getSB().from('application_decisions').select('notion_id,decision,decided_by,decided_at'),
     ]);
 
     _decisions = decisionsRes?.data || [];
+
+    // Auto-fill weekly KM from the training plan where no manual target is set
+    _fillTargetsKm(targets);
 
     const { athletes, coaches, syncAudit } = buildAll(weekly, sessions, body, nutrition, athleteDb, targets, planning, applications);
     const dataHealth = {
@@ -6345,6 +6561,8 @@ async function load({ bust = false } = {}) {
     updatePlanningBadge();
     const planTab = document.getElementById('tab-planning-content');
     if (planTab && planTab.style.display !== 'none') renderPlanning();
+    const nutTab = document.getElementById('tab-nut-content');
+    if (nutTab && nutTab.style.display !== 'none') renderNutritionTab();
 
     document.getElementById('loading').style.display = 'none';
     document.getElementById('content').style.display = 'block';
