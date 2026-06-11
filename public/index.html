@@ -2165,18 +2165,26 @@ async function fetchTargetsSB() {
 }
 
 // Sum planned run km for an athlete-week from planned_sessions.
-// Per-session distance_km wins; "Weekly KM Total: 65km" rows act as a floor.
+// Distance source per session: distance_km field if set, otherwise parsed from
+// the title ("Easy Run — 12km" → 12; "10km pace" mentions are ignored).
+// "Weekly KM Total: 65km" rows act as a floor, not a session.
+function _sessionKm(r) {
+  const d = parseFloat(r.distance_km);
+  if (!isNaN(d) && d > 0) return d;
+  const m = (r.title || '').match(/(\d+(?:\.\d+)?)\s*km\b(?!\s*pace)/i);
+  return m ? parseFloat(m[1]) : 0;
+}
 function _plannedKmForWeek(code, weekLabel) {
   if (!code || !weekLabel) return 0;
   let sum = 0, declared = 0;
   _planRowsSB.forEach(r => {
     if (r.athlete_code !== code || (r.week_label || '').trim() !== weekLabel) return;
-    const d = parseFloat(r.distance_km);
-    if (!isNaN(d) && d > 0) sum += d;
     if (r.session_type === 'Weekly KM Total' || /km total/i.test(r.title || '')) {
       const m = (r.title || '').match(/(\d+(?:\.\d+)?)\s*km/i);
       if (m) declared = Math.max(declared, parseFloat(m[1]));
+      return;
     }
+    sum += _sessionKm(r);
   });
   return Math.round(Math.max(sum, declared) * 10) / 10;
 }
