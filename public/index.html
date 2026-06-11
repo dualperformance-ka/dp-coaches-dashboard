@@ -1034,6 +1034,16 @@ body[data-theme="pride"] .texp-name{background:linear-gradient(90deg,#FF8C00,#FF
 .pw-ex-del{background:none;border:1px solid var(--border-mid);border-radius:6px;color:var(--dim);cursor:pointer;font-size:11px;height:30px;transition:all .15s}
 .pw-ex-del:hover{color:var(--red-text);border-color:rgba(248,113,113,.5)}
 .pw-ex-head{display:grid;grid-template-columns:2fr .7fr .7fr .9fr .8fr 28px;gap:6px;font-family:var(--mono);font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--dim);padding:0 9px;margin-bottom:4px}
+.ps-ex-preview-list{border:1px solid var(--border-mid);border-radius:8px;overflow:hidden;margin-bottom:6px;background:#111}
+.ps-ex-preview-row{display:flex;justify-content:space-between;gap:10px;padding:6px 10px;border-bottom:1px solid var(--border);font-family:var(--mono);font-size:10px;color:rgba(255,255,255,.45)}
+.ps-ex-preview-row:last-child{border-bottom:none}
+.ps-ex-preview-row span:first-child{color:#fff}
+.ps-ex-preview-hint{font-family:var(--mono);font-size:8px;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:14px}
+.ps-lib-results{position:absolute;top:100%;left:0;right:0;z-index:60;background:#161616;border:1px solid rgba(255,255,255,.18);border-radius:8px;max-height:220px;overflow-y:auto;margin-top:4px;box-shadow:0 8px 24px rgba(0,0,0,.5)}
+.ps-lib-result{padding:7px 10px;font-family:var(--mono);font-size:11px;color:#fff;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.06)}
+.ps-lib-result:last-child{border-bottom:none}
+.ps-lib-result:hover{background:rgba(245,158,11,.12)}
+.ps-lib-result span{color:rgba(255,255,255,.4);font-size:9px;text-transform:uppercase;letter-spacing:.05em;margin-left:8px}
 .po-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9000;display:flex;align-items:center;justify-content:center;padding:16px}
 .po-overlay.hidden{display:none}
 .po-modal{background:#1a1a1a;border:1px solid rgba(255,255,255,.12);border-radius:12px;width:100%;max-width:360px;overflow:hidden}
@@ -1584,11 +1594,15 @@ body[data-theme="light"] .strava-weekly-strip{background:#fff}
     </div>
     <div class="po-modal-body">
       <div class="po-field-row">
-        <div class="po-field">
+        <div class="po-field" id="ps-lib-field" style="position:relative">
           <div class="po-label">Run Template (optional)</div>
-          <select class="po-input" id="ps-lib" onchange="applyLibTemplate()"><option value="">— template —</option></select>
+          <input class="po-input" id="ps-lib-search" type="text" placeholder="Type to search… e.g. 10x400" autocomplete="off"
+                 oninput="document.getElementById('ps-lib').value='';filterLibSearch()"
+                 onfocus="filterLibSearch()" onblur="setTimeout(hideLibSearch,150)">
+          <input type="hidden" id="ps-lib" value="">
+          <div class="ps-lib-results" id="ps-lib-results" style="display:none"></div>
         </div>
-        <div class="po-field">
+        <div class="po-field" id="ps-split-field">
           <div class="po-label">Strength Split (optional)</div>
           <select class="po-input" id="ps-split" onchange="applySplitPick()"><option value="">— split —</option></select>
         </div>
@@ -1600,7 +1614,7 @@ body[data-theme="light"] .strava-weekly-strip{background:#fff}
       <div class="po-field-row">
         <div class="po-field">
           <div class="po-label">Type</div>
-          <select class="po-input" id="ps-type">
+          <select class="po-input" id="ps-type" onchange="updatePsVisibility()">
             <option value="">—</option>
             <option>Run</option><option>Easy Effort</option><option>Tempo</option><option>Speed</option>
             <option>Long Run</option><option>Recovery</option><option>race</option><option>Strength</option>
@@ -1621,45 +1635,55 @@ body[data-theme="light"] .strava-weekly-strip{background:#fff}
         </div>
         <div class="po-field">
           <div class="po-label">Week Label</div>
-          <input class="po-input" id="ps-week" type="text" placeholder="e.g. Week 4">
+          <select class="po-input" id="ps-week">
+            <option value="">—</option>
+            <option>Week 0</option><option>Week 1</option><option>Week 2</option><option>Week 3</option>
+            <option>Week 4</option><option>Week 5</option><option>Week 6</option><option>Week 7</option>
+            <option>Week 8</option><option>Week 9</option><option>Week 10</option><option>Week 11</option>
+            <option>Week 12</option><option>Week 13</option><option>Week 14</option><option>Week 15</option>
+            <option>Week 16</option>
+          </select>
         </div>
       </div>
-      <div class="po-field">
+      <div class="po-field" id="ps-details-field">
         <div class="po-label">Details / Run Details</div>
         <input class="po-input" id="ps-details" type="text" placeholder="e.g. 10x800m Intervals">
       </div>
-      <div class="po-field-row">
-        <div class="po-field">
-          <div class="po-label">Distance (km)</div>
-          <input class="po-input" id="ps-dist" type="number" step="0.1" min="0" placeholder="e.g. 10">
+      <div id="ps-ex-preview" style="display:none"></div>
+      <div id="ps-run-fields">
+        <div class="po-field-row">
+          <div class="po-field">
+            <div class="po-label">Distance (km)</div>
+            <input class="po-input" id="ps-dist" type="number" step="0.1" min="0" placeholder="e.g. 10">
+          </div>
+          <div class="po-field">
+            <div class="po-label">Target Pace</div>
+            <input class="po-input" id="ps-pace" type="text" placeholder="e.g. 5:30 /km">
+          </div>
         </div>
         <div class="po-field">
-          <div class="po-label">Target Pace</div>
-          <input class="po-input" id="ps-pace" type="text" placeholder="e.g. 5:30 /km">
+          <div class="po-label">Warm Up</div>
+          <input class="po-input" id="ps-warmup" type="text" placeholder="e.g. 2km easy jog">
         </div>
-      </div>
-      <div class="po-field">
-        <div class="po-label">Warm Up</div>
-        <input class="po-input" id="ps-warmup" type="text" placeholder="e.g. 2km easy jog">
-      </div>
-      <div class="po-field-row">
-        <div class="po-field">
-          <div class="po-label">Intervals / Sets</div>
-          <input class="po-input" id="ps-intervals" type="text" placeholder="e.g. 5×1km">
+        <div class="po-field-row">
+          <div class="po-field">
+            <div class="po-label">Intervals / Sets</div>
+            <input class="po-input" id="ps-intervals" type="text" placeholder="e.g. 5×1km">
+          </div>
+          <div class="po-field">
+            <div class="po-label">Working Pace</div>
+            <input class="po-input" id="ps-workpace" type="text" placeholder="e.g. 4:20 /km">
+          </div>
         </div>
-        <div class="po-field">
-          <div class="po-label">Working Pace</div>
-          <input class="po-input" id="ps-workpace" type="text" placeholder="e.g. 4:20 /km">
-        </div>
-      </div>
-      <div class="po-field-row">
-        <div class="po-field">
-          <div class="po-label">Rest Between Sets</div>
-          <input class="po-input" id="ps-rest" type="text" placeholder="e.g. 90s jog">
-        </div>
-        <div class="po-field">
-          <div class="po-label">Cool Down</div>
-          <input class="po-input" id="ps-cooldown" type="text" placeholder="e.g. 2km easy">
+        <div class="po-field-row">
+          <div class="po-field">
+            <div class="po-label">Rest Between Sets</div>
+            <input class="po-input" id="ps-rest" type="text" placeholder="e.g. 90s jog">
+          </div>
+          <div class="po-field">
+            <div class="po-label">Cool Down</div>
+            <input class="po-input" id="ps-cooldown" type="text" placeholder="e.g. 2km easy">
+          </div>
         </div>
       </div>
       <div class="po-field">
@@ -2169,11 +2193,11 @@ function openPlanSession(id, dateISO) {
   document.getElementById('ps-sub').textContent = (_planAthlete || '') + (row?.planned_date ? ' · ' + fmtDate(row.planned_date) : dateISO ? ' · ' + fmtDate(dateISO) : '');
   document.getElementById('ps-delete').style.display = row ? '' : 'none';
 
-  // Library template select
-  const sel = document.getElementById('ps-lib');
-  sel.innerHTML = '<option value="">— template —</option>' +
-    _libCache.map(l => `<option value="${l.id}">${esc(l.name)}${l.session_type ? ' · ' + esc(l.session_type) : ''}</option>`).join('');
-  sel.value = row?.library_id || '';
+  // Library template (searchable)
+  document.getElementById('ps-lib').value = row?.library_id || '';
+  const selLib = row?.library_id ? _libCache.find(l => l.id === row.library_id) : null;
+  document.getElementById('ps-lib-search').value = selLib ? selLib.name : '';
+  hideLibSearch();
 
   // Strength split select — preselect if the title matches a split name
   const spSel = document.getElementById('ps-split');
@@ -2193,7 +2217,12 @@ function openPlanSession(id, dateISO) {
   document.getElementById('ps-type').value      = row?.session_type || '';
   document.getElementById('ps-status').value    = row?.status || 'Planned';
   document.getElementById('ps-date').value      = row?.planned_date || dateISO || _isoDate(_planWeekStart());
-  document.getElementById('ps-week').value      = row?.week_label || weekGuess;
+  const wkSel = document.getElementById('ps-week');
+  const wkVal = row?.week_label || weekGuess;
+  if (wkVal && ![...wkSel.options].some(o => o.value === wkVal)) {
+    wkSel.add(new Option(wkVal, wkVal)); // keep labels beyond Week 16 (e.g. from copy-week)
+  }
+  wkSel.value = wkVal;
   document.getElementById('ps-details').value   = row?.run_details || '';
   document.getElementById('ps-dist').value      = row?.distance_km != null ? row.distance_km : '';
   document.getElementById('ps-pace').value      = row?.target_pace || '';
@@ -2203,6 +2232,7 @@ function openPlanSession(id, dateISO) {
   document.getElementById('ps-rest').value      = row?.rest || '';
   document.getElementById('ps-cooldown').value  = row?.cool_down || '';
   document.getElementById('ps-notes').value     = row?.notes || '';
+  updatePsVisibility();
   document.getElementById('ps-overlay').classList.remove('hidden');
   setTimeout(() => document.getElementById('ps-name').focus(), 60);
 }
@@ -2210,6 +2240,31 @@ function closePlanSession() {
   document.getElementById('ps-overlay').classList.add('hidden');
   _psEditingId = null;
 }
+// ── Run template typeahead ────────────────────────────────────────────────────
+function filterLibSearch() {
+  const q = document.getElementById('ps-lib-search').value.trim().toLowerCase();
+  const box = document.getElementById('ps-lib-results');
+  const matches = _libCache.filter(l =>
+    !q || (l.name || '').toLowerCase().includes(q) || (l.session_type || '').toLowerCase().includes(q)
+  ).slice(0, 40);
+  if (!matches.length) { box.style.display = 'none'; box.innerHTML = ''; return; }
+  box.innerHTML = matches.map(l =>
+    `<div class="ps-lib-result" onmousedown="pickLibTemplate('${l.id}')">${esc(l.name)}${l.session_type ? `<span>${esc(l.session_type)}</span>` : ''}</div>`
+  ).join('');
+  box.style.display = '';
+}
+function hideLibSearch() {
+  const box = document.getElementById('ps-lib-results');
+  if (box) { box.style.display = 'none'; box.innerHTML = ''; }
+}
+function pickLibTemplate(id) {
+  document.getElementById('ps-lib').value = id;
+  const lib = _libCache.find(l => l.id === id);
+  document.getElementById('ps-lib-search').value = lib ? lib.name : '';
+  hideLibSearch();
+  applyLibTemplate();
+}
+
 function applyLibTemplate() {
   const lib = _libCache.find(l => l.id === document.getElementById('ps-lib').value);
   if (!lib) return;
@@ -2223,20 +2278,59 @@ function applyLibTemplate() {
   set('ps-pace', lib.target_pace);
   set('ps-warmup', lib.warm_up);
   set('ps-cooldown', lib.cool_down);
+  document.getElementById('ps-split').value = '';
+  updatePsVisibility();
 }
 
 // Picking a strength split: the portal matches gym sessions to splits BY TITLE,
 // so the split name becomes the session title.
 function applySplitPick() {
   const sp = _splitsCache.find(s => s.id === document.getElementById('ps-split').value);
-  if (!sp) return;
+  if (!sp) { updatePsVisibility(); return; }
   document.getElementById('ps-lib').value = '';
+  document.getElementById('ps-lib-search').value = '';
   document.getElementById('ps-name').value = sp.name;
   if (!document.getElementById('ps-type').value) document.getElementById('ps-type').value = 'Strength';
   const exs = sp.exercises || [];
   if (!document.getElementById('ps-details').value) {
     document.getElementById('ps-details').value = exs.length + ' exercises';
   }
+  updatePsVisibility();
+}
+
+// Show only what's relevant to the chosen type: Strength hides the run
+// prescription and shows the split's exercises; run types do the reverse.
+// 'Run + Strength' and no-type-yet show both. Rest hides everything.
+function updatePsVisibility() {
+  const type = document.getElementById('ps-type').value;
+  const isStr    = type === 'Strength';
+  const isRunStr = type === 'Run + Strength';
+  const isRest   = type === 'Rest';
+  const showRun   = !isStr && !isRest;
+  const showSplit = isStr || isRunStr || !type;
+  document.getElementById('ps-run-fields').style.display  = showRun ? '' : 'none';
+  document.getElementById('ps-lib-field').style.display   = showRun ? '' : 'none';
+  document.getElementById('ps-split-field').style.display = showSplit ? '' : 'none';
+  document.getElementById('ps-details-field').style.display = isRest ? 'none' : '';
+  renderPsExPreview();
+}
+function renderPsExPreview() {
+  const el = document.getElementById('ps-ex-preview');
+  const type = document.getElementById('ps-type').value;
+  const strish = type === 'Strength' || type === 'Run + Strength';
+  let sp = _splitsCache.find(s => s.id === document.getElementById('ps-split').value) || null;
+  if (!sp) sp = splitForTitle(document.getElementById('ps-name').value, _planAthlete);
+  if (!strish || !sp) { el.style.display = 'none'; el.innerHTML = ''; return; }
+  const exs = sp.exercises || [];
+  el.style.display = '';
+  el.innerHTML = `<div class="po-label" style="margin-bottom:5px">${esc(sp.name)} — ${exs.length} exercises</div>
+    <div class="ps-ex-preview-list">` +
+    exs.map(e => {
+      const wu = e.warmupSets && e.warmupSets !== '0' ? e.warmupSets + ' wu + ' : '';
+      const sets = e.workingSets || e.sets || '';
+      return `<div class="ps-ex-preview-row"><span>${esc(e.exercise)}</span><span>${esc(wu + sets)} sets · ${esc(e.repRange || '')}</span></div>`;
+    }).join('') + `</div>
+    <div class="ps-ex-preview-hint">Edit exercises in Library → Workout Splits</div>`;
 }
 async function savePlanSession() {
   if (!_planAthlete && !_psEditingId) { alert('Pick an athlete first.'); return; }
