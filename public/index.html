@@ -1025,6 +1025,7 @@ body[data-theme="pride"] .texp-name{background:linear-gradient(90deg,#FF8C00,#FF
 .nut-save.dirty{border-color:rgba(245,158,11,.4);background:var(--amber-bg);color:var(--amber-text)}
 .nut-save:disabled{opacity:.6;cursor:default}
 .nut-empty{padding:32px;text-align:center;font-family:var(--mono);font-size:11px;color:var(--dim)}
+.nut-prog{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--dim)}
 .plan-day{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:8px;min-height:120px;display:flex;flex-direction:column;gap:6px}
 .plan-day.today{border-color:rgba(245,158,11,.45)}
 .plan-day-head{display:flex;align-items:baseline;justify-content:space-between;font-family:var(--mono);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--dim);padding-bottom:4px;border-bottom:1px solid var(--border)}
@@ -1613,6 +1614,7 @@ body[data-theme="light"] .strava-weekly-strip{background:#fff}
     <div class="plan-toolbar">
       <div class="plan-ath-chips" id="nut-ath-chips"></div>
       <div class="plan-toolbar-right">
+        <span class="nut-prog">Programme <input class="nut-input km" id="nut-prog-weeks" onchange="saveProgWeeks(this.value)"> wks</span>
         <button class="plan-action-btn" onclick="addNutWeek()">+ Week</button>
       </div>
     </div>
@@ -2115,6 +2117,28 @@ function _planAthleteCodes() {
 let _nutPlans = [];
 let _nutAthlete = null;
 
+// ── Programme length (athlete_data key 'programme_weeks', default 12) ─────────
+const DEFAULT_PROG_WEEKS = 12;
+let _progWeeks = {}; // athlete_code → weeks
+function getProgWeeks(code) { return _progWeeks[code] || DEFAULT_PROG_WEEKS; }
+
+async function saveProgWeeks(v) {
+  if (!_nutAthlete) return;
+  const n = parseInt(v, 10);
+  const weeks = (!isNaN(n) && n > 0 && n <= 52) ? n : DEFAULT_PROG_WEEKS;
+  _progWeeks[_nutAthlete] = weeks;
+  const el = document.getElementById('nut-prog-weeks');
+  if (el) el.value = weeks;
+  renderNutTable();
+  const sb = getSB(); if (!sb) return;
+  try {
+    await sb.from('athlete_data').upsert(
+      { athlete_code: _nutAthlete, key: 'programme_weeks', value: weeks, updated_at: new Date().toISOString() },
+      { onConflict: 'athlete_code,key' }
+    );
+  } catch (e) { console.warn('programme_weeks save failed', e); }
+}
+
 // Loads nutrition_plans and returns rows shaped like the old Notion targets DB
 // so every existing consumer (targetMap, macro compliance, KM bars) works unchanged.
 async function fetchTargetsSB() {
@@ -2124,6 +2148,11 @@ async function fetchTargetsSB() {
     if (error) throw error;
     _nutPlans = data || [];
   } catch (e) { console.warn('nutrition_plans load failed', e); _nutPlans = []; }
+  try {
+    const { data: pw } = await sb.from('athlete_data').select('athlete_code,value').eq('key', 'programme_weeks');
+    _progWeeks = {};
+    (pw || []).forEach(r => { const n = parseInt(r.value, 10); if (!isNaN(n) && n > 0) _progWeeks[r.athlete_code] = n; });
+  } catch (e) { console.warn('programme_weeks load failed', e); }
   const badge = document.getElementById('tab-nut-count');
   if (badge) badge.textContent = new Set(_nutPlans.map(r => r.athlete_code)).size || '—';
   return _nutPlans.map(r => ({
@@ -2185,6 +2214,8 @@ function renderNutritionTab() {
   document.getElementById('nut-ath-chips').innerHTML = codes.map(c =>
     `<button class="plan-chip${c === _nutAthlete ? ' active' : ''}" onclick="setNutAthlete('${esc(c)}')">${esc(c)}</button>`
   ).join('');
+  const pwEl = document.getElementById('nut-prog-weeks');
+  if (pwEl) pwEl.value = _nutAthlete ? getProgWeeks(_nutAthlete) : DEFAULT_PROG_WEEKS;
   renderNutTable();
 }
 function setNutAthlete(code) {
@@ -2202,9 +2233,10 @@ function renderNutTable() {
   const curWk = _nutCurrentWeekLabel(_nutAthlete);
   _nutRenderRows = _nutPlans
     .filter(r => r.athlete_code === _nutAthlete)
-    .sort((a, b) => _nutWkNum(b.week_label) - _nutWkNum(a.week_label));
+    .sort((a, b) => _nutWkNum(a.week_label) - _nutWkNum(b.week_label));
 
-  meta.textContent = `${_nutAthlete} — weekly macro & KM targets · KM auto-fills from the training plan when no manual target is set`;
+  const curNum = curWk ? _nutWkNum(curWk) : null;
+  meta.textContent = `${_nutAthlete} — ${curNum != null ? `Week ${curNum} of ${getProgWeeks(_nutAthlete)}` : `${getProgWeeks(_nutAthlete)}-week programme`} · weekly macro & KM targets · KM auto-fills from the training plan when no manual target is set`;
 
   if (!_nutRenderRows.length) {
     wrap.innerHTML = '<div class="nut-empty">No nutrition plan yet — use + Week to add the first week</div>';
@@ -2276,6 +2308,8 @@ function addNutWeek() {
   if (!_nutAthlete) return;
   const maxWk = _nutPlans.filter(r => r.athlete_code === _nutAthlete)
     .reduce((m, r) => Math.max(m, _nutWkNum(r.week_label)), 0);
+  // Extending past the programme end bumps the programme length automatically
+  if (maxWk + 1 > getProgWeeks(_nutAthlete)) saveProgWeeks(maxWk + 1);
   _nutPlans.push({
     athlete_code: _nutAthlete, week_label: `Week ${maxWk + 1}`,
     calories: null, protein: null, carbs: null, fats: null, fibre: null,
