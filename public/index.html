@@ -1027,6 +1027,13 @@ body[data-theme="pride"] .texp-name{background:linear-gradient(90deg,#FF8C00,#FF
 .plan-lib-card:hover{border-color:rgba(245,158,11,.5)}
 .plan-lib-name{font-family:var(--cond);font-size:15px;font-weight:600;color:var(--text)}
 .plan-lib-meta{font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:4px;line-height:1.6}
+.plan-lib-tag{display:inline-block;font-family:var(--mono);font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:1px 6px;border-radius:4px;background:rgba(96,165,250,.12);border:1px solid rgba(96,165,250,.3);color:#60a5fa;margin-left:6px}
+.pw-ex-row{border:1px solid var(--border);border-radius:8px;padding:8px;margin-bottom:8px;background:var(--surface)}
+.pw-ex-grid{display:grid;grid-template-columns:2fr .7fr .7fr .9fr .8fr 28px;gap:6px;align-items:center}
+.pw-ex-grid .pw-wide{grid-column:1 / 6}
+.pw-ex-del{background:none;border:1px solid var(--border-mid);border-radius:6px;color:var(--dim);cursor:pointer;font-size:11px;height:30px;transition:all .15s}
+.pw-ex-del:hover{color:var(--red-text);border-color:rgba(248,113,113,.5)}
+.pw-ex-head{display:grid;grid-template-columns:2fr .7fr .7fr .9fr .8fr 28px;gap:6px;font-family:var(--mono);font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--dim);padding:0 9px;margin-bottom:4px}
 .po-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9000;display:flex;align-items:center;justify-content:center;padding:16px}
 .po-overlay.hidden{display:none}
 .po-modal{background:#1a1a1a;border:1px solid rgba(255,255,255,.12);border-radius:12px;width:100%;max-width:360px;overflow:hidden}
@@ -1576,9 +1583,15 @@ body[data-theme="light"] .strava-weekly-strip{background:#fff}
       <button class="po-close" onclick="closePlanSession()">✕</button>
     </div>
     <div class="po-modal-body">
-      <div class="po-field">
-        <div class="po-label">From Library (optional)</div>
-        <select class="po-input" id="ps-lib" onchange="applyLibTemplate()"><option value="">— pick a template —</option></select>
+      <div class="po-field-row">
+        <div class="po-field">
+          <div class="po-label">Run Template (optional)</div>
+          <select class="po-input" id="ps-lib" onchange="applyLibTemplate()"><option value="">— template —</option></select>
+        </div>
+        <div class="po-field">
+          <div class="po-label">Strength Split (optional)</div>
+          <select class="po-input" id="ps-split" onchange="applySplitPick()"><option value="">— split —</option></select>
+        </div>
       </div>
       <div class="po-field">
         <div class="po-label">Session Title</div>
@@ -1732,6 +1745,38 @@ body[data-theme="light"] .strava-weekly-strip{background:#fff}
   </div>
 </div>
 
+<!-- Workout split editor modal -->
+<div class="po-overlay hidden" id="pw-overlay" onclick="if(event.target===this)closeSplitEditor()">
+  <div class="po-modal" style="max-width:680px">
+    <div class="po-modal-head">
+      <div>
+        <div class="po-modal-title" id="pw-title">Workout Split</div>
+        <div class="po-modal-sub">Strength session — exercises render in the athlete's gym logger</div>
+      </div>
+      <button class="po-close" onclick="closeSplitEditor()">✕</button>
+    </div>
+    <div class="po-modal-body">
+      <div class="po-field-row">
+        <div class="po-field">
+          <div class="po-label">Split Name</div>
+          <input class="po-input" id="pw-name" type="text" placeholder="e.g. Upper A">
+        </div>
+        <div class="po-field">
+          <div class="po-label">Athlete Code (blank = all athletes)</div>
+          <input class="po-input" id="pw-ath" type="text" placeholder="e.g. KHANG">
+        </div>
+      </div>
+      <div class="po-label" style="margin-bottom:6px">Exercises</div>
+      <div id="pw-ex-list"></div>
+      <button class="plan-add-btn" style="width:100%;margin-top:6px" onclick="addSplitExRow()">+ Exercise</button>
+    </div>
+    <div class="po-modal-foot">
+      <button class="po-btn save" onclick="saveSplit()">Save Split</button>
+      <button class="po-btn clear" id="pw-archive" onclick="archiveSplit()" style="display:none">Archive</button>
+    </div>
+  </div>
+</div>
+
 <!-- SYNC HEALTH TAB -->
 <div id="tab-sync-content" style="display:none">
   <div class="sync-section">
@@ -1830,8 +1875,9 @@ function getSB() {
 
 // ── Plan overrides (Supabase-backed, local cache) ─────────────────────────────
 let _ovCache = {};  // session id → { name, dist, pace, … } (built from planned_sessions)
-let _planRowsSB = [];   // raw Supabase planned_sessions rows
-let _libCache   = [];   // session_library rows
+let _planRowsSB   = []; // raw Supabase planned_sessions rows
+let _libCache     = []; // session_library rows
+let _splitsCache  = []; // workout_splits rows (strength)
 let _tickedMap = new Map(); // athleteCode → Set<sessionId>
 
 async function loadSessionLogs() {
@@ -1952,10 +1998,27 @@ function planRowToNotionShape(r) {
 async function loadSessionLibrary() {
   try {
     const sb = getSB(); if (!sb) return;
-    const { data } = await sb.from('session_library').select('*')
-      .eq('archived', false).order('name', { ascending: true });
-    _libCache = data || [];
+    const [lib, splits] = await Promise.all([
+      sb.from('session_library').select('*').eq('archived', false).order('name', { ascending: true }),
+      sb.from('workout_splits').select('*').eq('archived', false).order('name', { ascending: true }),
+    ]);
+    _libCache = lib.data || [];
+    _splitsCache = splits.data || [];
   } catch(e) { console.warn('Session library load failed', e); }
+}
+
+// Splits visible for an athlete: globals, with athlete-specific variants overriding by name
+function splitsForAthlete(code) {
+  const map = new Map();
+  _splitsCache.filter(s => !s.athlete_code).forEach(s => map.set(s.name, s));
+  _splitsCache.filter(s => s.athlete_code === code).forEach(s => map.set(s.name, s));
+  return [...map.values()];
+}
+function splitForTitle(title, code) {
+  const t = (title || '').toLowerCase();
+  return splitsForAthlete(code)
+    .filter(s => t.indexOf(s.name.toLowerCase()) >= 0)
+    .sort((a, b) => b.name.length - a.name.length)[0] || null;
 }
 
 // ── Planning tab ──────────────────────────────────────────────────────────────
@@ -2043,6 +2106,8 @@ function renderPlanGrid() {
       if (r.run_details) meta.push(esc(r.run_details));
       if (r.distance_km != null) meta.push(esc(String(r.distance_km)) + 'km');
       if (r.target_pace) meta.push(esc(r.target_pace));
+      const sp = splitForTitle(r.title, r.athlete_code);
+      if (sp && !r.run_details) meta.push((sp.exercises || []).length + ' exercises');
       html += `<div class="plan-card" style="border-left-color:${col}" onclick="openPlanSession('${r.id}')">
         <div class="plan-card-title">${esc(r.title || 'Session')}</div>
         ${r.session_type ? `<div class="plan-card-meta" style="color:${col}">${esc(r.session_type)}</div>` : ''}
@@ -2106,9 +2171,17 @@ function openPlanSession(id, dateISO) {
 
   // Library template select
   const sel = document.getElementById('ps-lib');
-  sel.innerHTML = '<option value="">— pick a template —</option>' +
+  sel.innerHTML = '<option value="">— template —</option>' +
     _libCache.map(l => `<option value="${l.id}">${esc(l.name)}${l.session_type ? ' · ' + esc(l.session_type) : ''}</option>`).join('');
   sel.value = row?.library_id || '';
+
+  // Strength split select — preselect if the title matches a split name
+  const spSel = document.getElementById('ps-split');
+  const splits = splitsForAthlete(_planAthlete);
+  spSel.innerHTML = '<option value="">— split —</option>' +
+    splits.map(s => `<option value="${s.id}">${esc(s.name)}${s.athlete_code ? ' · ' + esc(s.athlete_code) : ''} (${(s.exercises || []).length} ex)</option>`).join('');
+  const matched = row ? splitForTitle(row.title, _planAthlete) : null;
+  spSel.value = matched ? matched.id : '';
 
   // Guess week label for new sessions from neighbours in the same visible week
   let weekGuess = '';
@@ -2140,6 +2213,7 @@ function closePlanSession() {
 function applyLibTemplate() {
   const lib = _libCache.find(l => l.id === document.getElementById('ps-lib').value);
   if (!lib) return;
+  document.getElementById('ps-split').value = '';
   const set = (id, v) => { if (v) document.getElementById(id).value = v; };
   set('ps-name', lib.name);
   if (lib.session_type && [...document.getElementById('ps-type').options].some(o => o.value === lib.session_type)) {
@@ -2149,6 +2223,20 @@ function applyLibTemplate() {
   set('ps-pace', lib.target_pace);
   set('ps-warmup', lib.warm_up);
   set('ps-cooldown', lib.cool_down);
+}
+
+// Picking a strength split: the portal matches gym sessions to splits BY TITLE,
+// so the split name becomes the session title.
+function applySplitPick() {
+  const sp = _splitsCache.find(s => s.id === document.getElementById('ps-split').value);
+  if (!sp) return;
+  document.getElementById('ps-lib').value = '';
+  document.getElementById('ps-name').value = sp.name;
+  if (!document.getElementById('ps-type').value) document.getElementById('ps-type').value = 'Strength';
+  const exs = sp.exercises || [];
+  if (!document.getElementById('ps-details').value) {
+    document.getElementById('ps-details').value = exs.length + ' exercises';
+  }
 }
 async function savePlanSession() {
   if (!_planAthlete && !_psEditingId) { alert('Pick an athlete first.'); return; }
@@ -2217,13 +2305,28 @@ function togglePlanLibrary() {
 }
 function renderPlanLibrary() {
   document.getElementById('plan-grid').style.display = 'none';
-  document.getElementById('plan-week-meta').textContent = `${_libCache.length} reusable session templates`;
+  document.getElementById('plan-week-meta').textContent =
+    `${_libCache.length} run templates · ${_splitsCache.length} workout splits`;
   const wrap = document.getElementById('plan-lib');
   wrap.style.display = '';
   document.getElementById('plan-lib-btn').textContent = '← Planner';
   wrap.innerHTML = `
     <div class="plan-lib-head">
-      <div class="plan-lib-title">Session Library</div>
+      <div class="plan-lib-title">Workout Splits — Strength</div>
+      <button class="plan-action-btn" onclick="openSplitEditor(null)">+ Split</button>
+    </div>
+    <div class="plan-lib-grid" style="margin-bottom:22px">` +
+    _splitsCache.map(s => {
+      const exs = s.exercises || [];
+      const preview = exs.slice(0, 3).map(e => e.exercise).filter(Boolean).map(esc).join(' · ');
+      return `<div class="plan-lib-card" onclick="openSplitEditor('${s.id}')">
+        <div class="plan-lib-name">${esc(s.name)}${s.athlete_code ? `<span class="plan-lib-tag">${esc(s.athlete_code)}</span>` : ''}</div>
+        <div class="plan-lib-meta">${exs.length} exercises</div>
+        ${preview ? `<div class="plan-lib-meta">${preview}${exs.length > 3 ? ' …' : ''}</div>` : ''}
+      </div>`;
+    }).join('') + `</div>
+    <div class="plan-lib-head">
+      <div class="plan-lib-title">Session Library — Running</div>
       <button class="plan-action-btn" onclick="openLibEditor(null)">+ Template</button>
     </div>
     <div class="plan-lib-grid">` +
@@ -2235,6 +2338,100 @@ function renderPlanLibrary() {
         ${l.description ? `<div class="plan-lib-meta">${esc(l.description.length > 110 ? l.description.slice(0, 110) + '…' : l.description)}</div>` : ''}
       </div>`;
     }).join('') + `</div>`;
+}
+
+// ── Workout split editor ──────────────────────────────────────────────────────
+let _pwEditingId = null;
+
+function openSplitEditor(id) {
+  _pwEditingId = id || null;
+  const s = id ? _splitsCache.find(x => x.id === id) : null;
+  document.getElementById('pw-title').textContent = s ? 'Edit Split' : 'New Split';
+  document.getElementById('pw-archive').style.display = s ? '' : 'none';
+  document.getElementById('pw-name').value = s?.name || '';
+  document.getElementById('pw-ath').value  = s?.athlete_code || '';
+  const list = document.getElementById('pw-ex-list');
+  list.innerHTML = `<div class="pw-ex-head"><span>Exercise</span><span>WU sets</span><span>Work sets</span><span>Rep range</span><span>Rest</span><span></span></div>`;
+  (s?.exercises || []).forEach(ex => addSplitExRow(ex));
+  if (!s) addSplitExRow();
+  document.getElementById('pw-overlay').classList.remove('hidden');
+  setTimeout(() => document.getElementById('pw-name').focus(), 60);
+}
+function closeSplitEditor() {
+  document.getElementById('pw-overlay').classList.add('hidden');
+  _pwEditingId = null;
+}
+function addSplitExRow(ex) {
+  ex = ex || {};
+  const row = document.createElement('div');
+  row.className = 'pw-ex-row';
+  row.innerHTML = `<div class="pw-ex-grid">
+    <input class="po-input" data-f="exercise" placeholder="Exercise name" value="${esc(ex.exercise || '')}">
+    <input class="po-input" data-f="warmupSets" placeholder="0" value="${esc(ex.warmupSets || '')}">
+    <input class="po-input" data-f="workingSets" placeholder="3" value="${esc(ex.workingSets || '')}">
+    <input class="po-input" data-f="repRange" placeholder="8-12" value="${esc(ex.repRange || '')}">
+    <input class="po-input" data-f="rest" placeholder="90s" value="${esc(ex.rest || '')}">
+    <button class="pw-ex-del" onclick="this.closest('.pw-ex-row').remove()" title="Remove exercise">✕</button>
+    <input class="po-input pw-wide" data-f="notes" placeholder="Notes (e.g. First set warm-up)" value="${esc(ex.notes || '')}">
+    <input class="po-input pw-wide" data-f="alts" placeholder="Alternatives, comma separated" value="${esc((ex.alts || []).join(', '))}">
+  </div>`;
+  document.getElementById('pw-ex-list').appendChild(row);
+}
+function _collectSplitExercises() {
+  return [...document.querySelectorAll('#pw-ex-list .pw-ex-row')].map(row => {
+    const g = f => (row.querySelector(`[data-f="${f}"]`)?.value || '').trim();
+    const wu = g('warmupSets') || '0', wk = g('workingSets') || '3';
+    const rr = g('repRange') || '8-12';
+    return {
+      exercise: g('exercise'),
+      sets: String((parseInt(wu, 10) || 0) + (parseInt(wk, 10) || 0)),
+      reps: (rr.match(/\d+/) || ['8'])[0],
+      repRange: rr,
+      warmupSets: wu,
+      workingSets: wk,
+      rest: g('rest') || '90s',
+      notes: g('notes'),
+      alts: g('alts') ? g('alts').split(',').map(s => s.trim()).filter(Boolean) : [],
+    };
+  }).filter(e => e.exercise);
+}
+async function saveSplit() {
+  const sb = getSB(); if (!sb) return;
+  const name = document.getElementById('pw-name').value.trim();
+  if (!name) { alert('Split needs a name.'); return; }
+  const exercises = _collectSplitExercises();
+  if (!exercises.length) { alert('Add at least one exercise.'); return; }
+  const patch = {
+    name,
+    athlete_code: document.getElementById('pw-ath').value.trim().toUpperCase() || null,
+    exercises,
+    updated_at: new Date().toISOString(),
+  };
+  try {
+    if (_pwEditingId) {
+      const { data, error } = await sb.from('workout_splits').update(patch).eq('id', _pwEditingId).select().single();
+      if (error) throw error;
+      const i = _splitsCache.findIndex(x => x.id === _pwEditingId);
+      if (i >= 0) _splitsCache[i] = data;
+    } else {
+      const { data, error } = await sb.from('workout_splits').insert(patch).select().single();
+      if (error) throw error;
+      _splitsCache.push(data);
+      _splitsCache.sort((a, b) => a.name.localeCompare(b.name));
+    }
+    closeSplitEditor();
+    renderPlanLibrary();
+  } catch(e) { alert('Save failed: ' + (e.message || e)); }
+}
+async function archiveSplit() {
+  if (!_pwEditingId) return;
+  if (!confirm('Archive this split? Planned sessions keep their titles; the portal falls back to its built-in version if one exists.')) return;
+  const sb = getSB(); if (!sb) return;
+  const { error } = await sb.from('workout_splits').update({ archived: true, updated_at: new Date().toISOString() }).eq('id', _pwEditingId);
+  if (error) { alert('Archive failed: ' + error.message); return; }
+  _splitsCache = _splitsCache.filter(x => x.id !== _pwEditingId);
+  closeSplitEditor();
+  renderPlanLibrary();
 }
 function openLibEditor(id) {
   _plEditingId = id || null;
