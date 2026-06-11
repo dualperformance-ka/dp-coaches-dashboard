@@ -989,6 +989,44 @@ body[data-theme="pride"] .texp-name{background:linear-gradient(90deg,#FF8C00,#FF
 .po-chip{font-family:var(--mono);font-size:8px;font-weight:700;background:rgba(245,158,11,.15);border:1px solid rgba(245,158,11,.3);color:#fbbf24;border-radius:4px;padding:1px 5px;white-space:nowrap;line-height:1.4}
 .po-chip.overridden{background:rgba(245,158,11,.25);border-color:rgba(245,158,11,.55)}
 /* ── Plan Override Modal ── */
+/* ── Planning tab ── */
+.plan-section{max-width:1280px;margin:0 auto;padding:18px 20px 60px}
+.plan-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px}
+.plan-ath-chips{display:flex;gap:6px;flex-wrap:wrap}
+.plan-chip{font-family:var(--mono);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:5px 12px;border-radius:6px;border:1px solid var(--border-mid);background:var(--surface);color:var(--muted);cursor:pointer;transition:all .15s}
+.plan-chip:hover{color:var(--text);border-color:rgba(245,158,11,.4)}
+.plan-chip.active{background:rgba(245,158,11,.12);border-color:rgba(245,158,11,.55);color:#fbbf24}
+.plan-toolbar-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.plan-action-btn{font-family:var(--mono);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:6px 12px;border-radius:6px;border:1px solid rgba(245,158,11,.4);background:rgba(245,158,11,.08);color:#fbbf24;cursor:pointer;transition:all .15s}
+.plan-action-btn:hover{background:rgba(245,158,11,.18)}
+.plan-week-meta{font-family:var(--mono);font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px}
+.plan-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:8px}
+@media(max-width:980px){.plan-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:560px){.plan-grid{grid-template-columns:1fr}}
+.plan-day{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:8px;min-height:120px;display:flex;flex-direction:column;gap:6px}
+.plan-day.today{border-color:rgba(245,158,11,.45)}
+.plan-day-head{display:flex;align-items:baseline;justify-content:space-between;font-family:var(--mono);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--dim);padding-bottom:4px;border-bottom:1px solid var(--border)}
+.plan-day.today .plan-day-head{color:#fbbf24}
+.plan-card{background:var(--surface2);border:1px solid var(--border-mid);border-left:3px solid var(--dim);border-radius:7px;padding:7px 8px;cursor:pointer;transition:all .12s;position:relative}
+.plan-card:hover{border-color:rgba(245,158,11,.5)}
+.plan-card-title{font-family:var(--cond);font-size:14px;font-weight:600;color:var(--text);line-height:1.2}
+.plan-card-meta{font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:3px;line-height:1.5;word-break:break-word}
+.plan-card-status{display:inline-block;font-family:var(--mono);font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:1px 6px;border-radius:4px;margin-top:4px}
+.plan-card-status.Planned{background:rgba(255,255,255,.07);color:var(--muted)}
+.plan-card-status.Completed{background:var(--green-bg);color:var(--green-text)}
+.plan-card-status.Missed{background:var(--red-bg);color:var(--red-text)}
+.plan-card-status.Sick{background:var(--amber-bg);color:var(--amber-text)}
+.plan-add-btn{font-family:var(--mono);font-size:10px;border:1px dashed var(--border-mid);background:transparent;color:var(--dim);border-radius:7px;padding:5px;cursor:pointer;transition:all .15s;margin-top:auto}
+.plan-add-btn:hover{color:#fbbf24;border-color:rgba(245,158,11,.5)}
+.plan-empty{font-family:var(--mono);font-size:9px;color:var(--dim);text-align:center;padding:8px 0}
+.plan-lib{margin-top:6px}
+.plan-lib-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+.plan-lib-title{font-family:var(--mono);font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:var(--text)}
+.plan-lib-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px}
+.plan-lib-card{background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:10px;cursor:pointer;transition:all .12s}
+.plan-lib-card:hover{border-color:rgba(245,158,11,.5)}
+.plan-lib-name{font-family:var(--cond);font-size:15px;font-weight:600;color:var(--text)}
+.plan-lib-meta{font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:4px;line-height:1.6}
 .po-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9000;display:flex;align-items:center;justify-content:center;padding:16px}
 .po-overlay.hidden{display:none}
 .po-modal{background:#1a1a1a;border:1px solid rgba(255,255,255,.12);border-radius:12px;width:100%;max-width:360px;overflow:hidden}
@@ -1428,6 +1466,9 @@ body[data-theme="light"] .strava-weekly-strip{background:#fff}
   <button class="tab active" id="tab-athletes-btn" onclick="switchTab('athletes')">
     Athletes <span class="tab-badge" id="tab-ath-count">—</span>
   </button>
+  <button class="tab" id="tab-planning-btn" onclick="switchTab('planning')">
+    Planning <span class="tab-badge" id="tab-planning-count">—</span>
+  </button>
   <button class="tab" id="tab-coaches-btn" onclick="switchTab('coaches')">
     Coaches <span class="tab-badge">2</span>
   </button>
@@ -1498,6 +1539,195 @@ body[data-theme="light"] .strava-weekly-strip{background:#fff}
       <div class="no-results" id="no-results" style="display:none">
         <div class="no-results-txt">No athletes match this filter</div>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- PLANNING TAB -->
+<div id="tab-planning-content" style="display:none">
+  <div class="plan-section">
+    <div class="plan-toolbar">
+      <div class="plan-ath-chips" id="plan-ath-chips"></div>
+      <div class="plan-toolbar-right">
+        <div class="sf-group">
+          <button class="sf" onclick="planWeekNav(-1)">← Prev</button>
+          <button class="sf" id="plan-week-label" onclick="planWeekReset()">This Week</button>
+          <button class="sf" onclick="planWeekNav(1)">Next →</button>
+        </div>
+        <button class="plan-action-btn" onclick="copyPlanWeek()" title="Copy this week's sessions to next week">⧉ Copy → Next Wk</button>
+        <button class="plan-action-btn" onclick="openPlanSession(null)">+ Session</button>
+        <button class="plan-action-btn" id="plan-lib-btn" onclick="togglePlanLibrary()">Library</button>
+      </div>
+    </div>
+    <div class="plan-week-meta" id="plan-week-meta"></div>
+    <div class="plan-grid" id="plan-grid"></div>
+    <div class="plan-lib" id="plan-lib" style="display:none"></div>
+  </div>
+</div>
+
+<!-- Planning session editor modal -->
+<div class="po-overlay hidden" id="ps-overlay" onclick="if(event.target===this)closePlanSession()">
+  <div class="po-modal" style="max-width:460px">
+    <div class="po-modal-head">
+      <div>
+        <div class="po-modal-title" id="ps-title">Plan Session</div>
+        <div class="po-modal-sub" id="ps-sub"></div>
+      </div>
+      <button class="po-close" onclick="closePlanSession()">✕</button>
+    </div>
+    <div class="po-modal-body">
+      <div class="po-field">
+        <div class="po-label">From Library (optional)</div>
+        <select class="po-input" id="ps-lib" onchange="applyLibTemplate()"><option value="">— pick a template —</option></select>
+      </div>
+      <div class="po-field">
+        <div class="po-label">Session Title</div>
+        <input class="po-input" id="ps-name" type="text" placeholder="e.g. Easy Run">
+      </div>
+      <div class="po-field-row">
+        <div class="po-field">
+          <div class="po-label">Type</div>
+          <select class="po-input" id="ps-type">
+            <option value="">—</option>
+            <option>Run</option><option>Easy Effort</option><option>Tempo</option><option>Speed</option>
+            <option>Long Run</option><option>Recovery</option><option>race</option><option>Strength</option>
+            <option>Run + Strength</option><option>Rest</option><option>Optional</option><option>Weekly KM Total</option>
+          </select>
+        </div>
+        <div class="po-field">
+          <div class="po-label">Status</div>
+          <select class="po-input" id="ps-status">
+            <option>Planned</option><option>Completed</option><option>Missed</option><option>Sick</option>
+          </select>
+        </div>
+      </div>
+      <div class="po-field-row">
+        <div class="po-field">
+          <div class="po-label">Date</div>
+          <input class="po-input" id="ps-date" type="date">
+        </div>
+        <div class="po-field">
+          <div class="po-label">Week Label</div>
+          <input class="po-input" id="ps-week" type="text" placeholder="e.g. Week 4">
+        </div>
+      </div>
+      <div class="po-field">
+        <div class="po-label">Details / Run Details</div>
+        <input class="po-input" id="ps-details" type="text" placeholder="e.g. 10x800m Intervals">
+      </div>
+      <div class="po-field-row">
+        <div class="po-field">
+          <div class="po-label">Distance (km)</div>
+          <input class="po-input" id="ps-dist" type="number" step="0.1" min="0" placeholder="e.g. 10">
+        </div>
+        <div class="po-field">
+          <div class="po-label">Target Pace</div>
+          <input class="po-input" id="ps-pace" type="text" placeholder="e.g. 5:30 /km">
+        </div>
+      </div>
+      <div class="po-field">
+        <div class="po-label">Warm Up</div>
+        <input class="po-input" id="ps-warmup" type="text" placeholder="e.g. 2km easy jog">
+      </div>
+      <div class="po-field-row">
+        <div class="po-field">
+          <div class="po-label">Intervals / Sets</div>
+          <input class="po-input" id="ps-intervals" type="text" placeholder="e.g. 5×1km">
+        </div>
+        <div class="po-field">
+          <div class="po-label">Working Pace</div>
+          <input class="po-input" id="ps-workpace" type="text" placeholder="e.g. 4:20 /km">
+        </div>
+      </div>
+      <div class="po-field-row">
+        <div class="po-field">
+          <div class="po-label">Rest Between Sets</div>
+          <input class="po-input" id="ps-rest" type="text" placeholder="e.g. 90s jog">
+        </div>
+        <div class="po-field">
+          <div class="po-label">Cool Down</div>
+          <input class="po-input" id="ps-cooldown" type="text" placeholder="e.g. 2km easy">
+        </div>
+      </div>
+      <div class="po-field">
+        <div class="po-label">Notes for Athlete</div>
+        <textarea class="po-input" id="ps-notes" rows="2" placeholder="Any cues, context, or motivation…" style="resize:vertical;line-height:1.5"></textarea>
+      </div>
+    </div>
+    <div class="po-modal-foot">
+      <button class="po-btn save" id="ps-save" onclick="savePlanSession()">Save Session</button>
+      <button class="po-btn clear" id="ps-delete" onclick="deletePlanSession()" style="display:none">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- Library template editor modal -->
+<div class="po-overlay hidden" id="pl-overlay" onclick="if(event.target===this)closeLibEditor()">
+  <div class="po-modal" style="max-width:460px">
+    <div class="po-modal-head">
+      <div>
+        <div class="po-modal-title" id="pl-title">Library Session</div>
+        <div class="po-modal-sub">Reusable template</div>
+      </div>
+      <button class="po-close" onclick="closeLibEditor()">✕</button>
+    </div>
+    <div class="po-modal-body">
+      <div class="po-field">
+        <div class="po-label">Name</div>
+        <input class="po-input" id="pl-name" type="text" placeholder="e.g. 4x2km at 10K Pace">
+      </div>
+      <div class="po-field-row">
+        <div class="po-field">
+          <div class="po-label">Type</div>
+          <input class="po-input" id="pl-type" type="text" placeholder="e.g. Race Pace">
+        </div>
+        <div class="po-field">
+          <div class="po-label">Intensity</div>
+          <input class="po-input" id="pl-intensity" type="text" placeholder="e.g. Threshold">
+        </div>
+      </div>
+      <div class="po-field-row">
+        <div class="po-field">
+          <div class="po-label">Distance</div>
+          <input class="po-input" id="pl-distance" type="text" placeholder="e.g. 10k">
+        </div>
+        <div class="po-field">
+          <div class="po-label">Duration (mins)</div>
+          <input class="po-input" id="pl-duration" type="text" placeholder="e.g. 55-65">
+        </div>
+      </div>
+      <div class="po-field-row">
+        <div class="po-field">
+          <div class="po-label">Target Pace</div>
+          <input class="po-input" id="pl-pace" type="text" placeholder="e.g. 10K race pace">
+        </div>
+        <div class="po-field">
+          <div class="po-label">RPE</div>
+          <input class="po-input" id="pl-rpe" type="text" placeholder="e.g. 7-8">
+        </div>
+      </div>
+      <div class="po-field-row">
+        <div class="po-field">
+          <div class="po-label">Warm Up</div>
+          <input class="po-input" id="pl-warmup" type="text" placeholder="e.g. 15min easy">
+        </div>
+        <div class="po-field">
+          <div class="po-label">Cool Down</div>
+          <input class="po-input" id="pl-cooldown" type="text" placeholder="e.g. 10min easy">
+        </div>
+      </div>
+      <div class="po-field">
+        <div class="po-label">Goal</div>
+        <input class="po-input" id="pl-goal" type="text" placeholder="e.g. Race specific prep">
+      </div>
+      <div class="po-field">
+        <div class="po-label">Description</div>
+        <textarea class="po-input" id="pl-description" rows="3" placeholder="Full session description" style="resize:vertical;line-height:1.5"></textarea>
+      </div>
+    </div>
+    <div class="po-modal-foot">
+      <button class="po-btn save" onclick="saveLibSession()">Save Template</button>
+      <button class="po-btn clear" id="pl-archive" onclick="archiveLibSession()" style="display:none">Archive</button>
     </div>
   </div>
 </div>
@@ -1599,8 +1829,10 @@ function getSB() {
 }
 
 // ── Plan overrides (Supabase-backed, local cache) ─────────────────────────────
-let _ovCache = {};  // notion_page_id → { name, dist, pace }
-let _tickedMap = new Map(); // athleteCode → Set<notionPageId>
+let _ovCache = {};  // session id → { name, dist, pace, … } (built from planned_sessions)
+let _planRowsSB = [];   // raw Supabase planned_sessions rows
+let _libCache   = [];   // session_library rows
+let _tickedMap = new Map(); // athleteCode → Set<sessionId>
 
 async function loadSessionLogs() {
   try {
@@ -1617,38 +1849,28 @@ function isSessionLogged(athleteCode, notionPageId) {
   return _tickedMap.get(athleteCode)?.has(notionPageId) ?? false;
 }
 
-async function loadAllOverrides() {
-  try {
-    const sb = getSB(); if (!sb) return;
-    const { data } = await sb.from('session_overrides').select('*');
-    _ovCache = {};
-    (data || []).forEach(r => {
-      _ovCache[r.notion_page_id] = {
-        name:      r.name       || '',
-        dist:      r.distance_km != null ? String(r.distance_km) : '',
-        pace:      r.target_pace  || '',
-        warmup:    r.warm_up      || '',
-        intervals: r.intervals    || '',
-        workpace:  r.working_pace || '',
-        rest:      r.rest         || '',
-        cooldown:  r.cool_down    || '',
-        notes:     r.notes        || '',
-      };
-    });
-  } catch(e) { console.warn('Override load failed', e); }
-}
+// Overrides now live ON the planned_sessions rows themselves (Supabase is the
+// planning source of truth). _ovCache is populated by fetchPlanningSB().
 function getPlanOverride(id) { return _ovCache[id] || null; }
+
+// Match a planned_sessions row by either its migrated Notion page id or its own uuid
+function _psMatch(q, id) { return q.or(`notion_page_id.eq.${id},id.eq.${id}`); }
+
 async function setPlanOverride(id, data) {
+  const sb = getSB(); if (!sb) return;
   if (data === null) {
     delete _ovCache[id];
-    try { const sb = getSB(); if (sb) await sb.from('session_overrides').delete().eq('notion_page_id', id); } catch(e) {}
+    try {
+      await _psMatch(sb.from('planned_sessions').update({
+        distance_km: null, target_pace: null, warm_up: null, intervals: null,
+        working_pace: null, rest: null, cool_down: null, notes: null,
+        updated_at: new Date().toISOString(),
+      }), id);
+    } catch(e) { console.warn('Override clear failed', e); }
   } else {
     _ovCache[id] = { ..._ovCache[id], ...data };
     try {
-      const sb = getSB(); if (!sb) return;
-      await sb.from('session_overrides').upsert({
-        notion_page_id: id,
-        name:         data.name      || null,
+      const patch = {
         distance_km:  data.dist      ? parseFloat(data.dist) || null : null,
         target_pace:  data.pace      || null,
         warm_up:      data.warmup    || null,
@@ -1658,9 +1880,422 @@ async function setPlanOverride(id, data) {
         cool_down:    data.cooldown  || null,
         notes:        data.notes     || null,
         updated_at:   new Date().toISOString(),
-      }, { onConflict: 'notion_page_id' });
+      };
+      if (data.name) patch.title = data.name;
+      await _psMatch(sb.from('planned_sessions').update(patch), id);
+      const row = _planRowsSB.find(r => r.notion_page_id === id || r.id === id);
+      if (row) Object.assign(row, patch);
     } catch(e) { console.warn('Override save failed', e); }
   }
+}
+
+// ── Planning data (Supabase = source of truth) ────────────────────────────────
+// Fetches planned_sessions and adapts each row to the Notion-row shape the rest
+// of the dashboard already understands, so existing grids/compliance logic work
+// unchanged. Migrated rows keep their Notion page id as _id so completion ticks
+// and old links keep matching.
+async function fetchPlanningSB() {
+  const sb = getSB(); if (!sb) throw new Error('Supabase unavailable');
+  let all = [], from = 0;
+  for (;;) {
+    const { data, error } = await sb.from('planned_sessions').select('*')
+      .order('planned_date', { ascending: true, nullsFirst: false })
+      .range(from, from + 999);
+    if (error) throw new Error('planned_sessions: ' + error.message);
+    all = all.concat(data || []);
+    if (!data || data.length < 1000) break;
+    from += 1000;
+  }
+  _planRowsSB = all;
+
+  // Rebuild the override cache from row-level prescription fields
+  _ovCache = {};
+  all.forEach(r => {
+    const key = r.notion_page_id || r.id;
+    if (r.distance_km != null || r.target_pace || r.warm_up || r.intervals ||
+        r.working_pace || r.rest || r.cool_down || r.notes) {
+      _ovCache[key] = {
+        name:      r.title || '',
+        dist:      r.distance_km != null ? String(r.distance_km) : '',
+        pace:      r.target_pace  || '',
+        warmup:    r.warm_up      || '',
+        intervals: r.intervals    || '',
+        workpace:  r.working_pace || '',
+        rest:      r.rest         || '',
+        cooldown:  r.cool_down    || '',
+        notes:     r.notes        || '',
+      };
+    }
+  });
+  return all.map(planRowToNotionShape);
+}
+
+function planRowToNotionShape(r) {
+  return {
+    _id: r.notion_page_id || r.id,
+    _sbId: r.id,
+    'Session': r.title || 'Session',
+    'Session Type': r.session_type || null,
+    'Week': r.week_label || null,
+    'Status ': r.status || 'Planned',
+    'Athlete': r.athlete_code,
+    'Run Details': r.run_details || '',
+    'Intensity': r.intensity || '',
+    'Planned Date': r.planned_date,
+    'date:Planned Date:start': r.planned_date,
+    'date:Planned Date:end': null,
+    'date:Planned Date:is_datetime': 0,
+    '_createdTime': r.created_at,
+  };
+}
+
+async function loadSessionLibrary() {
+  try {
+    const sb = getSB(); if (!sb) return;
+    const { data } = await sb.from('session_library').select('*')
+      .eq('archived', false).order('name', { ascending: true });
+    _libCache = data || [];
+  } catch(e) { console.warn('Session library load failed', e); }
+}
+
+// ── Planning tab ──────────────────────────────────────────────────────────────
+const PLAN_TYPE_COLORS = {
+  'Run':'#f59e0b','Easy Effort':'#9a9a9a','Tempo':'#4ade80','Speed':'#fb923c',
+  'Long Run':'#f472b6','Recovery':'#a5b4fc','race':'#facc15','Strength':'#60a5fa',
+  'Run + Strength':'#f87171','Rest':'#38bdf8','Optional':'#34d399','Weekly KM Total':'#a78b71',
+};
+const PLAN_DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+let _planAthlete = null;
+let _planWeekOffset = 0;
+let _planLibOpen = false;
+
+function _isoDate(d) {
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+function _planWeekStart() {
+  const now = new Date();
+  const mon = new Date(now.getFullYear(), now.getMonth(), now.getDate() - ((now.getDay() + 6) % 7));
+  mon.setDate(mon.getDate() + _planWeekOffset * 7);
+  return mon;
+}
+function _planAthleteCodes() {
+  const codes = new Set(_planRowsSB.map(r => r.athlete_code));
+  _allAthletes.forEach(a => codes.add(a.id));
+  COACHES.forEach(c => codes.add(c));
+  return [...codes].filter(Boolean).sort();
+}
+
+function renderPlanning() {
+  const codes = _planAthleteCodes();
+  if (!_planAthlete || !codes.includes(_planAthlete)) {
+    _planAthlete = localStorage.getItem('dp_plan_athlete');
+    if (!_planAthlete || !codes.includes(_planAthlete)) _planAthlete = codes[0] || null;
+  }
+  document.getElementById('plan-ath-chips').innerHTML = codes.map(c =>
+    `<button class="plan-chip${c === _planAthlete ? ' active' : ''}" onclick="setPlanAthlete('${esc(c)}')">${esc(c)}</button>`
+  ).join('');
+  if (_planLibOpen) renderPlanLibrary(); else renderPlanGrid();
+}
+function setPlanAthlete(code) {
+  _planAthlete = code;
+  try { localStorage.setItem('dp_plan_athlete', code); } catch {}
+  renderPlanning();
+}
+function planWeekNav(d)  { _planWeekOffset += d; renderPlanGrid(); }
+function planWeekReset() { _planWeekOffset = 0; renderPlanGrid(); }
+
+function _planRowsForWeek(code, ws) {
+  const wsISO = _isoDate(ws);
+  const we = new Date(ws); we.setDate(we.getDate() + 6);
+  const weISO = _isoDate(we);
+  return _planRowsSB.filter(r => r.athlete_code === code && r.planned_date && r.planned_date >= wsISO && r.planned_date <= weISO);
+}
+
+function renderPlanGrid() {
+  document.getElementById('plan-lib').style.display = 'none';
+  const grid = document.getElementById('plan-grid');
+  grid.style.display = '';
+  document.getElementById('plan-lib-btn').textContent = 'Library';
+  const ws = _planWeekStart();
+  const we = new Date(ws); we.setDate(we.getDate() + 6);
+  const fmt = d => d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
+  document.getElementById('plan-week-label').textContent =
+    _planWeekOffset === 0 ? 'This Week' : fmt(ws) + ' – ' + fmt(we);
+
+  const rows = _planAthlete ? _planRowsForWeek(_planAthlete, ws) : [];
+  const wkLabel = rows.map(r => r.week_label).find(Boolean) || '';
+  const totalKm = rows.reduce((s, r) => s + (parseFloat(r.distance_km) || 0), 0);
+  document.getElementById('plan-week-meta').textContent =
+    `${esc(_planAthlete || '—')} · ${fmt(ws)} – ${fmt(we)}${wkLabel ? ' · ' + wkLabel : ''} · ${rows.length} session${rows.length === 1 ? '' : 's'}${totalKm ? ' · ' + (Math.round(totalKm * 10) / 10) + ' km planned' : ''}`;
+
+  const todayISO = _isoDate(new Date());
+  let html = '';
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(ws); d.setDate(d.getDate() + i);
+    const iso = _isoDate(d);
+    const day = rows.filter(r => r.planned_date === iso);
+    html += `<div class="plan-day${iso === todayISO ? ' today' : ''}">
+      <div class="plan-day-head"><span>${PLAN_DAYS[i]}</span><span>${fmt(d)}</span></div>`;
+    if (!day.length) html += `<div class="plan-empty">—</div>`;
+    day.forEach(r => {
+      const col = PLAN_TYPE_COLORS[r.session_type] || 'var(--dim)';
+      const meta = [];
+      if (r.run_details) meta.push(esc(r.run_details));
+      if (r.distance_km != null) meta.push(esc(String(r.distance_km)) + 'km');
+      if (r.target_pace) meta.push(esc(r.target_pace));
+      html += `<div class="plan-card" style="border-left-color:${col}" onclick="openPlanSession('${r.id}')">
+        <div class="plan-card-title">${esc(r.title || 'Session')}</div>
+        ${r.session_type ? `<div class="plan-card-meta" style="color:${col}">${esc(r.session_type)}</div>` : ''}
+        ${meta.length ? `<div class="plan-card-meta">${meta.join(' · ')}</div>` : ''}
+        <span class="plan-card-status ${esc(r.status || 'Planned')}">${esc(r.status || 'Planned')}</span>
+      </div>`;
+    });
+    html += `<button class="plan-add-btn" onclick="openPlanSession(null,'${iso}')">+ Add</button></div>`;
+  }
+  grid.innerHTML = html;
+}
+
+function updatePlanningBadge() {
+  const el = document.getElementById('tab-planning-count');
+  if (!el) return;
+  const saved = _planWeekOffset; _planWeekOffset = 0;
+  const ws = _planWeekStart(); _planWeekOffset = saved;
+  const wsISO = _isoDate(ws);
+  const we = new Date(ws); we.setDate(we.getDate() + 6);
+  const weISO = _isoDate(we);
+  el.textContent = _planRowsSB.filter(r => r.planned_date && r.planned_date >= wsISO && r.planned_date <= weISO).length;
+}
+
+// ── Copy week → next week ─────────────────────────────────────────────────────
+async function copyPlanWeek() {
+  if (!_planAthlete) return;
+  const ws = _planWeekStart();
+  const rows = _planRowsForWeek(_planAthlete, ws);
+  if (!rows.length) { alert('No sessions in this week to copy.'); return; }
+  if (!confirm(`Copy ${rows.length} session${rows.length === 1 ? '' : 's'} for ${_planAthlete} into next week?`)) return;
+  const sb = getSB(); if (!sb) return;
+  const clones = rows.map(r => {
+    const d = new Date(r.planned_date + 'T00:00:00'); d.setDate(d.getDate() + 7);
+    const wkNum = r.week_label && /\d+/.test(r.week_label) ? 'Week ' + (parseInt(r.week_label.match(/\d+/)[0], 10) + 1) : r.week_label;
+    return {
+      athlete_code: r.athlete_code, title: r.title, session_type: r.session_type,
+      planned_date: _isoDate(d), week_label: wkNum, status: 'Planned',
+      library_id: r.library_id, run_details: r.run_details, intensity: r.intensity,
+      distance_km: r.distance_km, target_pace: r.target_pace, warm_up: r.warm_up,
+      intervals: r.intervals, working_pace: r.working_pace, rest: r.rest,
+      cool_down: r.cool_down, notes: r.notes,
+    };
+  });
+  const { data, error } = await sb.from('planned_sessions').insert(clones).select();
+  if (error) { alert('Copy failed: ' + error.message); return; }
+  _planRowsSB = _planRowsSB.concat(data || []);
+  _planWeekOffset += 1;
+  renderPlanGrid();
+  updatePlanningBadge();
+}
+
+// ── Plan session modal ────────────────────────────────────────────────────────
+let _psEditingId = null;
+
+function openPlanSession(id, dateISO) {
+  _psEditingId = id || null;
+  const row = id ? _planRowsSB.find(r => r.id === id) : null;
+  document.getElementById('ps-title').textContent = row ? 'Edit Session' : 'Plan Session';
+  document.getElementById('ps-sub').textContent = (_planAthlete || '') + (row?.planned_date ? ' · ' + fmtDate(row.planned_date) : dateISO ? ' · ' + fmtDate(dateISO) : '');
+  document.getElementById('ps-delete').style.display = row ? '' : 'none';
+
+  // Library template select
+  const sel = document.getElementById('ps-lib');
+  sel.innerHTML = '<option value="">— pick a template —</option>' +
+    _libCache.map(l => `<option value="${l.id}">${esc(l.name)}${l.session_type ? ' · ' + esc(l.session_type) : ''}</option>`).join('');
+  sel.value = row?.library_id || '';
+
+  // Guess week label for new sessions from neighbours in the same visible week
+  let weekGuess = '';
+  if (!row && _planAthlete) {
+    weekGuess = _planRowsForWeek(_planAthlete, _planWeekStart()).map(r => r.week_label).find(Boolean) || '';
+  }
+
+  document.getElementById('ps-name').value      = row?.title || '';
+  document.getElementById('ps-type').value      = row?.session_type || '';
+  document.getElementById('ps-status').value    = row?.status || 'Planned';
+  document.getElementById('ps-date').value      = row?.planned_date || dateISO || _isoDate(_planWeekStart());
+  document.getElementById('ps-week').value      = row?.week_label || weekGuess;
+  document.getElementById('ps-details').value   = row?.run_details || '';
+  document.getElementById('ps-dist').value      = row?.distance_km != null ? row.distance_km : '';
+  document.getElementById('ps-pace').value      = row?.target_pace || '';
+  document.getElementById('ps-warmup').value    = row?.warm_up || '';
+  document.getElementById('ps-intervals').value = row?.intervals || '';
+  document.getElementById('ps-workpace').value  = row?.working_pace || '';
+  document.getElementById('ps-rest').value      = row?.rest || '';
+  document.getElementById('ps-cooldown').value  = row?.cool_down || '';
+  document.getElementById('ps-notes').value     = row?.notes || '';
+  document.getElementById('ps-overlay').classList.remove('hidden');
+  setTimeout(() => document.getElementById('ps-name').focus(), 60);
+}
+function closePlanSession() {
+  document.getElementById('ps-overlay').classList.add('hidden');
+  _psEditingId = null;
+}
+function applyLibTemplate() {
+  const lib = _libCache.find(l => l.id === document.getElementById('ps-lib').value);
+  if (!lib) return;
+  const set = (id, v) => { if (v) document.getElementById(id).value = v; };
+  set('ps-name', lib.name);
+  if (lib.session_type && [...document.getElementById('ps-type').options].some(o => o.value === lib.session_type)) {
+    document.getElementById('ps-type').value = lib.session_type;
+  }
+  set('ps-details', lib.description);
+  set('ps-pace', lib.target_pace);
+  set('ps-warmup', lib.warm_up);
+  set('ps-cooldown', lib.cool_down);
+}
+async function savePlanSession() {
+  if (!_planAthlete && !_psEditingId) { alert('Pick an athlete first.'); return; }
+  const sb = getSB(); if (!sb) return;
+  const v = id => document.getElementById(id).value.trim();
+  const dist = v('ps-dist');
+  const patch = {
+    title:        v('ps-name') || 'Session',
+    session_type: v('ps-type') || null,
+    status:       v('ps-status') || 'Planned',
+    planned_date: v('ps-date') || null,
+    week_label:   v('ps-week') || null,
+    run_details:  v('ps-details') || null,
+    library_id:   document.getElementById('ps-lib').value || null,
+    distance_km:  dist ? parseFloat(dist) || null : null,
+    target_pace:  v('ps-pace') || null,
+    warm_up:      v('ps-warmup') || null,
+    intervals:    v('ps-intervals') || null,
+    working_pace: v('ps-workpace') || null,
+    rest:         v('ps-rest') || null,
+    cool_down:    v('ps-cooldown') || null,
+    notes:        v('ps-notes') || null,
+    updated_at:   new Date().toISOString(),
+  };
+  const btn = document.getElementById('ps-save');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    if (_psEditingId) {
+      const { data, error } = await sb.from('planned_sessions').update(patch).eq('id', _psEditingId).select().single();
+      if (error) throw error;
+      const i = _planRowsSB.findIndex(r => r.id === _psEditingId);
+      if (i >= 0) _planRowsSB[i] = data;
+    } else {
+      patch.athlete_code = _planAthlete;
+      const { data, error } = await sb.from('planned_sessions').insert(patch).select().single();
+      if (error) throw error;
+      _planRowsSB.push(data);
+    }
+    closePlanSession();
+    renderPlanGrid();
+    updatePlanningBadge();
+  } catch(e) {
+    alert('Save failed: ' + (e.message || e));
+  } finally {
+    btn.disabled = false; btn.textContent = 'Save Session';
+  }
+}
+async function deletePlanSession() {
+  if (!_psEditingId) return;
+  if (!confirm('Delete this planned session?')) return;
+  const sb = getSB(); if (!sb) return;
+  const { error } = await sb.from('planned_sessions').delete().eq('id', _psEditingId);
+  if (error) { alert('Delete failed: ' + error.message); return; }
+  _planRowsSB = _planRowsSB.filter(r => r.id !== _psEditingId);
+  closePlanSession();
+  renderPlanGrid();
+  updatePlanningBadge();
+}
+
+// ── Session library view ──────────────────────────────────────────────────────
+let _plEditingId = null;
+
+function togglePlanLibrary() {
+  _planLibOpen = !_planLibOpen;
+  if (_planLibOpen) renderPlanLibrary(); else renderPlanGrid();
+}
+function renderPlanLibrary() {
+  document.getElementById('plan-grid').style.display = 'none';
+  document.getElementById('plan-week-meta').textContent = `${_libCache.length} reusable session templates`;
+  const wrap = document.getElementById('plan-lib');
+  wrap.style.display = '';
+  document.getElementById('plan-lib-btn').textContent = '← Planner';
+  wrap.innerHTML = `
+    <div class="plan-lib-head">
+      <div class="plan-lib-title">Session Library</div>
+      <button class="plan-action-btn" onclick="openLibEditor(null)">+ Template</button>
+    </div>
+    <div class="plan-lib-grid">` +
+    _libCache.map(l => {
+      const meta = [l.session_type, l.distance, l.target_pace, l.intensity].filter(Boolean).map(esc).join(' · ');
+      return `<div class="plan-lib-card" onclick="openLibEditor('${l.id}')">
+        <div class="plan-lib-name">${esc(l.name)}</div>
+        ${meta ? `<div class="plan-lib-meta">${meta}</div>` : ''}
+        ${l.description ? `<div class="plan-lib-meta">${esc(l.description.length > 110 ? l.description.slice(0, 110) + '…' : l.description)}</div>` : ''}
+      </div>`;
+    }).join('') + `</div>`;
+}
+function openLibEditor(id) {
+  _plEditingId = id || null;
+  const l = id ? _libCache.find(x => x.id === id) : null;
+  document.getElementById('pl-title').textContent = l ? 'Edit Template' : 'New Template';
+  document.getElementById('pl-archive').style.display = l ? '' : 'none';
+  document.getElementById('pl-name').value        = l?.name || '';
+  document.getElementById('pl-type').value        = l?.session_type || '';
+  document.getElementById('pl-intensity').value   = l?.intensity || '';
+  document.getElementById('pl-distance').value    = l?.distance || '';
+  document.getElementById('pl-duration').value    = l?.duration || '';
+  document.getElementById('pl-pace').value        = l?.target_pace || '';
+  document.getElementById('pl-rpe').value         = l?.rpe || '';
+  document.getElementById('pl-warmup').value      = l?.warm_up || '';
+  document.getElementById('pl-cooldown').value    = l?.cool_down || '';
+  document.getElementById('pl-goal').value        = l?.goal || '';
+  document.getElementById('pl-description').value = l?.description || '';
+  document.getElementById('pl-overlay').classList.remove('hidden');
+  setTimeout(() => document.getElementById('pl-name').focus(), 60);
+}
+function closeLibEditor() {
+  document.getElementById('pl-overlay').classList.add('hidden');
+  _plEditingId = null;
+}
+async function saveLibSession() {
+  const sb = getSB(); if (!sb) return;
+  const v = id => document.getElementById(id).value.trim();
+  if (!v('pl-name')) { alert('Template needs a name.'); return; }
+  const patch = {
+    name: v('pl-name'), session_type: v('pl-type') || null, intensity: v('pl-intensity') || null,
+    distance: v('pl-distance') || null, duration: v('pl-duration') || null,
+    target_pace: v('pl-pace') || null, rpe: v('pl-rpe') || null,
+    warm_up: v('pl-warmup') || null, cool_down: v('pl-cooldown') || null,
+    goal: v('pl-goal') || null, description: v('pl-description') || null,
+    updated_at: new Date().toISOString(),
+  };
+  try {
+    if (_plEditingId) {
+      const { data, error } = await sb.from('session_library').update(patch).eq('id', _plEditingId).select().single();
+      if (error) throw error;
+      const i = _libCache.findIndex(x => x.id === _plEditingId);
+      if (i >= 0) _libCache[i] = data;
+    } else {
+      const { data, error } = await sb.from('session_library').insert(patch).select().single();
+      if (error) throw error;
+      _libCache.push(data);
+      _libCache.sort((a, b) => a.name.localeCompare(b.name));
+    }
+    closeLibEditor();
+    renderPlanLibrary();
+  } catch(e) { alert('Save failed: ' + (e.message || e)); }
+}
+async function archiveLibSession() {
+  if (!_plEditingId) return;
+  if (!confirm('Archive this template? It stays linked to past sessions but is hidden from pickers.')) return;
+  const sb = getSB(); if (!sb) return;
+  const { error } = await sb.from('session_library').update({ archived: true, updated_at: new Date().toISOString() }).eq('id', _plEditingId);
+  if (error) { alert('Archive failed: ' + error.message); return; }
+  _libCache = _libCache.filter(x => x.id !== _plEditingId);
+  closeLibEditor();
+  renderPlanLibrary();
 }
 
 // ── Plan override modal state ─────────────────────────────────────────────────
@@ -5333,7 +5968,8 @@ async function decideApplication(notionId, name, decision) {
 // ── Tab switching ─────────────────────────────────────────────────────────────
 function switchTab(tab) {
   const idMap = { applications: 'apps', notifications: 'notif' };
-  const tabs = ['athletes','coaches','sync','applications','notifications'];
+  const tabs = ['athletes','planning','coaches','sync','applications','notifications'];
+  if (tab === 'planning') renderPlanning();
   tabs.forEach(t => {
     const key = idMap[t] || t;
     const btn     = document.getElementById(`tab-${key}-btn`);
@@ -5390,11 +6026,11 @@ async function load({ bust = false } = {}) {
   document.getElementById('refresh-btn').disabled = true;
 
   try {
-    const [weekly, sessions, body, nutrition, athleteDb, targets, planning, applications, , , decisionsRes] = await Promise.all([
+    const [weekly, sessions, body, nutrition, athleteDb, targets, planning, applications, , libRows, decisionsRes] = await Promise.all([
       fetchDB(DB.weekly, bust), fetchDB(DB.sessions, bust), fetchDB(DB.body, bust),
       fetchDB(DB.nutrition, bust), fetchDB(DB.athletes, bust), fetchDB(DB.targets, bust),
-      fetchDB(DB.planning, bust), fetchDB(DB.applications, bust),
-      loadAllOverrides(), loadSessionLogs(),
+      fetchPlanningSB(), fetchDB(DB.applications, bust),
+      loadSessionLogs(), loadSessionLibrary(),
       getSB().from('application_decisions').select('notion_id,decision,decided_by,decided_at'),
     ]);
 
@@ -5415,6 +6051,9 @@ async function load({ bust = false } = {}) {
     render({ athletes, coaches, applications, dataHealth, syncAudit });
     renderNotifications(applications, _decisions);
     renderApplications(applications, _decisions);
+    updatePlanningBadge();
+    const planTab = document.getElementById('tab-planning-content');
+    if (planTab && planTab.style.display !== 'none') renderPlanning();
 
     document.getElementById('loading').style.display = 'none';
     document.getElementById('content').style.display = 'block';
