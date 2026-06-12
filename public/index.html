@@ -74,6 +74,7 @@ header{background:#0a0a0a;padding:0 18px;height:62px;display:flex;align-items:ce
 .search-input:focus{border-color:rgba(255,255,255,.28);box-shadow:0 0 0 2px rgba(245,158,11,.08)}
 .search-input::placeholder{color:var(--dim)}
 .sf-group{display:flex;gap:4px;align-items:center}
+.sf-count{font-size:8px;opacity:.6;margin-left:1px}
 .sf{background:transparent;border:1px solid var(--border-mid);border-radius:20px;padding:4px 12px;font-family:var(--mono);font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;cursor:pointer;color:var(--muted);transition:all .15s}
 .sf:hover{border-color:rgba(0,0,0,.25);color:var(--text)}
 .sf.active{background:rgba(255,255,255,.9);border-color:rgba(255,255,255,.9);color:#0d0d0d}
@@ -229,6 +230,7 @@ body[data-theme="light"] .twkbadge{color:#1a1a1a}
 body[data-theme="light"] .dash-trow:hover{background:rgba(0,0,0,.03)}
 /* table column headers — --header variable undefined, so thead is transparent in light mode */
 body[data-theme="light"] .dash-table thead tr{background:#1a1a1a}
+@media(max-width:600px){body[data-theme="light"] .dash-table th:first-child{background:#1a1a1a}}
 /* table status/flag/session colors */
 body[data-theme="light"] .tstatus.red{color:#991b1b}
 body[data-theme="light"] .tstatus.amber{color:#92400e}
@@ -384,7 +386,11 @@ body[data-theme="pride"] .dash-week-nav{border:2px solid transparent;border-imag
 .dash-table-wrap{width:100%;overflow-x:auto}
 .dash-table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:13px;table-layout:fixed}
 .dash-table thead tr{background:var(--header);border-bottom:2px solid #0a0a0a}
-.dash-table th{padding:9px 10px;font-size:8px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.35);text-align:left;white-space:nowrap;overflow:hidden}
+.dash-table th{padding:9px 10px;font-size:8px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.35);text-align:left;white-space:nowrap;overflow:hidden;cursor:pointer;user-select:none}
+.dash-table th:hover{color:rgba(255,255,255,.75)}
+.dash-table th .th-sort{font-size:8px;margin-left:2px;opacity:.5}
+.dash-table th.th-sorted{color:var(--run)}
+.dash-table th.th-sorted .th-sort{opacity:1}
 .dash-table th:not(:first-child){text-align:right}
 .dash-trow{border-bottom:1px solid var(--border);cursor:pointer;transition:background .1s}
 .dash-trow:hover{background:rgba(255,255,255,.03)}
@@ -996,6 +1002,10 @@ body[data-theme="pride"] .texp-name{background:linear-gradient(90deg,#FF8C00,#FF
 .plan-chip{font-family:var(--mono);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:5px 12px;border-radius:6px;border:1px solid var(--border-mid);background:var(--surface);color:var(--muted);cursor:pointer;transition:all .15s}
 .plan-chip:hover{color:var(--text);border-color:rgba(245,158,11,.4)}
 .plan-chip.active{background:rgba(245,158,11,.12);border-color:rgba(245,158,11,.55);color:#fbbf24}
+.plan-chip.coach{border-style:dashed}
+.plan-chip.coach::before{content:'C';font-size:7px;margin-right:5px;padding:1px 4px;border-radius:3px;background:rgba(245,158,11,.15);color:var(--amber-dim);border:1px solid rgba(245,158,11,.3)}
+body[data-theme="light"] .plan-chip.coach::before{color:#92400e}
+.chip-divider{font-family:var(--mono);font-size:7px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);align-self:center;border-left:1px solid var(--border-mid);padding-left:10px;margin-left:6px}
 .plan-toolbar-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .plan-action-btn{font-family:var(--mono);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:6px 12px;border-radius:6px;border:1px solid rgba(245,158,11,.4);background:rgba(245,158,11,.08);color:#fbbf24;cursor:pointer;transition:all .15s}
 .plan-action-btn:hover{background:rgba(245,158,11,.18)}
@@ -1209,6 +1219,10 @@ body[data-theme="pride"] .texp-name{background:linear-gradient(90deg,#FF8C00,#FF
   .tab-bar{top:54px}
   .filter-bar{top:86px}
   .grid{grid-template-columns:1fr}
+  .dash-table{min-width:920px}
+  .dash-table th:first-child,.dash-trow td:first-child{position:sticky;left:0;z-index:2;background:var(--bg)}
+  .dash-trow.trow-red td:first-child{box-shadow:inset 3px 0 0 rgba(220,38,38,.6)}
+  .dash-trow.trow-amber td:first-child{box-shadow:inset 3px 0 0 rgba(245,158,11,.5)}
   .command-center{grid-template-columns:1fr}
   .cc-hero{flex-direction:column}
   .cc-score{grid-template-columns:repeat(3,1fr);width:100%}
@@ -1532,13 +1546,14 @@ body[data-theme="light"] .strava-weekly-strip{background:#fff}
   <div class="filter-divider"></div>
   <span class="filter-label">Status:</span>
   <div class="sf-group">
-    <button class="sf active" data-status="all" onclick="setStatusFilter(this,'all')">All</button>
-    <button class="sf sf-red" data-status="red" onclick="setStatusFilter(this,'red')">⚠ Alert</button>
-    <button class="sf sf-amber" data-status="amber" onclick="setStatusFilter(this,'amber')">Watch</button>
-    <button class="sf sf-green" data-status="green" onclick="setStatusFilter(this,'green')">On Track</button>
+    <button class="sf active" data-status="all" onclick="setStatusFilter(this,'all')">All <span class="sf-count"></span></button>
+    <button class="sf sf-red" data-status="red" onclick="setStatusFilter(this,'red')">⚠ Alert <span class="sf-count"></span></button>
+    <button class="sf sf-amber" data-status="amber" onclick="setStatusFilter(this,'amber')">Watch <span class="sf-count"></span></button>
+    <button class="sf sf-green" data-status="green" onclick="setStatusFilter(this,'green')">On Track <span class="sf-count"></span></button>
+    <button class="sf" data-status="nodata" onclick="setStatusFilter(this,'nodata')">No Data <span class="sf-count"></span></button>
   </div>
   <div class="filter-divider"></div>
-  <select class="sort-select" id="sort-select" onchange="applyFilters()">
+  <select class="sort-select" id="sort-select" onchange="_tableSort=null;applyFilters()">
     <option value="recent" selected>Sort: Recently Active</option>
     <option value="alert">Sort: Needs Attention</option>
     <option value="name">Sort: Name A–Z</option>
@@ -2217,11 +2232,9 @@ function renderNutritionTab() {
   const codes = _nutAthleteCodes();
   if (!_nutAthlete || !codes.includes(_nutAthlete)) {
     _nutAthlete = localStorage.getItem('dp_nut_athlete');
-    if (!_nutAthlete || !codes.includes(_nutAthlete)) _nutAthlete = codes[0] || null;
+    if (!_nutAthlete || !codes.includes(_nutAthlete)) _nutAthlete = codes.filter(c => !COACHES.has(c))[0] || codes[0] || null;
   }
-  document.getElementById('nut-ath-chips').innerHTML = codes.map(c =>
-    `<button class="plan-chip${c === _nutAthlete ? ' active' : ''}" onclick="setNutAthlete('${esc(c)}')">${esc(c)}</button>`
-  ).join('');
+  document.getElementById('nut-ath-chips').innerHTML = buildAthChipsHTML(codes, _nutAthlete, 'setNutAthlete');
   const pwEl = document.getElementById('nut-prog-weeks');
   if (pwEl) pwEl.value = _nutAthlete ? getProgWeeks(_nutAthlete) : DEFAULT_PROG_WEEKS;
   renderNutTable();
@@ -2326,15 +2339,23 @@ function addNutWeek() {
   renderNutTable();
 }
 
+// Athlete chips first, then a divider and coach chips (KARL/ALEX) — coaches are
+// selectable for their own plans but visually separated from the athlete roster.
+function buildAthChipsHTML(codes, active, handlerName) {
+  const ath = codes.filter(c => !COACHES.has(c));
+  const co  = codes.filter(c => COACHES.has(c));
+  const chip = c => `<button class="plan-chip${COACHES.has(c) ? ' coach' : ''}${c === active ? ' active' : ''}" onclick="${handlerName}('${esc(c)}')">${esc(c)}</button>`;
+  return ath.map(chip).join('')
+    + (co.length ? `<span class="chip-divider">Coaches</span>` + co.map(chip).join('') : '');
+}
+
 function renderPlanning() {
   const codes = _planAthleteCodes();
   if (!_planAthlete || !codes.includes(_planAthlete)) {
     _planAthlete = localStorage.getItem('dp_plan_athlete');
-    if (!_planAthlete || !codes.includes(_planAthlete)) _planAthlete = codes[0] || null;
+    if (!_planAthlete || !codes.includes(_planAthlete)) _planAthlete = codes.filter(c => !COACHES.has(c))[0] || codes[0] || null;
   }
-  document.getElementById('plan-ath-chips').innerHTML = codes.map(c =>
-    `<button class="plan-chip${c === _planAthlete ? ' active' : ''}" onclick="setPlanAthlete('${esc(c)}')">${esc(c)}</button>`
-  ).join('');
+  document.getElementById('plan-ath-chips').innerHTML = buildAthChipsHTML(codes, _planAthlete, 'setPlanAthlete');
   if (_planLibOpen) renderPlanLibrary(); else renderPlanGrid();
 }
 function setPlanAthlete(code) {
@@ -3920,7 +3941,11 @@ let _allApplications = [];
 let _decisions = [];
 let _dataHealth = null;
 let _syncAudit = [];
-let _statusFilter = 'all';
+let _statusFilter = localStorage.getItem('dp_dash_status') || 'all';
+let _tableSort = null;          // { key, dir } — set by clicking a table header; overrides dropdown sort in table view
+let _expandedRows = new Set();  // safeIds of expanded table rows (survives re-renders)
+
+function _isNoData(a) { return !a.weekly && !(a.body?.length); }
 let _dashboardWeekOffset = 0;
 
 function render({ athletes, coaches, applications = [], dataHealth = null, syncAudit = [] }) {
@@ -3941,7 +3966,16 @@ function render({ athletes, coaches, applications = [], dataHealth = null, syncA
 
   renderCommandCenter(athletes, applications, dataHealth);
   renderSummary(athletes);
-  renderGrid(athletes);
+
+  // Restore persisted sort dropdown + view toggle before first paint
+  const _sortSel = document.getElementById('sort-select');
+  const _savedSort = localStorage.getItem('dp_dash_sort');
+  if (_sortSel && _savedSort && [..._sortSel.options].some(o => o.value === _savedSort)) _sortSel.value = _savedSort;
+  document.getElementById('view-cards-btn')?.classList.toggle('active', _dashboardView === 'cards');
+  document.getElementById('view-table-btn')?.classList.toggle('active', _dashboardView === 'table');
+
+  renderWeekNavBar();
+  applyFilters();
   renderCoaches(coaches);
   renderSyncAudit(syncAudit);
 
@@ -4092,10 +4126,11 @@ function buildHealthCards(health, ath, apps) {
   </div>`).join('');
 }
 
-let _dashboardView = 'table';
+let _dashboardView = localStorage.getItem('dp_dash_view') || 'table';
 
 function setDashboardView(v) {
   _dashboardView = v;
+  localStorage.setItem('dp_dash_view', v);
   document.getElementById('view-cards-btn').classList.toggle('active', v === 'cards');
   document.getElementById('view-table-btn').classList.toggle('active', v === 'table');
   applyFilters();
@@ -4455,6 +4490,7 @@ function toggleTableRow(safeId) {
   const open = exp.style.display !== 'none';
   if (open) {
     exp.style.display = 'none';
+    _expandedRows.delete(safeId);
     return;
   }
   // Find athlete and render two-panel layout
@@ -4464,6 +4500,7 @@ function toggleTableRow(safeId) {
     if (cell) cell.innerHTML = buildTableExpandPanel(a);
   }
   exp.style.display = 'table-row';
+  _expandedRows.add(safeId);
 }
 
 function buildTableRow(a) {
@@ -4472,12 +4509,24 @@ function buildTableRow(a) {
   const rowCls = hR ? 'trow-red' : hY ? 'trow-amber' : '';
   const fps = a.flags.map(f => `<span class="tflag ${f.t}">${esc(f.l)}</span>`).join('');
 
-  // Recovery — number + thin proportional underline bar
+  // Previous weekly check-in (for week-on-week deltas)
+  const prevW = a.weekly
+    ? (a.weeklies || []).find(x => (x['Week Ending'] || '') < (a.weekly['Week Ending'] || ''))
+    : null;
+
+  // Recovery — number + week-on-week delta + thin proportional underline bar
   let recovHtml = '<span class="tdim">—</span>';
   if (a.recoveryScore !== null) {
     const rc = a.recoveryScore >= 7.5 ? 'good' : a.recoveryScore >= 5 ? 'mid' : 'bad';
     const pct = Math.round(a.recoveryScore / 10 * 100);
-    recovHtml = `<div class="tcell"><span class="tcell-num ${rc}">${a.recoveryScore}</span><div class="tcell-bar ${rc}" style="width:${pct}%"></div></div>`;
+    let recDelta = '';
+    const prevRec = prevW ? calcRecoveryScore(prevW) : null;
+    if (prevRec !== null && prevRec !== undefined) {
+      const d = +(a.recoveryScore - prevRec).toFixed(1);
+      if (d > 0) recDelta = `<span class="ttrend-up">↑${d}</span>`;
+      else if (d < 0) recDelta = `<span class="ttrend-dn">↓${Math.abs(d)}</span>`;
+    }
+    recovHtml = `<div class="tcell"><span class="tcell-num ${rc}">${a.recoveryScore}${recDelta}</span><div class="tcell-bar ${rc}" style="width:${pct}%"></div></div>`;
   }
 
   // Weekly KM — prefer Strava cache, fall back to session accumulation
@@ -4509,12 +4558,26 @@ function buildTableRow(a) {
     enHtml = `<span class="tcell-num ${ec}">${a.bAvg.energy}</span>`;
   }
 
-  // Sleep — from weekly check-in
+  // Sleep — from weekly check-in, with week-on-week delta
   let sleepHtml = '<span class="tdim">—</span>';
   const sleepVal = parseFloat(a.weekly?.['Sleep hrs']);
   if (!isNaN(sleepVal)) {
     const sc = sleepVal >= 7.5 ? 'good' : sleepVal >= 6 ? 'mid' : 'bad';
-    sleepHtml = `<span class="tcell-num ${sc}">${sleepVal}</span>`;
+    let slpDelta = '';
+    const prevSlp = prevW ? parseFloat(prevW['Sleep hrs']) : NaN;
+    if (!isNaN(prevSlp)) {
+      const d = +(sleepVal - prevSlp).toFixed(1);
+      if (d > 0) slpDelta = `<span class="ttrend-up">↑${d}</span>`;
+      else if (d < 0) slpDelta = `<span class="ttrend-dn">↓${Math.abs(d)}</span>`;
+    }
+    sleepHtml = `<span class="tcell-num ${sc}">${sleepVal}${slpDelta}</span>`;
+  }
+
+  // Compliance — % of due sessions completed this week
+  let compHtml = '<span class="tdim">—</span>';
+  if (a.compliance !== null && a.compliance !== undefined) {
+    const cc = a.compliance >= 80 ? 'good' : a.compliance >= 60 ? 'mid' : 'bad';
+    compHtml = `<div class="tcell"><span class="tcell-num ${cc}">${a.compliance}%</span><div class="tcell-bar ${cc}" style="width:${a.compliance}%"></div></div>`;
   }
 
   // Stress — from weekly check-in (inverted: high = bad)
@@ -4535,11 +4598,12 @@ function buildTableRow(a) {
   const runHtml = `<span class="tcell-num run">${a.currRunS.length}</span>`;
   const strHtml = `<span class="tcell-num" style="color:var(--str)">${a.currStrS.length}</span>`;
 
-  // Status
+  // Status — truncated text, full action list in tooltip
+  const fullActions = [...(a.actions?.critical || []), ...(a.actions?.watch || [])].join(' • ');
   let statusHtml = '<span class="tstatus ok">On track</span>';
   if (!a.weekly && !a.body?.length) statusHtml = '<span class="tstatus dim">No data</span>';
-  else if (hR && a.actions?.critical?.length) statusHtml = `<span class="tstatus red">${esc(a.actions.critical[0].slice(0,32))}</span>`;
-  else if (hY && a.actions?.watch?.length) statusHtml = `<span class="tstatus amber">${esc(a.actions.watch[0].slice(0,32))}</span>`;
+  else if (hR && a.actions?.critical?.length) statusHtml = `<span class="tstatus red" title="${esc(fullActions)}">${esc(a.actions.critical[0].slice(0,32))}</span>`;
+  else if (hY && a.actions?.watch?.length) statusHtml = `<span class="tstatus amber" title="${esc(fullActions)}">${esc(a.actions.watch[0].slice(0,32))}</span>`;
 
   const metaStr = a.weekNum !== null ? `Wk ${a.weekNum} · ` : '';
   const checkinStr = a.hasCurrentCheckin ? 'Checked in' : a.isStale ? 'No check-in' : a.weekly ? 'Last week' : 'No data';
@@ -4550,6 +4614,7 @@ function buildTableRow(a) {
     <td>${a.weekNum !== null ? `<span class="twkbadge">${a.weekNum}</span>` : '<span class="tdim">—</span>'}</td>
     <td>${recovHtml}</td>
     <td ${kmTdAttr}>${kmHtml}</td>
+    <td>${compHtml}</td>
     <td>${wtHtml}</td>
     <td>${enHtml}</td>
     <td>${sleepHtml}</td>
@@ -4560,30 +4625,74 @@ function buildTableRow(a) {
     <td>${statusHtml}</td>
   </tr>
   <tr class="trow-expand" id="texp-${safeId}" style="display:none">
-    <td colspan="12" style="padding:0"></td>
+    <td colspan="13" style="padding:0"></td>
   </tr>`;
 }
+
+const TABLE_SORT_GETTERS = {
+  name:       a => a.id,
+  wk:         a => a.weekNum ?? -1,
+  recovery:   a => a.recoveryScore ?? -1,
+  km:         a => { const s = typeof _stravaKmCache !== 'undefined' ? _stravaKmCache[a.id] : null; return s?.weeklyKm != null ? s.weeklyKm : (a.currRunKm || 0); },
+  compliance: a => a.compliance ?? -1,
+  weight:     a => parseFloat(a.bAvg?.wt) || -1,
+  energy:     a => a.bAvg?.energy ?? -1,
+  sleep:      a => parseFloat(a.weekly?.['Sleep hrs']) || -1,
+  stress:     a => parseInt(a.weekly?.['Stress']) || -1,
+  calories:   a => a.nAvg?.cal ?? -1,
+  run:        a => a.currRunS.length,
+  str:        a => a.currStrS.length,
+  status:     a => a.actions?.severity === 'red' ? 0 : a.actions?.severity === 'amber' ? 1 : _isNoData(a) ? 3 : 2,
+};
+
+function setTableSort(key) {
+  if (_tableSort?.key === key) {
+    _tableSort.dir = -_tableSort.dir;
+  } else {
+    // Names/status default ascending; metrics default descending (worst-case: see who's highest first)
+    _tableSort = { key, dir: (key === 'name' || key === 'status') ? 1 : -1 };
+  }
+  applyFilters();
+}
+
+const TABLE_COLS = [
+  ['name', 'Athlete'], ['wk', 'Wk'], ['recovery', 'Recovery'], ['km', 'Weekly KM'],
+  ['compliance', 'Comp'], ['weight', 'Weight'], ['energy', 'Energy'], ['sleep', 'Sleep'],
+  ['stress', 'Stress'], ['calories', 'Calories'], ['run', 'Run'], ['str', 'Str'], ['status', 'Status'],
+];
 
 function renderTableView(ath) {
   const sorted = ath;
   const grid = document.getElementById('grid');
   grid.classList.add('table-mode');
+  const ths = TABLE_COLS.map(([k, label]) => {
+    const isSorted = _tableSort?.key === k;
+    const ind = isSorted ? (_tableSort.dir > 0 ? '▲' : '▼') : '↕';
+    return `<th class="${isSorted ? 'th-sorted' : ''}" onclick="setTableSort('${k}')" title="Sort by ${label}">${label}<span class="th-sort">${ind}</span></th>`;
+  }).join('');
   grid.innerHTML = `<div class="dash-table-wrap">
     <table class="dash-table">
       <colgroup>
-        <col style="width:200px"><col style="width:46px"><col style="width:118px">
-        <col style="width:118px"><col style="width:88px"><col style="width:72px">
-        <col style="width:72px"><col style="width:68px"><col style="width:95px">
-        <col style="width:52px"><col style="width:52px"><col style="width:auto">
+        <col style="width:200px"><col style="width:46px"><col style="width:112px">
+        <col style="width:112px"><col style="width:86px"><col style="width:80px">
+        <col style="width:66px"><col style="width:66px"><col style="width:62px">
+        <col style="width:90px"><col style="width:48px"><col style="width:48px"><col style="width:auto">
       </colgroup>
-      <thead><tr>
-        <th>Athlete</th><th>Wk</th><th>Recovery</th><th>Weekly KM</th>
-        <th>Weight</th><th>Energy</th><th>Sleep</th><th>Stress</th><th>Calories</th>
-        <th>Run</th><th>Str</th><th>Status</th>
-      </tr></thead>
+      <thead><tr>${ths}</tr></thead>
       <tbody>${sorted.map(a => buildTableRow(a)).join('')}</tbody>
     </table>
   </div>`;
+
+  // Re-open any rows that were expanded before this re-render
+  _expandedRows.forEach(safeId => {
+    const exp = document.getElementById('texp-' + safeId);
+    if (!exp) { return; }
+    const a = _allAthletes.find(x => x.id.replace(/\W+/g, '-').toLowerCase() === safeId);
+    if (!a) return;
+    const cell = exp.querySelector('td');
+    if (cell) cell.innerHTML = buildTableExpandPanel(a);
+    exp.style.display = 'table-row';
+  });
 }
 
 function renderGrid(ath) {
@@ -6228,24 +6337,46 @@ function buildCoachCard(a) {
 // ── Filters ───────────────────────────────────────────────────────────────────
 function setStatusFilter(btn, status) {
   _statusFilter = status;
-  document.querySelectorAll('.sf').forEach(b => b.classList.remove('active'));
+  localStorage.setItem('dp_dash_status', status);
+  document.querySelectorAll('.sf[data-status]').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   applyFilters();
+}
+
+function updateFilterChips() {
+  const counts = {
+    all:    _allAthletes.length,
+    red:    _allAthletes.filter(a => a.actions?.severity === 'red').length,
+    amber:  _allAthletes.filter(a => a.actions?.severity === 'amber').length,
+    green:  _allAthletes.filter(a => !a.actions?.severity && !_isNoData(a)).length,
+    nodata: _allAthletes.filter(_isNoData).length,
+  };
+  document.querySelectorAll('.sf[data-status]').forEach(btn => {
+    const k = btn.dataset.status;
+    const c = btn.querySelector('.sf-count');
+    if (c) c.textContent = counts[k] !== undefined ? `(${counts[k]})` : '';
+    btn.classList.toggle('active', _statusFilter === k);
+  });
 }
 
 function applyFilters() {
   const query = (document.getElementById('search-input')?.value || '').toLowerCase().trim();
   const sortBy = document.getElementById('sort-select')?.value || 'alert';
+  localStorage.setItem('dp_dash_sort', sortBy);
+  updateFilterChips();
 
   let visible = _allAthletes;
 
   // Status filter — uses action severity (the unified red/amber model)
+  // "On Track" excludes athletes with no data at all; they get their own filter
   if (_statusFilter === 'red') {
     visible = visible.filter(a => a.actions?.severity === 'red');
   } else if (_statusFilter === 'amber') {
     visible = visible.filter(a => a.actions?.severity === 'amber');
   } else if (_statusFilter === 'green') {
-    visible = visible.filter(a => !a.actions?.severity);
+    visible = visible.filter(a => !a.actions?.severity && !_isNoData(a));
+  } else if (_statusFilter === 'nodata') {
+    visible = visible.filter(_isNoData);
   }
 
   // Search
@@ -6270,6 +6401,20 @@ function applyFilters() {
     });
   } else {
     visible = [...visible].sort((a, b) => b.alertScore - a.alertScore);
+  }
+
+  // Header-click sort overrides the dropdown while active (table view only)
+  if (_dashboardView === 'table' && _tableSort) {
+    const get = TABLE_SORT_GETTERS[_tableSort.key];
+    if (get) {
+      visible = [...visible].sort((a, b) => {
+        const x = get(a), y = get(b);
+        if (typeof x === 'string' || typeof y === 'string') {
+          return String(x).localeCompare(String(y)) * _tableSort.dir;
+        }
+        return (x - y) * _tableSort.dir;
+      });
+    }
   }
 
   // No-results message
