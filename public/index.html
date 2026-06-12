@@ -4059,7 +4059,11 @@ function renderCommandCenter(ath, apps = [], health = null) {
   const topActions = buildCoachActions(ath, apps);
 
   // Squad-wide stats (merged in from the old summary bar)
-  const totalKm  = ath.reduce((s, a) => s + (a.currRunKm || 0), 0);
+  // KM: prefer Strava weekly km (same source as the table), fall back to logged sessions
+  const totalKm = ath.reduce((s, a) => {
+    const skm = typeof _stravaKmCache !== 'undefined' ? _stravaKmCache[a.id]?.weeklyKm : null;
+    return s + (skm != null ? skm : (a.currRunKm || 0));
+  }, 0);
   const compList = ath.filter(a => a.compliance !== null).map(a => a.compliance);
   const avgComp  = compList.length ? Math.round(compList.reduce((x, y) => x + y, 0) / compList.length) : null;
   const c7 = dago(7);
@@ -4080,7 +4084,7 @@ function renderCommandCenter(ath, apps = [], health = null) {
           <div class="cc-score-card" onclick="ccScoreDetail('watch')" title="Show athletes"><div class="cc-score-num amber">${amber.length}</div><div class="cc-score-lbl">Watch</div></div>
           <div class="cc-score-card" onclick="ccScoreDetail('checkins')" title="Show check-in status"><div class="cc-score-num green">${coverage}%</div><div class="cc-score-lbl">Check-ins</div></div>
           <div class="cc-score-card" onclick="ccScoreDetail('prs')" title="Show PRs"><div class="cc-score-num str">${prs7}</div><div class="cc-score-lbl">PRs 7d</div></div>
-          <div class="cc-score-card" onclick="ccScoreDetail('km')" title="Show per-athlete km"><div class="cc-score-num run">${totalKm.toFixed(0)}</div><div class="cc-score-lbl">Squad KM</div></div>
+          <div class="cc-score-card" onclick="ccScoreDetail('km')" title="Show per-athlete km"><div class="cc-score-num run" id="cc-squad-km">${totalKm.toFixed(0)}</div><div class="cc-score-lbl">Squad KM</div></div>
           <div class="cc-score-card" onclick="ccScoreDetail('comp')" title="Show per-athlete compliance"><div class="cc-score-num ${avgComp === null ? '' : avgComp >= 80 ? 'green' : avgComp >= 60 ? '' : 'red'}">${avgComp === null ? '—' : avgComp + '%'}</div><div class="cc-score-lbl">Avg Comp</div></div>
         </div>
         <button class="cc-toggle" onclick="toggleCommandCenter()">${toggleLabel}</button>
@@ -7132,6 +7136,16 @@ const _stravaKmCache = {}; // athleteId → weeklyKm (number)
 
 function applyStravaKm(athleteId, weeklyKm, lastWeekKm) {
   _stravaKmCache[athleteId] = { weeklyKm, lastWeekKm };
+
+  // Live-update the Command Center squad km total as Strava data arrives
+  const ccKm = document.getElementById('cc-squad-km');
+  if (ccKm && _allAthletes.length) {
+    const tot = _allAthletes.reduce((s, x) => {
+      const k = _stravaKmCache[x.id]?.weeklyKm;
+      return s + (k != null ? k : (x.currRunKm || 0));
+    }, 0);
+    ccKm.textContent = tot.toFixed(0);
+  }
 
   // Load change indicator
   let loadHtml = '';
