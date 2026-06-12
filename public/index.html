@@ -792,6 +792,10 @@ body[data-theme="pride"] .texp-name{background:linear-gradient(90deg,#FF8C00,#FF
 .fp-nav-btn[disabled]{opacity:.2;cursor:not-allowed}
 .fp-idx{font-family:var(--mono);font-size:9px;color:rgba(255,255,255,.28);min-width:40px;text-align:center}
 .fp-hint{font-family:var(--mono);font-size:8px;color:rgba(255,255,255,.18);text-transform:uppercase;letter-spacing:.08em}
+.fpc-hero-actions{display:flex;gap:8px;margin-top:14px}
+.fpc-act-btn{background:transparent;border:1px solid rgba(255,255,255,.22);color:rgba(255,255,255,.75);border-radius:6px;padding:6px 14px;font-family:var(--mono);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;cursor:pointer;transition:all .15s}
+.fpc-act-btn:hover{color:#fff;border-color:rgba(255,255,255,.5)}
+.fpc-photo-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
 .fp-body{max-width:900px;margin:0 auto;padding:22px 18px 60px}
 
 /* ── Full-page card: clean layout ── */
@@ -1252,6 +1256,8 @@ body[data-theme="light"] .plan-chip.coach::before{color:#92400e}
   .fpc-train-pair{grid-template-columns:1fr}
   .fpc-body-nutr{grid-template-columns:1fr}
   .fpc-scores{grid-template-columns:repeat(3,1fr)}
+  .fp-hint{display:none}
+  .fpc-photo-grid{grid-template-columns:1fr}
   .wd-date{width:60px}
   .wd-row{grid-template-columns:60px 1fr}
   .wd-strava-col{display:none}
@@ -1293,7 +1299,7 @@ body[data-theme="light"] .plan-chip.coach::before{color:#92400e}
 .daily-nutr-legend .swatch{width:10px;height:10px;border-radius:2px;display:inline-block}
 .daily-nutr-grid{display:flex;gap:4px;align-items:flex-end;height:140px;padding-bottom:18px;border-bottom:1px solid var(--border);position:relative}
 .daily-nutr-tgt-line{position:absolute;left:0;right:0;border-top:1.5px dashed rgba(220,38,38,.4);pointer-events:none}
-.daily-nutr-tgt-lbl{position:absolute;right:0;font-family:var(--mono);font-size:8px;color:#991b1b;background:#fff;padding:0 4px;font-weight:700;letter-spacing:.06em;transform:translateY(-50%)}
+.daily-nutr-tgt-lbl{position:absolute;right:0;font-family:var(--mono);font-size:8px;color:var(--alert);background:var(--surface);padding:0 4px;font-weight:700;letter-spacing:.06em;transform:translateY(-50%)}
 .dnb{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;min-width:0;position:relative;height:100%;cursor:default}
 .dnb-bar{width:80%;background:linear-gradient(180deg,#86efac 0%,#15803d 100%);border-radius:3px 3px 0 0;min-height:1px;transition:opacity .15s;position:relative}
 .dnb.under .dnb-bar{background:linear-gradient(180deg,#fcd34d 0%,#d97706 100%)}
@@ -1304,7 +1310,7 @@ body[data-theme="light"] .plan-chip.coach::before{color:#92400e}
 .dnb-day.today{color:var(--text);font-weight:800}
 .dnb:hover .dnb-bar{opacity:.7}
 .dnb-tip{position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);background:#0a0a0a;color:#fff;font-family:var(--mono);font-size:9px;padding:5px 8px;border-radius:5px;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .15s;z-index:5}
-.dnb:hover .dnb-tip{opacity:1}
+.dnb:hover .dnb-tip,.dnb.show .dnb-tip{opacity:1}
 
 /* ── Trend section (sparklines large) ── */
 .trend-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-top:6px}
@@ -3960,6 +3966,7 @@ let _syncAudit = [];
 let _statusFilter = localStorage.getItem('dp_dash_status') || 'all';
 let _tableSort = null;          // { key, dir } — set by clicking a table header; overrides dropdown sort in table view
 let _expandedRows = new Set();  // safeIds of expanded table rows (survives re-renders)
+let _visibleAthletes = [];      // current filtered+sorted list — drives FP prev/next nav order
 
 function _isNoData(a) { return !a.weekly && !(a.body?.length); }
 let _dashboardWeekOffset = 0;
@@ -5451,6 +5458,10 @@ function buildFPCard(a, weekOffset = 0) {
       <div>
         <div class="fpc-name">${esc(a.id)}</div>
         <div class="fpc-meta ${a.isStale ? 'stale' : ''}">${metaText}</div>
+        <div class="fpc-hero-actions">
+          <button class="fpc-act-btn" onclick="copyDM('${esc(a.id)}')">💬 DM</button>
+          <button class="fpc-act-btn" onclick="fpPlanWeek('${esc(a.id)}')">⚏ Plan Week</button>
+        </div>
       </div>
       ${ctx.selectedWeekNum !== null ? `<div class="fpc-week-badge">
         <div class="fpc-week-num">${ctx.selectedWeekNum}</div>
@@ -5988,7 +5999,7 @@ function buildFPCard(a, weekOffset = 0) {
         if (_diff < -100) cls = 'under';
         else if (_diff > 100) cls = 'over';
         const _sign = _diff > 0 ? '+' : '';
-        return `<div class="dnb ${cls}">
+        return `<div class="dnb ${cls}" onclick="this.classList.toggle('show')">
           <div class="dnb-tip">${Math.round(p.value)} kcal · ${_sign}${Math.round(_diff)} vs target</div>
           <div class="dnb-bar" style="height:${pct.toFixed(1)}%"></div>
           <div class="dnb-day ${isToday ? 'today' : ''}">${esc(dayLbl)}</div>
@@ -6021,7 +6032,7 @@ function buildFPCard(a, weekOffset = 0) {
 
   const progressPhotosHtml = `<div class="fpc-section progress-photo-panel">
     <div class="fpc-section-title">Progress Photos</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+    <div class="fpc-photo-grid">
       <div>
         <div style="font-family:var(--mono);font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px">Primary week</div>
         <div class="progress-photo-state" data-progress-photos="${esc(a.id)}">Loading…</div>
@@ -6099,20 +6110,21 @@ function buildFPCard(a, weekOffset = 0) {
     }
   }
 
+  // Triage order: act → this week's story → detail → media/history → call prep
   return `<div>
     ${buildWeekJump(a, ctx)}
     ${hero}
     ${banner}
     ${fpActionHtml}
     ${wipHtml}
-    ${dailyNutrHtml}
-    ${progressPhotosHtml}
-    ${bodyNutrPart}
-    ${weekDetailHtml}
     ${scoresHtml}
     ${trainingHtml}
+    ${weekDetailHtml}
+    ${dailyNutrHtml}
     ${prsHtml}
     ${trendsHtml}
+    ${bodyNutrPart}
+    ${progressPhotosHtml}
     ${stravaHtml}
     ${fpPrevCheckinsHtml}
     ${callPrepHtml}
@@ -6436,6 +6448,8 @@ function applyFilters() {
     }
   }
 
+  _visibleAthletes = visible;
+
   // No-results message
   document.getElementById('no-results').style.display = visible.length === 0 ? 'block' : 'none';
 
@@ -6726,6 +6740,22 @@ function toggleCallPrep(id) {
 function saveNote(athleteId, value) {
   callNotes[athleteId] = value;
   try { localStorage.setItem('dp_call_notes', JSON.stringify(callNotes)); } catch {}
+  // Sync to Supabase so notes follow you between devices (local copy is the fallback)
+  try {
+    const sb = getSB();
+    if (sb) sb.from('athlete_data').upsert(
+      { athlete_code: athleteId, key: 'call_notes', value: value, updated_at: new Date().toISOString() },
+      { onConflict: 'athlete_code,key' }
+    ).then(() => {}, () => {});
+  } catch {}
+}
+
+async function loadCallNotes() {
+  try {
+    const sb = getSB(); if (!sb) return;
+    const { data } = await sb.from('athlete_data').select('athlete_code,value').eq('key', 'call_notes');
+    (data || []).forEach(r => { if (r.value) callNotes[r.athlete_code] = r.value; });
+  } catch {}
 }
 
 // ── Main load ─────────────────────────────────────────────────────────────────
@@ -6742,6 +6772,7 @@ async function load({ bust = false } = {}) {
       fetchPlanningSB(), fetchDB(DB.applications, bust),
       loadSessionLogs(), loadSessionLibrary(),
       getSB().from('application_decisions').select('notion_id,decision,decided_by,decided_at'),
+      loadCallNotes(),
     ]);
 
     _decisions = decisionsRes?.data || [];
@@ -6852,9 +6883,8 @@ let _fpIdx   = 0;
 let _fpWeekOffset = 0;
 
 function showFP(id) {
-  // Build nav order from whatever is currently visible in the grid
-  const cards = [...document.querySelectorAll('#grid .card:not(.hidden)')];
-  _fpOrder = cards.map(c => c.getAttribute('data-card'));
+  // Nav order = current filtered/sorted athlete list — works from both table and card view
+  _fpOrder = (_visibleAthletes.length ? _visibleAthletes : _allAthletes).map(a => a.id);
   // If the id isn't in the visible list (e.g. called from a coach card), just show it alone
   if (!_fpOrder.includes(id)) _fpOrder = [id];
   _fpIdx = Math.max(0, _fpOrder.indexOf(id));
@@ -6873,6 +6903,14 @@ function fpNav(dir) {
   _fpIdx = Math.max(0, Math.min(_fpOrder.length - 1, _fpIdx + dir));
   _fpWeekOffset = 0;
   _drawFP();
+}
+
+// Jump from the FP view straight into planning for this athlete
+function fpPlanWeek(id) {
+  hideFP();
+  _planAthlete = id;
+  try { localStorage.setItem('dp_plan_athlete', id); } catch {}
+  switchTab('planning');
 }
 
 function fpWeekNav(dir) {
