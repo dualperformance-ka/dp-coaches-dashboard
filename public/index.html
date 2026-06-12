@@ -3420,7 +3420,10 @@ function buildActionList(a) {
   const w = a.weekly;
 
   // Niggles: red flag
-  if (w) {
+  // Only derive alerts from the weekly check-in when it's actually recent —
+  // a stale submission (e.g. 2 months old) shouldn't surface its stress/niggles
+  // as if they were this week's. Stale athletes get the "No check-in" alert below.
+  if (w && (a.hasCurrentCheckin || a.hasLastWeekCheckin)) {
     const runNig = w['Run Niggles'] || '';
     const liftNig = w['Lifts Niggles'] || '';
     if (isBad(runNig) && /pain|injur|strain|physio|tear/i.test(runNig)) {
@@ -3764,7 +3767,14 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [
 
     // Flags
     const flags = [];
-    if (w) {
+    // Flags only from a recent check-in (≤8 days) — stale submissions shouldn't
+    // paint months-old niggles/stress onto today's roster.
+    const _wkFresh = (() => {
+      const we = w?.['Week Ending']; if (!we) return false;
+      const d = new Date(we);
+      return !isNaN(d) && (Date.now() - d) / 86400000 <= 8;
+    })();
+    if (w && _wkFresh) {
       const nig = ((w['Run Niggles'] || '') + ' ' + (w['Lifts Niggles'] || '')).toLowerCase();
       if (['lingering', 'niggle', 'pain', 'tight', 'strain', 'physio', 'injury'].some(k => nig.includes(k)))
         flags.push({ t: 'red', l: 'Niggle' });
@@ -4306,6 +4316,7 @@ function buildCoachActions(ath, apps) {
   const actions = [];
   const red = ath.filter(a => a.actions?.severity === 'red' && !a.acked);
   const injury = ath.filter(a => {
+    if (!(a.hasCurrentCheckin || a.hasLastWeekCheckin)) return false; // stale check-ins don't count
     const txt = `${a.weekly?.['Run Niggles'] || ''} ${a.weekly?.['Lifts Niggles'] || ''}`;
     return /pain|injur|strain|physio|tear|niggle/i.test(txt);
   });
