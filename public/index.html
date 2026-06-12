@@ -344,7 +344,12 @@ body[data-theme="pride"] .dash-week-nav{border:2px solid transparent;border-imag
 .command-center.collapsed{grid-template-columns:1fr}
 .command-center.collapsed .cc-body,.command-center.collapsed .cc-side{display:none}
 .command-center.collapsed .cc-hero{border-bottom:none}
-.cc-score-card{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.13);border-radius:7px;padding:6px 5px;text-align:center}
+.cc-score-card{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.13);border-radius:7px;padding:6px 5px;text-align:center;cursor:pointer;transition:border-color .15s}
+.cc-score-card:hover{border-color:rgba(255,255,255,.45)}
+.cc-detail{padding:8px 14px 10px;border-top:1px solid var(--border);background:var(--surface)}
+.cc-detail-head{display:flex;justify-content:space-between;align-items:center;font-family:var(--mono);font-size:8px;font-weight:800;color:var(--dim);text-transform:uppercase;letter-spacing:.12em;padding:4px 0 6px}
+.cc-detail-close{background:transparent;border:0;color:var(--dim);font-family:var(--mono);font-size:9px;cursor:pointer;text-transform:uppercase;letter-spacing:.06em;padding:0}
+.cc-detail-close:hover{color:var(--text)}
 .cc-score-num{font-size:18px;font-weight:900;line-height:1}
 .cc-score-num.red{color:#fca5a5}.cc-score-num.amber{color:#fcd34d}.cc-score-num.green{color:#86efac}
 .cc-score-lbl{font-family:var(--mono);font-size:7px;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:.1em;margin-top:3px}
@@ -361,6 +366,8 @@ body[data-theme="pride"] .dash-week-nav{border:2px solid transparent;border-imag
 .cc-chip{font-family:var(--mono);font-size:8px;text-transform:uppercase;letter-spacing:.08em;border-radius:20px;padding:3px 7px;white-space:nowrap}
 .cc-chip.red{background:var(--red-bg);color:var(--red-text);border:1px solid var(--red-border)}
 .cc-chip.amber{background:var(--amber-bg);color:var(--amber-text);border:1px solid var(--amber-border)}
+.cc-chip.green{background:rgba(34,197,94,.12);color:var(--ok);border:1px solid rgba(34,197,94,.3)}
+body[data-theme="light"] .cc-chip.green{background:rgba(21,128,61,.08);color:#15803d;border-color:rgba(21,128,61,.25)}
 .cc-empty{font-family:var(--mono);font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;padding:16px 0}
 .cc-side{display:flex;flex-direction:column}
 .cc-side-head{padding:8px 12px;border-bottom:1px solid var(--border)}
@@ -4069,22 +4076,23 @@ function renderCommandCenter(ath, apps = [], health = null) {
           <div class="cc-title">This Week's Priorities</div>
         </div>
         <div class="cc-score">
-          <div class="cc-score-card"><div class="cc-score-num red">${red.length}</div><div class="cc-score-lbl">Act</div></div>
-          <div class="cc-score-card"><div class="cc-score-num amber">${amber.length}</div><div class="cc-score-lbl">Watch</div></div>
-          <div class="cc-score-card"><div class="cc-score-num green">${coverage}%</div><div class="cc-score-lbl">Check-ins</div></div>
-          <div class="cc-score-card"><div class="cc-score-num str">${prs7}</div><div class="cc-score-lbl">PRs 7d</div></div>
-          <div class="cc-score-card"><div class="cc-score-num run">${totalKm.toFixed(0)}</div><div class="cc-score-lbl">Squad KM</div></div>
-          <div class="cc-score-card"><div class="cc-score-num ${avgComp === null ? '' : avgComp >= 80 ? 'green' : avgComp >= 60 ? '' : 'red'}">${avgComp === null ? '—' : avgComp + '%'}</div><div class="cc-score-lbl">Avg Comp</div></div>
+          <div class="cc-score-card" onclick="ccScoreDetail('act')" title="Show athletes"><div class="cc-score-num red">${red.length}</div><div class="cc-score-lbl">Act</div></div>
+          <div class="cc-score-card" onclick="ccScoreDetail('watch')" title="Show athletes"><div class="cc-score-num amber">${amber.length}</div><div class="cc-score-lbl">Watch</div></div>
+          <div class="cc-score-card" onclick="ccScoreDetail('checkins')" title="Show check-in status"><div class="cc-score-num green">${coverage}%</div><div class="cc-score-lbl">Check-ins</div></div>
+          <div class="cc-score-card" onclick="ccScoreDetail('prs')" title="Show PRs"><div class="cc-score-num str">${prs7}</div><div class="cc-score-lbl">PRs 7d</div></div>
+          <div class="cc-score-card" onclick="ccScoreDetail('km')" title="Show per-athlete km"><div class="cc-score-num run">${totalKm.toFixed(0)}</div><div class="cc-score-lbl">Squad KM</div></div>
+          <div class="cc-score-card" onclick="ccScoreDetail('comp')" title="Show per-athlete compliance"><div class="cc-score-num ${avgComp === null ? '' : avgComp >= 80 ? 'green' : avgComp >= 60 ? '' : 'red'}">${avgComp === null ? '—' : avgComp + '%'}</div><div class="cc-score-lbl">Avg Comp</div></div>
         </div>
         <button class="cc-toggle" onclick="toggleCommandCenter()">${toggleLabel}</button>
       </div>
+      <div class="cc-detail" id="cc-detail" style="display:none"></div>
       <div class="cc-body">
         <div class="cc-list">
-          <div class="cc-list-title">Highest Priority <span class="cc-list-count">${red.length + amber.length}</span></div>
+          <div class="cc-list-title">Highest Priority <span class="cc-list-count" onclick="ccScoreDetail('priority')" style="cursor:pointer" title="Show all">${red.length + amber.length}</span></div>
           ${priorityRows || `<div class="cc-empty">No priority athletes right now</div>`}
         </div>
         <div class="cc-list">
-          <div class="cc-list-title">Missing / Stale <span class="cc-list-count">${missing.length}</span></div>
+          <div class="cc-list-title">Missing / Stale <span class="cc-list-count" onclick="ccScoreDetail('checkins')" style="cursor:pointer" title="Show all">${missing.length}</span></div>
           ${missingRows || `<div class="cc-empty">Everyone has recent data</div>`}
         </div>
       </div>
@@ -4114,6 +4122,112 @@ function _ccCollapsed() {
 function toggleCommandCenter() {
   localStorage.setItem('dp_cc_collapsed', _ccCollapsed() ? '0' : '1');
   renderCommandCenter(_allAthletes, _allApplications, _dataHealth);
+}
+
+// ── Score card detail (click a hero number → athlete list) ──────────────────
+let _ccDetailKind = null;
+
+function _ccDetailContent(kind) {
+  const ath = _allAthletes;
+  const row = (id, sub, chip = '') =>
+    `<button class="cc-athlete" type="button" onclick="ccCloseDetail();showFP('${esc(id)}')">
+      <div><div class="cc-athlete-name">${esc(id)}</div><div class="cc-athlete-reason">${esc(sub)}</div></div>${chip}
+    </button>`;
+  const empty = msg => `<div class="cc-empty">${msg}</div>`;
+
+  if (kind === 'act') {
+    const list = ath.filter(a => a.actions?.severity === 'red');
+    return { title: `Action Required (${list.length})`, html: list.length
+      ? list.map(a => row(a.id, (a.actions.critical || [])[0] || 'Review this athlete', '<span class="cc-chip red">Act</span>')).join('')
+      : empty('No red-flag athletes right now') };
+  }
+  if (kind === 'priority') {
+    const reds = ath.filter(a => a.actions?.severity === 'red');
+    const ambers = ath.filter(a => a.actions?.severity === 'amber');
+    return { title: `Highest Priority (${reds.length + ambers.length})`, html: (reds.length + ambers.length)
+      ? reds.map(a => row(a.id, (a.actions.critical || [])[0] || 'Review this athlete', '<span class="cc-chip red">Act</span>')).join('')
+        + ambers.map(a => row(a.id, (a.actions.watch || [])[0] || 'Review this athlete', '<span class="cc-chip amber">Watch</span>')).join('')
+      : empty('No priority athletes right now') };
+  }
+  if (kind === 'watch') {
+    const list = ath.filter(a => a.actions?.severity === 'amber');
+    return { title: `Watch List (${list.length})`, html: list.length
+      ? list.map(a => row(a.id, (a.actions.watch || [])[0] || 'Review this athlete', '<span class="cc-chip amber">Watch</span>')).join('')
+      : empty('Nobody on the watch list') };
+  }
+  if (kind === 'checkins') {
+    const missing = ath.filter(a => !(a.hasCurrentCheckin || a.hasRecent));
+    const done = ath.filter(a => a.hasCurrentCheckin || a.hasRecent);
+    return { title: `Check-ins — ${done.length}/${ath.length} in`, html:
+      missing.map(a => row(a.id, a.weekly?.['Week Ending'] ? `Last check-in ${fmtDate(a.weekly['Week Ending'])}` : 'No check-in data', '<span class="cc-chip red">Missing</span>')).join('')
+      + done.map(a => row(a.id, a.weekly?.['Week Ending'] ? `Checked in · ${fmtDate(a.weekly['Week Ending'])}` : 'Recent daily data', '<span class="cc-chip green">✓</span>')).join('')
+      || empty('No athletes') };
+  }
+  if (kind === 'prs') {
+    const c7 = dago(7);
+    const prRows = [];
+    ath.forEach(a => (a.prs?.recent || []).forEach(pr => {
+      if (new Date(pr.date) >= c7) prRows.push({ id: a.id, pr });
+    }));
+    prRows.sort((x, y) => (y.pr.date || '').localeCompare(x.pr.date || ''));
+    return { title: `PRs — last 7 days (${prRows.length})`, html: prRows.length
+      ? prRows.map(r => row(r.id, `${r.pr.exercise} — ${r.pr.weight}kg × ${r.pr.reps} · ${fmtDate(r.pr.date)}`, '<span class="cc-chip green">PR</span>')).join('')
+      : empty('No PRs in the last 7 days') };
+  }
+  if (kind === 'km') {
+    const list = ath.map(a => ({ a, km: TABLE_SORT_GETTERS.km(a) })).filter(x => x.km > 0).sort((x, y) => y.km - x.km);
+    return { title: 'Weekly KM by athlete', html: list.length
+      ? list.map(x => {
+          const t = parseFloat(x.a.target?.['Weekly KM Target']) || 0;
+          const kmStr = Number.isInteger(x.km) ? x.km : x.km.toFixed(1);
+          return row(x.a.id, `${kmStr} km this week${t ? ` · target ${t} km` : ''}`);
+        }).join('')
+      : empty('No running logged this week') };
+  }
+  if (kind === 'comp') {
+    const list = ath.filter(a => a.compliance !== null && a.compliance !== undefined).sort((x, y) => x.compliance - y.compliance);
+    return { title: 'Compliance by athlete (worst first)', html: list.length
+      ? list.map(a => {
+          const cls = a.compliance >= 80 ? 'green' : a.compliance >= 60 ? 'amber' : 'red';
+          return row(a.id, `${a.compliance}% of due sessions completed`, `<span class="cc-chip ${cls}">${a.compliance}%</span>`);
+        }).join('')
+      : empty('No compliance data yet — no due planned sessions') };
+  }
+  return { title: '', html: empty('Nothing to show') };
+}
+
+function ccScoreDetail(kind) {
+  const { title, html } = _ccDetailContent(kind);
+
+  // Mobile: popup window
+  if (window.innerWidth <= 600) {
+    ccCloseDetail();
+    const ov = document.createElement('div');
+    ov.className = 'po-overlay';
+    ov.id = 'cc-detail-overlay';
+    ov.addEventListener('click', e => { if (e.target === ov) ccCloseDetail(); });
+    ov.innerHTML = `<div class="po-modal">
+      <div class="po-modal-head"><div class="po-modal-title">${title}</div><button class="po-close" onclick="ccCloseDetail()">✕</button></div>
+      <div class="po-modal-body" style="padding:6px 16px 14px">${html}</div>
+    </div>`;
+    document.body.appendChild(ov);
+    return;
+  }
+
+  // Desktop: inline expansion under the hero (click the same card again to close)
+  const el = document.getElementById('cc-detail');
+  if (!el) return;
+  if (_ccDetailKind === kind && el.style.display !== 'none') { ccCloseDetail(); return; }
+  _ccDetailKind = kind;
+  el.innerHTML = `<div class="cc-detail-head"><span>${title}</span><button class="cc-detail-close" onclick="ccCloseDetail()">✕ Close</button></div>${html}`;
+  el.style.display = 'block';
+}
+
+function ccCloseDetail() {
+  document.getElementById('cc-detail-overlay')?.remove();
+  const el = document.getElementById('cc-detail');
+  if (el) el.style.display = 'none';
+  _ccDetailKind = null;
 }
 
 function buildCoachActions(ath, apps) {
