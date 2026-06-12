@@ -350,6 +350,13 @@ body[data-theme="pride"] .dash-week-nav{border:2px solid transparent;border-imag
 .cc-detail-head{display:flex;justify-content:space-between;align-items:center;font-family:var(--mono);font-size:8px;font-weight:800;color:var(--dim);text-transform:uppercase;letter-spacing:.12em;padding:4px 0 6px}
 .cc-detail-close{background:transparent;border:0;color:var(--dim);font-family:var(--mono);font-size:9px;cursor:pointer;text-transform:uppercase;letter-spacing:.06em;padding:0}
 .cc-detail-close:hover{color:var(--text)}
+.cc-ack-btn{font-family:var(--mono);font-size:9px;border:1px solid var(--border-mid);border-radius:20px;padding:3px 8px;color:var(--dim);cursor:pointer;background:transparent;white-space:nowrap}
+.cc-ack-btn:hover{color:var(--ok);border-color:var(--ok)}
+.cc-acked-note{font-family:var(--mono);font-size:8px;color:var(--dim);cursor:pointer;text-transform:uppercase;letter-spacing:.05em;border:1px dashed var(--border-mid);border-radius:20px;padding:2px 7px}
+.cc-athlete.acked{opacity:.55}
+.tack{font-family:var(--mono);font-size:8px;color:var(--dim);border:1px dashed var(--border-mid);border-radius:3px;padding:1px 4px;margin-left:4px;text-transform:uppercase;letter-spacing:.05em}
+.fpc-ack-btn{font-family:var(--mono);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;background:transparent;border:1px solid currentColor;border-radius:5px;padding:4px 10px;color:inherit;cursor:pointer;opacity:.8;white-space:nowrap}
+.fpc-ack-btn:hover{opacity:1}
 .cc-score-num{font-size:18px;font-weight:900;line-height:1}
 .cc-score-num.red{color:#fca5a5}.cc-score-num.amber{color:#fcd34d}.cc-score-num.green{color:#86efac}
 .cc-score-lbl{font-family:var(--mono);font-size:7px;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:.1em;margin-top:3px}
@@ -3895,7 +3902,7 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [
 
   // Build action list AFTER each athlete is fully assembled
   // (buildActionList reads .compliance, .target, .body, etc.)
-  all.forEach(a => { a.actions = buildActionList(a); });
+  all.forEach(a => { a.actions = buildActionList(a); a.acked = _isAcked(a); });
 
   const coaches  = all.filter(a => a.isCoach);
   const athletes = all.filter(a => !a.isCoach).sort((a, b) => (b.lastActivityMs || 0) - (a.lastActivityMs || 0));
@@ -3985,8 +3992,8 @@ function render({ athletes, coaches, applications = [], dataHealth = null, syncA
   _dataHealth      = dataHealth;
   _syncAudit       = syncAudit;
 
-  // Tab badges
-  const alertCount = athletes.filter(a => a.actions?.severity === 'red').length;
+  // Tab badges (acknowledged alerts don't count)
+  const alertCount = athletes.filter(a => a.actions?.severity === 'red' && !a.acked).length;
   const badge = document.getElementById('tab-ath-count');
   badge.textContent = athletes.length;
   if (alertCount > 0) badge.classList.add('red'); else badge.classList.remove('red');
@@ -4023,8 +4030,9 @@ function renderCommandCenter(ath, apps = [], health = null) {
   const el = document.getElementById('command-center');
   if (!el) return;
 
-  const red = ath.filter(a => a.actions?.severity === 'red');
-  const amber = ath.filter(a => a.actions?.severity === 'amber');
+  const red = ath.filter(a => a.actions?.severity === 'red' && !a.acked);
+  const amber = ath.filter(a => a.actions?.severity === 'amber' && !a.acked);
+  const ackedN = ath.filter(a => a.acked).length;
   const missing = ath.filter(a => a.isStale || (!a.weekly && !a.body.length));
   const checkedIn = ath.filter(a => a.hasCurrentCheckin || a.hasRecent).length;
   const coverage = ath.length ? Math.round((checkedIn / ath.length) * 100) : 0;
@@ -4041,7 +4049,10 @@ function renderCommandCenter(ath, apps = [], health = null) {
         <div class="cc-athlete-name">${esc(a.id)}</div>
         <div class="cc-athlete-reason">${esc(reason)}</div>
       </div>
-      <span class="cc-chip ${sev}">${sev === 'red' ? 'Act' : 'Watch'}</span>
+      <span style="display:flex;align-items:center;gap:5px">
+        <span class="cc-chip ${sev}">${sev === 'red' ? 'Act' : 'Watch'}</span>
+        <span class="cc-ack-btn" onclick="event.stopPropagation();ackAlert('${esc(a.id)}')" title="Acknowledge — clear from priorities until something changes">✓</span>
+      </span>
     </button>`;
   }).join('');
 
@@ -4092,7 +4103,7 @@ function renderCommandCenter(ath, apps = [], health = null) {
       <div class="cc-detail" id="cc-detail" style="display:none"></div>
       <div class="cc-body">
         <div class="cc-list">
-          <div class="cc-list-title">Highest Priority <span class="cc-list-count" onclick="ccScoreDetail('priority')" style="cursor:pointer" title="Show all">${red.length + amber.length}</span></div>
+          <div class="cc-list-title">Highest Priority${ackedN ? ` <span class="cc-acked-note" onclick="ccScoreDetail('priority')" title="Show acknowledged">${ackedN} acked</span>` : ''} <span class="cc-list-count" onclick="ccScoreDetail('priority')" style="cursor:pointer" title="Show all">${red.length + amber.length}</span></div>
           ${priorityRows || `<div class="cc-empty">No priority athletes right now</div>`}
         </div>
         <div class="cc-list">
@@ -4138,25 +4149,37 @@ function _ccDetailContent(kind) {
       <div><div class="cc-athlete-name">${esc(id)}</div><div class="cc-athlete-reason">${esc(sub)}</div></div>${chip}
     </button>`;
   const empty = msg => `<div class="cc-empty">${msg}</div>`;
+  const ackRow = a => {
+    const rec = _acks[a.id] || {};
+    const meta = `Acknowledged${rec.at ? ' · ' + fmtDate(rec.at.slice(0, 10)) : ''}${rec.by && rec.by !== 'coach' ? ' by ' + rec.by : ''}`;
+    return `<button class="cc-athlete acked" type="button" onclick="ccCloseDetail();showFP('${esc(a.id)}')">
+      <div><div class="cc-athlete-name">${esc(a.id)}</div><div class="cc-athlete-reason">${esc(meta)}</div></div>
+      <span class="cc-ack-btn" onclick="event.stopPropagation();unackAlert('${esc(a.id)}')" title="Restore alert">↩ Restore</span>
+    </button>`;
+  };
 
   if (kind === 'act') {
-    const list = ath.filter(a => a.actions?.severity === 'red');
-    return { title: `Action Required (${list.length})`, html: list.length
-      ? list.map(a => row(a.id, (a.actions.critical || [])[0] || 'Review this athlete', '<span class="cc-chip red">Act</span>')).join('')
+    const list = ath.filter(a => a.actions?.severity === 'red' && !a.acked);
+    const acked = ath.filter(a => a.actions?.severity === 'red' && a.acked);
+    return { title: `Action Required (${list.length})`, html: (list.length || acked.length)
+      ? list.map(a => row(a.id, (a.actions.critical || [])[0] || 'Review this athlete', '<span class="cc-chip red">Act</span>')).join('') + acked.map(ackRow).join('')
       : empty('No red-flag athletes right now') };
   }
   if (kind === 'priority') {
-    const reds = ath.filter(a => a.actions?.severity === 'red');
-    const ambers = ath.filter(a => a.actions?.severity === 'amber');
-    return { title: `Highest Priority (${reds.length + ambers.length})`, html: (reds.length + ambers.length)
+    const reds = ath.filter(a => a.actions?.severity === 'red' && !a.acked);
+    const ambers = ath.filter(a => a.actions?.severity === 'amber' && !a.acked);
+    const acked = ath.filter(a => a.acked);
+    return { title: `Highest Priority (${reds.length + ambers.length})`, html: (reds.length + ambers.length + acked.length)
       ? reds.map(a => row(a.id, (a.actions.critical || [])[0] || 'Review this athlete', '<span class="cc-chip red">Act</span>')).join('')
         + ambers.map(a => row(a.id, (a.actions.watch || [])[0] || 'Review this athlete', '<span class="cc-chip amber">Watch</span>')).join('')
+        + acked.map(ackRow).join('')
       : empty('No priority athletes right now') };
   }
   if (kind === 'watch') {
-    const list = ath.filter(a => a.actions?.severity === 'amber');
-    return { title: `Watch List (${list.length})`, html: list.length
-      ? list.map(a => row(a.id, (a.actions.watch || [])[0] || 'Review this athlete', '<span class="cc-chip amber">Watch</span>')).join('')
+    const list = ath.filter(a => a.actions?.severity === 'amber' && !a.acked);
+    const acked = ath.filter(a => a.actions?.severity === 'amber' && a.acked);
+    return { title: `Watch List (${list.length})`, html: (list.length || acked.length)
+      ? list.map(a => row(a.id, (a.actions.watch || [])[0] || 'Review this athlete', '<span class="cc-chip amber">Watch</span>')).join('') + acked.map(ackRow).join('')
       : empty('Nobody on the watch list') };
   }
   if (kind === 'checkins') {
@@ -4236,7 +4259,7 @@ function ccCloseDetail() {
 
 function buildCoachActions(ath, apps) {
   const actions = [];
-  const red = ath.filter(a => a.actions?.severity === 'red');
+  const red = ath.filter(a => a.actions?.severity === 'red' && !a.acked);
   const injury = ath.filter(a => {
     const txt = `${a.weekly?.['Run Niggles'] || ''} ${a.weekly?.['Lifts Niggles'] || ''}`;
     return /pain|injur|strain|physio|tear|niggle/i.test(txt);
@@ -4748,6 +4771,8 @@ function buildTableRow(a) {
   if (!a.weekly && !a.body?.length) statusHtml = '<span class="tstatus dim">No data</span>';
   else if (hR && a.actions?.critical?.length) statusHtml = `<span class="tstatus red" title="${esc(fullActions)}">${esc(a.actions.critical[0].slice(0,32))}</span>`;
   else if (hY && a.actions?.watch?.length) statusHtml = `<span class="tstatus amber" title="${esc(fullActions)}">${esc(a.actions.watch[0].slice(0,32))}</span>`;
+
+  if (a.acked) statusHtml += ' <span class="tack" title="Alert acknowledged — returns automatically if anything changes">✓ ack</span>';
 
   const metaStr = a.weekNum !== null ? `Wk ${a.weekNum} · ` : '';
   const checkinStr = a.hasCurrentCheckin ? 'Checked in' : a.isStale ? 'No check-in' : a.weekly ? 'Last week' : 'No data';
@@ -5994,8 +6019,11 @@ function buildFPCard(a, weekOffset = 0) {
   if (a.actions && a.actions.severity) {
     const allActions = [...a.actions.critical, ...a.actions.watch];
     if (allActions.length) {
-      fpActionHtml = `<div class="fpc-section" style="padding:18px 24px;background:${a.actions.severity === 'red' ? '#fef2f2' : '#fffbeb'};border-color:${a.actions.severity === 'red' ? 'rgba(220,38,38,.25)' : 'rgba(217,119,6,.25)'}">
-        <div class="fpc-section-title" style="color:${a.actions.severity === 'red' ? '#991b1b' : '#92400e'};margin-bottom:12px">${a.actions.severity === 'red' ? '⚠ Action Required' : '⚠ Watch List'}</div>
+      fpActionHtml = `<div class="fpc-section" style="padding:18px 24px;background:${a.actions.severity === 'red' ? '#fef2f2' : '#fffbeb'};border-color:${a.actions.severity === 'red' ? 'rgba(220,38,38,.25)' : 'rgba(217,119,6,.25)'};${a.acked ? 'opacity:.65' : ''}">
+        <div class="fpc-section-title" style="color:${a.actions.severity === 'red' ? '#991b1b' : '#92400e'};margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;gap:10px">
+          <span>${a.actions.severity === 'red' ? '⚠ Action Required' : '⚠ Watch List'}${a.acked ? ' · Acknowledged' : ''}</span>
+          <button class="fpc-ack-btn" onclick="${a.acked ? 'unackAlert' : 'ackAlert'}('${esc(a.id)}')">${a.acked ? '↩ Restore' : '✓ Acknowledge'}</button>
+        </div>
         ${a.actions.critical.length ? `<div style="margin-bottom:${a.actions.watch.length ? '10px' : '0'}">
           ${a.actions.critical.map(t => `<div style="font-family:var(--mono);font-size:11px;color:#991b1b;padding:4px 0;display:flex;align-items:flex-start;gap:8px">
             <span style="color:var(--alert);font-weight:900">●</span><span>${esc(t)}</span>
@@ -6876,6 +6904,74 @@ async function loadCallNotes() {
   } catch {}
 }
 
+// ── Alert acknowledgements ────────────────────────────────────────────────────
+// Acking clears an athlete from the priority surfaces (CC counts, lists, badge).
+// The ack stores a signature of the current action list — if anything about the
+// athlete's situation changes, the signature stops matching and the alert returns.
+let _acks = {}; // athlete_code → { sig, at, by }
+
+function _ackSig(a) {
+  const s = [...(a.actions?.critical || []), ...(a.actions?.watch || [])].join('|');
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+  return String(h);
+}
+
+function _isAcked(a) {
+  const r = _acks[a.id];
+  return !!(r && a.actions?.severity && r.sig === _ackSig(a));
+}
+
+async function loadAcks() {
+  try {
+    const sb = getSB(); if (!sb) return;
+    const { data } = await sb.from('athlete_data').select('athlete_code,value').eq('key', 'ack_alert');
+    (data || []).forEach(r => {
+      if (!r.value) return;
+      try { _acks[r.athlete_code] = JSON.parse(r.value); } catch {}
+    });
+  } catch {}
+}
+
+function _ackRefresh() {
+  ccCloseDetail(); // any open detail panel/popup is stale after an ack change
+  renderCommandCenter(_allAthletes, _allApplications, _dataHealth);
+  applyFilters();
+  const fpOv = document.getElementById('fp-overlay');
+  if (fpOv && fpOv.style.display === 'block') _drawFP();
+}
+
+async function ackAlert(id) {
+  const a = _allAthletes.find(x => x.id === id);
+  if (!a || !a.actions?.severity) return;
+  const by = document.querySelector('.coach-select')?.value || 'coach';
+  const rec = { sig: _ackSig(a), at: new Date().toISOString(), by };
+  _acks[id] = rec;
+  a.acked = true;
+  _ackRefresh();
+  try {
+    const sb = getSB();
+    if (sb) await sb.from('athlete_data').upsert(
+      { athlete_code: id, key: 'ack_alert', value: JSON.stringify(rec), updated_at: new Date().toISOString() },
+      { onConflict: 'athlete_code,key' }
+    );
+  } catch {}
+}
+
+async function unackAlert(id) {
+  delete _acks[id];
+  const a = _allAthletes.find(x => x.id === id);
+  if (a) a.acked = false;
+  _ackRefresh();
+  try {
+    const sb = getSB();
+    if (sb) await sb.from('athlete_data').upsert(
+      { athlete_code: id, key: 'ack_alert', value: '', updated_at: new Date().toISOString() },
+      { onConflict: 'athlete_code,key' }
+    );
+  } catch {}
+}
+
 // ── Main load ─────────────────────────────────────────────────────────────────
 async function load({ bust = false } = {}) {
   document.getElementById('loading').style.display = 'block';
@@ -6890,7 +6986,7 @@ async function load({ bust = false } = {}) {
       fetchPlanningSB(), fetchDB(DB.applications, bust),
       loadSessionLogs(), loadSessionLibrary(),
       getSB().from('application_decisions').select('notion_id,decision,decided_by,decided_at'),
-      loadCallNotes(),
+      loadCallNotes(), loadAcks(),
     ]);
 
     _decisions = decisionsRes?.data || [];
