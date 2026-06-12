@@ -337,7 +337,13 @@ body[data-theme="pride"] .dash-week-nav{border:2px solid transparent;border-imag
 .cc-kicker{font-family:var(--mono);font-size:8px;color:rgba(255,255,255,.42);text-transform:uppercase;letter-spacing:.14em;margin-bottom:3px}
 .cc-title{font-family:var(--cond);font-size:22px;font-weight:900;line-height:1;text-transform:uppercase;letter-spacing:.04em}
 .cc-sub{display:none}
-.cc-score{display:grid;grid-template-columns:repeat(3,58px);gap:5px;flex-shrink:0}
+.cc-score{display:grid;grid-template-columns:repeat(6,56px);gap:5px;flex-shrink:0}
+.cc-score-num.run{color:var(--run)}.cc-score-num.str{color:#93c5fd}
+.cc-toggle{background:transparent;border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.7);border-radius:6px;padding:5px 10px;font-family:var(--mono);font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;cursor:pointer;white-space:nowrap;flex-shrink:0}
+.cc-toggle:hover{color:#fff;border-color:rgba(255,255,255,.45)}
+.command-center.collapsed{grid-template-columns:1fr}
+.command-center.collapsed .cc-body,.command-center.collapsed .cc-side{display:none}
+.command-center.collapsed .cc-hero{border-bottom:none}
 .cc-score-card{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.13);border-radius:7px;padding:6px 5px;text-align:center}
 .cc-score-num{font-size:18px;font-weight:900;line-height:1}
 .cc-score-num.red{color:#fca5a5}.cc-score-num.amber{color:#fcd34d}.cc-score-num.green{color:#86efac}
@@ -1216,16 +1222,26 @@ body[data-theme="light"] .plan-chip.coach::before{color:#92400e}
   .coach-select{font-size:9px;padding:4px 6px}
   .refresh-btn{font-size:0;padding:5px 8px}
   .refresh-btn::before{content:'↻';font-size:12px}
-  .tab-bar{top:54px}
+  .tab-bar{top:54px;overflow-x:auto;scrollbar-width:none}
+  .tab-bar::-webkit-scrollbar{display:none}
+  .tab-bar::after{content:'';position:sticky;right:0;flex:0 0 26px;margin-left:-26px;align-self:stretch;background:linear-gradient(90deg,rgba(10,10,10,0),#0a0a0a);pointer-events:none}
+  .tab{padding:10px 10px 9px;flex-shrink:0}
   .filter-bar{top:86px}
   .grid{grid-template-columns:1fr}
   .dash-table{min-width:920px}
   .dash-table th:first-child,.dash-trow td:first-child{position:sticky;left:0;z-index:2;background:var(--bg)}
   .dash-trow.trow-red td:first-child{box-shadow:inset 3px 0 0 rgba(220,38,38,.6)}
   .dash-trow.trow-amber td:first-child{box-shadow:inset 3px 0 0 rgba(245,158,11,.5)}
+  .trow-expand .texp-header,.trow-expand .texp-panel{position:sticky;left:0;max-width:calc(100vw - 28px)}
+  .texp-panel{grid-template-columns:1fr}
+  .texp-left{border-right:none;border-bottom:1px solid var(--border)}
+  .sync-table th:first-child,.sync-table td:first-child{position:sticky;left:0;z-index:2;background:var(--surface)}
+  .sync-table th:first-child{background:#0a0a0a;z-index:3}
+  .nut-table th:first-child,.nut-table td:first-child{position:sticky;left:0;z-index:2;background:var(--surface)}
   .command-center{grid-template-columns:1fr}
-  .cc-hero{flex-direction:column}
-  .cc-score{grid-template-columns:repeat(3,1fr);width:100%}
+  .cc-hero{flex-wrap:wrap}
+  .cc-score{grid-template-columns:repeat(3,1fr);width:100%;order:3}
+  .cc-toggle{order:2}
   .cc-body{grid-template-columns:1fr}
   .cc-list{border-right:none;border-bottom:1px solid var(--border)}
   .cc-health{grid-template-columns:1fr}
@@ -1592,7 +1608,6 @@ body[data-theme="light"] .strava-weekly-strip{background:#fff}
         <div class="sb-title">⬡ Squad Brief — AI Coaching Summary</div>
         <div class="sb-text" id="squad-brief-text"></div>
       </div>
-      <div class="summary-bar" id="sum-bar"></div>
       <div class="grid" id="grid"></div>
       <div class="no-results" id="no-results" style="display:none">
         <div class="no-results-txt">No athletes match this filter</div>
@@ -1867,6 +1882,7 @@ body[data-theme="light"] .strava-weekly-strip{background:#fff}
       </div>
       <div class="sync-score-row" id="sync-score-row"></div>
     </div>
+    <div class="cc-health" id="sync-health" style="border-radius:10px;margin-bottom:10px;grid-template-columns:repeat(4,1fr)"></div>
     <div class="sync-table-wrap">
       <table class="sync-table">
         <thead>
@@ -3965,7 +3981,10 @@ function render({ athletes, coaches, applications = [], dataHealth = null, syncA
   document.getElementById('tab-sync-count').textContent  = syncAudit.filter(r => r.severity !== 'good').length || '✓';
 
   renderCommandCenter(athletes, applications, dataHealth);
-  renderSummary(athletes);
+
+  // Data-health cards live on the Sync tab now
+  const _sh = document.getElementById('sync-health');
+  if (_sh) _sh.innerHTML = buildHealthCards(dataHealth, athletes, applications);
 
   // Restore persisted sort dropdown + view toggle before first paint
   const _sortSel = document.getElementById('sort-select');
@@ -3983,31 +4002,8 @@ function render({ athletes, coaches, applications = [], dataHealth = null, syncA
   document.getElementById('squad-brief').classList.remove('visible');
 }
 
-function renderSummary(ath) {
-  const alertN   = ath.filter(a => a.actions?.severity === 'red').length;
-  const watchN   = ath.filter(a => a.actions?.severity === 'amber').length;
-  const checkedIn = ath.filter(a => a.hasCurrentCheckin || a.hasRecent).length;
-  const totalKm  = ath.reduce((s, a) => s + (a.currRunKm || 0), 0);
-  const compList = ath.filter(a => a.compliance !== null).map(a => a.compliance);
-  const avgComp  = compList.length
-    ? Math.round(compList.reduce((a, b) => a + b, 0) / compList.length)
-    : null;
-  // PRs across the squad in last 7 days
-  const c7 = dago(7);
-  const prs7 = ath.reduce((s, a) => {
-    if (!a.prs?.recent) return s;
-    return s + a.prs.recent.filter(pr => new Date(pr.date) >= c7).length;
-  }, 0);
-
-  document.getElementById('sum-bar').innerHTML = `
-    <div class="sum-card"><div class="sum-num">${ath.length}</div><div class="sum-lbl">Athletes</div></div>
-    <div class="sum-card"><div class="sum-num ${alertN ? 'red' : 'grn'}">${alertN}</div><div class="sum-lbl">Action Required</div></div>
-    <div class="sum-card"><div class="sum-num">${watchN}</div><div class="sum-lbl">Watch List</div></div>
-    <div class="sum-card"><div class="sum-num grn">${checkedIn}</div><div class="sum-lbl">Checked In</div></div>
-    <div class="sum-card"><div class="sum-num str-c">${prs7}</div><div class="sum-lbl">PRs (7d)</div></div>
-    <div class="sum-card"><div class="sum-num run-c">${totalKm.toFixed(0)}</div><div class="sum-lbl">Squad KM (14d)</div></div>
-    ${avgComp !== null ? `<div class="sum-card"><div class="sum-num ${avgComp >= 80 ? 'grn' : avgComp >= 60 ? '' : 'red'}">${avgComp}%</div><div class="sum-lbl">Avg Compliance</div></div>` : ''}`;
-}
+// Summary bar removed — its stats (PRs 7d, Squad KM, Avg Comp) now live in the
+// Command Center hero score cards; the duplicated Act/Watch/Checked-in cards are gone.
 
 function renderCommandCenter(ath, apps = [], health = null) {
   const el = document.getElementById('command-center');
@@ -4047,21 +4043,33 @@ function renderCommandCenter(ath, apps = [], health = null) {
   }).join('');
 
   const topActions = buildCoachActions(ath, apps);
-  const healthCards = buildHealthCards(health, ath, apps);
 
-  el.innerHTML = `<div class="command-center">
+  // Squad-wide stats (merged in from the old summary bar)
+  const totalKm  = ath.reduce((s, a) => s + (a.currRunKm || 0), 0);
+  const compList = ath.filter(a => a.compliance !== null).map(a => a.compliance);
+  const avgComp  = compList.length ? Math.round(compList.reduce((x, y) => x + y, 0) / compList.length) : null;
+  const c7 = dago(7);
+  const prs7 = ath.reduce((s, a) => !a.prs?.recent ? s : s + a.prs.recent.filter(pr => new Date(pr.date) >= c7).length, 0);
+
+  const collapsed = _ccCollapsed();
+  const toggleLabel = collapsed ? `▼ ${red.length} act · ${amber.length} watch` : '▲ Collapse';
+
+  el.innerHTML = `<div class="command-center${collapsed ? ' collapsed' : ''}">
     <section class="cc-panel">
       <div class="cc-hero">
         <div>
           <div class="cc-kicker">Coaching Command Center</div>
           <div class="cc-title">This Week's Priorities</div>
-          <div class="cc-sub">Start here before opening individual cards. The roster is sorted by risk, but this panel pulls the real coaching work into one place.</div>
         </div>
         <div class="cc-score">
           <div class="cc-score-card"><div class="cc-score-num red">${red.length}</div><div class="cc-score-lbl">Act</div></div>
           <div class="cc-score-card"><div class="cc-score-num amber">${amber.length}</div><div class="cc-score-lbl">Watch</div></div>
           <div class="cc-score-card"><div class="cc-score-num green">${coverage}%</div><div class="cc-score-lbl">Check-ins</div></div>
+          <div class="cc-score-card"><div class="cc-score-num str">${prs7}</div><div class="cc-score-lbl">PRs 7d</div></div>
+          <div class="cc-score-card"><div class="cc-score-num run">${totalKm.toFixed(0)}</div><div class="cc-score-lbl">Squad KM</div></div>
+          <div class="cc-score-card"><div class="cc-score-num ${avgComp === null ? '' : avgComp >= 80 ? 'green' : avgComp >= 60 ? '' : 'red'}">${avgComp === null ? '—' : avgComp + '%'}</div><div class="cc-score-lbl">Avg Comp</div></div>
         </div>
+        <button class="cc-toggle" onclick="toggleCommandCenter()">${toggleLabel}</button>
       </div>
       <div class="cc-body">
         <div class="cc-list">
@@ -4085,9 +4093,20 @@ function renderCommandCenter(ath, apps = [], health = null) {
           <div class="cc-action-text">${esc(t)}</div>
         </div>`).join('')}
       </div>
-      <div class="cc-health">${healthCards}</div>
     </aside>
   </div>`;
+}
+
+// Collapse state: persisted; defaults to collapsed on mobile so the table is on screen one
+function _ccCollapsed() {
+  const v = localStorage.getItem('dp_cc_collapsed');
+  if (v !== null) return v === '1';
+  return window.innerWidth <= 600;
+}
+
+function toggleCommandCenter() {
+  localStorage.setItem('dp_cc_collapsed', _ccCollapsed() ? '0' : '1');
+  renderCommandCenter(_allAthletes, _allApplications, _dataHealth);
 }
 
 function buildCoachActions(ath, apps) {
