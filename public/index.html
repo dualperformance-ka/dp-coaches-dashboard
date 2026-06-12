@@ -1111,6 +1111,10 @@ body[data-theme="light"] .plan-chip.coach::before{color:#92400e}
 .po-close:hover{color:#fff}
 .po-modal-body{padding:16px}
 .po-field{margin-bottom:14px}
+.ps-mode-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px}
+.ps-mode-btn{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:16px 8px;color:rgba(255,255,255,.75);font-family:var(--cond);font-size:17px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;cursor:pointer;transition:all .15s;text-align:center}
+.ps-mode-btn:hover{border-color:rgba(255,255,255,.4);color:#fff}
+.ps-mode-btn.active{border-color:rgba(245,158,11,.6);background:rgba(245,158,11,.12);color:#fbbf24}
 .po-field:last-of-type{margin-bottom:0}
 .po-label{font-family:var(--mono);font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.45);margin-bottom:5px}
 .po-input{width:100%;background:#111;border:1px solid rgba(255,255,255,.15);border-radius:6px;color:#fff;font-family:var(--mono);font-size:12px;padding:7px 10px;box-sizing:border-box;outline:none;transition:border-color .15s}
@@ -1684,6 +1688,15 @@ body[data-theme="light"] .strava-weekly-strip{background:#fff}
       <button class="po-close" onclick="closePlanSession()">✕</button>
     </div>
     <div class="po-modal-body">
+      <div id="ps-mode-picker">
+        <div class="po-label" style="margin-bottom:8px">What kind of session?</div>
+        <div class="ps-mode-row">
+          <button type="button" class="ps-mode-btn" id="ps-mode-run" onclick="setPsMode('run')">🏃 Running</button>
+          <button type="button" class="ps-mode-btn" id="ps-mode-str" onclick="setPsMode('strength')">🏋 Strength</button>
+          <button type="button" class="ps-mode-btn" id="ps-mode-other" onclick="setPsMode('other')">✦ Other</button>
+        </div>
+      </div>
+      <div id="ps-form" style="display:none">
       <div class="po-field-row">
         <div class="po-field" id="ps-lib-field" style="position:relative">
           <div class="po-label">Run Template (optional)</div>
@@ -1703,7 +1716,7 @@ body[data-theme="light"] .strava-weekly-strip{background:#fff}
         <input class="po-input" id="ps-name" type="text" placeholder="e.g. Easy Run">
       </div>
       <div class="po-field-row">
-        <div class="po-field">
+        <div class="po-field" id="ps-type-field">
           <div class="po-label">Type</div>
           <select class="po-input" id="ps-type" onchange="updatePsVisibility()">
             <option value="">—</option>
@@ -1780,6 +1793,7 @@ body[data-theme="light"] .strava-weekly-strip{background:#fff}
       <div class="po-field">
         <div class="po-label">Notes for Athlete</div>
         <textarea class="po-input" id="ps-notes" rows="2" placeholder="Any cues, context, or motivation…" style="resize:vertical;line-height:1.5"></textarea>
+      </div>
       </div>
     </div>
     <div class="po-modal-foot">
@@ -2496,6 +2510,26 @@ async function copyPlanWeek() {
 
 // ── Plan session modal ────────────────────────────────────────────────────────
 let _psEditingId = null;
+let _psMode = null; // 'run' | 'strength' | 'other' — chosen on step 1
+const PS_RUN_TYPES   = ['Run', 'Easy Effort', 'Tempo', 'Speed', 'Long Run', 'Recovery', 'race'];
+const PS_OTHER_TYPES = ['Run + Strength', 'Rest', 'Optional', 'Weekly KM Total'];
+
+function setPsMode(mode) {
+  _psMode = mode;
+  const map = { run: 'ps-mode-run', strength: 'ps-mode-str', other: 'ps-mode-other' };
+  Object.entries(map).forEach(([m, id]) => document.getElementById(id).classList.toggle('active', m === mode));
+  document.getElementById('ps-form').style.display = '';
+  document.getElementById('ps-save').style.display = '';
+
+  // Type options narrow to the chosen mode; Strength needs no type field at all
+  const typeSel = document.getElementById('ps-type');
+  const cur = typeSel.value;
+  const opts = mode === 'run' ? PS_RUN_TYPES : mode === 'other' ? PS_OTHER_TYPES : ['Strength'];
+  typeSel.innerHTML = '<option value="">—</option>' + opts.map(t => `<option>${t}</option>`).join('');
+  typeSel.value = opts.includes(cur) ? cur : (mode === 'strength' ? 'Strength' : '');
+  document.getElementById('ps-type-field').style.display = mode === 'strength' ? 'none' : '';
+  updatePsVisibility();
+}
 
 function openPlanSession(id, dateISO) {
   _psEditingId = id || null;
@@ -2543,9 +2577,20 @@ function openPlanSession(id, dateISO) {
   document.getElementById('ps-rest').value      = row?.rest || '';
   document.getElementById('ps-cooldown').value  = row?.cool_down || '';
   document.getElementById('ps-notes').value     = row?.notes || '';
-  updatePsVisibility();
+
+  // Step 1: choose Running / Strength / Other. Editing an existing row skips
+  // straight to the form with the mode derived from its type (or matched split).
+  if (row) {
+    const t = row.session_type || '';
+    setPsMode(t === 'Strength' || (!t && matched) ? 'strength' : PS_OTHER_TYPES.includes(t) ? 'other' : 'run');
+  } else {
+    _psMode = null;
+    ['ps-mode-run', 'ps-mode-str', 'ps-mode-other'].forEach(i => document.getElementById(i).classList.remove('active'));
+    document.getElementById('ps-form').style.display = 'none';
+    document.getElementById('ps-save').style.display = 'none';
+  }
   document.getElementById('ps-overlay').classList.remove('hidden');
-  setTimeout(() => document.getElementById('ps-name').focus(), 60);
+  if (row) setTimeout(() => document.getElementById('ps-name').focus(), 60);
 }
 function closePlanSession() {
   document.getElementById('ps-overlay').classList.add('hidden');
@@ -2609,20 +2654,18 @@ function applySplitPick() {
   updatePsVisibility();
 }
 
-// Show only what's relevant to the chosen type: Strength hides the run
-// prescription and shows the split's exercises; run types do the reverse.
-// 'Run + Strength' and no-type-yet show both. Rest hides everything.
+// Show only what's relevant to the chosen mode: Running shows the run
+// prescription, Strength shows the split picker + exercise preview,
+// Other shows run fields only for 'Run + Strength' and hides details for Rest-likes.
 function updatePsVisibility() {
   const type = document.getElementById('ps-type').value;
-  const isStr    = type === 'Strength';
-  const isRunStr = type === 'Run + Strength';
-  const isRest   = type === 'Rest';
-  const showRun   = !isStr && !isRest;
-  const showSplit = isStr || isRunStr || !type;
+  const isRestLike = type === 'Rest' || type === 'Optional' || type === 'Weekly KM Total';
+  const showRun   = _psMode === 'run' || (_psMode === 'other' && type === 'Run + Strength');
+  const showSplit = _psMode === 'strength' || (_psMode === 'other' && type === 'Run + Strength');
   document.getElementById('ps-run-fields').style.display  = showRun ? '' : 'none';
   document.getElementById('ps-lib-field').style.display   = showRun ? '' : 'none';
   document.getElementById('ps-split-field').style.display = showSplit ? '' : 'none';
-  document.getElementById('ps-details-field').style.display = isRest ? 'none' : '';
+  document.getElementById('ps-details-field').style.display = isRestLike ? 'none' : '';
   renderPsExPreview();
 }
 function renderPsExPreview() {
