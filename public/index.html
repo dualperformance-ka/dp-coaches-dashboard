@@ -1276,6 +1276,8 @@ body[data-theme="light"] .plan-chip.coach::before{color:#92400e}
   .fpc-scores{grid-template-columns:repeat(3,1fr)}
   .fp-hint{display:none}
   .fpc-photo-grid{grid-template-columns:1fr}
+  .cc-ack-btn{padding:6px 11px;font-size:10px}
+  .fpc-ack-btn{padding:7px 12px}
   .wd-date{width:60px}
   .wd-row{grid-template-columns:60px 1fr}
   .wd-strava-col{display:none}
@@ -6063,7 +6065,7 @@ function buildFPCard(a, weekOffset = 0) {
     const allActions = [...a.actions.critical, ...a.actions.watch];
     if (allActions.length) {
       fpActionHtml = `<div class="fpc-section" style="padding:18px 24px;background:${a.actions.severity === 'red' ? '#fef2f2' : '#fffbeb'};border-color:${a.actions.severity === 'red' ? 'rgba(220,38,38,.25)' : 'rgba(217,119,6,.25)'};${a.acked ? 'opacity:.65' : ''}">
-        <div class="fpc-section-title" style="color:${a.actions.severity === 'red' ? '#991b1b' : '#92400e'};margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;gap:10px">
+        <div class="fpc-section-title" style="color:${a.actions.severity === 'red' ? '#991b1b' : '#92400e'};margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
           <span>${a.actions.severity === 'red' ? '⚠ Action Required' : '⚠ Watch List'}${a.acked ? ' · Acknowledged' : ''}</span>
           <button class="fpc-ack-btn" onclick="${a.acked ? 'unackAlert' : 'ackAlert'}('${esc(a.id)}')">${a.acked ? '↩ Restore' : '✓ Acknowledge'}</button>
         </div>
