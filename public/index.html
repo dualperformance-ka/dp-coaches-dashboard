@@ -344,7 +344,19 @@ body[data-theme="pride"] .dash-week-nav{border:2px solid transparent;border-imag
 .command-center.collapsed{grid-template-columns:1fr}
 .command-center.collapsed .cc-body,.command-center.collapsed .cc-side{display:none}
 .command-center.collapsed .cc-hero{border-bottom:none}
-.cc-score-card{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.13);border-radius:7px;padding:6px 5px;text-align:center}
+.cc-score-card{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.13);border-radius:7px;padding:6px 5px;text-align:center;cursor:pointer;transition:border-color .15s}
+.cc-score-card:hover{border-color:rgba(255,255,255,.45)}
+.cc-detail{padding:8px 14px 10px;border-top:1px solid var(--border);background:var(--surface)}
+.cc-detail-head{display:flex;justify-content:space-between;align-items:center;font-family:var(--mono);font-size:8px;font-weight:800;color:var(--dim);text-transform:uppercase;letter-spacing:.12em;padding:4px 0 6px}
+.cc-detail-close{background:transparent;border:0;color:var(--dim);font-family:var(--mono);font-size:9px;cursor:pointer;text-transform:uppercase;letter-spacing:.06em;padding:0}
+.cc-detail-close:hover{color:var(--text)}
+.cc-ack-btn{font-family:var(--mono);font-size:9px;border:1px solid var(--border-mid);border-radius:20px;padding:3px 8px;color:var(--dim);cursor:pointer;background:transparent;white-space:nowrap}
+.cc-ack-btn:hover{color:var(--ok);border-color:var(--ok)}
+.cc-acked-note{font-family:var(--mono);font-size:8px;color:var(--dim);cursor:pointer;text-transform:uppercase;letter-spacing:.05em;border:1px dashed var(--border-mid);border-radius:20px;padding:2px 7px}
+.cc-athlete.acked{opacity:.55}
+.tack{font-family:var(--mono);font-size:8px;color:var(--dim);border:1px dashed var(--border-mid);border-radius:3px;padding:1px 4px;margin-left:4px;text-transform:uppercase;letter-spacing:.05em}
+.fpc-ack-btn{font-family:var(--mono);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;background:transparent;border:1px solid currentColor;border-radius:5px;padding:4px 10px;color:inherit;cursor:pointer;opacity:.8;white-space:nowrap}
+.fpc-ack-btn:hover{opacity:1}
 .cc-score-num{font-size:18px;font-weight:900;line-height:1}
 .cc-score-num.red{color:#fca5a5}.cc-score-num.amber{color:#fcd34d}.cc-score-num.green{color:#86efac}
 .cc-score-lbl{font-family:var(--mono);font-size:7px;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:.1em;margin-top:3px}
@@ -361,6 +373,8 @@ body[data-theme="pride"] .dash-week-nav{border:2px solid transparent;border-imag
 .cc-chip{font-family:var(--mono);font-size:8px;text-transform:uppercase;letter-spacing:.08em;border-radius:20px;padding:3px 7px;white-space:nowrap}
 .cc-chip.red{background:var(--red-bg);color:var(--red-text);border:1px solid var(--red-border)}
 .cc-chip.amber{background:var(--amber-bg);color:var(--amber-text);border:1px solid var(--amber-border)}
+.cc-chip.green{background:rgba(34,197,94,.12);color:var(--ok);border:1px solid rgba(34,197,94,.3)}
+body[data-theme="light"] .cc-chip.green{background:rgba(21,128,61,.08);color:#15803d;border-color:rgba(21,128,61,.25)}
 .cc-empty{font-family:var(--mono);font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;padding:16px 0}
 .cc-side{display:flex;flex-direction:column}
 .cc-side-head{padding:8px 12px;border-bottom:1px solid var(--border)}
@@ -792,6 +806,10 @@ body[data-theme="pride"] .texp-name{background:linear-gradient(90deg,#FF8C00,#FF
 .fp-nav-btn[disabled]{opacity:.2;cursor:not-allowed}
 .fp-idx{font-family:var(--mono);font-size:9px;color:rgba(255,255,255,.28);min-width:40px;text-align:center}
 .fp-hint{font-family:var(--mono);font-size:8px;color:rgba(255,255,255,.18);text-transform:uppercase;letter-spacing:.08em}
+.fpc-hero-actions{display:flex;gap:8px;margin-top:14px}
+.fpc-act-btn{background:transparent;border:1px solid rgba(255,255,255,.22);color:rgba(255,255,255,.75);border-radius:6px;padding:6px 14px;font-family:var(--mono);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;cursor:pointer;transition:all .15s}
+.fpc-act-btn:hover{color:#fff;border-color:rgba(255,255,255,.5)}
+.fpc-photo-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
 .fp-body{max-width:900px;margin:0 auto;padding:22px 18px 60px}
 
 /* ── Full-page card: clean layout ── */
@@ -1093,6 +1111,10 @@ body[data-theme="light"] .plan-chip.coach::before{color:#92400e}
 .po-close:hover{color:#fff}
 .po-modal-body{padding:16px}
 .po-field{margin-bottom:14px}
+.ps-mode-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px}
+.ps-mode-btn{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:16px 8px;color:rgba(255,255,255,.75);font-family:var(--cond);font-size:17px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;cursor:pointer;transition:all .15s;text-align:center}
+.ps-mode-btn:hover{border-color:rgba(255,255,255,.4);color:#fff}
+.ps-mode-btn.active{border-color:rgba(245,158,11,.6);background:rgba(245,158,11,.12);color:#fbbf24}
 .po-field:last-of-type{margin-bottom:0}
 .po-label{font-family:var(--mono);font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.45);margin-bottom:5px}
 .po-input{width:100%;background:#111;border:1px solid rgba(255,255,255,.15);border-radius:6px;color:#fff;font-family:var(--mono);font-size:12px;padding:7px 10px;box-sizing:border-box;outline:none;transition:border-color .15s}
@@ -1252,6 +1274,10 @@ body[data-theme="light"] .plan-chip.coach::before{color:#92400e}
   .fpc-train-pair{grid-template-columns:1fr}
   .fpc-body-nutr{grid-template-columns:1fr}
   .fpc-scores{grid-template-columns:repeat(3,1fr)}
+  .fp-hint{display:none}
+  .fpc-photo-grid{grid-template-columns:1fr}
+  .cc-ack-btn{padding:6px 11px;font-size:10px}
+  .fpc-ack-btn{padding:7px 12px}
   .wd-date{width:60px}
   .wd-row{grid-template-columns:60px 1fr}
   .wd-strava-col{display:none}
@@ -1293,7 +1319,7 @@ body[data-theme="light"] .plan-chip.coach::before{color:#92400e}
 .daily-nutr-legend .swatch{width:10px;height:10px;border-radius:2px;display:inline-block}
 .daily-nutr-grid{display:flex;gap:4px;align-items:flex-end;height:140px;padding-bottom:18px;border-bottom:1px solid var(--border);position:relative}
 .daily-nutr-tgt-line{position:absolute;left:0;right:0;border-top:1.5px dashed rgba(220,38,38,.4);pointer-events:none}
-.daily-nutr-tgt-lbl{position:absolute;right:0;font-family:var(--mono);font-size:8px;color:#991b1b;background:#fff;padding:0 4px;font-weight:700;letter-spacing:.06em;transform:translateY(-50%)}
+.daily-nutr-tgt-lbl{position:absolute;right:0;font-family:var(--mono);font-size:8px;color:var(--alert);background:var(--surface);padding:0 4px;font-weight:700;letter-spacing:.06em;transform:translateY(-50%)}
 .dnb{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;min-width:0;position:relative;height:100%;cursor:default}
 .dnb-bar{width:80%;background:linear-gradient(180deg,#86efac 0%,#15803d 100%);border-radius:3px 3px 0 0;min-height:1px;transition:opacity .15s;position:relative}
 .dnb.under .dnb-bar{background:linear-gradient(180deg,#fcd34d 0%,#d97706 100%)}
@@ -1304,7 +1330,7 @@ body[data-theme="light"] .plan-chip.coach::before{color:#92400e}
 .dnb-day.today{color:var(--text);font-weight:800}
 .dnb:hover .dnb-bar{opacity:.7}
 .dnb-tip{position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);background:#0a0a0a;color:#fff;font-family:var(--mono);font-size:9px;padding:5px 8px;border-radius:5px;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .15s;z-index:5}
-.dnb:hover .dnb-tip{opacity:1}
+.dnb:hover .dnb-tip,.dnb.show .dnb-tip{opacity:1}
 
 /* ── Trend section (sparklines large) ── */
 .trend-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-top:6px}
@@ -1664,6 +1690,15 @@ body[data-theme="light"] .strava-weekly-strip{background:#fff}
       <button class="po-close" onclick="closePlanSession()">✕</button>
     </div>
     <div class="po-modal-body">
+      <div id="ps-mode-picker">
+        <div class="po-label" style="margin-bottom:8px">What kind of session?</div>
+        <div class="ps-mode-row">
+          <button type="button" class="ps-mode-btn" id="ps-mode-run" onclick="setPsMode('run')">🏃 Running</button>
+          <button type="button" class="ps-mode-btn" id="ps-mode-str" onclick="setPsMode('strength')">🏋 Strength</button>
+          <button type="button" class="ps-mode-btn" id="ps-mode-other" onclick="setPsMode('other')">✦ Other</button>
+        </div>
+      </div>
+      <div id="ps-form" style="display:none">
       <div class="po-field-row">
         <div class="po-field" id="ps-lib-field" style="position:relative">
           <div class="po-label">Run Template (optional)</div>
@@ -1683,7 +1718,7 @@ body[data-theme="light"] .strava-weekly-strip{background:#fff}
         <input class="po-input" id="ps-name" type="text" placeholder="e.g. Easy Run">
       </div>
       <div class="po-field-row">
-        <div class="po-field">
+        <div class="po-field" id="ps-type-field">
           <div class="po-label">Type</div>
           <select class="po-input" id="ps-type" onchange="updatePsVisibility()">
             <option value="">—</option>
@@ -1760,6 +1795,7 @@ body[data-theme="light"] .strava-weekly-strip{background:#fff}
       <div class="po-field">
         <div class="po-label">Notes for Athlete</div>
         <textarea class="po-input" id="ps-notes" rows="2" placeholder="Any cues, context, or motivation…" style="resize:vertical;line-height:1.5"></textarea>
+      </div>
       </div>
     </div>
     <div class="po-modal-foot">
@@ -2476,6 +2512,26 @@ async function copyPlanWeek() {
 
 // ── Plan session modal ────────────────────────────────────────────────────────
 let _psEditingId = null;
+let _psMode = null; // 'run' | 'strength' | 'other' — chosen on step 1
+const PS_RUN_TYPES   = ['Run', 'Easy Effort', 'Tempo', 'Speed', 'Long Run', 'Recovery', 'race'];
+const PS_OTHER_TYPES = ['Run + Strength', 'Rest', 'Optional', 'Weekly KM Total'];
+
+function setPsMode(mode) {
+  _psMode = mode;
+  const map = { run: 'ps-mode-run', strength: 'ps-mode-str', other: 'ps-mode-other' };
+  Object.entries(map).forEach(([m, id]) => document.getElementById(id).classList.toggle('active', m === mode));
+  document.getElementById('ps-form').style.display = '';
+  document.getElementById('ps-save').style.display = '';
+
+  // Type options narrow to the chosen mode; Strength needs no type field at all
+  const typeSel = document.getElementById('ps-type');
+  const cur = typeSel.value;
+  const opts = mode === 'run' ? PS_RUN_TYPES : mode === 'other' ? PS_OTHER_TYPES : ['Strength'];
+  typeSel.innerHTML = '<option value="">—</option>' + opts.map(t => `<option>${t}</option>`).join('');
+  typeSel.value = opts.includes(cur) ? cur : (mode === 'strength' ? 'Strength' : '');
+  document.getElementById('ps-type-field').style.display = mode === 'strength' ? 'none' : '';
+  updatePsVisibility();
+}
 
 function openPlanSession(id, dateISO) {
   _psEditingId = id || null;
@@ -2523,9 +2579,20 @@ function openPlanSession(id, dateISO) {
   document.getElementById('ps-rest').value      = row?.rest || '';
   document.getElementById('ps-cooldown').value  = row?.cool_down || '';
   document.getElementById('ps-notes').value     = row?.notes || '';
-  updatePsVisibility();
+
+  // Step 1: choose Running / Strength / Other. Editing an existing row skips
+  // straight to the form with the mode derived from its type (or matched split).
+  if (row) {
+    const t = row.session_type || '';
+    setPsMode(t === 'Strength' || (!t && matched) ? 'strength' : PS_OTHER_TYPES.includes(t) ? 'other' : 'run');
+  } else {
+    _psMode = null;
+    ['ps-mode-run', 'ps-mode-str', 'ps-mode-other'].forEach(i => document.getElementById(i).classList.remove('active'));
+    document.getElementById('ps-form').style.display = 'none';
+    document.getElementById('ps-save').style.display = 'none';
+  }
   document.getElementById('ps-overlay').classList.remove('hidden');
-  setTimeout(() => document.getElementById('ps-name').focus(), 60);
+  if (row) setTimeout(() => document.getElementById('ps-name').focus(), 60);
 }
 function closePlanSession() {
   document.getElementById('ps-overlay').classList.add('hidden');
@@ -2589,20 +2656,18 @@ function applySplitPick() {
   updatePsVisibility();
 }
 
-// Show only what's relevant to the chosen type: Strength hides the run
-// prescription and shows the split's exercises; run types do the reverse.
-// 'Run + Strength' and no-type-yet show both. Rest hides everything.
+// Show only what's relevant to the chosen mode: Running shows the run
+// prescription, Strength shows the split picker + exercise preview,
+// Other shows run fields only for 'Run + Strength' and hides details for Rest-likes.
 function updatePsVisibility() {
   const type = document.getElementById('ps-type').value;
-  const isStr    = type === 'Strength';
-  const isRunStr = type === 'Run + Strength';
-  const isRest   = type === 'Rest';
-  const showRun   = !isStr && !isRest;
-  const showSplit = isStr || isRunStr || !type;
+  const isRestLike = type === 'Rest' || type === 'Optional' || type === 'Weekly KM Total';
+  const showRun   = _psMode === 'run' || (_psMode === 'other' && type === 'Run + Strength');
+  const showSplit = _psMode === 'strength' || (_psMode === 'other' && type === 'Run + Strength');
   document.getElementById('ps-run-fields').style.display  = showRun ? '' : 'none';
   document.getElementById('ps-lib-field').style.display   = showRun ? '' : 'none';
   document.getElementById('ps-split-field').style.display = showSplit ? '' : 'none';
-  document.getElementById('ps-details-field').style.display = isRest ? 'none' : '';
+  document.getElementById('ps-details-field').style.display = isRestLike ? 'none' : '';
   renderPsExPreview();
 }
 function renderPsExPreview() {
@@ -3355,7 +3420,10 @@ function buildActionList(a) {
   const w = a.weekly;
 
   // Niggles: red flag
-  if (w) {
+  // Only derive alerts from the weekly check-in when it's actually recent —
+  // a stale submission (e.g. 2 months old) shouldn't surface its stress/niggles
+  // as if they were this week's. Stale athletes get the "No check-in" alert below.
+  if (w && (a.hasCurrentCheckin || a.hasLastWeekCheckin)) {
     const runNig = w['Run Niggles'] || '';
     const liftNig = w['Lifts Niggles'] || '';
     if (isBad(runNig) && /pain|injur|strain|physio|tear/i.test(runNig)) {
@@ -3699,7 +3767,14 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [
 
     // Flags
     const flags = [];
-    if (w) {
+    // Flags only from a recent check-in (≤8 days) — stale submissions shouldn't
+    // paint months-old niggles/stress onto today's roster.
+    const _wkFresh = (() => {
+      const we = w?.['Week Ending']; if (!we) return false;
+      const d = new Date(we);
+      return !isNaN(d) && (Date.now() - d) / 86400000 <= 8;
+    })();
+    if (w && _wkFresh) {
       const nig = ((w['Run Niggles'] || '') + ' ' + (w['Lifts Niggles'] || '')).toLowerCase();
       if (['lingering', 'niggle', 'pain', 'tight', 'strain', 'physio', 'injury'].some(k => nig.includes(k)))
         flags.push({ t: 'red', l: 'Niggle' });
@@ -3882,7 +3957,7 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [
 
   // Build action list AFTER each athlete is fully assembled
   // (buildActionList reads .compliance, .target, .body, etc.)
-  all.forEach(a => { a.actions = buildActionList(a); });
+  all.forEach(a => { a.actions = buildActionList(a); a.acked = _isAcked(a); });
 
   const coaches  = all.filter(a => a.isCoach);
   const athletes = all.filter(a => !a.isCoach).sort((a, b) => (b.lastActivityMs || 0) - (a.lastActivityMs || 0));
@@ -3960,6 +4035,7 @@ let _syncAudit = [];
 let _statusFilter = localStorage.getItem('dp_dash_status') || 'all';
 let _tableSort = null;          // { key, dir } — set by clicking a table header; overrides dropdown sort in table view
 let _expandedRows = new Set();  // safeIds of expanded table rows (survives re-renders)
+let _visibleAthletes = [];      // current filtered+sorted list — drives FP prev/next nav order
 
 function _isNoData(a) { return !a.weekly && !(a.body?.length); }
 let _dashboardWeekOffset = 0;
@@ -3971,8 +4047,8 @@ function render({ athletes, coaches, applications = [], dataHealth = null, syncA
   _dataHealth      = dataHealth;
   _syncAudit       = syncAudit;
 
-  // Tab badges
-  const alertCount = athletes.filter(a => a.actions?.severity === 'red').length;
+  // Tab badges (acknowledged alerts don't count)
+  const alertCount = athletes.filter(a => a.actions?.severity === 'red' && !a.acked).length;
   const badge = document.getElementById('tab-ath-count');
   badge.textContent = athletes.length;
   if (alertCount > 0) badge.classList.add('red'); else badge.classList.remove('red');
@@ -4009,8 +4085,9 @@ function renderCommandCenter(ath, apps = [], health = null) {
   const el = document.getElementById('command-center');
   if (!el) return;
 
-  const red = ath.filter(a => a.actions?.severity === 'red');
-  const amber = ath.filter(a => a.actions?.severity === 'amber');
+  const red = ath.filter(a => a.actions?.severity === 'red' && !a.acked);
+  const amber = ath.filter(a => a.actions?.severity === 'amber' && !a.acked);
+  const ackedN = ath.filter(a => a.acked).length;
   const missing = ath.filter(a => a.isStale || (!a.weekly && !a.body.length));
   const checkedIn = ath.filter(a => a.hasCurrentCheckin || a.hasRecent).length;
   const coverage = ath.length ? Math.round((checkedIn / ath.length) * 100) : 0;
@@ -4027,7 +4104,10 @@ function renderCommandCenter(ath, apps = [], health = null) {
         <div class="cc-athlete-name">${esc(a.id)}</div>
         <div class="cc-athlete-reason">${esc(reason)}</div>
       </div>
-      <span class="cc-chip ${sev}">${sev === 'red' ? 'Act' : 'Watch'}</span>
+      <span style="display:flex;align-items:center;gap:5px">
+        <span class="cc-chip ${sev}">${sev === 'red' ? 'Act' : 'Watch'}</span>
+        <span class="cc-ack-btn" onclick="event.stopPropagation();ackAlert('${esc(a.id)}')" title="Acknowledge — clear from priorities until something changes">✓</span>
+      </span>
     </button>`;
   }).join('');
 
@@ -4045,7 +4125,11 @@ function renderCommandCenter(ath, apps = [], health = null) {
   const topActions = buildCoachActions(ath, apps);
 
   // Squad-wide stats (merged in from the old summary bar)
-  const totalKm  = ath.reduce((s, a) => s + (a.currRunKm || 0), 0);
+  // KM: prefer Strava weekly km (same source as the table), fall back to logged sessions
+  const totalKm = ath.reduce((s, a) => {
+    const skm = typeof _stravaKmCache !== 'undefined' ? _stravaKmCache[a.id]?.weeklyKm : null;
+    return s + (skm != null ? skm : (a.currRunKm || 0));
+  }, 0);
   const compList = ath.filter(a => a.compliance !== null).map(a => a.compliance);
   const avgComp  = compList.length ? Math.round(compList.reduce((x, y) => x + y, 0) / compList.length) : null;
   const c7 = dago(7);
@@ -4062,22 +4146,23 @@ function renderCommandCenter(ath, apps = [], health = null) {
           <div class="cc-title">This Week's Priorities</div>
         </div>
         <div class="cc-score">
-          <div class="cc-score-card"><div class="cc-score-num red">${red.length}</div><div class="cc-score-lbl">Act</div></div>
-          <div class="cc-score-card"><div class="cc-score-num amber">${amber.length}</div><div class="cc-score-lbl">Watch</div></div>
-          <div class="cc-score-card"><div class="cc-score-num green">${coverage}%</div><div class="cc-score-lbl">Check-ins</div></div>
-          <div class="cc-score-card"><div class="cc-score-num str">${prs7}</div><div class="cc-score-lbl">PRs 7d</div></div>
-          <div class="cc-score-card"><div class="cc-score-num run">${totalKm.toFixed(0)}</div><div class="cc-score-lbl">Squad KM</div></div>
-          <div class="cc-score-card"><div class="cc-score-num ${avgComp === null ? '' : avgComp >= 80 ? 'green' : avgComp >= 60 ? '' : 'red'}">${avgComp === null ? '—' : avgComp + '%'}</div><div class="cc-score-lbl">Avg Comp</div></div>
+          <div class="cc-score-card" onclick="ccScoreDetail('act')" title="Show athletes"><div class="cc-score-num red">${red.length}</div><div class="cc-score-lbl">Act</div></div>
+          <div class="cc-score-card" onclick="ccScoreDetail('watch')" title="Show athletes"><div class="cc-score-num amber">${amber.length}</div><div class="cc-score-lbl">Watch</div></div>
+          <div class="cc-score-card" onclick="ccScoreDetail('checkins')" title="Show check-in status"><div class="cc-score-num green">${coverage}%</div><div class="cc-score-lbl">Check-ins</div></div>
+          <div class="cc-score-card" onclick="ccScoreDetail('prs')" title="Show PRs"><div class="cc-score-num str">${prs7}</div><div class="cc-score-lbl">PRs 7d</div></div>
+          <div class="cc-score-card" onclick="ccScoreDetail('km')" title="Show per-athlete km"><div class="cc-score-num run" id="cc-squad-km">${totalKm.toFixed(0)}</div><div class="cc-score-lbl">Squad KM</div></div>
+          <div class="cc-score-card" onclick="ccScoreDetail('comp')" title="Show per-athlete compliance"><div class="cc-score-num ${avgComp === null ? '' : avgComp >= 80 ? 'green' : avgComp >= 60 ? '' : 'red'}">${avgComp === null ? '—' : avgComp + '%'}</div><div class="cc-score-lbl">Avg Comp</div></div>
         </div>
         <button class="cc-toggle" onclick="toggleCommandCenter()">${toggleLabel}</button>
       </div>
+      <div class="cc-detail" id="cc-detail" style="display:none"></div>
       <div class="cc-body">
         <div class="cc-list">
-          <div class="cc-list-title">Highest Priority <span class="cc-list-count">${red.length + amber.length}</span></div>
+          <div class="cc-list-title">Highest Priority${ackedN ? ` <span class="cc-acked-note" onclick="ccScoreDetail('priority')" title="Show acknowledged">${ackedN} acked</span>` : ''} <span class="cc-list-count" onclick="ccScoreDetail('priority')" style="cursor:pointer" title="Show all">${red.length + amber.length}</span></div>
           ${priorityRows || `<div class="cc-empty">No priority athletes right now</div>`}
         </div>
         <div class="cc-list">
-          <div class="cc-list-title">Missing / Stale <span class="cc-list-count">${missing.length}</span></div>
+          <div class="cc-list-title">Missing / Stale <span class="cc-list-count" onclick="ccScoreDetail('checkins')" style="cursor:pointer" title="Show all">${missing.length}</span></div>
           ${missingRows || `<div class="cc-empty">Everyone has recent data</div>`}
         </div>
       </div>
@@ -4109,10 +4194,129 @@ function toggleCommandCenter() {
   renderCommandCenter(_allAthletes, _allApplications, _dataHealth);
 }
 
+// ── Score card detail (click a hero number → athlete list) ──────────────────
+let _ccDetailKind = null;
+
+function _ccDetailContent(kind) {
+  const ath = _allAthletes;
+  const row = (id, sub, chip = '') =>
+    `<button class="cc-athlete" type="button" onclick="ccCloseDetail();showFP('${esc(id)}')">
+      <div><div class="cc-athlete-name">${esc(id)}</div><div class="cc-athlete-reason">${esc(sub)}</div></div>${chip}
+    </button>`;
+  const empty = msg => `<div class="cc-empty">${msg}</div>`;
+  const ackRow = a => {
+    const rec = _acks[a.id] || {};
+    const meta = `Acknowledged${rec.at ? ' · ' + fmtDate(rec.at.slice(0, 10)) : ''}${rec.by && rec.by !== 'coach' ? ' by ' + rec.by : ''}`;
+    return `<button class="cc-athlete acked" type="button" onclick="ccCloseDetail();showFP('${esc(a.id)}')">
+      <div><div class="cc-athlete-name">${esc(a.id)}</div><div class="cc-athlete-reason">${esc(meta)}</div></div>
+      <span class="cc-ack-btn" onclick="event.stopPropagation();unackAlert('${esc(a.id)}')" title="Restore alert">↩ Restore</span>
+    </button>`;
+  };
+
+  if (kind === 'act') {
+    const list = ath.filter(a => a.actions?.severity === 'red' && !a.acked);
+    const acked = ath.filter(a => a.actions?.severity === 'red' && a.acked);
+    return { title: `Action Required (${list.length})`, html: (list.length || acked.length)
+      ? list.map(a => row(a.id, (a.actions.critical || [])[0] || 'Review this athlete', '<span class="cc-chip red">Act</span>')).join('') + acked.map(ackRow).join('')
+      : empty('No red-flag athletes right now') };
+  }
+  if (kind === 'priority') {
+    const reds = ath.filter(a => a.actions?.severity === 'red' && !a.acked);
+    const ambers = ath.filter(a => a.actions?.severity === 'amber' && !a.acked);
+    const acked = ath.filter(a => a.acked);
+    return { title: `Highest Priority (${reds.length + ambers.length})`, html: (reds.length + ambers.length + acked.length)
+      ? reds.map(a => row(a.id, (a.actions.critical || [])[0] || 'Review this athlete', '<span class="cc-chip red">Act</span>')).join('')
+        + ambers.map(a => row(a.id, (a.actions.watch || [])[0] || 'Review this athlete', '<span class="cc-chip amber">Watch</span>')).join('')
+        + acked.map(ackRow).join('')
+      : empty('No priority athletes right now') };
+  }
+  if (kind === 'watch') {
+    const list = ath.filter(a => a.actions?.severity === 'amber' && !a.acked);
+    const acked = ath.filter(a => a.actions?.severity === 'amber' && a.acked);
+    return { title: `Watch List (${list.length})`, html: (list.length || acked.length)
+      ? list.map(a => row(a.id, (a.actions.watch || [])[0] || 'Review this athlete', '<span class="cc-chip amber">Watch</span>')).join('') + acked.map(ackRow).join('')
+      : empty('Nobody on the watch list') };
+  }
+  if (kind === 'checkins') {
+    const missing = ath.filter(a => !(a.hasCurrentCheckin || a.hasRecent));
+    const done = ath.filter(a => a.hasCurrentCheckin || a.hasRecent);
+    return { title: `Check-ins — ${done.length}/${ath.length} in`, html:
+      missing.map(a => row(a.id, a.weekly?.['Week Ending'] ? `Last check-in ${fmtDate(a.weekly['Week Ending'])}` : 'No check-in data', '<span class="cc-chip red">Missing</span>')).join('')
+      + done.map(a => row(a.id, a.weekly?.['Week Ending'] ? `Checked in · ${fmtDate(a.weekly['Week Ending'])}` : 'Recent daily data', '<span class="cc-chip green">✓</span>')).join('')
+      || empty('No athletes') };
+  }
+  if (kind === 'prs') {
+    const c7 = dago(7);
+    const prRows = [];
+    ath.forEach(a => (a.prs?.recent || []).forEach(pr => {
+      if (new Date(pr.date) >= c7) prRows.push({ id: a.id, pr });
+    }));
+    prRows.sort((x, y) => (y.pr.date || '').localeCompare(x.pr.date || ''));
+    return { title: `PRs — last 7 days (${prRows.length})`, html: prRows.length
+      ? prRows.map(r => row(r.id, `${r.pr.exercise} — ${r.pr.weight}kg × ${r.pr.reps} · ${fmtDate(r.pr.date)}`, '<span class="cc-chip green">PR</span>')).join('')
+      : empty('No PRs in the last 7 days') };
+  }
+  if (kind === 'km') {
+    const list = ath.map(a => ({ a, km: TABLE_SORT_GETTERS.km(a) })).filter(x => x.km > 0).sort((x, y) => y.km - x.km);
+    return { title: 'Weekly KM by athlete', html: list.length
+      ? list.map(x => {
+          const t = parseFloat(x.a.target?.['Weekly KM Target']) || 0;
+          const kmStr = Number.isInteger(x.km) ? x.km : x.km.toFixed(1);
+          return row(x.a.id, `${kmStr} km this week${t ? ` · target ${t} km` : ''}`);
+        }).join('')
+      : empty('No running logged this week') };
+  }
+  if (kind === 'comp') {
+    const list = ath.filter(a => a.compliance !== null && a.compliance !== undefined).sort((x, y) => x.compliance - y.compliance);
+    return { title: 'Compliance by athlete (worst first)', html: list.length
+      ? list.map(a => {
+          const cls = a.compliance >= 80 ? 'green' : a.compliance >= 60 ? 'amber' : 'red';
+          return row(a.id, `${a.compliance}% of due sessions completed`, `<span class="cc-chip ${cls}">${a.compliance}%</span>`);
+        }).join('')
+      : empty('No compliance data yet — no due planned sessions') };
+  }
+  return { title: '', html: empty('Nothing to show') };
+}
+
+function ccScoreDetail(kind) {
+  const { title, html } = _ccDetailContent(kind);
+
+  // Mobile: popup window
+  if (window.innerWidth <= 600) {
+    ccCloseDetail();
+    const ov = document.createElement('div');
+    ov.className = 'po-overlay';
+    ov.id = 'cc-detail-overlay';
+    ov.addEventListener('click', e => { if (e.target === ov) ccCloseDetail(); });
+    ov.innerHTML = `<div class="po-modal">
+      <div class="po-modal-head"><div class="po-modal-title">${title}</div><button class="po-close" onclick="ccCloseDetail()">✕</button></div>
+      <div class="po-modal-body" style="padding:6px 16px 14px">${html}</div>
+    </div>`;
+    document.body.appendChild(ov);
+    return;
+  }
+
+  // Desktop: inline expansion under the hero (click the same card again to close)
+  const el = document.getElementById('cc-detail');
+  if (!el) return;
+  if (_ccDetailKind === kind && el.style.display !== 'none') { ccCloseDetail(); return; }
+  _ccDetailKind = kind;
+  el.innerHTML = `<div class="cc-detail-head"><span>${title}</span><button class="cc-detail-close" onclick="ccCloseDetail()">✕ Close</button></div>${html}`;
+  el.style.display = 'block';
+}
+
+function ccCloseDetail() {
+  document.getElementById('cc-detail-overlay')?.remove();
+  const el = document.getElementById('cc-detail');
+  if (el) el.style.display = 'none';
+  _ccDetailKind = null;
+}
+
 function buildCoachActions(ath, apps) {
   const actions = [];
-  const red = ath.filter(a => a.actions?.severity === 'red');
+  const red = ath.filter(a => a.actions?.severity === 'red' && !a.acked);
   const injury = ath.filter(a => {
+    if (!(a.hasCurrentCheckin || a.hasLastWeekCheckin)) return false; // stale check-ins don't count
     const txt = `${a.weekly?.['Run Niggles'] || ''} ${a.weekly?.['Lifts Niggles'] || ''}`;
     return /pain|injur|strain|physio|tear|niggle/i.test(txt);
   });
@@ -4623,6 +4827,8 @@ function buildTableRow(a) {
   if (!a.weekly && !a.body?.length) statusHtml = '<span class="tstatus dim">No data</span>';
   else if (hR && a.actions?.critical?.length) statusHtml = `<span class="tstatus red" title="${esc(fullActions)}">${esc(a.actions.critical[0].slice(0,32))}</span>`;
   else if (hY && a.actions?.watch?.length) statusHtml = `<span class="tstatus amber" title="${esc(fullActions)}">${esc(a.actions.watch[0].slice(0,32))}</span>`;
+
+  if (a.acked) statusHtml += ' <span class="tack" title="Alert acknowledged — returns automatically if anything changes">✓ ack</span>';
 
   const metaStr = a.weekNum !== null ? `Wk ${a.weekNum} · ` : '';
   const checkinStr = a.hasCurrentCheckin ? 'Checked in' : a.isStale ? 'No check-in' : a.weekly ? 'Last week' : 'No data';
@@ -5451,6 +5657,10 @@ function buildFPCard(a, weekOffset = 0) {
       <div>
         <div class="fpc-name">${esc(a.id)}</div>
         <div class="fpc-meta ${a.isStale ? 'stale' : ''}">${metaText}</div>
+        <div class="fpc-hero-actions">
+          <button class="fpc-act-btn" onclick="copyDM('${esc(a.id)}')">💬 DM</button>
+          <button class="fpc-act-btn" onclick="fpPlanWeek('${esc(a.id)}')">⚏ Plan Week</button>
+        </div>
       </div>
       ${ctx.selectedWeekNum !== null ? `<div class="fpc-week-badge">
         <div class="fpc-week-num">${ctx.selectedWeekNum}</div>
@@ -5865,8 +6075,11 @@ function buildFPCard(a, weekOffset = 0) {
   if (a.actions && a.actions.severity) {
     const allActions = [...a.actions.critical, ...a.actions.watch];
     if (allActions.length) {
-      fpActionHtml = `<div class="fpc-section" style="padding:18px 24px;background:${a.actions.severity === 'red' ? '#fef2f2' : '#fffbeb'};border-color:${a.actions.severity === 'red' ? 'rgba(220,38,38,.25)' : 'rgba(217,119,6,.25)'}">
-        <div class="fpc-section-title" style="color:${a.actions.severity === 'red' ? '#991b1b' : '#92400e'};margin-bottom:12px">${a.actions.severity === 'red' ? '⚠ Action Required' : '⚠ Watch List'}</div>
+      fpActionHtml = `<div class="fpc-section" style="padding:18px 24px;background:${a.actions.severity === 'red' ? '#fef2f2' : '#fffbeb'};border-color:${a.actions.severity === 'red' ? 'rgba(220,38,38,.25)' : 'rgba(217,119,6,.25)'};${a.acked ? 'opacity:.65' : ''}">
+        <div class="fpc-section-title" style="color:${a.actions.severity === 'red' ? '#991b1b' : '#92400e'};margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+          <span>${a.actions.severity === 'red' ? '⚠ Action Required' : '⚠ Watch List'}${a.acked ? ' · Acknowledged' : ''}</span>
+          <button class="fpc-ack-btn" onclick="${a.acked ? 'unackAlert' : 'ackAlert'}('${esc(a.id)}')">${a.acked ? '↩ Restore' : '✓ Acknowledge'}</button>
+        </div>
         ${a.actions.critical.length ? `<div style="margin-bottom:${a.actions.watch.length ? '10px' : '0'}">
           ${a.actions.critical.map(t => `<div style="font-family:var(--mono);font-size:11px;color:#991b1b;padding:4px 0;display:flex;align-items:flex-start;gap:8px">
             <span style="color:var(--alert);font-weight:900">●</span><span>${esc(t)}</span>
@@ -5988,7 +6201,7 @@ function buildFPCard(a, weekOffset = 0) {
         if (_diff < -100) cls = 'under';
         else if (_diff > 100) cls = 'over';
         const _sign = _diff > 0 ? '+' : '';
-        return `<div class="dnb ${cls}">
+        return `<div class="dnb ${cls}" onclick="this.classList.toggle('show')">
           <div class="dnb-tip">${Math.round(p.value)} kcal · ${_sign}${Math.round(_diff)} vs target</div>
           <div class="dnb-bar" style="height:${pct.toFixed(1)}%"></div>
           <div class="dnb-day ${isToday ? 'today' : ''}">${esc(dayLbl)}</div>
@@ -6021,7 +6234,7 @@ function buildFPCard(a, weekOffset = 0) {
 
   const progressPhotosHtml = `<div class="fpc-section progress-photo-panel">
     <div class="fpc-section-title">Progress Photos</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+    <div class="fpc-photo-grid">
       <div>
         <div style="font-family:var(--mono);font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px">Primary week</div>
         <div class="progress-photo-state" data-progress-photos="${esc(a.id)}">Loading…</div>
@@ -6099,20 +6312,21 @@ function buildFPCard(a, weekOffset = 0) {
     }
   }
 
+  // Triage order: act → this week's story → detail → media/history → call prep
   return `<div>
     ${buildWeekJump(a, ctx)}
     ${hero}
     ${banner}
     ${fpActionHtml}
     ${wipHtml}
-    ${dailyNutrHtml}
-    ${progressPhotosHtml}
-    ${bodyNutrPart}
-    ${weekDetailHtml}
     ${scoresHtml}
     ${trainingHtml}
+    ${weekDetailHtml}
+    ${dailyNutrHtml}
     ${prsHtml}
     ${trendsHtml}
+    ${bodyNutrPart}
+    ${progressPhotosHtml}
     ${stravaHtml}
     ${fpPrevCheckinsHtml}
     ${callPrepHtml}
@@ -6436,6 +6650,8 @@ function applyFilters() {
     }
   }
 
+  _visibleAthletes = visible;
+
   // No-results message
   document.getElementById('no-results').style.display = visible.length === 0 ? 'block' : 'none';
 
@@ -6726,6 +6942,94 @@ function toggleCallPrep(id) {
 function saveNote(athleteId, value) {
   callNotes[athleteId] = value;
   try { localStorage.setItem('dp_call_notes', JSON.stringify(callNotes)); } catch {}
+  // Sync to Supabase so notes follow you between devices (local copy is the fallback)
+  try {
+    const sb = getSB();
+    if (sb) sb.from('athlete_data').upsert(
+      { athlete_code: athleteId, key: 'call_notes', value: value, updated_at: new Date().toISOString() },
+      { onConflict: 'athlete_code,key' }
+    ).then(() => {}, () => {});
+  } catch {}
+}
+
+async function loadCallNotes() {
+  try {
+    const sb = getSB(); if (!sb) return;
+    const { data } = await sb.from('athlete_data').select('athlete_code,value').eq('key', 'call_notes');
+    (data || []).forEach(r => { if (r.value) callNotes[r.athlete_code] = r.value; });
+  } catch {}
+}
+
+// ── Alert acknowledgements ────────────────────────────────────────────────────
+// Acking clears an athlete from the priority surfaces (CC counts, lists, badge).
+// The ack stores a signature of the current action list — if anything about the
+// athlete's situation changes, the signature stops matching and the alert returns.
+let _acks = {}; // athlete_code → { sig, at, by }
+
+function _ackSig(a) {
+  // Normalise rolling day counters ("No check-in for 12d" → "Nd") so an ack
+  // doesn't expire overnight just because the counter ticked. Real changes
+  // (new niggle, different stress score, new alert) still break the signature.
+  const s = [...(a.actions?.critical || []), ...(a.actions?.watch || [])].join('|')
+    .replace(/\b\d+d\b/g, 'Nd');
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+  return String(h);
+}
+
+function _isAcked(a) {
+  const r = _acks[a.id];
+  return !!(r && a.actions?.severity && r.sig === _ackSig(a));
+}
+
+async function loadAcks() {
+  try {
+    const sb = getSB(); if (!sb) return;
+    const { data } = await sb.from('athlete_data').select('athlete_code,value').eq('key', 'ack_alert');
+    (data || []).forEach(r => {
+      if (!r.value) return;
+      try { _acks[r.athlete_code] = JSON.parse(r.value); } catch {}
+    });
+  } catch {}
+}
+
+function _ackRefresh() {
+  ccCloseDetail(); // any open detail panel/popup is stale after an ack change
+  renderCommandCenter(_allAthletes, _allApplications, _dataHealth);
+  applyFilters();
+  const fpOv = document.getElementById('fp-overlay');
+  if (fpOv && fpOv.style.display === 'block') _drawFP();
+}
+
+async function ackAlert(id) {
+  const a = _allAthletes.find(x => x.id === id);
+  if (!a || !a.actions?.severity) return;
+  const by = document.querySelector('.coach-select')?.value || 'coach';
+  const rec = { sig: _ackSig(a), at: new Date().toISOString(), by };
+  _acks[id] = rec;
+  a.acked = true;
+  _ackRefresh();
+  try {
+    const sb = getSB();
+    if (sb) await sb.from('athlete_data').upsert(
+      { athlete_code: id, key: 'ack_alert', value: JSON.stringify(rec), updated_at: new Date().toISOString() },
+      { onConflict: 'athlete_code,key' }
+    );
+  } catch {}
+}
+
+async function unackAlert(id) {
+  delete _acks[id];
+  const a = _allAthletes.find(x => x.id === id);
+  if (a) a.acked = false;
+  _ackRefresh();
+  try {
+    const sb = getSB();
+    if (sb) await sb.from('athlete_data').upsert(
+      { athlete_code: id, key: 'ack_alert', value: '', updated_at: new Date().toISOString() },
+      { onConflict: 'athlete_code,key' }
+    );
+  } catch {}
 }
 
 // ── Main load ─────────────────────────────────────────────────────────────────
@@ -6742,6 +7046,7 @@ async function load({ bust = false } = {}) {
       fetchPlanningSB(), fetchDB(DB.applications, bust),
       loadSessionLogs(), loadSessionLibrary(),
       getSB().from('application_decisions').select('notion_id,decision,decided_by,decided_at'),
+      loadCallNotes(), loadAcks(),
     ]);
 
     _decisions = decisionsRes?.data || [];
@@ -6852,9 +7157,8 @@ let _fpIdx   = 0;
 let _fpWeekOffset = 0;
 
 function showFP(id) {
-  // Build nav order from whatever is currently visible in the grid
-  const cards = [...document.querySelectorAll('#grid .card:not(.hidden)')];
-  _fpOrder = cards.map(c => c.getAttribute('data-card'));
+  // Nav order = current filtered/sorted athlete list — works from both table and card view
+  _fpOrder = (_visibleAthletes.length ? _visibleAthletes : _allAthletes).map(a => a.id);
   // If the id isn't in the visible list (e.g. called from a coach card), just show it alone
   if (!_fpOrder.includes(id)) _fpOrder = [id];
   _fpIdx = Math.max(0, _fpOrder.indexOf(id));
@@ -6873,6 +7177,14 @@ function fpNav(dir) {
   _fpIdx = Math.max(0, Math.min(_fpOrder.length - 1, _fpIdx + dir));
   _fpWeekOffset = 0;
   _drawFP();
+}
+
+// Jump from the FP view straight into planning for this athlete
+function fpPlanWeek(id) {
+  hideFP();
+  _planAthlete = id;
+  try { localStorage.setItem('dp_plan_athlete', id); } catch {}
+  switchTab('planning');
 }
 
 function fpWeekNav(dir) {
@@ -6980,6 +7292,16 @@ const _stravaKmCache = {}; // athleteId → weeklyKm (number)
 
 function applyStravaKm(athleteId, weeklyKm, lastWeekKm) {
   _stravaKmCache[athleteId] = { weeklyKm, lastWeekKm };
+
+  // Live-update the Command Center squad km total as Strava data arrives
+  const ccKm = document.getElementById('cc-squad-km');
+  if (ccKm && _allAthletes.length) {
+    const tot = _allAthletes.reduce((s, x) => {
+      const k = _stravaKmCache[x.id]?.weeklyKm;
+      return s + (k != null ? k : (x.currRunKm || 0));
+    }, 0);
+    ccKm.textContent = tot.toFixed(0);
+  }
 
   // Load change indicator
   let loadHtml = '';
