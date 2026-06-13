@@ -74,6 +74,7 @@ header{background:#0a0a0a;padding:0 18px;height:62px;display:flex;align-items:ce
 .search-input:focus{border-color:rgba(255,255,255,.28);box-shadow:0 0 0 2px rgba(245,158,11,.08)}
 .search-input::placeholder{color:var(--dim)}
 .sf-group{display:flex;gap:4px;align-items:center}
+.sf-count{font-size:8px;opacity:.6;margin-left:1px}
 .sf{background:transparent;border:1px solid var(--border-mid);border-radius:20px;padding:4px 12px;font-family:var(--mono);font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;cursor:pointer;color:var(--muted);transition:all .15s}
 .sf:hover{border-color:rgba(0,0,0,.25);color:var(--text)}
 .sf.active{background:rgba(255,255,255,.9);border-color:rgba(255,255,255,.9);color:#0d0d0d}
@@ -229,6 +230,7 @@ body[data-theme="light"] .twkbadge{color:#1a1a1a}
 body[data-theme="light"] .dash-trow:hover{background:rgba(0,0,0,.03)}
 /* table column headers — --header variable undefined, so thead is transparent in light mode */
 body[data-theme="light"] .dash-table thead tr{background:#1a1a1a}
+@media(max-width:600px){body[data-theme="light"] .dash-table th:first-child{background:#1a1a1a}}
 /* table status/flag/session colors */
 body[data-theme="light"] .tstatus.red{color:#991b1b}
 body[data-theme="light"] .tstatus.amber{color:#92400e}
@@ -335,7 +337,13 @@ body[data-theme="pride"] .dash-week-nav{border:2px solid transparent;border-imag
 .cc-kicker{font-family:var(--mono);font-size:8px;color:rgba(255,255,255,.42);text-transform:uppercase;letter-spacing:.14em;margin-bottom:3px}
 .cc-title{font-family:var(--cond);font-size:22px;font-weight:900;line-height:1;text-transform:uppercase;letter-spacing:.04em}
 .cc-sub{display:none}
-.cc-score{display:grid;grid-template-columns:repeat(3,58px);gap:5px;flex-shrink:0}
+.cc-score{display:grid;grid-template-columns:repeat(6,56px);gap:5px;flex-shrink:0}
+.cc-score-num.run{color:var(--run)}.cc-score-num.str{color:#93c5fd}
+.cc-toggle{background:transparent;border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.7);border-radius:6px;padding:5px 10px;font-family:var(--mono);font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;cursor:pointer;white-space:nowrap;flex-shrink:0}
+.cc-toggle:hover{color:#fff;border-color:rgba(255,255,255,.45)}
+.command-center.collapsed{grid-template-columns:1fr}
+.command-center.collapsed .cc-body,.command-center.collapsed .cc-side{display:none}
+.command-center.collapsed .cc-hero{border-bottom:none}
 .cc-score-card{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.13);border-radius:7px;padding:6px 5px;text-align:center}
 .cc-score-num{font-size:18px;font-weight:900;line-height:1}
 .cc-score-num.red{color:#fca5a5}.cc-score-num.amber{color:#fcd34d}.cc-score-num.green{color:#86efac}
@@ -384,7 +392,11 @@ body[data-theme="pride"] .dash-week-nav{border:2px solid transparent;border-imag
 .dash-table-wrap{width:100%;overflow-x:auto}
 .dash-table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:13px;table-layout:fixed}
 .dash-table thead tr{background:var(--header);border-bottom:2px solid #0a0a0a}
-.dash-table th{padding:9px 10px;font-size:8px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.35);text-align:left;white-space:nowrap;overflow:hidden}
+.dash-table th{padding:9px 10px;font-size:8px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.35);text-align:left;white-space:nowrap;overflow:hidden;cursor:pointer;user-select:none}
+.dash-table th:hover{color:rgba(255,255,255,.75)}
+.dash-table th .th-sort{font-size:8px;margin-left:2px;opacity:.5}
+.dash-table th.th-sorted{color:var(--run)}
+.dash-table th.th-sorted .th-sort{opacity:1}
 .dash-table th:not(:first-child){text-align:right}
 .dash-trow{border-bottom:1px solid var(--border);cursor:pointer;transition:background .1s}
 .dash-trow:hover{background:rgba(255,255,255,.03)}
@@ -989,6 +1001,88 @@ body[data-theme="pride"] .texp-name{background:linear-gradient(90deg,#FF8C00,#FF
 .po-chip{font-family:var(--mono);font-size:8px;font-weight:700;background:rgba(245,158,11,.15);border:1px solid rgba(245,158,11,.3);color:#fbbf24;border-radius:4px;padding:1px 5px;white-space:nowrap;line-height:1.4}
 .po-chip.overridden{background:rgba(245,158,11,.25);border-color:rgba(245,158,11,.55)}
 /* ── Plan Override Modal ── */
+/* ── Planning tab ── */
+.plan-section{max-width:1280px;margin:0 auto;padding:18px 20px 60px}
+.plan-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px}
+.plan-ath-chips{display:flex;gap:6px;flex-wrap:wrap}
+.plan-chip{font-family:var(--mono);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:5px 12px;border-radius:6px;border:1px solid var(--border-mid);background:var(--surface);color:var(--muted);cursor:pointer;transition:all .15s}
+.plan-chip:hover{color:var(--text);border-color:rgba(245,158,11,.4)}
+.plan-chip.active{background:rgba(245,158,11,.12);border-color:rgba(245,158,11,.55);color:#fbbf24}
+.plan-chip.coach{border-style:dashed}
+.plan-chip.coach::before{content:'C';font-size:7px;margin-right:5px;padding:1px 4px;border-radius:3px;background:rgba(245,158,11,.15);color:var(--amber-dim);border:1px solid rgba(245,158,11,.3)}
+body[data-theme="light"] .plan-chip.coach::before{color:#92400e}
+.chip-divider{font-family:var(--mono);font-size:7px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);align-self:center;border-left:1px solid var(--border-mid);padding-left:10px;margin-left:6px}
+.plan-toolbar-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.plan-action-btn{font-family:var(--mono);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:6px 12px;border-radius:6px;border:1px solid rgba(245,158,11,.4);background:rgba(245,158,11,.08);color:#fbbf24;cursor:pointer;transition:all .15s}
+.plan-action-btn:hover{background:rgba(245,158,11,.18)}
+.plan-week-meta{font-family:var(--mono);font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px}
+.plan-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:8px}
+@media(max-width:980px){.plan-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:560px){.plan-grid{grid-template-columns:1fr}}
+
+/* ── Nutrition planning tab ── */
+.nut-meta{font-family:var(--mono);font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px}
+.nut-table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow-x:auto}
+.nut-table{width:100%;border-collapse:collapse;min-width:860px}
+.nut-table th{font-family:var(--mono);font-size:9px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:.07em;padding:10px 8px;border-bottom:1px solid var(--border-mid);text-align:left;white-space:nowrap}
+.nut-table td{padding:7px 8px;border-bottom:1px solid var(--border);vertical-align:middle}
+.nut-table tr:last-child td{border-bottom:none}
+.nut-wk{font-family:var(--cond);font-size:15px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text);white-space:nowrap}
+.nut-row.current td{background:var(--amber-bg)}
+.nut-row.current .nut-wk{color:var(--amber-dim)}
+.nut-now{font-family:var(--mono);font-size:8px;color:var(--amber);border:1px solid var(--amber-border);border-radius:4px;padding:1px 5px;margin-left:6px;vertical-align:middle;letter-spacing:.06em}
+.nut-input{font-family:var(--mono);font-size:12px;color:var(--text);background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:6px 8px;width:84px;transition:border-color .15s}
+.nut-input:focus{outline:none;border-color:var(--amber)}
+.nut-input.wide{width:160px}
+.nut-input.km{width:64px}
+.nut-km-auto{font-family:var(--mono);font-size:11px;color:var(--muted);white-space:nowrap}
+.nut-km-auto .src{font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;display:block}
+.nut-save{font-family:var(--mono);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:6px 10px;border-radius:6px;border:1px solid var(--border-mid);background:transparent;color:var(--dim);cursor:pointer;transition:all .15s;white-space:nowrap}
+.nut-save.dirty{border-color:rgba(245,158,11,.4);background:var(--amber-bg);color:var(--amber-text)}
+.nut-save:disabled{opacity:.6;cursor:default}
+.nut-empty{padding:32px;text-align:center;font-family:var(--mono);font-size:11px;color:var(--dim)}
+.nut-prog{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--dim)}
+.plan-day{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:8px;min-height:120px;display:flex;flex-direction:column;gap:6px}
+.plan-day.today{border-color:rgba(245,158,11,.45)}
+.plan-day-head{display:flex;align-items:baseline;justify-content:space-between;font-family:var(--mono);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--dim);padding-bottom:4px;border-bottom:1px solid var(--border)}
+.plan-day.today .plan-day-head{color:#fbbf24}
+.plan-card{background:var(--surface2);border:1px solid var(--border-mid);border-left:3px solid var(--dim);border-radius:7px;padding:7px 8px;cursor:pointer;transition:all .12s;position:relative}
+.plan-card:hover{border-color:rgba(245,158,11,.5)}
+.plan-card-title{font-family:var(--cond);font-size:14px;font-weight:600;color:var(--text);line-height:1.2}
+.plan-card-meta{font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:3px;line-height:1.5;word-break:break-word}
+.plan-card-status{display:inline-block;font-family:var(--mono);font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:1px 6px;border-radius:4px;margin-top:4px}
+.plan-card-status.Planned{background:rgba(255,255,255,.07);color:var(--muted)}
+.plan-card-status.Completed{background:var(--green-bg);color:var(--green-text)}
+.plan-card-status.Missed{background:var(--red-bg);color:var(--red-text)}
+.plan-card-status.Sick{background:var(--amber-bg);color:var(--amber-text)}
+.plan-add-btn{font-family:var(--mono);font-size:10px;border:1px dashed var(--border-mid);background:transparent;color:var(--dim);border-radius:7px;padding:5px;cursor:pointer;transition:all .15s;margin-top:auto}
+.plan-add-btn:hover{color:#fbbf24;border-color:rgba(245,158,11,.5)}
+.plan-empty{font-family:var(--mono);font-size:9px;color:var(--dim);text-align:center;padding:8px 0}
+.plan-lib{margin-top:6px}
+.plan-lib-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+.plan-lib-title{font-family:var(--mono);font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:var(--text)}
+.plan-lib-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px}
+.plan-lib-card{background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:10px;cursor:pointer;transition:all .12s}
+.plan-lib-card:hover{border-color:rgba(245,158,11,.5)}
+.plan-lib-name{font-family:var(--cond);font-size:15px;font-weight:600;color:var(--text)}
+.plan-lib-meta{font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:4px;line-height:1.6}
+.plan-lib-tag{display:inline-block;font-family:var(--mono);font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:1px 6px;border-radius:4px;background:rgba(96,165,250,.12);border:1px solid rgba(96,165,250,.3);color:#60a5fa;margin-left:6px}
+.pw-ex-row{border:1px solid var(--border);border-radius:8px;padding:8px;margin-bottom:8px;background:var(--surface)}
+.pw-ex-grid{display:grid;grid-template-columns:2fr .7fr .7fr .9fr .8fr 28px;gap:6px;align-items:center}
+.pw-ex-grid .pw-wide{grid-column:1 / 6}
+.pw-ex-del{background:none;border:1px solid var(--border-mid);border-radius:6px;color:var(--dim);cursor:pointer;font-size:11px;height:30px;transition:all .15s}
+.pw-ex-del:hover{color:var(--red-text);border-color:rgba(248,113,113,.5)}
+.pw-ex-head{display:grid;grid-template-columns:2fr .7fr .7fr .9fr .8fr 28px;gap:6px;font-family:var(--mono);font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--dim);padding:0 9px;margin-bottom:4px}
+.ps-ex-preview-list{border:1px solid var(--border-mid);border-radius:8px;overflow:hidden;margin-bottom:6px;background:#111}
+.ps-ex-preview-row{display:flex;justify-content:space-between;gap:10px;padding:6px 10px;border-bottom:1px solid var(--border);font-family:var(--mono);font-size:10px;color:rgba(255,255,255,.45)}
+.ps-ex-preview-row:last-child{border-bottom:none}
+.ps-ex-preview-row span:first-child{color:#fff}
+.ps-ex-preview-hint{font-family:var(--mono);font-size:8px;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:14px}
+.ps-lib-results{position:absolute;top:100%;left:0;right:0;z-index:60;background:#161616;border:1px solid rgba(255,255,255,.18);border-radius:8px;max-height:220px;overflow-y:auto;margin-top:4px;box-shadow:0 8px 24px rgba(0,0,0,.5)}
+.ps-lib-result{padding:7px 10px;font-family:var(--mono);font-size:11px;color:#fff;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.06)}
+.ps-lib-result:last-child{border-bottom:none}
+.ps-lib-result:hover{background:rgba(245,158,11,.12)}
+.ps-lib-result span{color:rgba(255,255,255,.4);font-size:9px;text-transform:uppercase;letter-spacing:.05em;margin-left:8px}
 .po-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9000;display:flex;align-items:center;justify-content:center;padding:16px}
 .po-overlay.hidden{display:none}
 .po-modal{background:#1a1a1a;border:1px solid rgba(255,255,255,.12);border-radius:12px;width:100%;max-width:360px;overflow:hidden}
@@ -1128,14 +1222,26 @@ body[data-theme="pride"] .texp-name{background:linear-gradient(90deg,#FF8C00,#FF
   .coach-select{font-size:9px;padding:4px 6px}
   .refresh-btn{font-size:0;padding:5px 8px}
   .refresh-btn::before{content:'↻';font-size:12px}
-  .tab-bar{top:54px;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:0 8px}
+  .tab-bar{top:54px;overflow-x:auto;scrollbar-width:none}
   .tab-bar::-webkit-scrollbar{display:none}
-  .tab{padding:10px 12px 9px;font-size:9px;letter-spacing:.06em}
+  .tab-bar::after{content:'';position:sticky;right:0;flex:0 0 26px;margin-left:-26px;align-self:stretch;background:linear-gradient(90deg,rgba(10,10,10,0),#0a0a0a);pointer-events:none}
+  .tab{padding:10px 10px 9px;flex-shrink:0}
   .filter-bar{top:86px}
   .grid{grid-template-columns:1fr}
+  .dash-table{min-width:920px}
+  .dash-table th:first-child,.dash-trow td:first-child{position:sticky;left:0;z-index:2;background:var(--bg)}
+  .dash-trow.trow-red td:first-child{box-shadow:inset 3px 0 0 rgba(220,38,38,.6)}
+  .dash-trow.trow-amber td:first-child{box-shadow:inset 3px 0 0 rgba(245,158,11,.5)}
+  .trow-expand .texp-header,.trow-expand .texp-panel{position:sticky;left:0;max-width:calc(100vw - 28px)}
+  .texp-panel{grid-template-columns:1fr}
+  .texp-left{border-right:none;border-bottom:1px solid var(--border)}
+  .sync-table th:first-child,.sync-table td:first-child{position:sticky;left:0;z-index:2;background:var(--surface)}
+  .sync-table th:first-child{background:#0a0a0a;z-index:3}
+  .nut-table th:first-child,.nut-table td:first-child{position:sticky;left:0;z-index:2;background:var(--surface)}
   .command-center{grid-template-columns:1fr}
-  .cc-hero{flex-direction:column}
-  .cc-score{grid-template-columns:repeat(3,1fr);width:100%}
+  .cc-hero{flex-wrap:wrap}
+  .cc-score{grid-template-columns:repeat(3,1fr);width:100%;order:3}
+  .cc-toggle{order:2}
   .cc-body{grid-template-columns:1fr}
   .cc-list{border-right:none;border-bottom:1px solid var(--border)}
   .cc-health{grid-template-columns:1fr}
@@ -1149,8 +1255,6 @@ body[data-theme="pride"] .texp-name{background:linear-gradient(90deg,#FF8C00,#FF
   .wd-date{width:60px}
   .wd-row{grid-template-columns:60px 1fr}
   .wd-strava-col{display:none}
-  .texp-panel{grid-template-columns:1fr}
-  .texp-left{border-right:none;border-bottom:1px solid var(--border)}
 }
 
 /* ── Action Required Ribbon (squad card + full-page) ── */
@@ -1432,11 +1536,14 @@ body[data-theme="light"] .strava-weekly-strip{background:#fff}
   <button class="tab active" id="tab-athletes-btn" onclick="switchTab('athletes')">
     Athletes <span class="tab-badge" id="tab-ath-count">—</span>
   </button>
+  <button class="tab" id="tab-planning-btn" onclick="switchTab('planning')">
+    Planning <span class="tab-badge" id="tab-planning-count">—</span>
+  </button>
+  <button class="tab" id="tab-nut-btn" onclick="switchTab('nutrition')">
+    Nutrition <span class="tab-badge" id="tab-nut-count">—</span>
+  </button>
   <button class="tab" id="tab-coaches-btn" onclick="switchTab('coaches')">
     Coaches <span class="tab-badge">2</span>
-  </button>
-  <button class="tab" id="tab-schedule-btn" onclick="switchTab('schedule')">
-    Planning <span class="tab-badge" id="tab-sched-count">—</span>
   </button>
   <button class="tab" id="tab-sync-btn" onclick="switchTab('sync')">
     Sync <span class="tab-badge" id="tab-sync-count">—</span>
@@ -1455,13 +1562,14 @@ body[data-theme="light"] .strava-weekly-strip{background:#fff}
   <div class="filter-divider"></div>
   <span class="filter-label">Status:</span>
   <div class="sf-group">
-    <button class="sf active" data-status="all" onclick="setStatusFilter(this,'all')">All</button>
-    <button class="sf sf-red" data-status="red" onclick="setStatusFilter(this,'red')">⚠ Alert</button>
-    <button class="sf sf-amber" data-status="amber" onclick="setStatusFilter(this,'amber')">Watch</button>
-    <button class="sf sf-green" data-status="green" onclick="setStatusFilter(this,'green')">On Track</button>
+    <button class="sf active" data-status="all" onclick="setStatusFilter(this,'all')">All <span class="sf-count"></span></button>
+    <button class="sf sf-red" data-status="red" onclick="setStatusFilter(this,'red')">⚠ Alert <span class="sf-count"></span></button>
+    <button class="sf sf-amber" data-status="amber" onclick="setStatusFilter(this,'amber')">Watch <span class="sf-count"></span></button>
+    <button class="sf sf-green" data-status="green" onclick="setStatusFilter(this,'green')">On Track <span class="sf-count"></span></button>
+    <button class="sf" data-status="nodata" onclick="setStatusFilter(this,'nodata')">No Data <span class="sf-count"></span></button>
   </div>
   <div class="filter-divider"></div>
-  <select class="sort-select" id="sort-select" onchange="applyFilters()">
+  <select class="sort-select" id="sort-select" onchange="_tableSort=null;applyFilters()">
     <option value="recent" selected>Sort: Recently Active</option>
     <option value="alert">Sort: Needs Attention</option>
     <option value="name">Sort: Name A–Z</option>
@@ -1500,7 +1608,6 @@ body[data-theme="light"] .strava-weekly-strip{background:#fff}
         <div class="sb-title">⬡ Squad Brief — AI Coaching Summary</div>
         <div class="sb-text" id="squad-brief-text"></div>
       </div>
-      <div class="summary-bar" id="sum-bar"></div>
       <div class="grid" id="grid"></div>
       <div class="no-results" id="no-results" style="display:none">
         <div class="no-results-txt">No athletes match this filter</div>
@@ -1509,11 +1616,259 @@ body[data-theme="light"] .strava-weekly-strip{background:#fff}
   </div>
 </div>
 
-<!-- SCHEDULE TAB -->
-<div id="tab-schedule-content" style="display:none">
-  <div class="sched-section">
-    <div class="sched-intro" id="sched-intro">Week ending <span id="sched-week-end">—</span> · Planned sessions for all athletes</div>
-    <div class="sched-grid" id="sched-grid"></div>
+<!-- PLANNING TAB -->
+<div id="tab-planning-content" style="display:none">
+  <div class="plan-section">
+    <div class="plan-toolbar">
+      <div class="plan-ath-chips" id="plan-ath-chips"></div>
+      <div class="plan-toolbar-right">
+        <div class="sf-group">
+          <button class="sf" onclick="planWeekNav(-1)">← Prev</button>
+          <button class="sf" id="plan-week-label" onclick="planWeekReset()">This Week</button>
+          <button class="sf" onclick="planWeekNav(1)">Next →</button>
+        </div>
+        <button class="plan-action-btn" onclick="copyPlanWeek()" title="Copy this week's sessions to next week">⧉ Copy → Next Wk</button>
+        <button class="plan-action-btn" onclick="openPlanSession(null)">+ Session</button>
+        <button class="plan-action-btn" id="plan-lib-btn" onclick="togglePlanLibrary()">Library</button>
+      </div>
+    </div>
+    <div class="plan-week-meta" id="plan-week-meta"></div>
+    <div class="plan-grid" id="plan-grid"></div>
+    <div class="plan-lib" id="plan-lib" style="display:none"></div>
+  </div>
+</div>
+
+<!-- NUTRITION TAB -->
+<div id="tab-nut-content" style="display:none">
+  <div class="plan-section">
+    <div class="plan-toolbar">
+      <div class="plan-ath-chips" id="nut-ath-chips"></div>
+      <div class="plan-toolbar-right">
+        <span class="nut-prog">Programme <input class="nut-input km" id="nut-prog-weeks" onchange="saveProgWeeks(this.value)"> wks</span>
+        <button class="plan-action-btn" onclick="addNutWeek()">+ Week</button>
+      </div>
+    </div>
+    <div class="nut-meta" id="nut-meta"></div>
+    <div class="nut-table-wrap" id="nut-table-wrap"></div>
+  </div>
+</div>
+
+<!-- Planning session editor modal -->
+<div class="po-overlay hidden" id="ps-overlay" onclick="if(event.target===this)closePlanSession()">
+  <div class="po-modal" style="max-width:460px">
+    <div class="po-modal-head">
+      <div>
+        <div class="po-modal-title" id="ps-title">Plan Session</div>
+        <div class="po-modal-sub" id="ps-sub"></div>
+      </div>
+      <button class="po-close" onclick="closePlanSession()">✕</button>
+    </div>
+    <div class="po-modal-body">
+      <div class="po-field-row">
+        <div class="po-field" id="ps-lib-field" style="position:relative">
+          <div class="po-label">Run Template (optional)</div>
+          <input class="po-input" id="ps-lib-search" type="text" placeholder="Type to search… e.g. 10x400" autocomplete="off"
+                 oninput="document.getElementById('ps-lib').value='';filterLibSearch()"
+                 onfocus="filterLibSearch()" onblur="setTimeout(hideLibSearch,150)">
+          <input type="hidden" id="ps-lib" value="">
+          <div class="ps-lib-results" id="ps-lib-results" style="display:none"></div>
+        </div>
+        <div class="po-field" id="ps-split-field">
+          <div class="po-label">Strength Split (optional)</div>
+          <select class="po-input" id="ps-split" onchange="applySplitPick()"><option value="">— split —</option></select>
+        </div>
+      </div>
+      <div class="po-field">
+        <div class="po-label">Session Title</div>
+        <input class="po-input" id="ps-name" type="text" placeholder="e.g. Easy Run">
+      </div>
+      <div class="po-field-row">
+        <div class="po-field">
+          <div class="po-label">Type</div>
+          <select class="po-input" id="ps-type" onchange="updatePsVisibility()">
+            <option value="">—</option>
+            <option>Run</option><option>Easy Effort</option><option>Tempo</option><option>Speed</option>
+            <option>Long Run</option><option>Recovery</option><option>race</option><option>Strength</option>
+            <option>Run + Strength</option><option>Rest</option><option>Optional</option><option>Weekly KM Total</option>
+          </select>
+        </div>
+        <div class="po-field">
+          <div class="po-label">Status</div>
+          <select class="po-input" id="ps-status">
+            <option>Planned</option><option>Completed</option><option>Missed</option><option>Sick</option>
+          </select>
+        </div>
+      </div>
+      <div class="po-field-row">
+        <div class="po-field">
+          <div class="po-label">Date</div>
+          <input class="po-input" id="ps-date" type="date">
+        </div>
+        <div class="po-field">
+          <div class="po-label">Week Label</div>
+          <select class="po-input" id="ps-week">
+            <option value="">—</option>
+            <option>Week 0</option><option>Week 1</option><option>Week 2</option><option>Week 3</option>
+            <option>Week 4</option><option>Week 5</option><option>Week 6</option><option>Week 7</option>
+            <option>Week 8</option><option>Week 9</option><option>Week 10</option><option>Week 11</option>
+            <option>Week 12</option><option>Week 13</option><option>Week 14</option><option>Week 15</option>
+            <option>Week 16</option>
+          </select>
+        </div>
+      </div>
+      <div class="po-field" id="ps-details-field">
+        <div class="po-label">Details / Run Details</div>
+        <input class="po-input" id="ps-details" type="text" placeholder="e.g. 10x800m Intervals">
+      </div>
+      <div id="ps-ex-preview" style="display:none"></div>
+      <div id="ps-run-fields">
+        <div class="po-field-row">
+          <div class="po-field">
+            <div class="po-label">Distance (km)</div>
+            <input class="po-input" id="ps-dist" type="number" step="0.1" min="0" placeholder="e.g. 10">
+          </div>
+          <div class="po-field">
+            <div class="po-label">Target Pace</div>
+            <input class="po-input" id="ps-pace" type="text" placeholder="e.g. 5:30 /km">
+          </div>
+        </div>
+        <div class="po-field">
+          <div class="po-label">Warm Up</div>
+          <input class="po-input" id="ps-warmup" type="text" placeholder="e.g. 2km easy jog">
+        </div>
+        <div class="po-field-row">
+          <div class="po-field">
+            <div class="po-label">Intervals / Sets</div>
+            <input class="po-input" id="ps-intervals" type="text" placeholder="e.g. 5×1km">
+          </div>
+          <div class="po-field">
+            <div class="po-label">Working Pace</div>
+            <input class="po-input" id="ps-workpace" type="text" placeholder="e.g. 4:20 /km">
+          </div>
+        </div>
+        <div class="po-field-row">
+          <div class="po-field">
+            <div class="po-label">Rest Between Sets</div>
+            <input class="po-input" id="ps-rest" type="text" placeholder="e.g. 90s jog">
+          </div>
+          <div class="po-field">
+            <div class="po-label">Cool Down</div>
+            <input class="po-input" id="ps-cooldown" type="text" placeholder="e.g. 2km easy">
+          </div>
+        </div>
+      </div>
+      <div class="po-field">
+        <div class="po-label">Notes for Athlete</div>
+        <textarea class="po-input" id="ps-notes" rows="2" placeholder="Any cues, context, or motivation…" style="resize:vertical;line-height:1.5"></textarea>
+      </div>
+    </div>
+    <div class="po-modal-foot">
+      <button class="po-btn save" id="ps-save" onclick="savePlanSession()">Save Session</button>
+      <button class="po-btn clear" id="ps-delete" onclick="deletePlanSession()" style="display:none">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- Library template editor modal -->
+<div class="po-overlay hidden" id="pl-overlay" onclick="if(event.target===this)closeLibEditor()">
+  <div class="po-modal" style="max-width:460px">
+    <div class="po-modal-head">
+      <div>
+        <div class="po-modal-title" id="pl-title">Library Session</div>
+        <div class="po-modal-sub">Reusable template</div>
+      </div>
+      <button class="po-close" onclick="closeLibEditor()">✕</button>
+    </div>
+    <div class="po-modal-body">
+      <div class="po-field">
+        <div class="po-label">Name</div>
+        <input class="po-input" id="pl-name" type="text" placeholder="e.g. 4x2km at 10K Pace">
+      </div>
+      <div class="po-field-row">
+        <div class="po-field">
+          <div class="po-label">Type</div>
+          <input class="po-input" id="pl-type" type="text" placeholder="e.g. Race Pace">
+        </div>
+        <div class="po-field">
+          <div class="po-label">Intensity</div>
+          <input class="po-input" id="pl-intensity" type="text" placeholder="e.g. Threshold">
+        </div>
+      </div>
+      <div class="po-field-row">
+        <div class="po-field">
+          <div class="po-label">Distance</div>
+          <input class="po-input" id="pl-distance" type="text" placeholder="e.g. 10k">
+        </div>
+        <div class="po-field">
+          <div class="po-label">Duration (mins)</div>
+          <input class="po-input" id="pl-duration" type="text" placeholder="e.g. 55-65">
+        </div>
+      </div>
+      <div class="po-field-row">
+        <div class="po-field">
+          <div class="po-label">Target Pace</div>
+          <input class="po-input" id="pl-pace" type="text" placeholder="e.g. 10K race pace">
+        </div>
+        <div class="po-field">
+          <div class="po-label">RPE</div>
+          <input class="po-input" id="pl-rpe" type="text" placeholder="e.g. 7-8">
+        </div>
+      </div>
+      <div class="po-field-row">
+        <div class="po-field">
+          <div class="po-label">Warm Up</div>
+          <input class="po-input" id="pl-warmup" type="text" placeholder="e.g. 15min easy">
+        </div>
+        <div class="po-field">
+          <div class="po-label">Cool Down</div>
+          <input class="po-input" id="pl-cooldown" type="text" placeholder="e.g. 10min easy">
+        </div>
+      </div>
+      <div class="po-field">
+        <div class="po-label">Goal</div>
+        <input class="po-input" id="pl-goal" type="text" placeholder="e.g. Race specific prep">
+      </div>
+      <div class="po-field">
+        <div class="po-label">Description</div>
+        <textarea class="po-input" id="pl-description" rows="3" placeholder="Full session description" style="resize:vertical;line-height:1.5"></textarea>
+      </div>
+    </div>
+    <div class="po-modal-foot">
+      <button class="po-btn save" onclick="saveLibSession()">Save Template</button>
+      <button class="po-btn clear" id="pl-archive" onclick="archiveLibSession()" style="display:none">Archive</button>
+    </div>
+  </div>
+</div>
+
+<!-- Workout split editor modal -->
+<div class="po-overlay hidden" id="pw-overlay" onclick="if(event.target===this)closeSplitEditor()">
+  <div class="po-modal" style="max-width:680px">
+    <div class="po-modal-head">
+      <div>
+        <div class="po-modal-title" id="pw-title">Workout Split</div>
+        <div class="po-modal-sub">Strength session — exercises render in the athlete's gym logger</div>
+      </div>
+      <button class="po-close" onclick="closeSplitEditor()">✕</button>
+    </div>
+    <div class="po-modal-body">
+      <div class="po-field-row">
+        <div class="po-field">
+          <div class="po-label">Split Name</div>
+          <input class="po-input" id="pw-name" type="text" placeholder="e.g. Upper A">
+        </div>
+        <div class="po-field">
+          <div class="po-label">Athlete Code (blank = all athletes)</div>
+          <input class="po-input" id="pw-ath" type="text" placeholder="e.g. KHANG">
+        </div>
+      </div>
+      <div class="po-label" style="margin-bottom:6px">Exercises</div>
+      <div id="pw-ex-list"></div>
+      <button class="plan-add-btn" style="width:100%;margin-top:6px" onclick="addSplitExRow()">+ Exercise</button>
+    </div>
+    <div class="po-modal-foot">
+      <button class="po-btn save" onclick="saveSplit()">Save Split</button>
+      <button class="po-btn clear" id="pw-archive" onclick="archiveSplit()" style="display:none">Archive</button>
+    </div>
   </div>
 </div>
 
@@ -1527,6 +1882,7 @@ body[data-theme="light"] .strava-weekly-strip{background:#fff}
       </div>
       <div class="sync-score-row" id="sync-score-row"></div>
     </div>
+    <div class="cc-health" id="sync-health" style="border-radius:10px;margin-bottom:10px;grid-template-columns:repeat(4,1fr)"></div>
     <div class="sync-table-wrap">
       <table class="sync-table">
         <thead>
@@ -1614,8 +1970,11 @@ function getSB() {
 }
 
 // ── Plan overrides (Supabase-backed, local cache) ─────────────────────────────
-let _ovCache = {};  // notion_page_id → { name, dist, pace }
-let _tickedMap = new Map(); // athleteCode → Set<notionPageId>
+let _ovCache = {};  // session id → { name, dist, pace, … } (built from planned_sessions)
+let _planRowsSB   = []; // raw Supabase planned_sessions rows
+let _libCache     = []; // session_library rows
+let _splitsCache  = []; // workout_splits rows (strength)
+let _tickedMap = new Map(); // athleteCode → Set<sessionId>
 
 async function loadSessionLogs() {
   try {
@@ -1632,38 +1991,28 @@ function isSessionLogged(athleteCode, notionPageId) {
   return _tickedMap.get(athleteCode)?.has(notionPageId) ?? false;
 }
 
-async function loadAllOverrides() {
-  try {
-    const sb = getSB(); if (!sb) return;
-    const { data } = await sb.from('session_overrides').select('*');
-    _ovCache = {};
-    (data || []).forEach(r => {
-      _ovCache[r.notion_page_id] = {
-        name:      r.name       || '',
-        dist:      r.distance_km != null ? String(r.distance_km) : '',
-        pace:      r.target_pace  || '',
-        warmup:    r.warm_up      || '',
-        intervals: r.intervals    || '',
-        workpace:  r.working_pace || '',
-        rest:      r.rest         || '',
-        cooldown:  r.cool_down    || '',
-        notes:     r.notes        || '',
-      };
-    });
-  } catch(e) { console.warn('Override load failed', e); }
-}
+// Overrides now live ON the planned_sessions rows themselves (Supabase is the
+// planning source of truth). _ovCache is populated by fetchPlanningSB().
 function getPlanOverride(id) { return _ovCache[id] || null; }
+
+// Match a planned_sessions row by either its migrated Notion page id or its own uuid
+function _psMatch(q, id) { return q.or(`notion_page_id.eq.${id},id.eq.${id}`); }
+
 async function setPlanOverride(id, data) {
+  const sb = getSB(); if (!sb) return;
   if (data === null) {
     delete _ovCache[id];
-    try { const sb = getSB(); if (sb) await sb.from('session_overrides').delete().eq('notion_page_id', id); } catch(e) {}
+    try {
+      await _psMatch(sb.from('planned_sessions').update({
+        distance_km: null, target_pace: null, warm_up: null, intervals: null,
+        working_pace: null, rest: null, cool_down: null, notes: null,
+        updated_at: new Date().toISOString(),
+      }), id);
+    } catch(e) { console.warn('Override clear failed', e); }
   } else {
     _ovCache[id] = { ..._ovCache[id], ...data };
     try {
-      const sb = getSB(); if (!sb) return;
-      await sb.from('session_overrides').upsert({
-        notion_page_id: id,
-        name:         data.name      || null,
+      const patch = {
         distance_km:  data.dist      ? parseFloat(data.dist) || null : null,
         target_pace:  data.pace      || null,
         warm_up:      data.warmup    || null,
@@ -1673,9 +2022,862 @@ async function setPlanOverride(id, data) {
         cool_down:    data.cooldown  || null,
         notes:        data.notes     || null,
         updated_at:   new Date().toISOString(),
-      }, { onConflict: 'notion_page_id' });
+      };
+      if (data.name) patch.title = data.name;
+      await _psMatch(sb.from('planned_sessions').update(patch), id);
+      const row = _planRowsSB.find(r => r.notion_page_id === id || r.id === id);
+      if (row) Object.assign(row, patch);
     } catch(e) { console.warn('Override save failed', e); }
   }
+}
+
+// ── Planning data (Supabase = source of truth) ────────────────────────────────
+// Fetches planned_sessions and adapts each row to the Notion-row shape the rest
+// of the dashboard already understands, so existing grids/compliance logic work
+// unchanged. Migrated rows keep their Notion page id as _id so completion ticks
+// and old links keep matching.
+async function fetchPlanningSB() {
+  const sb = getSB(); if (!sb) throw new Error('Supabase unavailable');
+  let all = [], from = 0;
+  for (;;) {
+    const { data, error } = await sb.from('planned_sessions').select('*')
+      .order('planned_date', { ascending: true, nullsFirst: false })
+      .range(from, from + 999);
+    if (error) throw new Error('planned_sessions: ' + error.message);
+    all = all.concat(data || []);
+    if (!data || data.length < 1000) break;
+    from += 1000;
+  }
+  _planRowsSB = all;
+
+  // Rebuild the override cache from row-level prescription fields
+  _ovCache = {};
+  all.forEach(r => {
+    const key = r.notion_page_id || r.id;
+    if (r.distance_km != null || r.target_pace || r.warm_up || r.intervals ||
+        r.working_pace || r.rest || r.cool_down || r.notes) {
+      _ovCache[key] = {
+        name:      r.title || '',
+        dist:      r.distance_km != null ? String(r.distance_km) : '',
+        pace:      r.target_pace  || '',
+        warmup:    r.warm_up      || '',
+        intervals: r.intervals    || '',
+        workpace:  r.working_pace || '',
+        rest:      r.rest         || '',
+        cooldown:  r.cool_down    || '',
+        notes:     r.notes        || '',
+      };
+    }
+  });
+  return all.map(planRowToNotionShape);
+}
+
+function planRowToNotionShape(r) {
+  return {
+    _id: r.notion_page_id || r.id,
+    _sbId: r.id,
+    'Session': r.title || 'Session',
+    'Session Type': r.session_type || null,
+    'Week': r.week_label || null,
+    'Status ': r.status || 'Planned',
+    'Athlete': r.athlete_code,
+    'Run Details': r.run_details || '',
+    'Intensity': r.intensity || '',
+    'Planned Date': r.planned_date,
+    'date:Planned Date:start': r.planned_date,
+    'date:Planned Date:end': null,
+    'date:Planned Date:is_datetime': 0,
+    '_createdTime': r.created_at,
+  };
+}
+
+async function loadSessionLibrary() {
+  try {
+    const sb = getSB(); if (!sb) return;
+    const [lib, splits] = await Promise.all([
+      sb.from('session_library').select('*').eq('archived', false).order('name', { ascending: true }),
+      sb.from('workout_splits').select('*').eq('archived', false).order('name', { ascending: true }),
+    ]);
+    _libCache = lib.data || [];
+    _splitsCache = splits.data || [];
+  } catch(e) { console.warn('Session library load failed', e); }
+}
+
+// Splits visible for an athlete: globals, with athlete-specific variants overriding by name
+function splitsForAthlete(code) {
+  const map = new Map();
+  _splitsCache.filter(s => !s.athlete_code).forEach(s => map.set(s.name, s));
+  _splitsCache.filter(s => s.athlete_code === code).forEach(s => map.set(s.name, s));
+  return [...map.values()];
+}
+function splitForTitle(title, code) {
+  const t = (title || '').toLowerCase();
+  return splitsForAthlete(code)
+    .filter(s => t.indexOf(s.name.toLowerCase()) >= 0)
+    .sort((a, b) => b.name.length - a.name.length)[0] || null;
+}
+
+// ── Planning tab ──────────────────────────────────────────────────────────────
+const PLAN_TYPE_COLORS = {
+  'Run':'#f59e0b','Easy Effort':'#9a9a9a','Tempo':'#4ade80','Speed':'#fb923c',
+  'Long Run':'#f472b6','Recovery':'#a5b4fc','race':'#facc15','Strength':'#60a5fa',
+  'Run + Strength':'#f87171','Rest':'#38bdf8','Optional':'#34d399','Weekly KM Total':'#a78b71',
+};
+const PLAN_DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+let _planAthlete = null;
+let _planWeekOffset = 0;
+let _planLibOpen = false;
+
+function _isoDate(d) {
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+function _planWeekStart() {
+  const now = new Date();
+  const mon = new Date(now.getFullYear(), now.getMonth(), now.getDate() - ((now.getDay() + 6) % 7));
+  mon.setDate(mon.getDate() + _planWeekOffset * 7);
+  return mon;
+}
+function _planAthleteCodes() {
+  const codes = new Set(_planRowsSB.map(r => r.athlete_code));
+  _allAthletes.forEach(a => codes.add(a.id));
+  COACHES.forEach(c => codes.add(c));
+  return [...codes].filter(Boolean).sort();
+}
+
+// ── Nutrition planning (Supabase nutrition_plans) ─────────────────────────────
+let _nutPlans = [];
+let _nutAthlete = null;
+
+// ── Programme length (athlete_data key 'programme_weeks', default 12) ─────────
+const DEFAULT_PROG_WEEKS = 12;
+let _progWeeks = {}; // athlete_code → weeks
+function getProgWeeks(code) { return _progWeeks[code] || DEFAULT_PROG_WEEKS; }
+
+async function saveProgWeeks(v) {
+  if (!_nutAthlete) return;
+  const n = parseInt(v, 10);
+  const weeks = (!isNaN(n) && n > 0 && n <= 52) ? n : DEFAULT_PROG_WEEKS;
+  _progWeeks[_nutAthlete] = weeks;
+  const el = document.getElementById('nut-prog-weeks');
+  if (el) el.value = weeks;
+  renderNutTable();
+  const sb = getSB(); if (!sb) return;
+  try {
+    await sb.from('athlete_data').upsert(
+      { athlete_code: _nutAthlete, key: 'programme_weeks', value: weeks, updated_at: new Date().toISOString() },
+      { onConflict: 'athlete_code,key' }
+    );
+  } catch (e) { console.warn('programme_weeks save failed', e); }
+}
+
+// Loads nutrition_plans and returns rows shaped like the old Notion targets DB
+// so every existing consumer (targetMap, macro compliance, KM bars) works unchanged.
+async function fetchTargetsSB() {
+  const sb = getSB(); if (!sb) return [];
+  try {
+    const { data, error } = await sb.from('nutrition_plans').select('*');
+    if (error) throw error;
+    _nutPlans = data || [];
+  } catch (e) { console.warn('nutrition_plans load failed', e); _nutPlans = []; }
+  try {
+    const { data: pw } = await sb.from('athlete_data').select('athlete_code,value').eq('key', 'programme_weeks');
+    _progWeeks = {};
+    (pw || []).forEach(r => { const n = parseInt(r.value, 10); if (!isNaN(n) && n > 0) _progWeeks[r.athlete_code] = n; });
+  } catch (e) { console.warn('programme_weeks load failed', e); }
+  const badge = document.getElementById('tab-nut-count');
+  if (badge) badge.textContent = new Set(_nutPlans.map(r => r.athlete_code)).size || '—';
+  return _nutPlans.map(r => ({
+    Name: r.athlete_code, Week: r.week_label,
+    Calories: r.calories || '', Protein: r.protein || '', Carbs: r.carbs || '',
+    Fats: r.fats || '', Fibre: r.fibre || '',
+    'Weekly KM Target': r.weekly_km_target != null ? r.weekly_km_target : null,
+    Notes: r.notes || '', _id: r.id,
+  }));
+}
+
+// Sum planned run km for an athlete-week from planned_sessions.
+// Distance source per session: distance_km field if set, otherwise parsed from
+// the title ("Easy Run — 12km" → 12; "10km pace" mentions are ignored).
+// "Weekly KM Total: 65km" rows act as a floor, not a session.
+function _sessionKm(r) {
+  const d = parseFloat(r.distance_km);
+  if (!isNaN(d) && d > 0) return d;
+  const m = (r.title || '').match(/(\d+(?:\.\d+)?)\s*km\b(?!\s*pace)/i);
+  return m ? parseFloat(m[1]) : 0;
+}
+function _plannedKmForWeek(code, weekLabel) {
+  if (!code || !weekLabel) return 0;
+  let sum = 0, declared = 0;
+  _planRowsSB.forEach(r => {
+    if (r.athlete_code !== code || (r.week_label || '').trim() !== weekLabel) return;
+    if (r.session_type === 'Weekly KM Total' || /km total/i.test(r.title || '')) {
+      const m = (r.title || '').match(/(\d+(?:\.\d+)?)\s*km/i);
+      if (m) declared = Math.max(declared, parseFloat(m[1]));
+      return;
+    }
+    sum += _sessionKm(r);
+  });
+  return Math.round(Math.max(sum, declared) * 10) / 10;
+}
+
+// Fill any targets row that has no manual KM with the auto-computed planned KM
+function _fillTargetsKm(targets) {
+  targets.forEach(t => {
+    if (t['Weekly KM Target'] == null) {
+      const km = _plannedKmForWeek(t.Name, t.Week);
+      if (km > 0) t['Weekly KM Target'] = km;
+    }
+  });
+  return targets;
+}
+
+function _nutAthleteCodes() {
+  const codes = new Set(_planAthleteCodes());
+  _nutPlans.forEach(r => codes.add(r.athlete_code));
+  return [...codes].filter(Boolean).sort();
+}
+
+function _nutWkNum(label) { const m = String(label || '').match(/(\d+)/); return m ? parseInt(m[1], 10) : -1; }
+
+function _nutCurrentWeekLabel(code) {
+  const a = _allAthletes.find(x => x.id === code);
+  return (a && a.weekNum != null) ? `Week ${a.weekNum}` : null;
+}
+
+function renderNutritionTab() {
+  const codes = _nutAthleteCodes();
+  if (!_nutAthlete || !codes.includes(_nutAthlete)) {
+    _nutAthlete = localStorage.getItem('dp_nut_athlete');
+    if (!_nutAthlete || !codes.includes(_nutAthlete)) _nutAthlete = codes.filter(c => !COACHES.has(c))[0] || codes[0] || null;
+  }
+  document.getElementById('nut-ath-chips').innerHTML = buildAthChipsHTML(codes, _nutAthlete, 'setNutAthlete');
+  const pwEl = document.getElementById('nut-prog-weeks');
+  if (pwEl) pwEl.value = _nutAthlete ? getProgWeeks(_nutAthlete) : DEFAULT_PROG_WEEKS;
+  renderNutTable();
+}
+function setNutAthlete(code) {
+  _nutAthlete = code;
+  try { localStorage.setItem('dp_nut_athlete', code); } catch {}
+  renderNutritionTab();
+}
+
+let _nutRenderRows = [];
+function renderNutTable() {
+  const wrap = document.getElementById('nut-table-wrap');
+  const meta = document.getElementById('nut-meta');
+  if (!_nutAthlete) { wrap.innerHTML = '<div class="nut-empty">No athletes found</div>'; meta.textContent = ''; return; }
+
+  const curWk = _nutCurrentWeekLabel(_nutAthlete);
+  _nutRenderRows = _nutPlans
+    .filter(r => r.athlete_code === _nutAthlete)
+    .sort((a, b) => _nutWkNum(a.week_label) - _nutWkNum(b.week_label));
+
+  const curNum = curWk ? _nutWkNum(curWk) : null;
+  meta.textContent = `${_nutAthlete} — ${curNum != null ? `Week ${curNum} of ${getProgWeeks(_nutAthlete)}` : `${getProgWeeks(_nutAthlete)}-week programme`} · weekly macro & KM targets · KM auto-fills from the training plan when no manual target is set`;
+
+  if (!_nutRenderRows.length) {
+    wrap.innerHTML = '<div class="nut-empty">No nutrition plan yet — use + Week to add the first week</div>';
+    return;
+  }
+
+  const iv = v => esc(v == null ? '' : String(v));
+  const rowsHtml = _nutRenderRows.map((r, i) => {
+    const isCur = curWk && r.week_label === curWk;
+    const autoKm = _plannedKmForWeek(r.athlete_code, r.week_label);
+    return `<tr class="nut-row${isCur ? ' current' : ''}">
+      <td><span class="nut-wk">${esc(r.week_label)}</span>${isCur ? '<span class="nut-now">NOW</span>' : ''}</td>
+      <td><input class="nut-input" id="nut-${i}-cal"   value="${iv(r.calories)}" placeholder="kcal" oninput="nutDirty(${i})"></td>
+      <td><input class="nut-input" id="nut-${i}-pro"   value="${iv(r.protein)}"  placeholder="g"    oninput="nutDirty(${i})"></td>
+      <td><input class="nut-input" id="nut-${i}-carb"  value="${iv(r.carbs)}"    placeholder="g"    oninput="nutDirty(${i})"></td>
+      <td><input class="nut-input" id="nut-${i}-fat"   value="${iv(r.fats)}"     placeholder="g"    oninput="nutDirty(${i})"></td>
+      <td><input class="nut-input" id="nut-${i}-fib"   value="${iv(r.fibre)}"    placeholder="g"    oninput="nutDirty(${i})"></td>
+      <td><input class="nut-input km" id="nut-${i}-km" value="${iv(r.weekly_km_target)}" placeholder="auto" oninput="nutDirty(${i})"></td>
+      <td><span class="nut-km-auto">${autoKm > 0 ? autoKm + ' km' : '—'}<span class="src">from plan</span></span></td>
+      <td><input class="nut-input wide" id="nut-${i}-notes" value="${iv(r.notes)}" placeholder="Coach note" oninput="nutDirty(${i})"></td>
+      <td><button class="nut-save" id="nut-${i}-save" onclick="saveNutRow(${i})">Save</button></td>
+    </tr>`;
+  }).join('');
+
+  wrap.innerHTML = `<table class="nut-table">
+    <thead><tr>
+      <th>Week</th><th>Calories</th><th>Protein</th><th>Carbs</th><th>Fats</th><th>Fibre</th>
+      <th>KM Target</th><th>Planned KM</th><th>Notes</th><th></th>
+    </tr></thead>
+    <tbody>${rowsHtml}</tbody>
+  </table>`;
+}
+
+function nutDirty(i) {
+  const btn = document.getElementById(`nut-${i}-save`);
+  if (btn) { btn.classList.add('dirty'); btn.textContent = 'Save'; btn.disabled = false; }
+}
+
+async function saveNutRow(i) {
+  const r = _nutRenderRows[i]; if (!r) return;
+  const sb = getSB(); if (!sb) return;
+  const val = id => { const el = document.getElementById(`nut-${i}-${id}`); const v = el ? el.value.trim() : ''; return v === '' ? null : v; };
+  const kmRaw = val('km');
+  const patch = {
+    athlete_code: r.athlete_code,
+    week_label:   r.week_label,
+    calories: val('cal'), protein: val('pro'), carbs: val('carb'),
+    fats: val('fat'), fibre: val('fib'), notes: val('notes'),
+    weekly_km_target: kmRaw == null ? null : (isNaN(parseFloat(kmRaw)) ? null : parseFloat(kmRaw)),
+    updated_at: new Date().toISOString(),
+  };
+  const btn = document.getElementById(`nut-${i}-save`);
+  if (btn) { btn.textContent = 'Saving…'; btn.disabled = true; }
+  try {
+    const { error } = await sb.from('nutrition_plans').upsert(patch, { onConflict: 'athlete_code,week_label' });
+    if (error) throw error;
+    Object.assign(r, patch);
+    if (btn) {
+      btn.textContent = '✓ Saved'; btn.classList.remove('dirty');
+      setTimeout(() => { btn.textContent = 'Save'; btn.disabled = false; }, 1400);
+    }
+  } catch (e) {
+    console.warn('nutrition_plans save failed', e);
+    if (btn) { btn.textContent = 'Retry'; btn.disabled = false; }
+  }
+}
+
+function addNutWeek() {
+  if (!_nutAthlete) return;
+  const maxWk = _nutPlans.filter(r => r.athlete_code === _nutAthlete)
+    .reduce((m, r) => Math.max(m, _nutWkNum(r.week_label)), 0);
+  // Extending past the programme end bumps the programme length automatically
+  if (maxWk + 1 > getProgWeeks(_nutAthlete)) saveProgWeeks(maxWk + 1);
+  _nutPlans.push({
+    athlete_code: _nutAthlete, week_label: `Week ${maxWk + 1}`,
+    calories: null, protein: null, carbs: null, fats: null, fibre: null,
+    weekly_km_target: null, notes: null,
+  });
+  renderNutTable();
+}
+
+// Athlete chips first, then a divider and coach chips (KARL/ALEX) — coaches are
+// selectable for their own plans but visually separated from the athlete roster.
+function buildAthChipsHTML(codes, active, handlerName) {
+  const ath = codes.filter(c => !COACHES.has(c));
+  const co  = codes.filter(c => COACHES.has(c));
+  const chip = c => `<button class="plan-chip${COACHES.has(c) ? ' coach' : ''}${c === active ? ' active' : ''}" onclick="${handlerName}('${esc(c)}')">${esc(c)}</button>`;
+  return ath.map(chip).join('')
+    + (co.length ? `<span class="chip-divider">Coaches</span>` + co.map(chip).join('') : '');
+}
+
+function renderPlanning() {
+  const codes = _planAthleteCodes();
+  if (!_planAthlete || !codes.includes(_planAthlete)) {
+    _planAthlete = localStorage.getItem('dp_plan_athlete');
+    if (!_planAthlete || !codes.includes(_planAthlete)) _planAthlete = codes.filter(c => !COACHES.has(c))[0] || codes[0] || null;
+  }
+  document.getElementById('plan-ath-chips').innerHTML = buildAthChipsHTML(codes, _planAthlete, 'setPlanAthlete');
+  if (_planLibOpen) renderPlanLibrary(); else renderPlanGrid();
+}
+function setPlanAthlete(code) {
+  _planAthlete = code;
+  try { localStorage.setItem('dp_plan_athlete', code); } catch {}
+  renderPlanning();
+}
+function planWeekNav(d)  { _planWeekOffset += d; renderPlanGrid(); }
+function planWeekReset() { _planWeekOffset = 0; renderPlanGrid(); }
+
+function _planRowsForWeek(code, ws) {
+  const wsISO = _isoDate(ws);
+  const we = new Date(ws); we.setDate(we.getDate() + 6);
+  const weISO = _isoDate(we);
+  return _planRowsSB.filter(r => r.athlete_code === code && r.planned_date && r.planned_date >= wsISO && r.planned_date <= weISO);
+}
+
+function renderPlanGrid() {
+  document.getElementById('plan-lib').style.display = 'none';
+  const grid = document.getElementById('plan-grid');
+  grid.style.display = '';
+  document.getElementById('plan-lib-btn').textContent = 'Library';
+  const ws = _planWeekStart();
+  const we = new Date(ws); we.setDate(we.getDate() + 6);
+  const fmt = d => d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
+  document.getElementById('plan-week-label').textContent =
+    _planWeekOffset === 0 ? 'This Week' : fmt(ws) + ' – ' + fmt(we);
+
+  const rows = _planAthlete ? _planRowsForWeek(_planAthlete, ws) : [];
+  const wkLabel = rows.map(r => r.week_label).find(Boolean) || '';
+  const totalKm = rows.reduce((s, r) => s + (parseFloat(r.distance_km) || 0), 0);
+  document.getElementById('plan-week-meta').textContent =
+    `${esc(_planAthlete || '—')} · ${fmt(ws)} – ${fmt(we)}${wkLabel ? ' · ' + wkLabel : ''} · ${rows.length} session${rows.length === 1 ? '' : 's'}${totalKm ? ' · ' + (Math.round(totalKm * 10) / 10) + ' km planned' : ''}`;
+
+  const todayISO = _isoDate(new Date());
+  let html = '';
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(ws); d.setDate(d.getDate() + i);
+    const iso = _isoDate(d);
+    const day = rows.filter(r => r.planned_date === iso);
+    html += `<div class="plan-day${iso === todayISO ? ' today' : ''}">
+      <div class="plan-day-head"><span>${PLAN_DAYS[i]}</span><span>${fmt(d)}</span></div>`;
+    if (!day.length) html += `<div class="plan-empty">—</div>`;
+    day.forEach(r => {
+      const col = PLAN_TYPE_COLORS[r.session_type] || 'var(--dim)';
+      const meta = [];
+      if (r.run_details) meta.push(esc(r.run_details));
+      if (r.distance_km != null) meta.push(esc(String(r.distance_km)) + 'km');
+      if (r.target_pace) meta.push(esc(r.target_pace));
+      const sp = splitForTitle(r.title, r.athlete_code);
+      if (sp && !r.run_details) meta.push((sp.exercises || []).length + ' exercises');
+      html += `<div class="plan-card" style="border-left-color:${col}" onclick="openPlanSession('${r.id}')">
+        <div class="plan-card-title">${esc(r.title || 'Session')}</div>
+        ${r.session_type ? `<div class="plan-card-meta" style="color:${col}">${esc(r.session_type)}</div>` : ''}
+        ${meta.length ? `<div class="plan-card-meta">${meta.join(' · ')}</div>` : ''}
+        <span class="plan-card-status ${esc(r.status || 'Planned')}">${esc(r.status || 'Planned')}</span>
+      </div>`;
+    });
+    html += `<button class="plan-add-btn" onclick="openPlanSession(null,'${iso}')">+ Add</button></div>`;
+  }
+  grid.innerHTML = html;
+}
+
+function updatePlanningBadge() {
+  const el = document.getElementById('tab-planning-count');
+  if (!el) return;
+  const saved = _planWeekOffset; _planWeekOffset = 0;
+  const ws = _planWeekStart(); _planWeekOffset = saved;
+  const wsISO = _isoDate(ws);
+  const we = new Date(ws); we.setDate(we.getDate() + 6);
+  const weISO = _isoDate(we);
+  el.textContent = _planRowsSB.filter(r => r.planned_date && r.planned_date >= wsISO && r.planned_date <= weISO).length;
+}
+
+// ── Copy week → next week ─────────────────────────────────────────────────────
+async function copyPlanWeek() {
+  if (!_planAthlete) return;
+  const ws = _planWeekStart();
+  const rows = _planRowsForWeek(_planAthlete, ws);
+  if (!rows.length) { alert('No sessions in this week to copy.'); return; }
+  if (!confirm(`Copy ${rows.length} session${rows.length === 1 ? '' : 's'} for ${_planAthlete} into next week?`)) return;
+  const sb = getSB(); if (!sb) return;
+  const clones = rows.map(r => {
+    const d = new Date(r.planned_date + 'T00:00:00'); d.setDate(d.getDate() + 7);
+    const wkNum = r.week_label && /\d+/.test(r.week_label) ? 'Week ' + (parseInt(r.week_label.match(/\d+/)[0], 10) + 1) : r.week_label;
+    return {
+      athlete_code: r.athlete_code, title: r.title, session_type: r.session_type,
+      planned_date: _isoDate(d), week_label: wkNum, status: 'Planned',
+      library_id: r.library_id, run_details: r.run_details, intensity: r.intensity,
+      distance_km: r.distance_km, target_pace: r.target_pace, warm_up: r.warm_up,
+      intervals: r.intervals, working_pace: r.working_pace, rest: r.rest,
+      cool_down: r.cool_down, notes: r.notes,
+    };
+  });
+  const { data, error } = await sb.from('planned_sessions').insert(clones).select();
+  if (error) { alert('Copy failed: ' + error.message); return; }
+  _planRowsSB = _planRowsSB.concat(data || []);
+  _planWeekOffset += 1;
+  renderPlanGrid();
+  updatePlanningBadge();
+}
+
+// ── Plan session modal ────────────────────────────────────────────────────────
+let _psEditingId = null;
+
+function openPlanSession(id, dateISO) {
+  _psEditingId = id || null;
+  const row = id ? _planRowsSB.find(r => r.id === id) : null;
+  document.getElementById('ps-title').textContent = row ? 'Edit Session' : 'Plan Session';
+  document.getElementById('ps-sub').textContent = (_planAthlete || '') + (row?.planned_date ? ' · ' + fmtDate(row.planned_date) : dateISO ? ' · ' + fmtDate(dateISO) : '');
+  document.getElementById('ps-delete').style.display = row ? '' : 'none';
+
+  // Library template (searchable)
+  document.getElementById('ps-lib').value = row?.library_id || '';
+  const selLib = row?.library_id ? _libCache.find(l => l.id === row.library_id) : null;
+  document.getElementById('ps-lib-search').value = selLib ? selLib.name : '';
+  hideLibSearch();
+
+  // Strength split select — preselect if the title matches a split name
+  const spSel = document.getElementById('ps-split');
+  const splits = splitsForAthlete(_planAthlete);
+  spSel.innerHTML = '<option value="">— split —</option>' +
+    splits.map(s => `<option value="${s.id}">${esc(s.name)}${s.athlete_code ? ' · ' + esc(s.athlete_code) : ''} (${(s.exercises || []).length} ex)</option>`).join('');
+  const matched = row ? splitForTitle(row.title, _planAthlete) : null;
+  spSel.value = matched ? matched.id : '';
+
+  // Guess week label for new sessions from neighbours in the same visible week
+  let weekGuess = '';
+  if (!row && _planAthlete) {
+    weekGuess = _planRowsForWeek(_planAthlete, _planWeekStart()).map(r => r.week_label).find(Boolean) || '';
+  }
+
+  document.getElementById('ps-name').value      = row?.title || '';
+  document.getElementById('ps-type').value      = row?.session_type || '';
+  document.getElementById('ps-status').value    = row?.status || 'Planned';
+  document.getElementById('ps-date').value      = row?.planned_date || dateISO || _isoDate(_planWeekStart());
+  const wkSel = document.getElementById('ps-week');
+  const wkVal = row?.week_label || weekGuess;
+  if (wkVal && ![...wkSel.options].some(o => o.value === wkVal)) {
+    wkSel.add(new Option(wkVal, wkVal)); // keep labels beyond Week 16 (e.g. from copy-week)
+  }
+  wkSel.value = wkVal;
+  document.getElementById('ps-details').value   = row?.run_details || '';
+  document.getElementById('ps-dist').value      = row?.distance_km != null ? row.distance_km : '';
+  document.getElementById('ps-pace').value      = row?.target_pace || '';
+  document.getElementById('ps-warmup').value    = row?.warm_up || '';
+  document.getElementById('ps-intervals').value = row?.intervals || '';
+  document.getElementById('ps-workpace').value  = row?.working_pace || '';
+  document.getElementById('ps-rest').value      = row?.rest || '';
+  document.getElementById('ps-cooldown').value  = row?.cool_down || '';
+  document.getElementById('ps-notes').value     = row?.notes || '';
+  updatePsVisibility();
+  document.getElementById('ps-overlay').classList.remove('hidden');
+  setTimeout(() => document.getElementById('ps-name').focus(), 60);
+}
+function closePlanSession() {
+  document.getElementById('ps-overlay').classList.add('hidden');
+  _psEditingId = null;
+}
+// ── Run template typeahead ────────────────────────────────────────────────────
+function filterLibSearch() {
+  const q = document.getElementById('ps-lib-search').value.trim().toLowerCase();
+  const box = document.getElementById('ps-lib-results');
+  const matches = _libCache.filter(l =>
+    !q || (l.name || '').toLowerCase().includes(q) || (l.session_type || '').toLowerCase().includes(q)
+  ).slice(0, 40);
+  if (!matches.length) { box.style.display = 'none'; box.innerHTML = ''; return; }
+  box.innerHTML = matches.map(l =>
+    `<div class="ps-lib-result" onmousedown="pickLibTemplate('${l.id}')">${esc(l.name)}${l.session_type ? `<span>${esc(l.session_type)}</span>` : ''}</div>`
+  ).join('');
+  box.style.display = '';
+}
+function hideLibSearch() {
+  const box = document.getElementById('ps-lib-results');
+  if (box) { box.style.display = 'none'; box.innerHTML = ''; }
+}
+function pickLibTemplate(id) {
+  document.getElementById('ps-lib').value = id;
+  const lib = _libCache.find(l => l.id === id);
+  document.getElementById('ps-lib-search').value = lib ? lib.name : '';
+  hideLibSearch();
+  applyLibTemplate();
+}
+
+function applyLibTemplate() {
+  const lib = _libCache.find(l => l.id === document.getElementById('ps-lib').value);
+  if (!lib) return;
+  document.getElementById('ps-split').value = '';
+  const set = (id, v) => { if (v) document.getElementById(id).value = v; };
+  set('ps-name', lib.name);
+  if (lib.session_type && [...document.getElementById('ps-type').options].some(o => o.value === lib.session_type)) {
+    document.getElementById('ps-type').value = lib.session_type;
+  }
+  set('ps-details', lib.description);
+  set('ps-pace', lib.target_pace);
+  set('ps-warmup', lib.warm_up);
+  set('ps-cooldown', lib.cool_down);
+  document.getElementById('ps-split').value = '';
+  updatePsVisibility();
+}
+
+// Picking a strength split: the portal matches gym sessions to splits BY TITLE,
+// so the split name becomes the session title.
+function applySplitPick() {
+  const sp = _splitsCache.find(s => s.id === document.getElementById('ps-split').value);
+  if (!sp) { updatePsVisibility(); return; }
+  document.getElementById('ps-lib').value = '';
+  document.getElementById('ps-lib-search').value = '';
+  document.getElementById('ps-name').value = sp.name;
+  if (!document.getElementById('ps-type').value) document.getElementById('ps-type').value = 'Strength';
+  const exs = sp.exercises || [];
+  if (!document.getElementById('ps-details').value) {
+    document.getElementById('ps-details').value = exs.length + ' exercises';
+  }
+  updatePsVisibility();
+}
+
+// Show only what's relevant to the chosen type: Strength hides the run
+// prescription and shows the split's exercises; run types do the reverse.
+// 'Run + Strength' and no-type-yet show both. Rest hides everything.
+function updatePsVisibility() {
+  const type = document.getElementById('ps-type').value;
+  const isStr    = type === 'Strength';
+  const isRunStr = type === 'Run + Strength';
+  const isRest   = type === 'Rest';
+  const showRun   = !isStr && !isRest;
+  const showSplit = isStr || isRunStr || !type;
+  document.getElementById('ps-run-fields').style.display  = showRun ? '' : 'none';
+  document.getElementById('ps-lib-field').style.display   = showRun ? '' : 'none';
+  document.getElementById('ps-split-field').style.display = showSplit ? '' : 'none';
+  document.getElementById('ps-details-field').style.display = isRest ? 'none' : '';
+  renderPsExPreview();
+}
+function renderPsExPreview() {
+  const el = document.getElementById('ps-ex-preview');
+  const type = document.getElementById('ps-type').value;
+  const strish = type === 'Strength' || type === 'Run + Strength';
+  let sp = _splitsCache.find(s => s.id === document.getElementById('ps-split').value) || null;
+  if (!sp) sp = splitForTitle(document.getElementById('ps-name').value, _planAthlete);
+  if (!strish || !sp) { el.style.display = 'none'; el.innerHTML = ''; return; }
+  const exs = sp.exercises || [];
+  el.style.display = '';
+  el.innerHTML = `<div class="po-label" style="margin-bottom:5px">${esc(sp.name)} — ${exs.length} exercises</div>
+    <div class="ps-ex-preview-list">` +
+    exs.map(e => {
+      const wu = e.warmupSets && e.warmupSets !== '0' ? e.warmupSets + ' wu + ' : '';
+      const sets = e.workingSets || e.sets || '';
+      return `<div class="ps-ex-preview-row"><span>${esc(e.exercise)}</span><span>${esc(wu + sets)} sets · ${esc(e.repRange || '')}</span></div>`;
+    }).join('') + `</div>
+    <div class="ps-ex-preview-hint">Edit exercises in Library → Workout Splits</div>`;
+}
+async function savePlanSession() {
+  if (!_planAthlete && !_psEditingId) { alert('Pick an athlete first.'); return; }
+  const sb = getSB(); if (!sb) return;
+  const v = id => document.getElementById(id).value.trim();
+  const dist = v('ps-dist');
+  const patch = {
+    title:        v('ps-name') || 'Session',
+    session_type: v('ps-type') || null,
+    status:       v('ps-status') || 'Planned',
+    planned_date: v('ps-date') || null,
+    week_label:   v('ps-week') || null,
+    run_details:  v('ps-details') || null,
+    library_id:   document.getElementById('ps-lib').value || null,
+    distance_km:  dist ? parseFloat(dist) || null : null,
+    target_pace:  v('ps-pace') || null,
+    warm_up:      v('ps-warmup') || null,
+    intervals:    v('ps-intervals') || null,
+    working_pace: v('ps-workpace') || null,
+    rest:         v('ps-rest') || null,
+    cool_down:    v('ps-cooldown') || null,
+    notes:        v('ps-notes') || null,
+    updated_at:   new Date().toISOString(),
+  };
+  const btn = document.getElementById('ps-save');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    if (_psEditingId) {
+      const { data, error } = await sb.from('planned_sessions').update(patch).eq('id', _psEditingId).select().single();
+      if (error) throw error;
+      const i = _planRowsSB.findIndex(r => r.id === _psEditingId);
+      if (i >= 0) _planRowsSB[i] = data;
+    } else {
+      patch.athlete_code = _planAthlete;
+      const { data, error } = await sb.from('planned_sessions').insert(patch).select().single();
+      if (error) throw error;
+      _planRowsSB.push(data);
+    }
+    closePlanSession();
+    renderPlanGrid();
+    updatePlanningBadge();
+  } catch(e) {
+    alert('Save failed: ' + (e.message || e));
+  } finally {
+    btn.disabled = false; btn.textContent = 'Save Session';
+  }
+}
+async function deletePlanSession() {
+  if (!_psEditingId) return;
+  if (!confirm('Delete this planned session?')) return;
+  const sb = getSB(); if (!sb) return;
+  const { error } = await sb.from('planned_sessions').delete().eq('id', _psEditingId);
+  if (error) { alert('Delete failed: ' + error.message); return; }
+  _planRowsSB = _planRowsSB.filter(r => r.id !== _psEditingId);
+  closePlanSession();
+  renderPlanGrid();
+  updatePlanningBadge();
+}
+
+// ── Session library view ──────────────────────────────────────────────────────
+let _plEditingId = null;
+
+function togglePlanLibrary() {
+  _planLibOpen = !_planLibOpen;
+  if (_planLibOpen) renderPlanLibrary(); else renderPlanGrid();
+}
+function renderPlanLibrary() {
+  document.getElementById('plan-grid').style.display = 'none';
+  document.getElementById('plan-week-meta').textContent =
+    `${_libCache.length} run templates · ${_splitsCache.length} workout splits`;
+  const wrap = document.getElementById('plan-lib');
+  wrap.style.display = '';
+  document.getElementById('plan-lib-btn').textContent = '← Planner';
+  wrap.innerHTML = `
+    <div class="plan-lib-head">
+      <div class="plan-lib-title">Workout Splits — Strength</div>
+      <button class="plan-action-btn" onclick="openSplitEditor(null)">+ Split</button>
+    </div>
+    <div class="plan-lib-grid" style="margin-bottom:22px">` +
+    _splitsCache.map(s => {
+      const exs = s.exercises || [];
+      const preview = exs.slice(0, 3).map(e => e.exercise).filter(Boolean).map(esc).join(' · ');
+      return `<div class="plan-lib-card" onclick="openSplitEditor('${s.id}')">
+        <div class="plan-lib-name">${esc(s.name)}${s.athlete_code ? `<span class="plan-lib-tag">${esc(s.athlete_code)}</span>` : ''}</div>
+        <div class="plan-lib-meta">${exs.length} exercises</div>
+        ${preview ? `<div class="plan-lib-meta">${preview}${exs.length > 3 ? ' …' : ''}</div>` : ''}
+      </div>`;
+    }).join('') + `</div>
+    <div class="plan-lib-head">
+      <div class="plan-lib-title">Session Library — Running</div>
+      <button class="plan-action-btn" onclick="openLibEditor(null)">+ Template</button>
+    </div>
+    <div class="plan-lib-grid">` +
+    _libCache.map(l => {
+      const meta = [l.session_type, l.distance, l.target_pace, l.intensity].filter(Boolean).map(esc).join(' · ');
+      return `<div class="plan-lib-card" onclick="openLibEditor('${l.id}')">
+        <div class="plan-lib-name">${esc(l.name)}</div>
+        ${meta ? `<div class="plan-lib-meta">${meta}</div>` : ''}
+        ${l.description ? `<div class="plan-lib-meta">${esc(l.description.length > 110 ? l.description.slice(0, 110) + '…' : l.description)}</div>` : ''}
+      </div>`;
+    }).join('') + `</div>`;
+}
+
+// ── Workout split editor ──────────────────────────────────────────────────────
+let _pwEditingId = null;
+
+function openSplitEditor(id) {
+  _pwEditingId = id || null;
+  const s = id ? _splitsCache.find(x => x.id === id) : null;
+  document.getElementById('pw-title').textContent = s ? 'Edit Split' : 'New Split';
+  document.getElementById('pw-archive').style.display = s ? '' : 'none';
+  document.getElementById('pw-name').value = s?.name || '';
+  document.getElementById('pw-ath').value  = s?.athlete_code || '';
+  const list = document.getElementById('pw-ex-list');
+  list.innerHTML = `<div class="pw-ex-head"><span>Exercise</span><span>WU sets</span><span>Work sets</span><span>Rep range</span><span>Rest</span><span></span></div>`;
+  (s?.exercises || []).forEach(ex => addSplitExRow(ex));
+  if (!s) addSplitExRow();
+  document.getElementById('pw-overlay').classList.remove('hidden');
+  setTimeout(() => document.getElementById('pw-name').focus(), 60);
+}
+function closeSplitEditor() {
+  document.getElementById('pw-overlay').classList.add('hidden');
+  _pwEditingId = null;
+}
+function addSplitExRow(ex) {
+  ex = ex || {};
+  const row = document.createElement('div');
+  row.className = 'pw-ex-row';
+  row.innerHTML = `<div class="pw-ex-grid">
+    <input class="po-input" data-f="exercise" placeholder="Exercise name" value="${esc(ex.exercise || '')}">
+    <input class="po-input" data-f="warmupSets" placeholder="0" value="${esc(ex.warmupSets || '')}">
+    <input class="po-input" data-f="workingSets" placeholder="3" value="${esc(ex.workingSets || '')}">
+    <input class="po-input" data-f="repRange" placeholder="8-12" value="${esc(ex.repRange || '')}">
+    <input class="po-input" data-f="rest" placeholder="90s" value="${esc(ex.rest || '')}">
+    <button class="pw-ex-del" onclick="this.closest('.pw-ex-row').remove()" title="Remove exercise">✕</button>
+    <input class="po-input pw-wide" data-f="notes" placeholder="Notes (e.g. First set warm-up)" value="${esc(ex.notes || '')}">
+    <input class="po-input pw-wide" data-f="alts" placeholder="Alternatives, comma separated" value="${esc((ex.alts || []).join(', '))}">
+  </div>`;
+  document.getElementById('pw-ex-list').appendChild(row);
+}
+function _collectSplitExercises() {
+  return [...document.querySelectorAll('#pw-ex-list .pw-ex-row')].map(row => {
+    const g = f => (row.querySelector(`[data-f="${f}"]`)?.value || '').trim();
+    const wu = g('warmupSets') || '0', wk = g('workingSets') || '3';
+    const rr = g('repRange') || '8-12';
+    return {
+      exercise: g('exercise'),
+      sets: String((parseInt(wu, 10) || 0) + (parseInt(wk, 10) || 0)),
+      reps: (rr.match(/\d+/) || ['8'])[0],
+      repRange: rr,
+      warmupSets: wu,
+      workingSets: wk,
+      rest: g('rest') || '90s',
+      notes: g('notes'),
+      alts: g('alts') ? g('alts').split(',').map(s => s.trim()).filter(Boolean) : [],
+    };
+  }).filter(e => e.exercise);
+}
+async function saveSplit() {
+  const sb = getSB(); if (!sb) return;
+  const name = document.getElementById('pw-name').value.trim();
+  if (!name) { alert('Split needs a name.'); return; }
+  const exercises = _collectSplitExercises();
+  if (!exercises.length) { alert('Add at least one exercise.'); return; }
+  const patch = {
+    name,
+    athlete_code: document.getElementById('pw-ath').value.trim().toUpperCase() || null,
+    exercises,
+    updated_at: new Date().toISOString(),
+  };
+  try {
+    if (_pwEditingId) {
+      const { data, error } = await sb.from('workout_splits').update(patch).eq('id', _pwEditingId).select().single();
+      if (error) throw error;
+      const i = _splitsCache.findIndex(x => x.id === _pwEditingId);
+      if (i >= 0) _splitsCache[i] = data;
+    } else {
+      const { data, error } = await sb.from('workout_splits').insert(patch).select().single();
+      if (error) throw error;
+      _splitsCache.push(data);
+      _splitsCache.sort((a, b) => a.name.localeCompare(b.name));
+    }
+    closeSplitEditor();
+    renderPlanLibrary();
+  } catch(e) { alert('Save failed: ' + (e.message || e)); }
+}
+async function archiveSplit() {
+  if (!_pwEditingId) return;
+  if (!confirm('Archive this split? Planned sessions keep their titles; the portal falls back to its built-in version if one exists.')) return;
+  const sb = getSB(); if (!sb) return;
+  const { error } = await sb.from('workout_splits').update({ archived: true, updated_at: new Date().toISOString() }).eq('id', _pwEditingId);
+  if (error) { alert('Archive failed: ' + error.message); return; }
+  _splitsCache = _splitsCache.filter(x => x.id !== _pwEditingId);
+  closeSplitEditor();
+  renderPlanLibrary();
+}
+function openLibEditor(id) {
+  _plEditingId = id || null;
+  const l = id ? _libCache.find(x => x.id === id) : null;
+  document.getElementById('pl-title').textContent = l ? 'Edit Template' : 'New Template';
+  document.getElementById('pl-archive').style.display = l ? '' : 'none';
+  document.getElementById('pl-name').value        = l?.name || '';
+  document.getElementById('pl-type').value        = l?.session_type || '';
+  document.getElementById('pl-intensity').value   = l?.intensity || '';
+  document.getElementById('pl-distance').value    = l?.distance || '';
+  document.getElementById('pl-duration').value    = l?.duration || '';
+  document.getElementById('pl-pace').value        = l?.target_pace || '';
+  document.getElementById('pl-rpe').value         = l?.rpe || '';
+  document.getElementById('pl-warmup').value      = l?.warm_up || '';
+  document.getElementById('pl-cooldown').value    = l?.cool_down || '';
+  document.getElementById('pl-goal').value        = l?.goal || '';
+  document.getElementById('pl-description').value = l?.description || '';
+  document.getElementById('pl-overlay').classList.remove('hidden');
+  setTimeout(() => document.getElementById('pl-name').focus(), 60);
+}
+function closeLibEditor() {
+  document.getElementById('pl-overlay').classList.add('hidden');
+  _plEditingId = null;
+}
+async function saveLibSession() {
+  const sb = getSB(); if (!sb) return;
+  const v = id => document.getElementById(id).value.trim();
+  if (!v('pl-name')) { alert('Template needs a name.'); return; }
+  const patch = {
+    name: v('pl-name'), session_type: v('pl-type') || null, intensity: v('pl-intensity') || null,
+    distance: v('pl-distance') || null, duration: v('pl-duration') || null,
+    target_pace: v('pl-pace') || null, rpe: v('pl-rpe') || null,
+    warm_up: v('pl-warmup') || null, cool_down: v('pl-cooldown') || null,
+    goal: v('pl-goal') || null, description: v('pl-description') || null,
+    updated_at: new Date().toISOString(),
+  };
+  try {
+    if (_plEditingId) {
+      const { data, error } = await sb.from('session_library').update(patch).eq('id', _plEditingId).select().single();
+      if (error) throw error;
+      const i = _libCache.findIndex(x => x.id === _plEditingId);
+      if (i >= 0) _libCache[i] = data;
+    } else {
+      const { data, error } = await sb.from('session_library').insert(patch).select().single();
+      if (error) throw error;
+      _libCache.push(data);
+      _libCache.sort((a, b) => a.name.localeCompare(b.name));
+    }
+    closeLibEditor();
+    renderPlanLibrary();
+  } catch(e) { alert('Save failed: ' + (e.message || e)); }
+}
+async function archiveLibSession() {
+  if (!_plEditingId) return;
+  if (!confirm('Archive this template? It stays linked to past sessions but is hidden from pickers.')) return;
+  const sb = getSB(); if (!sb) return;
+  const { error } = await sb.from('session_library').update({ archived: true, updated_at: new Date().toISOString() }).eq('id', _plEditingId);
+  if (error) { alert('Archive failed: ' + error.message); return; }
+  _libCache = _libCache.filter(x => x.id !== _plEditingId);
+  closeLibEditor();
+  renderPlanLibrary();
 }
 
 // ── Plan override modal state ─────────────────────────────────────────────────
@@ -2755,7 +3957,11 @@ let _allApplications = [];
 let _decisions = [];
 let _dataHealth = null;
 let _syncAudit = [];
-let _statusFilter = 'all';
+let _statusFilter = localStorage.getItem('dp_dash_status') || 'all';
+let _tableSort = null;          // { key, dir } — set by clicking a table header; overrides dropdown sort in table view
+let _expandedRows = new Set();  // safeIds of expanded table rows (survives re-renders)
+
+function _isNoData(a) { return !a.weekly && !(a.body?.length); }
 let _dashboardWeekOffset = 0;
 
 function render({ athletes, coaches, applications = [], dataHealth = null, syncAudit = [] }) {
@@ -2773,14 +3979,22 @@ function render({ athletes, coaches, applications = [], dataHealth = null, syncA
 
   document.getElementById('tab-apps-count').textContent  = applications.length || '—';
   document.getElementById('tab-sync-count').textContent  = syncAudit.filter(r => r.severity !== 'good').length || '✓';
-  const schedCount = athletes.filter(a => a.thisWeekPlan && a.thisWeekPlan.length > 0).length;
-  const schedBadge = document.getElementById('tab-sched-count');
-  if (schedBadge) schedBadge.textContent = schedCount || '—';
 
   renderCommandCenter(athletes, applications, dataHealth);
-  renderSummary(athletes);
-  renderGrid(athletes);
-  renderSchedule(athletes);
+
+  // Data-health cards live on the Sync tab now
+  const _sh = document.getElementById('sync-health');
+  if (_sh) _sh.innerHTML = buildHealthCards(dataHealth, athletes, applications);
+
+  // Restore persisted sort dropdown + view toggle before first paint
+  const _sortSel = document.getElementById('sort-select');
+  const _savedSort = localStorage.getItem('dp_dash_sort');
+  if (_sortSel && _savedSort && [..._sortSel.options].some(o => o.value === _savedSort)) _sortSel.value = _savedSort;
+  document.getElementById('view-cards-btn')?.classList.toggle('active', _dashboardView === 'cards');
+  document.getElementById('view-table-btn')?.classList.toggle('active', _dashboardView === 'table');
+
+  renderWeekNavBar();
+  applyFilters();
   renderCoaches(coaches);
   renderSyncAudit(syncAudit);
 
@@ -2788,31 +4002,8 @@ function render({ athletes, coaches, applications = [], dataHealth = null, syncA
   document.getElementById('squad-brief').classList.remove('visible');
 }
 
-function renderSummary(ath) {
-  const alertN   = ath.filter(a => a.actions?.severity === 'red').length;
-  const watchN   = ath.filter(a => a.actions?.severity === 'amber').length;
-  const checkedIn = ath.filter(a => a.hasCurrentCheckin || a.hasRecent).length;
-  const totalKm  = ath.reduce((s, a) => s + (a.currRunKm || 0), 0);
-  const compList = ath.filter(a => a.compliance !== null).map(a => a.compliance);
-  const avgComp  = compList.length
-    ? Math.round(compList.reduce((a, b) => a + b, 0) / compList.length)
-    : null;
-  // PRs across the squad in last 7 days
-  const c7 = dago(7);
-  const prs7 = ath.reduce((s, a) => {
-    if (!a.prs?.recent) return s;
-    return s + a.prs.recent.filter(pr => new Date(pr.date) >= c7).length;
-  }, 0);
-
-  document.getElementById('sum-bar').innerHTML = `
-    <div class="sum-card"><div class="sum-num">${ath.length}</div><div class="sum-lbl">Athletes</div></div>
-    <div class="sum-card"><div class="sum-num ${alertN ? 'red' : 'grn'}">${alertN}</div><div class="sum-lbl">Action Required</div></div>
-    <div class="sum-card"><div class="sum-num">${watchN}</div><div class="sum-lbl">Watch List</div></div>
-    <div class="sum-card"><div class="sum-num grn">${checkedIn}</div><div class="sum-lbl">Checked In</div></div>
-    <div class="sum-card"><div class="sum-num str-c">${prs7}</div><div class="sum-lbl">PRs (7d)</div></div>
-    <div class="sum-card"><div class="sum-num run-c" id="squad-km-total">${totalKm.toFixed(0)}</div><div class="sum-lbl">Squad KM (14d)</div></div>
-    ${avgComp !== null ? `<div class="sum-card"><div class="sum-num ${avgComp >= 80 ? 'grn' : avgComp >= 60 ? '' : 'red'}">${avgComp}%</div><div class="sum-lbl">Avg Compliance</div></div>` : ''}`;
-}
+// Summary bar removed — its stats (PRs 7d, Squad KM, Avg Comp) now live in the
+// Command Center hero score cards; the duplicated Act/Watch/Checked-in cards are gone.
 
 function renderCommandCenter(ath, apps = [], health = null) {
   const el = document.getElementById('command-center');
@@ -2852,21 +4043,33 @@ function renderCommandCenter(ath, apps = [], health = null) {
   }).join('');
 
   const topActions = buildCoachActions(ath, apps);
-  const healthCards = buildHealthCards(health, ath, apps);
 
-  el.innerHTML = `<div class="command-center">
+  // Squad-wide stats (merged in from the old summary bar)
+  const totalKm  = ath.reduce((s, a) => s + (a.currRunKm || 0), 0);
+  const compList = ath.filter(a => a.compliance !== null).map(a => a.compliance);
+  const avgComp  = compList.length ? Math.round(compList.reduce((x, y) => x + y, 0) / compList.length) : null;
+  const c7 = dago(7);
+  const prs7 = ath.reduce((s, a) => !a.prs?.recent ? s : s + a.prs.recent.filter(pr => new Date(pr.date) >= c7).length, 0);
+
+  const collapsed = _ccCollapsed();
+  const toggleLabel = collapsed ? `▼ ${red.length} act · ${amber.length} watch` : '▲ Collapse';
+
+  el.innerHTML = `<div class="command-center${collapsed ? ' collapsed' : ''}">
     <section class="cc-panel">
       <div class="cc-hero">
         <div>
           <div class="cc-kicker">Coaching Command Center</div>
           <div class="cc-title">This Week's Priorities</div>
-          <div class="cc-sub">Start here before opening individual cards. The roster is sorted by risk, but this panel pulls the real coaching work into one place.</div>
         </div>
         <div class="cc-score">
           <div class="cc-score-card"><div class="cc-score-num red">${red.length}</div><div class="cc-score-lbl">Act</div></div>
           <div class="cc-score-card"><div class="cc-score-num amber">${amber.length}</div><div class="cc-score-lbl">Watch</div></div>
           <div class="cc-score-card"><div class="cc-score-num green">${coverage}%</div><div class="cc-score-lbl">Check-ins</div></div>
+          <div class="cc-score-card"><div class="cc-score-num str">${prs7}</div><div class="cc-score-lbl">PRs 7d</div></div>
+          <div class="cc-score-card"><div class="cc-score-num run">${totalKm.toFixed(0)}</div><div class="cc-score-lbl">Squad KM</div></div>
+          <div class="cc-score-card"><div class="cc-score-num ${avgComp === null ? '' : avgComp >= 80 ? 'green' : avgComp >= 60 ? '' : 'red'}">${avgComp === null ? '—' : avgComp + '%'}</div><div class="cc-score-lbl">Avg Comp</div></div>
         </div>
+        <button class="cc-toggle" onclick="toggleCommandCenter()">${toggleLabel}</button>
       </div>
       <div class="cc-body">
         <div class="cc-list">
@@ -2890,9 +4093,20 @@ function renderCommandCenter(ath, apps = [], health = null) {
           <div class="cc-action-text">${esc(t)}</div>
         </div>`).join('')}
       </div>
-      <div class="cc-health">${healthCards}</div>
     </aside>
   </div>`;
+}
+
+// Collapse state: persisted; defaults to collapsed on mobile so the table is on screen one
+function _ccCollapsed() {
+  const v = localStorage.getItem('dp_cc_collapsed');
+  if (v !== null) return v === '1';
+  return window.innerWidth <= 600;
+}
+
+function toggleCommandCenter() {
+  localStorage.setItem('dp_cc_collapsed', _ccCollapsed() ? '0' : '1');
+  renderCommandCenter(_allAthletes, _allApplications, _dataHealth);
 }
 
 function buildCoachActions(ath, apps) {
@@ -2931,10 +4145,11 @@ function buildHealthCards(health, ath, apps) {
   </div>`).join('');
 }
 
-let _dashboardView = 'table';
+let _dashboardView = localStorage.getItem('dp_dash_view') || 'table';
 
 function setDashboardView(v) {
   _dashboardView = v;
+  localStorage.setItem('dp_dash_view', v);
   document.getElementById('view-cards-btn').classList.toggle('active', v === 'cards');
   document.getElementById('view-table-btn').classList.toggle('active', v === 'table');
   applyFilters();
@@ -3294,6 +4509,7 @@ function toggleTableRow(safeId) {
   const open = exp.style.display !== 'none';
   if (open) {
     exp.style.display = 'none';
+    _expandedRows.delete(safeId);
     return;
   }
   // Find athlete and render two-panel layout
@@ -3303,6 +4519,7 @@ function toggleTableRow(safeId) {
     if (cell) cell.innerHTML = buildTableExpandPanel(a);
   }
   exp.style.display = 'table-row';
+  _expandedRows.add(safeId);
 }
 
 function buildTableRow(a) {
@@ -3311,12 +4528,24 @@ function buildTableRow(a) {
   const rowCls = hR ? 'trow-red' : hY ? 'trow-amber' : '';
   const fps = a.flags.map(f => `<span class="tflag ${f.t}">${esc(f.l)}</span>`).join('');
 
-  // Recovery — number + thin proportional underline bar
+  // Previous weekly check-in (for week-on-week deltas)
+  const prevW = a.weekly
+    ? (a.weeklies || []).find(x => (x['Week Ending'] || '') < (a.weekly['Week Ending'] || ''))
+    : null;
+
+  // Recovery — number + week-on-week delta + thin proportional underline bar
   let recovHtml = '<span class="tdim">—</span>';
   if (a.recoveryScore !== null) {
     const rc = a.recoveryScore >= 7.5 ? 'good' : a.recoveryScore >= 5 ? 'mid' : 'bad';
     const pct = Math.round(a.recoveryScore / 10 * 100);
-    recovHtml = `<div class="tcell"><span class="tcell-num ${rc}">${a.recoveryScore}</span><div class="tcell-bar ${rc}" style="width:${pct}%"></div></div>`;
+    let recDelta = '';
+    const prevRec = prevW ? calcRecoveryScore(prevW) : null;
+    if (prevRec !== null && prevRec !== undefined) {
+      const d = +(a.recoveryScore - prevRec).toFixed(1);
+      if (d > 0) recDelta = `<span class="ttrend-up">↑${d}</span>`;
+      else if (d < 0) recDelta = `<span class="ttrend-dn">↓${Math.abs(d)}</span>`;
+    }
+    recovHtml = `<div class="tcell"><span class="tcell-num ${rc}">${a.recoveryScore}${recDelta}</span><div class="tcell-bar ${rc}" style="width:${pct}%"></div></div>`;
   }
 
   // Weekly KM — prefer Strava cache, fall back to session accumulation
@@ -3348,12 +4577,26 @@ function buildTableRow(a) {
     enHtml = `<span class="tcell-num ${ec}">${a.bAvg.energy}</span>`;
   }
 
-  // Sleep — from weekly check-in
+  // Sleep — from weekly check-in, with week-on-week delta
   let sleepHtml = '<span class="tdim">—</span>';
   const sleepVal = parseFloat(a.weekly?.['Sleep hrs']);
   if (!isNaN(sleepVal)) {
     const sc = sleepVal >= 7.5 ? 'good' : sleepVal >= 6 ? 'mid' : 'bad';
-    sleepHtml = `<span class="tcell-num ${sc}">${sleepVal}</span>`;
+    let slpDelta = '';
+    const prevSlp = prevW ? parseFloat(prevW['Sleep hrs']) : NaN;
+    if (!isNaN(prevSlp)) {
+      const d = +(sleepVal - prevSlp).toFixed(1);
+      if (d > 0) slpDelta = `<span class="ttrend-up">↑${d}</span>`;
+      else if (d < 0) slpDelta = `<span class="ttrend-dn">↓${Math.abs(d)}</span>`;
+    }
+    sleepHtml = `<span class="tcell-num ${sc}">${sleepVal}${slpDelta}</span>`;
+  }
+
+  // Compliance — % of due sessions completed this week
+  let compHtml = '<span class="tdim">—</span>';
+  if (a.compliance !== null && a.compliance !== undefined) {
+    const cc = a.compliance >= 80 ? 'good' : a.compliance >= 60 ? 'mid' : 'bad';
+    compHtml = `<div class="tcell"><span class="tcell-num ${cc}">${a.compliance}%</span><div class="tcell-bar ${cc}" style="width:${a.compliance}%"></div></div>`;
   }
 
   // Stress — from weekly check-in (inverted: high = bad)
@@ -3374,11 +4617,12 @@ function buildTableRow(a) {
   const runHtml = `<span class="tcell-num run">${a.currRunS.length}</span>`;
   const strHtml = `<span class="tcell-num" style="color:var(--str)">${a.currStrS.length}</span>`;
 
-  // Status
+  // Status — truncated text, full action list in tooltip
+  const fullActions = [...(a.actions?.critical || []), ...(a.actions?.watch || [])].join(' • ');
   let statusHtml = '<span class="tstatus ok">On track</span>';
   if (!a.weekly && !a.body?.length) statusHtml = '<span class="tstatus dim">No data</span>';
-  else if (hR && a.actions?.critical?.length) statusHtml = `<span class="tstatus red">${esc(a.actions.critical[0].slice(0,32))}</span>`;
-  else if (hY && a.actions?.watch?.length) statusHtml = `<span class="tstatus amber">${esc(a.actions.watch[0].slice(0,32))}</span>`;
+  else if (hR && a.actions?.critical?.length) statusHtml = `<span class="tstatus red" title="${esc(fullActions)}">${esc(a.actions.critical[0].slice(0,32))}</span>`;
+  else if (hY && a.actions?.watch?.length) statusHtml = `<span class="tstatus amber" title="${esc(fullActions)}">${esc(a.actions.watch[0].slice(0,32))}</span>`;
 
   const metaStr = a.weekNum !== null ? `Wk ${a.weekNum} · ` : '';
   const checkinStr = a.hasCurrentCheckin ? 'Checked in' : a.isStale ? 'No check-in' : a.weekly ? 'Last week' : 'No data';
@@ -3389,6 +4633,7 @@ function buildTableRow(a) {
     <td>${a.weekNum !== null ? `<span class="twkbadge">${a.weekNum}</span>` : '<span class="tdim">—</span>'}</td>
     <td>${recovHtml}</td>
     <td ${kmTdAttr}>${kmHtml}</td>
+    <td>${compHtml}</td>
     <td>${wtHtml}</td>
     <td>${enHtml}</td>
     <td>${sleepHtml}</td>
@@ -3399,30 +4644,74 @@ function buildTableRow(a) {
     <td>${statusHtml}</td>
   </tr>
   <tr class="trow-expand" id="texp-${safeId}" style="display:none">
-    <td colspan="12" style="padding:0"></td>
+    <td colspan="13" style="padding:0"></td>
   </tr>`;
 }
+
+const TABLE_SORT_GETTERS = {
+  name:       a => a.id,
+  wk:         a => a.weekNum ?? -1,
+  recovery:   a => a.recoveryScore ?? -1,
+  km:         a => { const s = typeof _stravaKmCache !== 'undefined' ? _stravaKmCache[a.id] : null; return s?.weeklyKm != null ? s.weeklyKm : (a.currRunKm || 0); },
+  compliance: a => a.compliance ?? -1,
+  weight:     a => parseFloat(a.bAvg?.wt) || -1,
+  energy:     a => a.bAvg?.energy ?? -1,
+  sleep:      a => parseFloat(a.weekly?.['Sleep hrs']) || -1,
+  stress:     a => parseInt(a.weekly?.['Stress']) || -1,
+  calories:   a => a.nAvg?.cal ?? -1,
+  run:        a => a.currRunS.length,
+  str:        a => a.currStrS.length,
+  status:     a => a.actions?.severity === 'red' ? 0 : a.actions?.severity === 'amber' ? 1 : _isNoData(a) ? 3 : 2,
+};
+
+function setTableSort(key) {
+  if (_tableSort?.key === key) {
+    _tableSort.dir = -_tableSort.dir;
+  } else {
+    // Names/status default ascending; metrics default descending (worst-case: see who's highest first)
+    _tableSort = { key, dir: (key === 'name' || key === 'status') ? 1 : -1 };
+  }
+  applyFilters();
+}
+
+const TABLE_COLS = [
+  ['name', 'Athlete'], ['wk', 'Wk'], ['recovery', 'Recovery'], ['km', 'Weekly KM'],
+  ['compliance', 'Comp'], ['weight', 'Weight'], ['energy', 'Energy'], ['sleep', 'Sleep'],
+  ['stress', 'Stress'], ['calories', 'Calories'], ['run', 'Run'], ['str', 'Str'], ['status', 'Status'],
+];
 
 function renderTableView(ath) {
   const sorted = ath;
   const grid = document.getElementById('grid');
   grid.classList.add('table-mode');
+  const ths = TABLE_COLS.map(([k, label]) => {
+    const isSorted = _tableSort?.key === k;
+    const ind = isSorted ? (_tableSort.dir > 0 ? '▲' : '▼') : '↕';
+    return `<th class="${isSorted ? 'th-sorted' : ''}" onclick="setTableSort('${k}')" title="Sort by ${label}">${label}<span class="th-sort">${ind}</span></th>`;
+  }).join('');
   grid.innerHTML = `<div class="dash-table-wrap">
     <table class="dash-table">
       <colgroup>
-        <col style="width:200px"><col style="width:46px"><col style="width:118px">
-        <col style="width:118px"><col style="width:88px"><col style="width:72px">
-        <col style="width:72px"><col style="width:68px"><col style="width:95px">
-        <col style="width:52px"><col style="width:52px"><col style="width:auto">
+        <col style="width:200px"><col style="width:46px"><col style="width:112px">
+        <col style="width:112px"><col style="width:86px"><col style="width:80px">
+        <col style="width:66px"><col style="width:66px"><col style="width:62px">
+        <col style="width:90px"><col style="width:48px"><col style="width:48px"><col style="width:auto">
       </colgroup>
-      <thead><tr>
-        <th>Athlete</th><th>Wk</th><th>Recovery</th><th>Weekly KM</th>
-        <th>Weight</th><th>Energy</th><th>Sleep</th><th>Stress</th><th>Calories</th>
-        <th>Run</th><th>Str</th><th>Status</th>
-      </tr></thead>
+      <thead><tr>${ths}</tr></thead>
       <tbody>${sorted.map(a => buildTableRow(a)).join('')}</tbody>
     </table>
   </div>`;
+
+  // Re-open any rows that were expanded before this re-render
+  _expandedRows.forEach(safeId => {
+    const exp = document.getElementById('texp-' + safeId);
+    if (!exp) { return; }
+    const a = _allAthletes.find(x => x.id.replace(/\W+/g, '-').toLowerCase() === safeId);
+    if (!a) return;
+    const cell = exp.querySelector('td');
+    if (cell) cell.innerHTML = buildTableExpandPanel(a);
+    exp.style.display = 'table-row';
+  });
 }
 
 function renderGrid(ath) {
@@ -5067,24 +6356,46 @@ function buildCoachCard(a) {
 // ── Filters ───────────────────────────────────────────────────────────────────
 function setStatusFilter(btn, status) {
   _statusFilter = status;
-  document.querySelectorAll('.sf').forEach(b => b.classList.remove('active'));
+  localStorage.setItem('dp_dash_status', status);
+  document.querySelectorAll('.sf[data-status]').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   applyFilters();
+}
+
+function updateFilterChips() {
+  const counts = {
+    all:    _allAthletes.length,
+    red:    _allAthletes.filter(a => a.actions?.severity === 'red').length,
+    amber:  _allAthletes.filter(a => a.actions?.severity === 'amber').length,
+    green:  _allAthletes.filter(a => !a.actions?.severity && !_isNoData(a)).length,
+    nodata: _allAthletes.filter(_isNoData).length,
+  };
+  document.querySelectorAll('.sf[data-status]').forEach(btn => {
+    const k = btn.dataset.status;
+    const c = btn.querySelector('.sf-count');
+    if (c) c.textContent = counts[k] !== undefined ? `(${counts[k]})` : '';
+    btn.classList.toggle('active', _statusFilter === k);
+  });
 }
 
 function applyFilters() {
   const query = (document.getElementById('search-input')?.value || '').toLowerCase().trim();
   const sortBy = document.getElementById('sort-select')?.value || 'alert';
+  localStorage.setItem('dp_dash_sort', sortBy);
+  updateFilterChips();
 
   let visible = _allAthletes;
 
   // Status filter — uses action severity (the unified red/amber model)
+  // "On Track" excludes athletes with no data at all; they get their own filter
   if (_statusFilter === 'red') {
     visible = visible.filter(a => a.actions?.severity === 'red');
   } else if (_statusFilter === 'amber') {
     visible = visible.filter(a => a.actions?.severity === 'amber');
   } else if (_statusFilter === 'green') {
-    visible = visible.filter(a => !a.actions?.severity);
+    visible = visible.filter(a => !a.actions?.severity && !_isNoData(a));
+  } else if (_statusFilter === 'nodata') {
+    visible = visible.filter(_isNoData);
   }
 
   // Search
@@ -5109,6 +6420,20 @@ function applyFilters() {
     });
   } else {
     visible = [...visible].sort((a, b) => b.alertScore - a.alertScore);
+  }
+
+  // Header-click sort overrides the dropdown while active (table view only)
+  if (_dashboardView === 'table' && _tableSort) {
+    const get = TABLE_SORT_GETTERS[_tableSort.key];
+    if (get) {
+      visible = [...visible].sort((a, b) => {
+        const x = get(a), y = get(b);
+        if (typeof x === 'string' || typeof y === 'string') {
+          return String(x).localeCompare(String(y)) * _tableSort.dir;
+        }
+        return (x - y) * _tableSort.dir;
+      });
+    }
   }
 
   // No-results message
@@ -5351,8 +6676,10 @@ async function decideApplication(notionId, name, decision) {
 
 // ── Tab switching ─────────────────────────────────────────────────────────────
 function switchTab(tab) {
-  const idMap = { applications: 'apps', notifications: 'notif' };
-  const tabs = ['athletes','coaches','schedule','sync','applications','notifications'];
+  const idMap = { applications: 'apps', notifications: 'notif', nutrition: 'nut' };
+  const tabs = ['athletes','planning','nutrition','coaches','sync','applications','notifications'];
+  if (tab === 'planning') renderPlanning();
+  if (tab === 'nutrition') renderNutritionTab();
   tabs.forEach(t => {
     const key = idMap[t] || t;
     const btn     = document.getElementById(`tab-${key}-btn`);
@@ -5364,10 +6691,6 @@ function switchTab(tab) {
   document.getElementById('filter-bar').style.display = tab === 'athletes' ? '' : 'none';
   document.getElementById('gen-btn').style.display    = tab === 'athletes' && _allAthletes.length ? 'block' : 'none';
 
-  if (tab === 'schedule') {
-    const weekEndEl = document.getElementById('sched-week-end');
-    if (weekEndEl) weekEndEl.textContent = currentWeekEnd;
-  }
 }
 
 // ── Call Prep toggle ──────────────────────────────────────────────────────────
@@ -5413,15 +6736,18 @@ async function load({ bust = false } = {}) {
   document.getElementById('refresh-btn').disabled = true;
 
   try {
-    const [weekly, sessions, body, nutrition, athleteDb, targets, planning, applications, , , decisionsRes] = await Promise.all([
+    const [weekly, sessions, body, nutrition, athleteDb, targets, planning, applications, , libRows, decisionsRes] = await Promise.all([
       fetchDB(DB.weekly, bust), fetchDB(DB.sessions, bust), fetchDB(DB.body, bust),
-      fetchDB(DB.nutrition, bust), fetchDB(DB.athletes, bust), fetchDB(DB.targets, bust),
-      fetchDB(DB.planning, bust), fetchDB(DB.applications, bust),
-      loadAllOverrides(), loadSessionLogs(),
+      fetchDB(DB.nutrition, bust), fetchDB(DB.athletes, bust), fetchTargetsSB(),
+      fetchPlanningSB(), fetchDB(DB.applications, bust),
+      loadSessionLogs(), loadSessionLibrary(),
       getSB().from('application_decisions').select('notion_id,decision,decided_by,decided_at'),
     ]);
 
     _decisions = decisionsRes?.data || [];
+
+    // Auto-fill weekly KM from the training plan where no manual target is set
+    _fillTargetsKm(targets);
 
     const { athletes, coaches, syncAudit } = buildAll(weekly, sessions, body, nutrition, athleteDb, targets, planning, applications);
     const dataHealth = {
@@ -5438,6 +6764,11 @@ async function load({ bust = false } = {}) {
     render({ athletes, coaches, applications, dataHealth, syncAudit });
     renderNotifications(applications, _decisions);
     renderApplications(applications, _decisions);
+    updatePlanningBadge();
+    const planTab = document.getElementById('tab-planning-content');
+    if (planTab && planTab.style.display !== 'none') renderPlanning();
+    const nutTab = document.getElementById('tab-nut-content');
+    if (nutTab && nutTab.style.display !== 'none') renderNutritionTab();
 
     document.getElementById('loading').style.display = 'none';
     document.getElementById('content').style.display = 'block';
@@ -5649,16 +6980,6 @@ const _stravaKmCache = {}; // athleteId → weeklyKm (number)
 
 function applyStravaKm(athleteId, weeklyKm, lastWeekKm) {
   _stravaKmCache[athleteId] = { weeklyKm, lastWeekKm };
-
-  // Recompute squad total: Strava km where available, else Notion-parsed currRunKm
-  const squadTotalEl = document.getElementById('squad-km-total');
-  if (squadTotalEl && typeof _allAthletes !== 'undefined' && _allAthletes) {
-    const squadTotal = _allAthletes.reduce((sum, a) => {
-      const sk = _stravaKmCache[a.id];
-      return sum + (sk?.weeklyKm != null ? sk.weeklyKm : (a.currRunKm || 0));
-    }, 0);
-    squadTotalEl.textContent = squadTotal.toFixed(0);
-  }
 
   // Load change indicator
   let loadHtml = '';
