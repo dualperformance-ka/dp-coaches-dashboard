@@ -2298,6 +2298,15 @@ function _nutAthleteCodes() {
 function _nutWkNum(label) { const m = String(label || '').match(/(\d+)/); return m ? parseInt(m[1], 10) : -1; }
 
 function _nutCurrentWeekLabel(code) {
+  // NO_DISCOVERY athletes (JACOB, KHANG) skipped the Week 0 discovery week, so
+  // their planned_sessions labels run a week behind their true programme week.
+  // Anchor NOW to the start-date-derived week number, which already applies the
+  // no-discovery +1 (calcWeekNum) — keeps the Nutrition tab in sync with the
+  // Athletes tab for these two.
+  if (NO_DISCOVERY.has(code)) {
+    const na = _allAthletes.find(x => x.id === code);
+    if (na && na.weekNum != null) return `Week ${na.weekNum}`;
+  }
   // Match the athlete portal exactly: the current week is whatever week_label
   // the coach assigned to THIS calendar week's planned sessions (Mon–Sun).
   // The portal reads that label straight off planned_sessions, so anchoring the
