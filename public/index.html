@@ -502,7 +502,9 @@ body[data-theme="light"] .texp-split-track{background:rgba(0,0,0,.1)}
 .texp-row-done{background:rgba(74,222,128,.07);border-left:3px solid var(--ok);padding-left:7px;border-bottom-color:rgba(74,222,128,.15)}
 .texp-row-missed{background:rgba(239,68,68,.06);border-left:3px solid var(--alert);padding-left:7px;border-bottom-color:rgba(239,68,68,.15)}
 .texp-row-sick{background:rgba(99,102,241,.06);border-left:3px solid #818cf8;padding-left:7px}
+.texp-row-marked{background:rgba(245,158,11,.07);border-left:3px solid var(--amber);padding-left:7px;border-bottom-color:rgba(245,158,11,.18)}
 .texp-row-pending{padding-left:10px}
+body[data-theme="light"] .texp-row-marked{background:rgba(217,119,6,.08);border-bottom-color:rgba(217,119,6,.2)}
 body[data-theme="light"] .texp-row-done{background:rgba(22,163,74,.08);border-bottom-color:rgba(22,163,74,.15)}
 body[data-theme="light"] .texp-row-missed{background:rgba(220,38,38,.06);border-bottom-color:rgba(220,38,38,.15)}
 body[data-theme="light"] .texp-row-sick{background:rgba(99,102,241,.07)}
@@ -511,6 +513,7 @@ body[data-theme="light"] .texp-row-sick{background:rgba(99,102,241,.07)}
 .texp-chip-done{color:var(--ok);background:rgba(74,222,128,.12);border-color:rgba(74,222,128,.25)}
 .texp-chip-missed{color:var(--alert);background:rgba(239,68,68,.1);border-color:rgba(239,68,68,.2)}
 .texp-chip-sick{color:#a5b4fc;background:rgba(99,102,241,.1);border-color:rgba(99,102,241,.2)}
+.texp-chip-marked{color:var(--amber-text);background:var(--amber-bg);border-color:var(--amber-border)}
 body[data-theme="light"] .texp-chip-done{background:rgba(22,163,74,.1);border-color:rgba(22,163,74,.25)}
 body[data-theme="light"] .texp-chip-missed{background:rgba(220,38,38,.08);border-color:rgba(220,38,38,.2)}
 body[data-theme="light"] .texp-chip-sick{color:#4338ca;background:rgba(99,102,241,.08);border-color:rgba(99,102,241,.2)}
@@ -2012,21 +2015,46 @@ let _ovCache = {};  // session id → { name, dist, pace, … } (built from plan
 let _planRowsSB   = []; // raw Supabase planned_sessions rows
 let _libCache     = []; // session_library rows
 let _splitsCache  = []; // workout_splits rows (strength)
-let _tickedMap = new Map(); // athleteCode → Set<sessionId>
+let _tickedMap = new Map(); // athleteCode → Set<sessionId>  (athlete tapped the tick box)
+let _loggedMap = new Map(); // athleteCode → Set<sessionId>  (athlete submitted a log with real data)
+
+// A log entry counts as "submitted" only if it actually holds data — not an
+// empty run form or a gym session with no sets recorded.
+function _logHasRealData(v) {
+  if (!v || typeof v !== 'object') return false;
+  return Object.entries(v).some(([k, val]) => {
+    if (k === '__savedAt') return false;
+    if (Array.isArray(val)) return val.length > 0;                       // gym: exercise → sets[]
+    if (val && typeof val === 'object') return Object.keys(val).length > 0;
+    return val !== '' && val != null;                                    // run: distance/pace/rpe/…
+  });
+}
 
 async function loadSessionLogs() {
   try {
     const sb = getSB(); if (!sb) return;
-    const { data } = await sb.from('athlete_data').select('athlete_code,value').eq('key','ticked');
+    const { data } = await sb.from('athlete_data').select('athlete_code,key,value').in('key', ['ticked', 'logs']);
     _tickedMap = new Map();
+    _loggedMap = new Map();
     (data || []).forEach(r => {
-      const ids = new Set(Object.keys(r.value || {}));
-      _tickedMap.set(r.athlete_code, ids);
+      const val = r.value || {};
+      if (r.key === 'ticked') {
+        _tickedMap.set(r.athlete_code, new Set(Object.keys(val).filter(k => k !== '__savedAt')));
+      } else if (r.key === 'logs') {
+        _loggedMap.set(r.athlete_code, new Set(
+          Object.keys(val).filter(k => k !== '__savedAt' && _logHasRealData(val[k]))
+        ));
+      }
     });
-  } catch(e) { console.warn('Ticked sessions load failed', e); }
+  } catch(e) { console.warn('Session state load failed', e); }
 }
-function isSessionLogged(athleteCode, notionPageId) {
+// Athlete tapped the checkbox (no data required)
+function isSessionTicked(athleteCode, notionPageId) {
   return _tickedMap.get(athleteCode)?.has(notionPageId) ?? false;
+}
+// Athlete actually submitted a log with data — this is what drives "Done"
+function isSessionSubmitted(athleteCode, notionPageId) {
+  return _loggedMap.get(athleteCode)?.has(notionPageId) ?? false;
 }
 
 // Overrides now live ON the planned_sessions rows themselves (Supabase is the
@@ -4644,11 +4672,17 @@ function buildTableExpandPanel(a) {
 
   const activePlan = isFuture ? (futCtx?.plan || []) : (a.thisWeekPlan || []);
 
-  // Completion counts — session_logs (Supabase, athlete portal ticks) takes priority over Notion Status
-  const planDone   = activePlan.filter(r => {
+  // Completion counts — "Done" requires a submitted log (or Notion = Completed).
+  // A box ticked WITHOUT a submitted log counts as "Marked", not Done.
+  const _sessDone = (r) => {
     const id = r._id || r.id || '';
     const notionStatus = (r['Status '] || r['Status'] || '').trim().toLowerCase();
-    return isSessionLogged(a.id, id) || notionStatus === 'completed';
+    return isSessionSubmitted(a.id, id) || notionStatus === 'completed';
+  };
+  const planDone   = activePlan.filter(_sessDone).length;
+  const planMarked = activePlan.filter(r => {
+    const id = r._id || r.id || '';
+    return !_sessDone(r) && isSessionTicked(a.id, id);
   }).length;
   const planMissed = activePlan.filter(r => (r['Status '] || r['Status'] || '').trim().toLowerCase() === 'missed').length;
   const planTotal  = activePlan.length;
@@ -4674,7 +4708,7 @@ function buildTableExpandPanel(a) {
     const showPrev = noThis && (prCount > 0 || psCount > 0);
     // Plan completion pill
     const compPill = planTotal > 0
-      ? `<span style="font-family:var(--mono);font-size:10px;margin-left:auto;color:${planDone===planTotal?'var(--ok)':planMissed>0?'var(--alert)':'var(--muted)'}">${planDone}/${planTotal} done${planMissed>0?` · <span style="color:var(--alert)">${planMissed} missed</span>`:''}</span>`
+      ? `<span style="font-family:var(--mono);font-size:10px;margin-left:auto;color:${planDone===planTotal?'var(--ok)':planMissed>0?'var(--alert)':'var(--muted)'}">${planDone}/${planTotal} done${planMarked>0?` · <span style="color:var(--amber)">${planMarked} marked</span>`:''}${planMissed>0?` · <span style="color:var(--alert)">${planMissed} missed</span>`:''}</span>`
       : '';
     wipHtml = `<div class="texp-wip">
       <div class="texp-wip-label" style="display:flex;align-items:center">${a.weekNum !== null ? fmtWk(a.weekNum, true) : '—'} in progress · ends ${fmtDate(a.expectedWeekEnd)}${compPill}</div>
@@ -4700,14 +4734,17 @@ function buildTableExpandPanel(a) {
       const dateStr = fmtPlanDate(d);
       const rowId2 = r._id || r.id || '';
       const notionStatus = (r['Status '] || r['Status'] || '').trim().toLowerCase();
-      const isDone   = isSessionLogged(a.id, rowId2) || notionStatus === 'completed';
-      const isMissed = !isDone && notionStatus === 'missed';
-      const isSick   = !isDone && notionStatus === 'sick';
+      const isDone   = isSessionSubmitted(a.id, rowId2) || notionStatus === 'completed';
+      const isMarked = !isDone && isSessionTicked(a.id, rowId2);  // ticked but no log submitted yet
+      const isMissed = !isDone && !isMarked && notionStatus === 'missed';
+      const isSick   = !isDone && !isMarked && notionStatus === 'sick';
       // Row class based on completion
-      const rowCls2 = isDone ? 'texp-row-done' : isMissed ? 'texp-row-missed' : isSick ? 'texp-row-sick' : 'texp-row-pending';
+      const rowCls2 = isDone ? 'texp-row-done' : isMarked ? 'texp-row-marked' : isMissed ? 'texp-row-missed' : isSick ? 'texp-row-sick' : 'texp-row-pending';
       // Status chip
       const statusChip = isDone
         ? `<span class="texp-chip texp-chip-done">✓ Done</span>`
+        : isMarked
+        ? `<span class="texp-chip texp-chip-marked" title="Athlete ticked this but hasn't submitted a log yet">◔ Marked</span>`
         : isMissed
         ? `<span class="texp-chip texp-chip-missed">✗ Missed</span>`
         : isSick
