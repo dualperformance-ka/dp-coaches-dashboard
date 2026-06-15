@@ -6331,16 +6331,23 @@ function buildFPCard(a, weekOffset = 0) {
             <div class="fpc-train-label run">Run</div>
             <div class="fpc-train-stat"><strong>${rc2}/${rp}</strong> sessions${pw['Weekly Run KM'] ? ` · <strong>${esc(pw['Weekly Run KM'])} km</strong>` : ''}</div>
             <div class="fpc-pbar"><div class="fpc-pfill run" style="width:${rPct}%"></div></div>
+            ${pw['Run Feel /10'] ? `<div class="fpc-train-stat">Feel: <strong>${esc(pw['Run Feel /10'])}/10</strong></div>` : ''}
+            ${isBad(pw['Run Niggles']) ? `<div class="fpc-train-note bad">⚠ ${esc(pw['Run Niggles'])}</div>` : ''}
+            ${pw['Runs Wins'] && pw['Runs Wins'] !== 'n/a' ? `<div class="fpc-train-note good">✓ ${esc(pw['Runs Wins'])}</div>` : ''}
           </div>
           <div class="fpc-train-block">
             <div class="fpc-train-label str">Lift</div>
             <div class="fpc-train-stat"><strong>${lc2}/${lp}</strong> sessions</div>
             <div class="fpc-pbar"><div class="fpc-pfill str" style="width:${lPct}%"></div></div>
+            ${pw['Lift Feel /10'] ? `<div class="fpc-train-stat">Feel: <strong>${esc(pw['Lift Feel /10'])}/10</strong></div>` : ''}
+            ${isBad(pw['Lifts Niggles']) ? `<div class="fpc-train-note bad">⚠ ${esc(pw['Lifts Niggles'])}</div>` : ''}
+            ${pw['Lift Wins'] && pw['Lift Wins'] !== 'n/a' ? `<div class="fpc-train-note good">✓ ${esc(pw['Lift Wins'])}</div>` : ''}
           </div>
         </div>` : '';
+        const textRow = `${pw['Testimonial'] ? `<div class="fpc-testim">"${esc(pw['Testimonial'])}"</div>` : ''}${pw['Upcoming Impact'] && pw['Upcoming Impact'] !== 'n/a' ? `<div class="fpc-impact">⚡ ${esc(pw['Upcoming Impact'])}</div>` : ''}`;
         return `<div class="fp-prev-row">
           <div class="fp-prev-row-date">${pwWeekLabel}Week ending ${fmtDate(pwEnd)}</div>
-          ${scoresRow}${trainRow}
+          ${scoresRow}${trainRow}${textRow}
         </div>`;
       }).join('');
       fpPrevCheckinsHtml = `<div class="fpc-section">
