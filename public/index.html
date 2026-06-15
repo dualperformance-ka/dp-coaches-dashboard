@@ -1041,7 +1041,7 @@ body[data-theme="light"] .plan-chip.coach::before{color:#92400e}
 /* ── Nutrition planning tab ── */
 .nut-meta{font-family:var(--mono);font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px}
 .nut-table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow-x:auto}
-.nut-table{width:100%;border-collapse:collapse;min-width:860px}
+.nut-table{width:100%;border-collapse:collapse;min-width:780px}
 .nut-table th{font-family:var(--mono);font-size:9px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:.07em;padding:10px 8px;border-bottom:1px solid var(--border-mid);text-align:left;white-space:nowrap}
 .nut-table td{padding:7px 8px;border-bottom:1px solid var(--border);vertical-align:middle}
 .nut-table tr:last-child td{border-bottom:none}
@@ -1055,6 +1055,8 @@ body[data-theme="light"] .plan-chip.coach::before{color:#92400e}
 .nut-input.km{width:64px}
 .nut-km-auto{font-family:var(--mono);font-size:11px;color:var(--muted);white-space:nowrap}
 .nut-km-auto .src{font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;display:block}
+.nut-km-cap{font-family:var(--mono);font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.05em;margin-top:3px;white-space:nowrap}
+.nut-km-cap b{color:var(--amber);font-weight:500}
 .nut-save{font-family:var(--mono);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:6px 10px;border-radius:6px;border:1px solid var(--border-mid);background:transparent;color:var(--dim);cursor:pointer;transition:all .15s;white-space:nowrap}
 .nut-save.dirty{border-color:rgba(245,158,11,.4);background:var(--amber-bg);color:var(--amber-text)}
 .nut-save:disabled{opacity:.6;cursor:default}
@@ -2256,6 +2258,26 @@ function _plannedKmForWeek(code, weekLabel) {
   return Math.round(Math.max(sum, declared) * 10) / 10;
 }
 
+// Caption shown under the merged KM Target cell. Surfaces the auto-summed plan
+// km as a hint and flags whether the manual target matches the plan.
+function _nutKmCapHtml(val, autoKm) {
+  const manual = String(val == null ? '' : val).trim();
+  if (manual === '') {
+    return autoKm > 0 ? '<b>from plan</b> · type to override' : 'no plan yet';
+  }
+  if (autoKm > 0) {
+    return parseFloat(manual) === autoKm ? `plan ${autoKm} km · matches` : `plan ${autoKm} km`;
+  }
+  return 'no plan this week';
+}
+// Live-refresh the caption as the coach types in the KM field.
+function updateNutKmCap(i) {
+  const inp = document.getElementById('nut-' + i + '-km');
+  const cap = document.getElementById('nut-' + i + '-kmcap');
+  if (!inp || !cap) return;
+  cap.innerHTML = _nutKmCapHtml(inp.value, parseFloat(inp.dataset.auto) || 0);
+}
+
 // Fill any targets row that has no manual KM with the auto-computed planned KM
 function _fillTargetsKm(targets) {
   targets.forEach(t => {
@@ -2337,8 +2359,7 @@ function renderNutTable() {
       <td><input class="nut-input" id="nut-${i}-carb"  value="${iv(r.carbs)}"    placeholder="g"    oninput="nutDirty(${i})"></td>
       <td><input class="nut-input" id="nut-${i}-fat"   value="${iv(r.fats)}"     placeholder="g"    oninput="nutDirty(${i})"></td>
       <td><input class="nut-input" id="nut-${i}-fib"   value="${iv(r.fibre)}"    placeholder="g"    oninput="nutDirty(${i})"></td>
-      <td><input class="nut-input km" id="nut-${i}-km" value="${iv(r.weekly_km_target)}" placeholder="auto" oninput="nutDirty(${i})"></td>
-      <td><span class="nut-km-auto">${autoKm > 0 ? autoKm + ' km' : '—'}<span class="src">from plan</span></span></td>
+      <td><input class="nut-input km" id="nut-${i}-km" data-auto="${autoKm}" value="${iv(r.weekly_km_target)}" placeholder="${autoKm > 0 ? autoKm : 'auto'}" oninput="nutDirty(${i});updateNutKmCap(${i})"><div class="nut-km-cap" id="nut-${i}-kmcap">${_nutKmCapHtml(r.weekly_km_target, autoKm)}</div></td>
       <td><input class="nut-input wide" id="nut-${i}-notes" value="${iv(r.notes)}" placeholder="Coach note" oninput="nutDirty(${i})"></td>
       <td><button class="nut-save" id="nut-${i}-save" onclick="saveNutRow(${i})">Save</button></td>
     </tr>`;
@@ -2347,7 +2368,7 @@ function renderNutTable() {
   wrap.innerHTML = `<table class="nut-table">
     <thead><tr>
       <th>Week</th><th>Calories</th><th>Protein</th><th>Carbs</th><th>Fats</th><th>Fibre</th>
-      <th>KM Target</th><th>Planned KM</th><th>Notes</th><th></th>
+      <th>KM Target</th><th>Notes</th><th></th>
     </tr></thead>
     <tbody>${rowsHtml}</tbody>
   </table>`;
