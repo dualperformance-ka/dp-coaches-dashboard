@@ -1,17 +1,9 @@
 {
-  "name": "dp-coaches-dashboard",
+  "name": "dp-athlete-portal",
   "version": "1.0.0",
-  "description": "Dual Performance live coaches dashboard — pulls from Notion via a serverless proxy.",
-  "engines": {
-    "node": ">=18"
-  },
-  "scripts": {
-    "dev": "vercel dev"
-  },
+  "private": true,
+  "type": "module",
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.39.0"
-  },
-  "devDependencies": {
-    "vercel": "^34.0.0"
+    "@supabase/supabase-js": "^2.45.0"
   }
 }
