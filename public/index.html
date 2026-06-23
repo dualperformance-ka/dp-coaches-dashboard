@@ -3613,6 +3613,89 @@ async function fetchDB(dbId, bust = false) {
   return all;
 }
 
+// ── Weekly check-ins: Supabase (primary) + Notion (legacy) merged ────────────
+// The athlete portal now writes the full weekly check-in payload to Supabase
+// (athlete_data, key "checkin_<year>_<week>"). Older check-ins live only in the
+// Notion weekly DB. We read both and merge so nothing is lost:
+//   • Supabase rows are mapped to the same field names the dashboard already
+//     expects (the keys buildCard/buildFPCard read, e.g. 'Run Feel /10').
+//   • Notion rows are kept as-is.
+//   • De-dupe is per athlete + Week Ending; Supabase wins when both exist.
+// Legacy Supabase rows that only stored a "done" flag (value === 1, no object)
+// are ignored — their real data is in Notion and surfaces from there.
+async function fetchWeeklyFromSupabase() {
+  const sb = getSB(); if (!sb) return [];
+  try {
+    const { data, error } = await sb
+      .from('athlete_data')
+      .select('athlete_code, key, value, updated_at')
+      .like('key', 'checkin_%');
+    if (error || !data) return [];
+    return data
+      .filter(r => r.value && typeof r.value === 'object')
+      .map(r => {
+        const v = r.value;
+        return {
+          'Name':                    v.name || r.athlete_code,
+          'Week Ending':             v.weekEnding || null,
+          'Run Completed':           v.runCompleted,
+          'Run Planned':             v.runPlanned,
+          'Weekly Run KM':           v.runKm,
+          'Run Feel /10':            v.runFeel,
+          'Runs Wins':               v.runWins,
+          'Run Niggles':             v.runNiggles,
+          'Lift Completed':          v.liftCompleted,
+          'Lift Planned':            v.liftPlanned,
+          'Lift Feel /10':           v.liftFeel,
+          'Lift Wins':               v.liftWins,
+          'Lifts Niggles':           v.liftNiggles,
+          'Sleep hrs':               v.sleep,
+          'Energy /10':              v.energy,
+          'Soreness /10':            v.soreness,
+          'Nutrition Adherence /10': v.nutrition,
+          'Fuelling':                v.fuelling,
+          'Social Event Upcoming':   v.socialEating,
+          'Stress':                  v.stress,
+          'Motivation':              v.motivation,
+          'Upcoming Impact':         v.upcomingImpact,
+          'Testimonial':             v.testimonial,
+          '_athleteCode':            r.athlete_code,
+          '_source':                 'supabase',
+          '_updatedAt':              r.updated_at,
+        };
+      });
+  } catch (e) {
+    console.warn('fetchWeeklyFromSupabase failed', e);
+    return [];
+  }
+}
+
+// Merge Supabase + Notion weekly check-ins. Supabase wins on collision
+// (same athlete + same Week Ending). Athlete identity for Supabase rows comes
+// from _athleteCode; for Notion rows it's parsed from the title (as before).
+function mergeWeekly(supaRows, notionRows) {
+  const keyOf = (id, we) => `${id}|${we || ''}`;
+  const out = [];
+  const seen = new Set();
+  const idOf = r => r._athleteCode
+    ? nid(r._athleteCode)
+    : nid((r.Name || '').split('\u2014')[0].split('--')[0].trim());
+  // Supabase first so it takes precedence
+  (supaRows || []).forEach(r => {
+    const id = idOf(r);
+    if (!id) return;
+    seen.add(keyOf(id, r['Week Ending']));
+    out.push(r);
+  });
+  (notionRows || []).forEach(r => {
+    const id = idOf(r);
+    if (!id) return;
+    if (seen.has(keyOf(id, r['Week Ending']))) return; // Supabase already has it
+    out.push(r);
+  });
+  return out;
+}
+
 // ── Build ─────────────────────────────────────────────────────────────────────
 function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [], planning = [], applications = []) {
   const c90 = dago(90), c7 = dago(7);
@@ -3682,7 +3765,11 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [
   const wl = {};
   const wh = {};
   weekly.forEach(r => {
-    const id = nid((r.Name || '').split('\u2014')[0].split('--')[0].trim());
+    // Supabase rows carry the athlete code explicitly; Notion rows parse it
+    // from the title (split on em dash / double hyphen) as before.
+    const id = r._athleteCode
+      ? nid(r._athleteCode)
+      : nid((r.Name || '').split('\u2014')[0].split('--')[0].trim());
     if (!id || !r['Week Ending']) return;
     if (!wh[id]) wh[id] = [];
     wh[id].push(r);
@@ -7131,14 +7218,20 @@ async function load({ bust = false } = {}) {
   document.getElementById('refresh-btn').disabled = true;
 
   try {
-    const [weekly, sessions, body, nutrition, athleteDb, targets, planning, applications, , libRows, decisionsRes] = await Promise.all([
+    const [weeklyNotion, sessions, body, nutrition, athleteDb, targets, planning, applications, weeklySupa, , libRows, decisionsRes] = await Promise.all([
       fetchDB(DB.weekly, bust), fetchDB(DB.sessions, bust), fetchDB(DB.body, bust),
       fetchDB(DB.nutrition, bust), fetchDB(DB.athletes, bust), fetchTargetsSB(),
       fetchPlanningSB(), fetchDB(DB.applications, bust),
+      fetchWeeklyFromSupabase(),
       loadSessionLogs(), loadSessionLibrary(),
       getSB().from('application_decisions').select('notion_id,decision,decided_by,decided_at'),
       loadCallNotes(), loadAcks(),
     ]);
+
+    // Weekly check-ins now come from Supabase (full payload, primary) merged
+    // with legacy Notion check-ins (older submissions). Supabase wins on
+    // collision so the current source of truth always takes precedence.
+    const weekly = mergeWeekly(weeklySupa, weeklyNotion);
 
     _decisions = decisionsRes?.data || [];
 
