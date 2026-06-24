@@ -1,7 +1,7 @@
 // api/analyse.js — AI coaching analysis via Claude
 // Accepts POST with athlete data, returns per-athlete recommendations + squad brief.
 
-const Anthropic = require('@anthropic-ai/sdk');
+import Anthropic from '@anthropic-ai/sdk';
 
 function buildAthletePromptData(a) {
   const w = a.weekly;
@@ -37,7 +37,7 @@ function buildAthletePromptData(a) {
   };
 }
 
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -131,4 +131,4 @@ Write a 4-5 sentence coaching staff brief. Cover: (1) who needs most attention a
     console.error('[analyse]', e.message);
     res.status(500).json({ error: e.message });
   }
-};
+}
