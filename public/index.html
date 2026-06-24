@@ -381,9 +381,13 @@ body[data-theme="light"] .cc-chip.green{background:rgba(21,128,61,.08);color:#15
 .cc-side-title{font-family:var(--mono);font-size:9px;font-weight:800;color:var(--dim);text-transform:uppercase;letter-spacing:.12em}
 .cc-side-sub{font-size:12px;color:var(--muted);margin-top:4px}
 .cc-actions{padding:12px 16px;display:flex;flex-direction:column;gap:8px;border-bottom:1px solid var(--border)}
-.cc-action{display:grid;grid-template-columns:20px 1fr;gap:8px;align-items:flex-start}
+.cc-action{display:grid;grid-template-columns:20px 1fr auto;gap:8px;align-items:center;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 9px}
+.cc-action:hover{border-color:var(--border-mid)}
 .cc-action-idx{font-family:var(--mono);font-size:9px;color:#fff;background:#0a0a0a;border-radius:5px;width:20px;height:20px;display:flex;align-items:center;justify-content:center}
-.cc-action-text{font-size:12px;color:var(--text);line-height:1.4}
+.cc-action-text{font-size:12px;color:var(--text);line-height:1.35}
+.cc-action-meta{font-family:var(--mono);font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;margin-top:2px}
+.cc-action-btn{font-family:var(--mono);font-size:8px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;border:1px solid var(--border-mid);background:var(--surface);color:var(--muted);border-radius:5px;padding:4px 8px;cursor:pointer;white-space:nowrap}
+.cc-action-btn:hover{border-color:var(--amber);color:var(--amber)}
 .cc-health{padding:8px 12px;display:grid;grid-template-columns:repeat(2,1fr);gap:6px;background:var(--surface2)}
 .cc-health-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 10px}
 .cc-health-lbl{font-family:var(--mono);font-size:7px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em}
@@ -849,6 +853,18 @@ body[data-theme="pride"] .texp-name{background:linear-gradient(90deg,#FF8C00,#FF
 .fpc-section.collapsed .fpc-section-title{margin-bottom:0;border-bottom:none;padding-bottom:0}
 .fpc-section.collapsed .fpc-section-title::after{content:'▸'}
 .fpc-section.collapsed>*:not(.fpc-section-title){display:none!important}
+
+.client-profile{background:linear-gradient(180deg,rgba(255,255,255,.02),transparent),var(--surface)}
+.client-profile-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:8px}
+.client-profile-stat{padding:9px 10px;border:1px solid var(--border);border-radius:7px;background:var(--surface2);min-width:0}
+.client-profile-label{font-family:var(--mono);font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em}
+.client-profile-value{font-family:var(--mono);font-size:11px;color:var(--text);font-weight:800;margin-top:3px;line-height:1.25;overflow-wrap:anywhere}
+.client-profile-why{font-size:12px;line-height:1.5;color:var(--muted);margin-top:10px;padding:9px 11px;border-left:3px solid var(--amber);background:var(--amber-bg);border-radius:7px}
+.client-profile-why strong{color:var(--text)}
+.client-profile-milestones{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-top:10px}
+.client-profile-mile{padding:9px 10px;border:1px solid var(--border);border-radius:7px;background:var(--surface2)}
+.client-profile-mile-label{font-family:var(--mono);font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em}
+.client-profile-mile-text{font-size:11px;color:var(--muted);line-height:1.4;margin-top:3px}
 
 .fpc-scores{display:grid;grid-template-columns:repeat(6,1fr);gap:0;border-top:1px solid var(--border);margin:0 -24px}
 .fpc-score{text-align:center;padding:18px 8px;border-right:1px solid var(--border)}
@@ -4343,7 +4359,15 @@ function renderCommandCenter(ath, apps = [], health = null) {
       <div class="cc-actions">
         ${topActions.map((t, i) => `<div class="cc-action">
           <div class="cc-action-idx">${i + 1}</div>
-          <div class="cc-action-text">${esc(t)}</div>
+          <div>
+            <div class="cc-action-text">${esc(t.text)}</div>
+            <div class="cc-action-meta">${esc(t.meta)}</div>
+          </div>
+          ${t.athlete
+            ? `<button class="cc-action-btn" onclick="showFP('${esc(t.athlete)}')">Open</button>`
+            : t.kind === 'notifications'
+              ? `<button class="cc-action-btn" onclick="switchTab('notifications')">View</button>`
+              : `<button class="cc-action-btn" onclick="ccScoreDetail('${esc(t.kind || 'priority')}')">View</button>`}
         </div>`).join('')}
       </div>
     </aside>
@@ -4493,13 +4517,36 @@ function buildCoachActions(ath, apps) {
   const lowCompliance = ath.filter(a => a.compliance !== null && a.compliance < 70);
   const newApps = apps.filter(r => !String(r['Current Status'] || '').toLowerCase().includes('reject'));
 
-  if (red.length) actions.push(`Contact ${red.slice(0, 3).map(a => a.id).join(', ')} before programming changes.`);
-  if (injury.length) actions.push(`Review niggle/injury notes for ${injury.slice(0, 3).map(a => a.id).join(', ')}.`);
-  if (stale.length) actions.push(`Chase check-ins from ${stale.slice(0, 4).map(a => a.id).join(', ')}.`);
-  if (lowFuel.length) actions.push(`Check fuelling with ${lowFuel.slice(0, 3).map(a => a.id).join(', ')} before increasing load.`);
-  if (lowCompliance.length) actions.push(`Audit missed sessions for ${lowCompliance.slice(0, 3).map(a => a.id).join(', ')}.`);
-  if (newApps.length) actions.push(`Triage ${newApps.length} active pipeline lead${newApps.length === 1 ? '' : 's'}.`);
-  if (!actions.length) actions.push('No urgent issues: use the schedule tab to confirm this week is loaded correctly.');
+  const pushAth = (type, list, textFn, meta) => {
+    list.slice(0, 2).forEach(a => actions.push({ type, athlete: a.id, text: textFn(a), meta }));
+  };
+
+  pushAth('act', red, a => {
+    const reason = (a.actions?.critical || a.actions?.watch || [])[0] || 'Review this athlete';
+    return `${a.id}: ${reason}`;
+  }, 'Contact today');
+  pushAth('injury', injury.filter(a => !red.includes(a)), a => `${a.id}: review niggle note before next run/lift adjustment.`, 'Programming check');
+  pushAth('fuel', lowFuel.filter(a => !red.includes(a)), a => `${a.id}: check fuelling before increasing load.`, 'Nutrition');
+  pushAth('compliance', lowCompliance.filter(a => !red.includes(a) && !lowFuel.includes(a)), a => `${a.id}: audit missed sessions and blockers.`, 'Adherence');
+
+  if (stale.length) actions.push({
+    type: 'stale',
+    athlete: stale[0].id,
+    text: `${stale[0].id}: chase missing check-in${stale.length > 1 ? `, plus ${stale.length - 1} more` : ''}.`,
+    meta: 'Data capture',
+  });
+  if (newApps.length) actions.push({
+    type: 'apps',
+    kind: 'notifications',
+    text: `Triage ${newApps.length} active pipeline lead${newApps.length === 1 ? '' : 's'}.`,
+    meta: 'Pipeline',
+  });
+  if (!actions.length) actions.push({
+    type: 'clear',
+    kind: 'comp',
+    text: 'No urgent issues. Confirm this week is loaded correctly and look for positive PR moments.',
+    meta: 'Maintenance',
+  });
 
   return actions.slice(0, 5);
 }
@@ -6558,19 +6605,19 @@ function buildClientProfilePanel(a, variant = 'card') {
   if (!stats.length && !isBad(why) && !milestones.length) return '';
 
   const statHtml = stats.map(([k, v]) =>
-    `<div style="min-width:82px;flex:1;padding:8px 9px;border:1px solid var(--border);border-radius:6px;background:var(--surface2)">
-      <div style="font-family:var(--mono);font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em">${esc(k)}</div>
-      <div style="font-family:var(--mono);font-size:11px;color:var(--text);font-weight:800;margin-top:3px;line-height:1.25">${esc(v)}</div>
+    `<div class="client-profile-stat">
+      <div class="client-profile-label">${esc(k)}</div>
+      <div class="client-profile-value">${esc(v)}</div>
     </div>`
   ).join('');
   const whyHtml = isBad(why)
-    ? `<div style="font-family:var(--mono);font-size:${variant === 'full' ? '11px' : '10px'};line-height:1.45;color:var(--muted);margin-top:10px"><strong style="color:var(--text)">Why:</strong> ${esc(why)}</div>`
+    ? `<div class="client-profile-why"><strong>Why:</strong> ${esc(why)}</div>`
     : '';
   const milestoneHtml = milestones.length
-    ? `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-top:10px">${milestones.map(([k, v]) =>
-        `<div style="padding:8px 9px;border:1px solid var(--border);border-radius:6px;background:var(--surface)">
-          <div style="font-family:var(--mono);font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em">${esc(k)} Milestone</div>
-          <div style="font-family:var(--mono);font-size:10px;color:var(--muted);line-height:1.35;margin-top:3px">${esc(v)}</div>
+    ? `<div class="client-profile-milestones">${milestones.map(([k, v]) =>
+        `<div class="client-profile-mile">
+          <div class="client-profile-mile-label">${esc(k)} Milestone</div>
+          <div class="client-profile-mile-text">${esc(v)}</div>
         </div>`
       ).join('')}</div>`
     : '';
@@ -6578,11 +6625,11 @@ function buildClientProfilePanel(a, variant = 'card') {
   const title = variant === 'full'
     ? '<div class="fpc-section-title">Client Profile</div>'
     : '<div class="sec-ttl">Client Profile</div>';
-  const cls = variant === 'full' ? 'fpc-section' : 'sec';
+  const cls = variant === 'full' ? 'fpc-section client-profile' : 'sec client-profile';
 
   return `<div class="${cls}">
     ${title}
-    ${statHtml ? `<div style="display:flex;flex-wrap:wrap;gap:8px">${statHtml}</div>` : ''}
+    ${statHtml ? `<div class="client-profile-grid">${statHtml}</div>` : ''}
     ${whyHtml}
     ${milestoneHtml}
   </div>`;
@@ -7465,6 +7512,7 @@ function initCollapsibleSections() {
     'recent pr',
     '📈',
     'trend',
+    'client profile',
     '🟠',
     'strava',
     'week in progress',
