@@ -3705,6 +3705,7 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [
   const nutritionCounts = {};
   const sessionCounts = {};
   const planCounts = {};
+  const athleteProfiles = {};
 
   function ens(id) {
     if (!id || id.length < 2) return;
@@ -3717,6 +3718,7 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [
     const sd = r['date:Start Date:start'] || r['Start Date'];
     if (code) masterIds.add(code);
     if (code && sd) startDates[code] = sd;
+    if (code) athleteProfiles[code] = r;
   });
 
   // Build targets lookup: targetMap[athleteId][weekLabel] = row
@@ -4116,6 +4118,7 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [
       lastActivity, lastActivityMs,
       checkinStreak,
       compliance4w,
+      profile: athleteProfiles[a.id] || null,
       isCoach: COACHES.has(a.id),
     };
   });
@@ -5527,6 +5530,7 @@ function buildCard(a, weekOffset = 0) {
   }
 
   // ── Call Prep
+  const clientProfileHtml = buildClientProfilePanel(a, 'card');
   const callPrep = buildCallPrep(a);
   const cpId = `cp-${a.id.replace(/\s+/g,'-')}`;
   const savedNote = callNotes[a.id] || '';
@@ -5632,7 +5636,7 @@ function buildCard(a, weekOffset = 0) {
       ${metricsHtml}
       ${extraBarsHtml}
       ${sparkStripHtml}
-      ${staleBanner}${planHtml}${trainingHtml}${nutrTargetHtml}${sessHtml}
+      ${staleBanner}${clientProfileHtml}${planHtml}${trainingHtml}${nutrTargetHtml}${sessHtml}
       ${previousCheckinsHtml}
       <div class="ai-sec"></div>
       ${callPrepHtml}
@@ -6061,6 +6065,7 @@ function buildFPCard(a, weekOffset = 0) {
     : '';
 
   const dailyInputsHtml = buildDailyInputsLedger(a, ctx);
+  const clientProfileHtml = buildClientProfilePanel(a, 'full');
 
   // ── Day-by-day week detail (full week, newest first) ─────────────────────
   let weekDetailHtml = '';
@@ -6496,6 +6501,7 @@ function buildFPCard(a, weekOffset = 0) {
     ${hero}
     ${banner}
     ${fpActionHtml}
+    ${clientProfileHtml}
     ${wipHtml}
     ${scoresHtml}
     ${trainingHtml}
@@ -6517,6 +6523,69 @@ function pickFirst(row, keys) {
     if (val !== undefined && val !== null && val !== '') return val;
   }
   return null;
+}
+
+function buildClientProfilePanel(a, variant = 'card') {
+  const p = a.profile || {};
+  if (!Object.keys(p).length) return '';
+
+  const start = pickFirst(p, ['date:Start Date:start', 'Start Date']);
+  const submitted = pickFirst(p, ['date:Submitted:start', 'Submitted']);
+  const goalRace = pickFirst(p, ['Goal Race']);
+  const raceDate = pickFirst(p, ['Race Date']);
+  const why = pickFirst(p, ['Your Why']);
+  const milestones = [
+    ['W4', pickFirst(p, ['Milestone W4'])],
+    ['W8', pickFirst(p, ['Milestone W8'])],
+    ['W12', pickFirst(p, ['Milestone W12'])],
+  ].filter(([, v]) => isBad(v));
+  const stats = [
+    ['Goal', goalRace],
+    ['Race Date', raceDate],
+    ['KM Target', pickFirst(p, ['Weekly KM Target'])],
+    ['Start', start ? fmtDate(String(start).split('T')[0]) : null],
+    ['Submitted', submitted ? fmtDate(String(submitted).split('T')[0]) : null],
+    ['Weight', pickFirst(p, ['Body Weight (kg)']) ? `${pickFirst(p, ['Body Weight (kg)'])} kg` : null],
+    ['Target Wt', pickFirst(p, ['Target Weight']) ? `${pickFirst(p, ['Target Weight'])} kg` : null],
+    ['Body Fat', pickFirst(p, ['Body Fat %']) ? `${pickFirst(p, ['Body Fat %'])}%` : null],
+    ['5km', pickFirst(p, ['5km Time'])],
+    ['10km', pickFirst(p, ['10km Time'])],
+    ['Half', pickFirst(p, ['Half Marathon Time'])],
+    ['Mara', pickFirst(p, ['Marathon Time'])],
+    ['Long Pace', pickFirst(p, ['Long Run Pace'])],
+  ].filter(([, v]) => isBad(v));
+
+  if (!stats.length && !isBad(why) && !milestones.length) return '';
+
+  const statHtml = stats.map(([k, v]) =>
+    `<div style="min-width:82px;flex:1;padding:8px 9px;border:1px solid var(--border);border-radius:6px;background:var(--surface2)">
+      <div style="font-family:var(--mono);font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em">${esc(k)}</div>
+      <div style="font-family:var(--mono);font-size:11px;color:var(--text);font-weight:800;margin-top:3px;line-height:1.25">${esc(v)}</div>
+    </div>`
+  ).join('');
+  const whyHtml = isBad(why)
+    ? `<div style="font-family:var(--mono);font-size:${variant === 'full' ? '11px' : '10px'};line-height:1.45;color:var(--muted);margin-top:10px"><strong style="color:var(--text)">Why:</strong> ${esc(why)}</div>`
+    : '';
+  const milestoneHtml = milestones.length
+    ? `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-top:10px">${milestones.map(([k, v]) =>
+        `<div style="padding:8px 9px;border:1px solid var(--border);border-radius:6px;background:var(--surface)">
+          <div style="font-family:var(--mono);font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em">${esc(k)} Milestone</div>
+          <div style="font-family:var(--mono);font-size:10px;color:var(--muted);line-height:1.35;margin-top:3px">${esc(v)}</div>
+        </div>`
+      ).join('')}</div>`
+    : '';
+
+  const title = variant === 'full'
+    ? '<div class="fpc-section-title">Client Profile</div>'
+    : '<div class="sec-ttl">Client Profile</div>';
+  const cls = variant === 'full' ? 'fpc-section' : 'sec';
+
+  return `<div class="${cls}">
+    ${title}
+    ${statHtml ? `<div style="display:flex;flex-wrap:wrap;gap:8px">${statHtml}</div>` : ''}
+    ${whyHtml}
+    ${milestoneHtml}
+  </div>`;
 }
 
 function buildDailyInputsLedger(a, ctx = getSelectedWeekContext(a, 0)) {
