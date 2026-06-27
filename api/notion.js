@@ -13,14 +13,15 @@
 //   • sessions   → Supabase training_session_logs
 // If Supabase errors or is empty for a database, it falls back to Notion.
 //
-// Required environment variables (Vercel → Project → Settings → Environment):
-//   SUPABASE_URL               = https://rugdupplsswxmpoudhpv.supabase.co
-//   SUPABASE_SERVICE_ROLE_KEY  = <service_role key from Supabase → Settings → API>
-//   NOTION_TOKEN               = (already set — used for fallback + weekly history)
+// Environment variables — ALL ALREADY SET in this project:
+//   SUPABASE_URL          (set Jun 3)
+//   SUPABASE_SERVICE_KEY  (set — service role key, bypasses RLS for reads)
+//   NOTION_TOKEN          (already set — used for fallback + weekly history)
+// (Both SUPABASE_SERVICE_KEY and SUPABASE_SERVICE_ROLE_KEY names are accepted.)
 // ---------------------------------------------------------------------------
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://rugdupplsswxmpoudhpv.supabase.co';
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
 const NOTION_TOKEN = process.env.NOTION_TOKEN;
 const NOTION_VERSION = '2022-06-28';
 const MAX_PAGES = 600;
