@@ -46,6 +46,10 @@ const norm = id => (id || '').replace(/-/g, '');
 const TYPE_BY_ID   = Object.fromEntries(Object.entries(DB).map(([k, v]) => [v, k]));
 const TYPE_BY_NORM = Object.fromEntries(Object.entries(DB).map(([k, v]) => [norm(v), k]));
 
+// Notion "Athlete Database" roster id. We serve it from Notion but overlay the
+// athlete's own portal-submitted goals (Supabase athlete_goals) on top.
+const ATHLETE_DB = '4a25a96c-c70b-82ff-a679-0139eaa8b458';
+
 // ─── small helpers ────────────────────────────────────────────────────────
 const s = v => (v === null || v === undefined) ? '' : String(v);
 const num = v => (v === null || v === undefined || v === '') ? null : Number(v);
@@ -244,6 +248,33 @@ async function fromNotion(dbId) {
   return all;
 }
 
+// Overlay portal-submitted goals (Supabase athlete_goals) onto the Notion
+// roster rows, matched by athlete Code. Portal value wins when present.
+function overlayGoals(rosterRows, goals) {
+  const byKey = {};
+  for (const g of goals) {
+    if (g.athlete_code) byKey[String(g.athlete_code).toUpperCase().trim()] = g;
+    if (g.athlete_name) byKey[String(g.athlete_name).toUpperCase().trim()] ??= g;
+  }
+  const MAP = {
+    goal_race: 'Goal Race', race_date: 'Race Date', target_weight: 'Target Weight',
+    body_fat: 'Body Fat %', time_5k: '5km Time', time_10k: '10km Time',
+    time_half: 'Half Marathon Time', time_marathon: 'Marathon Time',
+    long_run_pace: 'Long Run Pace', why: 'Your Why',
+    milestone_w4: 'Milestone W4', milestone_w8: 'Milestone W8', milestone_w12: 'Milestone W12',
+  };
+  for (const row of rosterRows) {
+    const key = String(row['Code'] || row['Athlete'] || '').toUpperCase().trim();
+    const g = byKey[key];
+    if (!g) continue;
+    for (const [col, prop] of Object.entries(MAP)) {
+      const v = g[col];
+      if (v !== null && v !== undefined && String(v).trim() !== '') row[prop] = String(v);
+    }
+  }
+  return rosterRows;
+}
+
 // Merge Supabase weekly (recent) with Notion weekly (history), deduped by
 // athlete + week-ending. Supabase wins on conflict.
 function mergeWeekly(sup, notion) {
@@ -266,6 +297,22 @@ export default async function handler(req, res) {
 
   const { db } = req.query;
   if (!db) { res.status(400).json({ error: 'Missing ?db= query parameter' }); return; }
+
+  // Athlete roster: serve Notion roster + overlay live portal goals from Supabase.
+  if (norm(db) === norm(ATHLETE_DB)) {
+    let roster = [];
+    try { roster = await fromNotion(db); } catch (e) { console.error('[data] roster notion:', e.message); }
+    let goals = [];
+    if (SUPABASE_KEY) {
+      try { goals = await sbFetch('athlete_goals?select=*'); }
+      catch (e) { console.error('[data] athlete_goals:', e.message); }
+    }
+    const results = overlayGoals(roster, goals);
+    res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate=30');
+    res.setHeader('X-Data-Source', 'notion+supabase-goals');
+    res.status(200).json({ results, total: results.length, source: 'notion+supabase-goals' });
+    return;
+  }
 
   const type = TYPE_BY_ID[db] || TYPE_BY_NORM[norm(db)] || null;
   let results = null;
