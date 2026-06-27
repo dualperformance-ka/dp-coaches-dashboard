@@ -1,170 +1,288 @@
+// api/notion.js — Supabase-first data proxy with automatic Notion fallback
+// (ES Module syntax — this repo's package.json has "type": "module")
+// ---------------------------------------------------------------------------
+// THIS REPLACES your existing api/notion.js. No other change is needed —
+// the dashboard already calls /api/notion?db=<id>, and this keeps that exact
+// URL and response shape, but serves the data from Supabase (where the athlete
+// portals now write). Notion is still used automatically as a fallback and for
+// older weekly-check-in history.
+//
+//   • weekly     → Supabase athlete_data (checkin_*)  +  Notion history (merged)
+//   • body       → Supabase daily_body_logs
+//   • nutrition  → Supabase daily_nutrition_logs
+//   • sessions   → Supabase training_session_logs
+// If Supabase errors or is empty for a database, it falls back to Notion.
+//
+// Required environment variables (Vercel → Project → Settings → Environment):
+//   SUPABASE_URL               = https://rugdupplsswxmpoudhpv.supabase.co
+//   SUPABASE_SERVICE_ROLE_KEY  = <service_role key from Supabase → Settings → API>
+//   NOTION_TOKEN               = (already set — used for fallback + weekly history)
+// ---------------------------------------------------------------------------
+
+const SUPABASE_URL = process.env.SUPABASE_URL || 'https://rugdupplsswxmpoudhpv.supabase.co';
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const NOTION_TOKEN = process.env.NOTION_TOKEN;
 const NOTION_VERSION = '2022-06-28';
-const BASE = 'https://api.notion.com/v1';
+const MAX_PAGES = 600;
 
-// ── In-memory cache ───────────────────────────────────────────────────────────
-// Vercel keeps warm instances alive between requests. Cache full DB results
-// for CACHE_TTL_MS so repeated loads within that window are instant.
-// The refresh button bypasses the cache via ?bust=1.
-const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
-const _cache = new Map(); // key → { data, expiresAt }
+// Notion database IDs the dashboard already requests (public/index.html → DB object)
+const DB = {
+  weekly:    '33e5a96c-c70b-8049-b696-d22e5920e0ee',
+  sessions:  '1c55a96c-c70b-825b-9bdf-819abea4ef7c',
+  body:      '3405a96c-c70b-80a4-b1b9-cf5b9c236f18',
+  nutrition: '3405a96c-c70b-804b-aa9c-f165f2d2e0e9',
+};
+const norm = id => (id || '').replace(/-/g, '');
+const TYPE_BY_ID   = Object.fromEntries(Object.entries(DB).map(([k, v]) => [v, k]));
+const TYPE_BY_NORM = Object.fromEntries(Object.entries(DB).map(([k, v]) => [norm(v), k]));
 
-function cacheGet(key) {
-  const entry = _cache.get(key);
-  if (!entry) return null;
-  if (Date.now() > entry.expiresAt) { _cache.delete(key); return null; }
-  return entry.data;
-}
-
-function cacheSet(key, data) {
-  _cache.set(key, { data, expiresAt: Date.now() + CACHE_TTL_MS });
-}
-
-// ── Notion helpers ────────────────────────────────────────────────────────────
-function headers() {
+// ─── small helpers ────────────────────────────────────────────────────────
+const s = v => (v === null || v === undefined) ? '' : String(v);
+const num = v => (v === null || v === undefined || v === '') ? null : Number(v);
+function dateFields(name, val) {
+  const start = val || null;
   return {
-    'Authorization': `Bearer ${NOTION_TOKEN}`,
-    'Notion-Version': NOTION_VERSION,
-    'Content-Type': 'application/json'
+    [`date:${name}:start`]: start,
+    [`date:${name}:end`]: null,
+    [`date:${name}:is_datetime`]: start && String(start).includes('T') ? 1 : 0,
   };
 }
 
-function rt(arr) {
-  if (!arr || !arr.length) return '';
-  return arr.map(t => t.plain_text || '').join('');
+// ─── Supabase (PostgREST) fetch ───────────────────────────────────────────
+async function sbFetch(path) {
+  if (!SUPABASE_KEY) throw new Error('SUPABASE_SERVICE_ROLE_KEY not set');
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+    headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
+  });
+  if (!res.ok) throw new Error(`Supabase ${res.status}: ${await res.text().catch(() => '')}`);
+  return res.json();
 }
 
-function flattenProps(props) {
-  const out = {};
-  for (const [k, v] of Object.entries(props || {})) {
-    switch (v.type) {
-      case 'title':           out[k] = rt(v.title); break;
-      case 'rich_text':       out[k] = rt(v.rich_text); break;
-      case 'number':          out[k] = v.number; break;
-      case 'select':          out[k] = v.select ? v.select.name : null; break;
-      case 'status':          out[k] = v.status ? v.status.name : null; break;
-      case 'multi_select':    out[k] = v.multi_select.map(s => s.name).join(', '); break;
-      case 'date':
-        out[k] = v.date ? v.date.start : null;
-        out[`date:${k}:start`] = v.date ? v.date.start : null;
-        out[`date:${k}:end`] = v.date ? v.date.end : null;
-        out[`date:${k}:is_datetime`] = v.date ? (v.date.start && v.date.start.includes('T') ? 1 : 0) : 0;
-        break;
-      case 'checkbox':        out[k] = v.checkbox; break;
-      case 'url':             out[k] = v.url; break;
-      case 'email':           out[k] = v.email; break;
-      case 'phone_number':    out[k] = v.phone_number; break;
-      case 'formula':
-        out[k] = v.formula ? (v.formula.string || v.formula.number || v.formula.boolean) : null;
-        break;
-      case 'relation':        out[k] = v.relation && v.relation.length ? v.relation[0].id : null; break;
-      case 'rollup':
-        if (v.rollup && v.rollup.type === 'array') {
-          out[k] = v.rollup.array.map(i => flattenProps({ _: i })['_']).filter(Boolean).join(', ');
-        } else if (v.rollup) {
-          out[k] = v.rollup.number || v.rollup.date || null;
-        }
-        break;
-      case 'people':          out[k] = v.people.map(p => p.name || p.id).join(', '); break;
-      case 'files':           out[k] = v.files.map(f => f.name).join(', '); break;
-      case 'created_time':    out[k] = v.created_time; break;
-      case 'last_edited_time':out[k] = v.last_edited_time; break;
-      default:                out[k] = null;
+// ─── Mappers: Supabase row → Notion-shaped row the dashboard expects ──────
+function mapWeekly(rows) {
+  return rows.map(r => {
+    const v = r.value || {};
+    const who = (v.athleteName || v.athleteCode || r.athlete_code || '').toString().toUpperCase();
+    return {
+      _id: r.id, _url: '', _createdTime: r.updated_at,
+      'Name': `${who} — ${v.weekEnding || ''}`,
+      'Week Ending': s(v.weekEnding),
+      'Week Ending Date': s(v.weekEnding),
+      ...dateFields('Week Ending Date', v.weekEnding || null),
+      'Run Completed': s(v.runCompleted),
+      'Run Planned': s(v.runPlanned),
+      'Weekly Run KM': s(v.runKm),
+      'Run Feel /10': s(v.runFeel),
+      'Run Niggles': s(v.runNiggles),
+      'Runs Wins': s(v.runWins),
+      'Lift Completed': s(v.liftCompleted),
+      'Lift Planned': s(v.liftPlanned),
+      'Lift Feel /10': s(v.liftFeel),
+      'Lift Wins': s(v.liftWins),
+      'Lifts Niggles': s(v.liftNiggles),
+      'Sleep hrs': s(v.sleep),
+      'Energy /10': s(v.energy),
+      'Soreness /10': s(v.soreness),
+      'Nutrition Adherence /10': s(v.nutrition),
+      'Fuelling': s(v.fuelling),
+      'Upcoming Impact': s(v.upcomingImpact),
+      'Social Event Upcoming': s(v.socialEating),
+      'Stress': s(v.stress),
+      'Motivation': s(v.motivation),
+      'Testimonial': s(v.testimonial),
+      'Notes': s(v.notes),
+      'Submitted At': r.updated_at,
+      'Athlete Code': s(v.athleteCode || r.athlete_code),
+      'Athlete': null,
+    };
+  });
+}
+
+function mapBody(rows) {
+  // Portal collects: weight, sleep, energy, stress, soreness, notes.
+  // (Motivation / RPE / Pain / Session / Coach Alert are not athlete inputs → null.)
+  return rows.map(r => ({
+    _id: r.id, _url: '', _createdTime: r.submitted_at,
+    'Name': s(r.athlete_name || r.athlete_code),
+    'AthleteID': s(r.athlete_code),
+    'Date': s(r.log_date),
+    ...dateFields('Date', r.log_date),
+    'Weight': num(r.weight),
+    'Sleep Score': num(r.sleep),
+    'Energy': num(r.energy),
+    'Stress': num(r.stress),
+    'Soreness': num(r.soreness),
+    'Motivation': null,
+    'RPE': null,
+    'Pain': null,
+    'Session': '',
+    'Notes': s(r.notes),
+    'Coach Alert': null,
+    'Submitted At': r.submitted_at,
+    'Athlete': null,
+  }));
+}
+
+function mapNutrition(rows) {
+  return rows.map(r => ({
+    _id: r.id, _url: '', _createdTime: r.submitted_at,
+    'Name': s(r.athlete_name || r.athlete_code),
+    'AthleteID': s(r.athlete_code),
+    'Date': s(r.log_date),
+    ...dateFields('Date', r.log_date),
+    'Calories': num(r.calories),
+    'Protein': num(r.protein),
+    'Carbs': num(r.carbs),
+    'Fats': num(r.fat),       // Notion property is "Fats"; Supabase column is "fat"
+    'Fibre': num(r.fibre),
+    'Notes': s(r.notes),
+    'Created time': r.submitted_at,
+    'Athlete': null,
+  }));
+}
+
+function mapSessions(rows) {
+  return rows.map(r => ({
+    _id: r.id, _url: '', _createdTime: r.submitted_at,
+    'Name': s(r.session_name || r.athlete_name || r.athlete_code),
+    'Session': s(r.session_name),
+    'Session Category': s(r.session_category),
+    'Exercise Log': s(r.exercise_log),
+    'Athlete Code': s(r.athlete_code),
+    'Date': s(r.session_date),
+    ...dateFields('Date', r.session_date),
+    'Submitted At': r.submitted_at,
+    'Athlete': null,
+  }));
+}
+
+async function fromSupabase(type) {
+  switch (type) {
+    case 'weekly':
+      return mapWeekly(await sbFetch(
+        'athlete_data?key=like.checkin_*&select=id,athlete_code,value,updated_at&order=updated_at.desc'));
+    case 'body':
+      return mapBody(await sbFetch('daily_body_logs?select=*&order=submitted_at.desc'));
+    case 'nutrition':
+      return mapNutrition(await sbFetch('daily_nutrition_logs?select=*&order=submitted_at.desc'));
+    case 'sessions':
+      return mapSessions(await sbFetch('training_session_logs?select=*&order=submitted_at.desc'));
+    default:
+      return null;
+  }
+}
+
+// ─── Notion (fallback + weekly history) ───────────────────────────────────
+function extractProp(prop) {
+  if (!prop) return null;
+  switch (prop.type) {
+    case 'title':        return prop.title?.map(t => t.plain_text).join('') ?? '';
+    case 'rich_text':    return prop.rich_text?.map(t => t.plain_text).join('') ?? '';
+    case 'number':       return prop.number ?? null;
+    case 'date':         return prop.date?.start ?? null;
+    case 'select':       return prop.select?.name ?? null;
+    case 'multi_select': return (prop.multi_select ?? []).map(o => o.name);
+    case 'relation':     return (prop.relation ?? []).map(r => r.id);
+    case 'created_time': return prop.created_time ?? null;
+    case 'checkbox':     return prop.checkbox ?? null;
+    case 'url':          return prop.url ?? null;
+    case 'email':        return prop.email ?? null;
+    case 'phone_number': return prop.phone_number ?? null;
+    default:             return null;
+  }
+}
+function parsePage(page) {
+  const out = { _id: page.id, _url: page.url, _createdTime: page.created_time };
+  for (const [key, val] of Object.entries(page.properties ?? {})) {
+    out[key] = extractProp(val);
+    if (val?.type === 'date') {
+      out[`date:${key}:start`] = val.date?.start ?? null;
+      out[`date:${key}:end`] = val.date?.end ?? null;
+      out[`date:${key}:is_datetime`] = val.date?.start?.includes('T') ? 1 : 0;
     }
   }
   return out;
 }
-
-function flattenBlock(block) {
-  const type = block.type;
-  const data = block[type] || {};
-  return {
-    id: block.id,
-    type,
-    text: rt(data.rich_text),
-    checked: data.checked ?? null,
-    color: data.color ?? null,
-    has_children: block.has_children ?? false,
-    url: data.url ?? null
-  };
+async function queryNotion(dbId, cursor = null) {
+  const body = { page_size: 100 };
+  if (cursor) body.start_cursor = cursor;
+  const res = await fetch(`https://api.notion.com/v1/databases/${dbId}/query`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${NOTION_TOKEN}`,
+      'Notion-Version': NOTION_VERSION,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(`Notion API ${res.status}: ${err.message || res.statusText}`);
+  }
+  return res.json();
+}
+async function fromNotion(dbId) {
+  let all = [], cursor = null, hasMore = true;
+  while (hasMore && all.length < MAX_PAGES) {
+    const data = await queryNotion(dbId, cursor);
+    all = all.concat(data.results.map(parsePage));
+    hasMore = data.has_more;
+    cursor = data.next_cursor;
+  }
+  return all;
 }
 
-// ── Handler ───────────────────────────────────────────────────────────────────
+// Merge Supabase weekly (recent) with Notion weekly (history), deduped by
+// athlete + week-ending. Supabase wins on conflict.
+function mergeWeekly(sup, notion) {
+  const keyOf = r => {
+    const who = String(r['Name'] || '').split('—')[0].trim().toUpperCase();
+    const wk = r['Week Ending Date'] || r['Week Ending'] || '';
+    return `${who}|${wk}`;
+  };
+  const seen = new Set(sup.map(keyOf));
+  const extra = notion.filter(r => !seen.has(keyOf(r)));
+  return [...sup, ...extra];
+}
+
+// ─── Handler ──────────────────────────────────────────────────────────────
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
-  if (req.method === 'OPTIONS') return res.status(200).end();
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  if (req.method === 'OPTIONS') { res.status(200).end(); return; }
 
-  const { db, cursor, page, bust } = req.query;
+  const { db } = req.query;
+  if (!db) { res.status(400).json({ error: 'Missing ?db= query parameter' }); return; }
 
-  // ── Page block fetching ────────────────────────────────────────────────────
-  if (page) {
-    const cacheKey = `page:${page}`;
-    if (!bust) {
-      const cached = cacheGet(cacheKey);
-      if (cached) return res.json(cached);
-    }
-    try {
-      const all = [];
-      let next = undefined;
-      do {
-        const url = `${BASE}/blocks/${page}/children?page_size=100${next ? `&start_cursor=${next}` : ''}`;
-        const r = await fetch(url, { headers: headers() });
-        const data = await r.json();
-        if (data.object === 'error') return res.status(400).json({ error: data.message });
-        (data.results || []).forEach(b => all.push(flattenBlock(b)));
-        next = data.has_more ? data.next_cursor : null;
-      } while (next);
-      const result = { results: all };
-      cacheSet(cacheKey, result);
-      return res.json(result);
-    } catch (e) {
-      return res.status(500).json({ error: e.message });
-    }
+  const type = TYPE_BY_ID[db] || TYPE_BY_NORM[norm(db)] || null;
+  let results = null;
+  let source = 'supabase';
+
+  // 1) Try Supabase for known databases
+  if (type && SUPABASE_KEY) {
+    try { results = await fromSupabase(type); }
+    catch (e) { console.error('[notion-proxy] supabase error:', e.message); results = null; }
   }
 
-  // ── Database query ─────────────────────────────────────────────────────────
-  if (!db) return res.status(400).json({ error: 'Missing ?db= query parameter' });
-
-  // Only cache full fetches (no cursor = fetching everything)
-  const cacheKey = `db:${db}`;
-  if (!cursor && !bust) {
-    const cached = cacheGet(cacheKey);
-    if (cached) {
-      res.setHeader('X-Cache', 'HIT');
-      return res.json(cached);
-    }
-  }
-
+  // 2) Weekly: enrich with Notion history. Others: fall back only if empty.
   try {
-    const all = [];
-    let next = cursor || undefined;
-    let hasMore = true;
-    while (hasMore) {
-      const body = { page_size: 100 };
-      if (next) body.start_cursor = next;
-      const r = await fetch(`${BASE}/databases/${db}/query`, {
-        method: 'POST',
-        headers: headers(),
-        body: JSON.stringify(body)
-      });
-      const data = await r.json();
-      if (data.object === 'error') return res.status(400).json({ error: data.message });
-      (data.results || []).forEach(row => {
-        const flat = flattenProps(row.properties);
-        flat._id = row.id;
-        flat._url = row.url;
-        flat._createdTime = row.created_time;
-        all.push(flat);
-      });
-      hasMore = data.has_more && !cursor;
-      next = data.next_cursor;
+    if (type === 'weekly' && NOTION_TOKEN) {
+      const history = await fromNotion(db).catch(() => []);
+      results = mergeWeekly(results || [], history);
+      source = (results.length && history.length) ? 'supabase+notion' : source;
+    } else if ((!results || results.length === 0) && NOTION_TOKEN) {
+      results = await fromNotion(db);
+      source = 'notion';
     }
-    const result = { results: all };
-    if (!cursor) cacheSet(cacheKey, result);
-    res.setHeader('X-Cache', 'MISS');
-    return res.json(result);
   } catch (e) {
-    return res.status(500).json({ error: e.message });
+    console.error('[notion-proxy] notion fallback error:', e.message);
+    if (!results) { res.status(500).json({ error: e.message }); return; }
   }
-}
+
+  if (!results) { res.status(500).json({ error: 'No data source available' }); return; }
+
+  res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate=30');
+  res.setHeader('X-Data-Source', source);
+  res.status(200).json({ results, total: results.length, source });
+};
