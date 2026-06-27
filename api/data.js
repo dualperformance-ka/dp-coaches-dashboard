@@ -74,7 +74,12 @@ async function sbFetch(path) {
 
 // ─── Mappers: Supabase row → Notion-shaped row the dashboard expects ──────
 function mapWeekly(rows) {
-  return rows.map(r => {
+  return rows
+    // Skip "checked-in" flag entries (value is a bare number) and empty
+    // placeholders — only render rows that carry real check-in content.
+    .filter(r => r.value && typeof r.value === 'object'
+      && (r.value.weekEnding || r.value.testimonial || r.value.runKm || r.value.runFeel))
+    .map(r => {
     const v = r.value || {};
     const who = (v.athleteName || v.athleteCode || r.athlete_code || '').toString().toUpperCase();
     return {
