@@ -3612,8 +3612,8 @@ async function fetchDB(dbId, bust = false) {
 
   do {
     let url = cursor
-      ? `/api/notion?db=${dbId}&cursor=${encodeURIComponent(cursor)}`
-      : `/api/notion?db=${dbId}`;
+      ? `/api/data?db=${dbId}&cursor=${encodeURIComponent(cursor)}`
+      : `/api/data?db=${dbId}`;
     if (bust && !cursor) url += '&bust=1';
     const res = await fetch(url);
     if (!res.ok) {
