@@ -157,7 +157,9 @@ function mapSessions(rows) {
     'Name': s(r.session_name || r.athlete_name || r.athlete_code),
     'Session': s(r.session_name),
     'Session Category': s(r.session_category),
-    'Exercise Log': s(r.exercise_log),
+    // Dashboard's parseExerciseLine splits exercises by newline; Supabase
+    // separates them with "  ||  ". Convert so names/sets align correctly.
+    'Exercise Log': s(r.exercise_log).replace(/\s*\|\|\s*/g, '\n'),
     'Athlete Code': s(r.athlete_code),
     'Date': s(r.session_date),
     ...dateFields('Date', r.session_date),
