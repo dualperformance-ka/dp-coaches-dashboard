@@ -303,6 +303,17 @@ export default async function handler(req, res) {
   const { db } = req.query;
   if (!db) { res.status(400).json({ error: 'Missing ?db= query parameter' }); return; }
 
+  // Migration helper: ?raw=notion returns the raw Notion rows for this db,
+  // bypassing Supabase. Used to diff/backfill Notion-only history into Supabase.
+  if (req.query.raw === 'notion' && NOTION_TOKEN) {
+    try {
+      const rows = await fromNotion(db);
+      res.setHeader('Cache-Control', 'no-store');
+      res.status(200).json({ results: rows, total: rows.length, source: 'notion-raw' });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+    return;
+  }
+
   // Athlete roster: serve Notion roster + overlay live portal goals from Supabase.
   if (norm(db) === norm(ATHLETE_DB)) {
     let roster = [];
