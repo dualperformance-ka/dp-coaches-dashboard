@@ -6,6 +6,15 @@
     },
     "api/progress-photos.js": {
       "maxDuration": 15
+    },
+    "api/sync-notion.js": {
+      "maxDuration": 60
     }
-  }
+  },
+  "crons": [
+    {
+      "path": "/api/sync-notion",
+      "schedule": "0 4 * * *"
+    }
+  ]
 }
