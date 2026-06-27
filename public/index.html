@@ -5781,7 +5781,7 @@ function renderExerciseLog(logStr, isRun, priorBests) {
       const m = s.trim().match(/Set\s*\d+:\s*(.+)/);
       const val = m ? m[1].trim() : s.trim();
       // Compact: "40kg × 12reps" → "40×12"
-      const compact = val.replace(/\s*×\s*/g, '×').replace('reps', '');
+      const compact = val         .replace(/\s*×\s*/g, '×')         .replace(/reps/g, '')         .replace(/\s*kg/gi, '')         .replace(/\s*@\s*RPE\s*([\d.]+)/i, (_, n) => String(n).replace(/\d/g, d => '⁰¹²³⁴⁵⁶⁷⁸⁹'[d]))         .trim();
       if (!compact) return '';
       // PB detection: check if this set beats prior best by e1rm
       const setM = val.match(/([\d.]+)\s*kg\s*[×x]\s*(\d+)/i);
