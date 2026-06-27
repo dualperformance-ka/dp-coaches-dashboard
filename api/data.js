@@ -324,13 +324,11 @@ export default async function handler(req, res) {
     catch (e) { console.error('[data] supabase error:', e.message); results = null; }
   }
 
-  // 2) Weekly: enrich with Notion history. Others: fall back only if empty.
+  // 2) Fall back to Notion only when Supabase has nothing — keeps Notion as a
+  //    pure backup. (All real weekly history has been backfilled into Supabase,
+  //    so weekly no longer needs the always-on merge.)
   try {
-    if (type === 'weekly' && NOTION_TOKEN) {
-      const history = await fromNotion(db).catch(() => []);
-      results = mergeWeekly(results || [], history);
-      source = (results.length && history.length) ? 'supabase+notion' : source;
-    } else if ((!results || results.length === 0) && NOTION_TOKEN) {
+    if ((!results || results.length === 0) && NOTION_TOKEN) {
       results = await fromNotion(db);
       source = 'notion';
     }
