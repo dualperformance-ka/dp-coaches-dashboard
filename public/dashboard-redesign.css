@@ -304,7 +304,8 @@ header {
 .po-modal { border-radius: 18px; border-color: var(--border-mid); box-shadow: 0 28px 90px rgba(0,0,0,.5); }
 .po-input { min-height: 40px; border-radius: 9px; font-size: 13px; }
 .po-btn { min-height: 40px; border-radius: 9px; }
-#fp-overlay, #wh-overlay { background: var(--bg); }
+#fp-overlay { background: var(--bg); }
+#wh-overlay { background: var(--wh-bg); }
 .fp-topbar, .wh-topbar { min-height: 64px; backdrop-filter: blur(18px); }
 
 /* Light theme keeps the premium hierarchy */
