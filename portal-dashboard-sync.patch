@@ -1,0 +1,167 @@
+--- a/public/index.html
++++ b/public/index.html
+@@ -1466,6 +1466,7 @@
+ @media(max-width:720px){.week-jump{align-items:flex-start;flex-direction:column}.week-jump-controls{justify-content:flex-start}}
+ </style>
+ <link rel="stylesheet" href="/dashboard-redesign.css">
++<link rel="stylesheet" href="/dashboard-detail-cleanup.css">
+ </head>
+ <body>
+ 
+@@ -3687,6 +3688,104 @@
+   }
+ }
+ 
++
++// ── Structured athlete portal Supabase source of truth ────────────────────────
++async function fetchCoachDataSB() {
++  const empty = {
++    ok: false,
++    body: [],
++    nutrition: [],
++    sessions: [],
++    weekly: [],
++    goals: [],
++    counts: {},
++  };
++
++  try {
++    const res = await fetch('/api/coach-data', { cache: 'no-store' });
++    if (!res.ok) return { ...empty, error: `HTTP ${res.status}` };
++
++    const data = await res.json();
++
++    return {
++      ok: data.ok === true,
++      error: data.error || null,
++      body: Array.isArray(data.body) ? data.body : [],
++      nutrition: Array.isArray(data.nutrition) ? data.nutrition : [],
++      sessions: Array.isArray(data.sessions) ? data.sessions : [],
++      weekly: Array.isArray(data.weekly) ? data.weekly : [],
++      goals: Array.isArray(data.goals) ? data.goals : [],
++      counts: data.counts || {},
++      generatedAt: data.generatedAt || null,
++    };
++  } catch (error) {
++    console.warn('fetchCoachDataSB failed', error);
++    return { ...empty, error: error.message };
++  }
++}
++
++function mergeByAthleteDate(portalRows, notionRows) {
++  const output = [];
++  const seen = new Set();
++
++  const dateOf = row =>
++    String(row['date:Date:start'] || row.Date || '').slice(0, 10);
++
++  const idOf = row =>
++    nid(row.AthleteID || row['Athlete Code'] || row._athleteCode || '');
++
++  const keyOf = row => `${idOf(row)}|${dateOf(row)}`;
++
++  for (const row of portalRows || []) {
++    const key = keyOf(row);
++    if (!key || key.startsWith('|') || seen.has(key)) continue;
++    seen.add(key);
++    output.push(row);
++  }
++
++  for (const row of notionRows || []) {
++    const key = keyOf(row);
++    if (!key || key.startsWith('|') || seen.has(key)) continue;
++    seen.add(key);
++    output.push(row);
++  }
++
++  return output;
++}
++
++function mergeSessionsPortalFirst(portalRows, notionRows) {
++  const dateOf = row => {
++    const raw = row.Date || row['date:Date:start'] || '';
++    const ddmm = String(raw).match(/^(\d{2})\/(\d{2})\/(\d{4})/);
++
++    if (ddmm) return `${ddmm[3]}-${ddmm[2]}-${ddmm[1]}`;
++
++    const iso = String(raw).split('T')[0];
++    if (iso) return iso;
++
++    const nameDate = String(row.Name || '').match(/(\d{4}-\d{2}-\d{2})$/);
++    return nameDate ? nameDate[1] : '';
++  };
++
++  const categoryOf = row =>
++    String(row['Session Category'] || row.Type || row.type || '').trim();
++
++  const idOf = row =>
++    sid(row) || nid(row.AthleteID || row['Athlete Code'] || '');
++
++  const nameOf = row =>
++    String(row.Session || row.session || '').trim().toLowerCase();
++
++  const keyOf = row =>
++    `${idOf(row)}|${nameOf(row)}|${categoryOf(row).toLowerCase()}|${dateOf(row)}`;
++
++  const portal = portalRows || [];
++  const portalKeys = new Set(portal.map(keyOf));
++  const notionOnly = (notionRows || []).filter(row => !portalKeys.has(keyOf(row)));
++
++  return [...portal, ...notionOnly];
++}
++
+ // Merge Supabase + Notion weekly check-ins. Supabase wins on collision
+ // (same athlete + same Week Ending). Athlete identity for Supabase rows comes
+ // from _athleteCode; for Notion rows it's parsed from the title (as before).
+@@ -7335,11 +7434,11 @@
+   document.getElementById('refresh-btn').disabled = true;
+ 
+   try {
+-    const [weeklyNotion, sessions, body, nutrition, athleteDb, targets, planning, applications, weeklySupa, , libRows, decisionsRes] = await Promise.all([
++    const [weeklyNotion, sessionsNotion, bodyNotion, nutritionNotion, athleteDb, targets, planning, applications, weeklySupa, coachDataSB, , libRows, decisionsRes] = await Promise.all([
+       fetchDB(DB.weekly, bust), fetchDB(DB.sessions, bust), fetchDB(DB.body, bust),
+       fetchDB(DB.nutrition, bust), fetchDB(DB.athletes, bust), fetchTargetsSB(),
+       fetchPlanningSB(), fetchDB(DB.applications, bust),
+-      fetchWeeklyFromSupabase(),
++      fetchWeeklyFromSupabase(), fetchCoachDataSB(),
+       loadSessionLogs(), loadSessionLibrary(),
+       getSB().from('application_decisions').select('notion_id,decision,decided_by,decided_at'),
+       loadCallNotes(), loadAcks(),
+@@ -7348,7 +7447,11 @@
+     // Weekly check-ins now come from Supabase (full payload, primary) merged
+     // with legacy Notion check-ins (older submissions). Supabase wins on
+     // collision so the current source of truth always takes precedence.
+-    const weekly = mergeWeekly(weeklySupa, weeklyNotion);
++    const weeklyLegacy = mergeWeekly(weeklySupa, weeklyNotion);
++    const weekly = mergeWeekly(coachDataSB.weekly, weeklyLegacy);
++    const sessions = mergeSessionsPortalFirst(coachDataSB.sessions, sessionsNotion);
++    const body = mergeByAthleteDate(coachDataSB.body, bodyNotion);
++    const nutrition = mergeByAthleteDate(coachDataSB.nutrition, nutritionNotion);
+ 
+     _decisions = decisionsRes?.data || [];
+ 
+@@ -7365,6 +7468,12 @@
+       targets: targets.length,
+       planning: planning.length,
+       applications: applications.length,
++      portalSupabase: {
++        ok: coachDataSB.ok,
++        error: coachDataSB.error || null,
++        counts: coachDataSB.counts || {},
++        generatedAt: coachDataSB.generatedAt || null,
++      },
+       loadedAt: new Date(),
+     };
+     render({ athletes, coaches, applications, dataHealth, syncAudit });
+--- a/vercel.json
++++ b/vercel.json
+@@ -9,6 +9,9 @@
+     },
+     "api/sync-notion.js": {
+       "maxDuration": 60
++    },
++    "api/coach-data.js": {
++      "maxDuration": 30
+     }
+   },
+   "crons": [

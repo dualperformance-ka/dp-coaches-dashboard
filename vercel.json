@@ -9,6 +9,9 @@
     },
     "api/sync-notion.js": {
       "maxDuration": 60
+    },
+    "api/coach-data.js": {
+      "maxDuration": 30
     }
   },
   "crons": [
