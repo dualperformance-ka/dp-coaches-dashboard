@@ -8243,8 +8243,164 @@ function _drawWH() {
   ol.classList.toggle('wh-light', _whTheme === 'light');
   document.getElementById('wh-btn-dark').classList.toggle('wh-active', _whTheme === 'dark');
   document.getElementById('wh-btn-light').classList.toggle('wh-active', _whTheme === 'light');
-  document.getElementById('wh-title').textContent = a.id + ' — Body & Nutrition History';
+  document.getElementById('wh-title').textContent = a.id + ' — Athlete History';
   document.getElementById('wh-body').innerHTML = buildWeightHistory(a);
+}
+
+// ── Per-athlete weekly mileage trend ──────────────────────────────────────────
+// Completed KM (amber bars) come from the weekly check-in 'Weekly Run KM', with
+// Strava's live weekly distance overlaid (orange dots) on the current/previous
+// week where connected. The dashed blue line is the planned weekly KM target
+// (from targetByWeek → 'Weekly KM Target'). Soft-fails to a friendly message
+// when an athlete has no mileage history yet.
+let _mtRange = 16; // weeks shown in the mileage trend
+function setMTRange(n) { _mtRange = n; _drawWH(); }
+
+function buildMileageTrend(a) {
+  const _mn = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const _fmtD = d => { if (!d) return '—'; const p = d.split('-'); return parseInt(p[2]) + ' ' + _mn[parseInt(p[1]) - 1]; };
+
+  const WK_MS = 7 * 86400000;
+  const curEnd = a.expectedWeekEnd || null;
+  const curWk  = (typeof a.weekNum === 'number') ? a.weekNum : null;
+  const tbw    = a.targetByWeek || {};
+
+  const plannedFor = (we) => {
+    if (curWk == null || !curEnd) return null;
+    const offset = Math.round((new Date(curEnd) - new Date(we)) / WK_MS);
+    const t = tbw['Week ' + (curWk - offset)];
+    if (t && t['Weekly KM Target'] != null && t['Weekly KM Target'] !== '') {
+      const pk = parseFloat(t['Weekly KM Target']);
+      if (!isNaN(pk)) return pk;
+    }
+    return null;
+  };
+
+  const weeklies = (a.weeklies || []).filter(w => w && w['Week Ending']);
+  const sorted = [...weeklies].sort((x, y) => String(x['Week Ending']).localeCompare(String(y['Week Ending'])));
+  let pts = sorted.map(w => {
+    const we = String(w['Week Ending']).slice(0, 10);
+    const c  = parseFloat(w['Weekly Run KM']);
+    return { date: we, completed: isNaN(c) ? null : c, planned: plannedFor(we), strava: null };
+  });
+
+  // Strava overlay: current week = weeklyKm, previous week = lastWeekKm.
+  const skm = (typeof _stravaKmCache !== 'undefined') ? _stravaKmCache[a.id] : null;
+  const stravaByDate = {};
+  if (skm && curEnd) {
+    if (skm.weeklyKm != null) stravaByDate[curEnd] = +skm.weeklyKm;
+    if (skm.lastWeekKm != null) {
+      const prev = new Date(new Date(curEnd) - WK_MS).toISOString().slice(0, 10);
+      stravaByDate[prev] = +skm.lastWeekKm;
+    }
+    // Surface the current week even if no check-in row exists yet.
+    if (skm.weeklyKm != null && !pts.some(p => p.date === curEnd)) {
+      pts.push({ date: curEnd, completed: null, planned: plannedFor(curEnd), strava: null });
+      pts.sort((x, y) => x.date.localeCompare(y.date));
+    }
+  }
+  pts.forEach(p => { if (stravaByDate[p.date] != null) p.strava = stravaByDate[p.date]; });
+
+  if (pts.length > _mtRange) pts = pts.slice(pts.length - _mtRange);
+
+  const _ranges = [{ w: 8, l: '8W' }, { w: 16, l: '16W' }, { w: 26, l: '26W' }, { w: 52, l: '52W' }, { w: 999, l: 'ALL' }];
+  const _rangeBtns = _ranges.map(r =>
+    `<button class="wh-range-btn${_mtRange === r.w ? ' wh-active' : ''}" onclick="setMTRange(${r.w})">${r.l}</button>`
+  ).join('');
+
+  const hasData = pts.some(p => p.completed != null || p.planned != null || p.strava != null);
+  let chartHtml = '<p style="font-family:var(--mono);font-size:11px;color:var(--wh-dim)">No mileage data yet.</p>';
+
+  if (hasData) {
+    const CW = 880, CH = 180, pL = 42, pR = 12, pT = 10, pB = 30;
+    const cW = CW - pL - pR;
+
+    const allVals = [];
+    pts.forEach(p => { if (p.completed != null) allVals.push(p.completed); if (p.planned != null) allVals.push(p.planned); if (p.strava != null) allVals.push(p.strava); });
+    const rawMax = Math.max(1, ...allVals);
+    const vStep = rawMax <= 10 ? 2 : rawMax <= 30 ? 5 : rawMax <= 60 ? 10 : rawMax <= 120 ? 20 : 50;
+    const vMax = Math.ceil(rawMax / vStep) * vStep;
+    const ticks = [];
+    for (let v = 0; v <= vMax + 0.001; v += vStep) ticks.push(v);
+
+    const n = pts.length;
+    const slot = cW / n;
+    const barW = Math.max(3, Math.min(28, slot * 0.55));
+    const cx = i => pL + slot * i + slot / 2;
+    const toY = v => pT + CH - (v / vMax) * CH;
+
+    const gridLines = ticks.map(v => {
+      const y = toY(v).toFixed(1);
+      return `<line x1="${pL}" y1="${y}" x2="${CW - pR}" y2="${y}" stroke="var(--wh-border)" stroke-width="1"/>` +
+             `<text x="${pL - 5}" y="${y}" font-family="var(--mono)" font-size="8" fill="var(--wh-dim)" text-anchor="end" dominant-baseline="middle">${v}</text>`;
+    }).join('');
+
+    const bars = pts.map((p, i) => {
+      if (p.completed == null) return '';
+      const x = (cx(i) - barW / 2).toFixed(1);
+      const y = toY(p.completed).toFixed(1);
+      const h = (pT + CH - toY(p.completed)).toFixed(1);
+      return `<rect x="${x}" y="${y}" width="${barW.toFixed(1)}" height="${h}" rx="2" fill="var(--run)" opacity="${i === n - 1 ? 1 : 0.82}"><title>${_fmtD(p.date)} · ${p.completed} km logged</title></rect>`;
+    }).join('');
+
+    const plannedXY = pts.map((p, i) => p.planned != null ? { x: cx(i), y: toY(p.planned) } : null).filter(Boolean);
+    let plannedPath = '';
+    if (plannedXY.length >= 2) {
+      plannedPath = `<polyline points="${plannedXY.map(q => q.x.toFixed(1) + ',' + q.y.toFixed(1)).join(' ')}" fill="none" stroke="var(--wh-str)" stroke-width="2" stroke-dasharray="5 4" stroke-linecap="round" stroke-linejoin="round"/>`;
+    }
+    const plannedDots = pts.map((p, i) => p.planned != null
+      ? `<circle cx="${cx(i).toFixed(1)}" cy="${toY(p.planned).toFixed(1)}" r="3" fill="var(--wh-str)"><title>${_fmtD(p.date)} · ${p.planned} km planned</title></circle>` : '').join('');
+
+    const stravaDots = pts.map((p, i) => p.strava != null
+      ? `<circle cx="${cx(i).toFixed(1)}" cy="${toY(p.strava).toFixed(1)}" r="4.5" fill="#fc4c02" stroke="var(--wh-bg)" stroke-width="1.5"><title>${_fmtD(p.date)} · ${p.strava} km (Strava)</title></circle>` : '').join('');
+
+    const step = Math.max(1, Math.ceil(n / 10));
+    const xLabels = pts.map((p, i) => {
+      if (i % step !== 0 && i !== n - 1) return '';
+      const anchor = i === 0 ? 'start' : i === n - 1 ? 'end' : 'middle';
+      return `<text x="${cx(i).toFixed(1)}" y="${pT + CH + 18}" font-family="var(--mono)" font-size="8" fill="var(--wh-dim)" text-anchor="${anchor}">${_fmtD(p.date)}</text>`;
+    }).join('');
+
+    const compVals = pts.map(p => p.completed != null ? p.completed : (p.strava != null ? p.strava : null)).filter(v => v != null);
+    const latest = compVals.length ? compVals[compVals.length - 1] : null;
+    const last4 = compVals.slice(-4);
+    const avg4 = last4.length ? Math.round(last4.reduce((s, v) => s + v, 0) / last4.length * 10) / 10 : null;
+    const peak = compVals.length ? Math.max(...compVals) : null;
+
+    let adhTxt = '—';
+    const bothW = pts.filter(p => p.planned != null && (p.completed != null || p.strava != null));
+    if (bothW.length) {
+      const tc = bothW.reduce((s, p) => s + (p.completed != null ? p.completed : p.strava), 0);
+      const tp = bothW.reduce((s, p) => s + p.planned, 0);
+      if (tp > 0) adhTxt = Math.round(tc / tp * 100) + '%';
+    }
+
+    const statRow = `<div class="wh-stat-row">
+      <div class="wh-stat"><div class="wh-stat-val">${latest != null ? latest + ' km' : '—'}</div><div class="wh-stat-lbl">Latest week</div></div>
+      <div class="wh-stat"><div class="wh-stat-val">${avg4 != null ? avg4 + ' km' : '—'}</div><div class="wh-stat-lbl">4-wk avg</div></div>
+      <div class="wh-stat"><div class="wh-stat-val">${peak != null ? peak + ' km' : '—'}</div><div class="wh-stat-lbl">Peak</div></div>
+      <div class="wh-stat"><div class="wh-stat-val">${adhTxt}</div><div class="wh-stat-lbl">vs planned</div></div>
+      <div class="wh-stat"><div class="wh-stat-val">${pts.length}</div><div class="wh-stat-lbl">Weeks</div></div>
+    </div>`;
+
+    const legend = `<div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:10px;font-family:var(--mono);font-size:9px;color:var(--wh-dim)">
+      <span style="display:inline-flex;align-items:center;gap:5px"><span style="width:11px;height:11px;background:var(--run);border-radius:2px;display:inline-block"></span>Completed (check-in)</span>
+      <span style="display:inline-flex;align-items:center;gap:5px"><span style="width:14px;border-top:2px dashed var(--wh-str);display:inline-block"></span>Planned target</span>
+      <span style="display:inline-flex;align-items:center;gap:5px"><span style="width:10px;height:10px;background:#fc4c02;border-radius:50%;display:inline-block"></span>Strava actual</span>
+    </div>`;
+
+    chartHtml = statRow + `<svg viewBox="0 0 ${CW} ${pT + CH + pB}" width="100%" style="display:block;overflow:visible;margin-top:8px">
+      ${gridLines}${bars}${plannedPath}${plannedDots}${stravaDots}${xLabels}
+    </svg>` + legend;
+  }
+
+  return `<div class="wh-section">
+    <div class="wh-section-title">
+      <span>Weekly Mileage</span>
+      <div class="wh-range-btns">${_rangeBtns}</div>
+    </div>
+    ${chartHtml}
+  </div>`;
 }
 
 function buildWeightHistory(a) {
@@ -8358,6 +8514,7 @@ function buildWeightHistory(a) {
   ).join('');
 
   return `
+    ${buildMileageTrend(a)}
     <div class="wh-section">
       <div class="wh-section-title">
         <span>Weight Trend${wtPts.length > 0 ? ' · <span style="font-weight:400;opacity:.7">' + _fmtFull(wtPts[0].date) + ' → ' + _fmtFull(wtPts[wtPts.length-1].date) + '</span>' : ''}</span>
