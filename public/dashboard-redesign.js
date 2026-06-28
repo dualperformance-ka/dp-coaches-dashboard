@@ -1,106 +1,163 @@
-/* Dual Performance Coaches Dashboard — safe DOM enhancements */
+/* Dual Performance Coaches Dashboard — safe UI enhancements */
 (() => {
-  'use strict';
+  "use strict";
 
-  const qs = (s, root = document) => root.querySelector(s);
-  const qsa = (s, root = document) => [...root.querySelectorAll(s)];
+  const qs = (selector, root = document) => root.querySelector(selector);
+  const qsa = (selector, root = document) => [
+    ...root.querySelectorAll(selector),
+  ];
+
+  function coachName() {
+    const select = qs(".coach-select");
+    const name = select?.selectedOptions?.[0]?.textContent?.trim();
+
+    if (!name || /all/i.test(name)) return "Coaches";
+
+    return name.replace(/coach/gi, "").trim() || "Coach";
+  }
 
   function formatToday() {
-    try {
-      return new Intl.DateTimeFormat('en-AU', {
-        weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
-      }).format(new Date());
-    } catch (_) {
-      return '';
+    return new Intl.DateTimeFormat("en-AU", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    }).format(new Date());
+  }
+
+  function replaceFirstTextNode(element, newText, validLabels = []) {
+    if (!element?.childNodes?.length) return;
+
+    const node = element.childNodes[0];
+    const current = node.textContent.trim().toLowerCase();
+
+    if (
+      validLabels.includes(current) &&
+      node.textContent !== `${newText} `
+    ) {
+      node.textContent = `${newText} `;
     }
   }
 
-  function coachName() {
-    const select = qs('.coach-select');
-    const raw = select?.selectedOptions?.[0]?.textContent?.trim();
-    if (!raw || /all/i.test(raw)) return 'Coaches';
-    return raw.replace(/coach/ig, '').trim() || 'Coach';
-  }
-
   function addPageIntro() {
-    const content = qs('#content');
-    const anchor = qs('#dash-week-nav');
-    if (!content || !anchor || qs('.dp-page-intro')) return;
+    const content = qs("#content");
+    const anchor = qs("#dash-week-nav");
 
-    const intro = document.createElement('section');
-    intro.className = 'dp-page-intro';
-    intro.setAttribute('aria-labelledby', 'dp-page-title');
+    if (!content || !anchor || qs(".dp-page-intro")) return;
+
+    const intro = document.createElement("section");
+    intro.className = "dp-page-intro";
     intro.innerHTML = `
       <div>
         <div class="dp-eyebrow">Coach overview</div>
-        <h1 class="dp-page-title" id="dp-page-title">Good morning, <span id="dp-intro-coach">${coachName()}</span></h1>
-        <p class="dp-page-subtitle">Start with the athletes who need a decision, then review squad adherence and recent activity.</p>
+
+        <h1 class="dp-page-title">
+          Good morning,
+          <span id="dp-intro-coach">${coachName()}</span>
+        </h1>
+
+        <p class="dp-page-subtitle">
+          Start with the athletes who need a decision, then review squad
+          adherence and recent activity.
+        </p>
       </div>
-      <div class="dp-intro-date">${formatToday()}</div>`;
+
+      <div class="dp-intro-date">${formatToday()}</div>
+    `;
+
     content.insertBefore(intro, anchor);
   }
 
-  function improveNavigationLabels() {
-    const tabs = qsa('.tab');
-    tabs.forEach(tab => {
-      const text = tab.childNodes[0]?.textContent?.trim()?.toLowerCase() || tab.textContent.trim().toLowerCase();
-      if (text === 'dashboard' || text === 'athletes') tab.childNodes[0].textContent = 'Overview ';
-      if (text === 'planning') tab.childNodes[0].textContent = 'Programming ';
-      if (text === 'new') tab.childNodes[0].textContent = 'Applications ';
+  function improveLabels() {
+    qsa(".tab").forEach((tab) => {
+      replaceFirstTextNode(tab, "Overview", ["dashboard", "athletes"]);
+      replaceFirstTextNode(tab, "Programming", ["planning"]);
+      replaceFirstTextNode(tab, "Applications", ["new"]);
     });
 
-    const search = qs('#search-input');
-    if (search) search.placeholder = 'Search athletes by name…';
+    const search = qs("#search-input");
 
-    qsa('.sf').forEach(btn => {
-      const status = btn.dataset.status;
-      if (status === 'red') btn.childNodes[0].textContent = 'Critical ';
-      if (status === 'amber') btn.childNodes[0].textContent = 'Review ';
-      if (status === 'green') btn.childNodes[0].textContent = 'On track ';
-    });
-  }
+    if (search) {
+      search.placeholder = "Search athletes by name…";
+    }
 
-  function improveCommandCentre() {
-    const title = qs('.cc-title');
-    const kicker = qs('.cc-kicker');
-    if (title && /command/i.test(title.textContent)) title.textContent = 'Priority actions';
-    if (kicker) kicker.textContent = 'What needs attention now';
+    qsa(".sf").forEach((button) => {
+      const status = button.dataset.status;
 
-    qsa('.cc-list-title').forEach(el => {
-      const t = el.textContent.toLowerCase();
-      if (t.includes('red') || t.includes('alert') || t.includes('urgent')) {
-        el.childNodes[0].textContent = 'Critical review ';
-      } else if (t.includes('amber') || t.includes('watch')) {
-        el.childNodes[0].textContent = 'Coach review ';
+      if (status === "red") {
+        replaceFirstTextNode(button, "Critical", ["alert"]);
+      }
+
+      if (status === "amber") {
+        replaceFirstTextNode(button, "Review", ["watch"]);
+      }
+
+      if (status === "green") {
+        replaceFirstTextNode(button, "On track", ["on track"]);
       }
     });
+
+    const commandTitle = qs(".cc-title");
+
+    if (
+      commandTitle &&
+      /command centre/i.test(commandTitle.textContent)
+    ) {
+      commandTitle.textContent = "Priority actions";
+    }
+
+    const commandKicker = qs(".cc-kicker");
+
+    if (
+      commandKicker &&
+      commandKicker.textContent !== "What needs attention now"
+    ) {
+      commandKicker.textContent = "What needs attention now";
+    }
+
+    const briefTitle = qs(".sb-title");
+
+    if (briefTitle && briefTitle.textContent !== "Squad brief") {
+      briefTitle.textContent = "Squad brief";
+    }
   }
 
-  function improveSquadBrief() {
-    const title = qs('.sb-title');
-    if (title) title.textContent = 'Squad brief';
+  function updateGreeting() {
+    const greeting = qs("#dp-intro-coach");
+
+    if (greeting) {
+      greeting.textContent = coachName();
+    }
   }
 
-  function updateCoachGreeting() {
-    const el = qs('#dp-intro-coach');
-    if (el) el.textContent = coachName();
+  function enhance() {
+    try {
+      addPageIntro();
+      improveLabels();
+      updateGreeting();
+    } catch (error) {
+      console.error("[DP dashboard redesign]", error);
+    }
   }
 
-  function applyEnhancements() {
-    addPageIntro();
-    improveNavigationLabels();
-    improveCommandCentre();
-    improveSquadBrief();
-  }
+  document.addEventListener("DOMContentLoaded", () => {
+    enhance();
 
-  document.addEventListener('DOMContentLoaded', () => {
-    applyEnhancements();
-    qs('.coach-select')?.addEventListener('change', updateCoachGreeting);
+    qs(".coach-select")?.addEventListener("change", updateGreeting);
 
-    // Existing dashboard content is rendered asynchronously. Keep enhancements in sync
-    // without touching its data or event handlers.
-    const target = qs('#tab-athletes-content') || document.body;
-    const observer = new MutationObserver(() => applyEnhancements());
-    observer.observe(target, { childList: true, subtree: true });
+    /*
+     * The original dashboard renders asynchronously.
+     * Run a limited number of safe enhancement passes, then stop.
+     */
+    let passes = 0;
+
+    const timer = window.setInterval(() => {
+      enhance();
+      passes += 1;
+
+      if (passes >= 15 || qs("#grid")?.children.length) {
+        window.clearInterval(timer);
+      }
+    }, 500);
   });
 })();
