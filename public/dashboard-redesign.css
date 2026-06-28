@@ -1,0 +1,381 @@
+/* Dual Performance Coaches Dashboard — UI redesign layer
+   Loads after the existing inline styles and preserves all current functionality. */
+
+:root {
+  --bg: #0b0c0e;
+  --surface: #121417;
+  --surface2: #181b20;
+  --surface3: #20242a;
+  --border: rgba(255,255,255,.08);
+  --border-mid: rgba(255,255,255,.14);
+  --text: #f5f5f3;
+  --muted: #a5a7ad;
+  --dim: #73777f;
+  --amber: #f4b223;
+  --amber-dim: #ffd166;
+  --run: #f4b223;
+  --str: #6ea8fe;
+  --ok: #54c785;
+  --warn: #f2a93b;
+  --alert: #ef6461;
+  --red-bg: rgba(239,100,97,.10);
+  --red-border: rgba(239,100,97,.28);
+  --red-text: #ff8b88;
+  --amber-bg: rgba(242,169,59,.10);
+  --amber-border: rgba(242,169,59,.28);
+  --amber-text: #ffc86a;
+  --green-bg: rgba(84,199,133,.10);
+  --green-border: rgba(84,199,133,.26);
+  --green-text: #75dda1;
+}
+
+html { scroll-behavior: smooth; }
+body {
+  background:
+    radial-gradient(circle at 15% -10%, rgba(244,178,35,.07), transparent 28rem),
+    var(--bg);
+  font-size: 15px;
+  line-height: 1.55;
+  letter-spacing: .002em;
+}
+button, input, select, textarea { font: inherit; }
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: 2px solid rgba(244,178,35,.85);
+  outline-offset: 2px;
+}
+
+/* One clear sticky shell */
+header {
+  min-height: 72px;
+  height: auto;
+  padding: 12px clamp(16px, 3vw, 34px);
+  background: rgba(10,11,13,.93);
+  backdrop-filter: blur(18px);
+  border-bottom: 1px solid var(--border);
+  box-shadow: 0 12px 36px rgba(0,0,0,.20);
+}
+.logo-block { gap: 12px; }
+.logo-mark { height: 38px; }
+.logo { font-size: 16px; letter-spacing: .1em; }
+.logo .p { color: rgba(255,255,255,.48); }
+.coach-pill {
+  background: rgba(244,178,35,.12);
+  color: #ffd36f;
+  border: 1px solid rgba(244,178,35,.24);
+  box-shadow: none;
+  border-radius: 999px;
+  padding: 4px 9px;
+}
+.coach-pill::before { background: var(--amber); box-shadow: 0 0 9px rgba(244,178,35,.55); }
+.h-right { gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.updated { font-size: 10px; color: rgba(255,255,255,.46); }
+.coach-select, .refresh-btn {
+  min-height: 36px;
+  border-radius: 9px;
+  font-size: 11px;
+}
+.refresh-btn {
+  background: rgba(255,255,255,.05);
+  color: rgba(255,255,255,.78);
+  padding-inline: 14px;
+}
+
+.tab-bar {
+  top: 72px;
+  padding: 0 clamp(12px, 3vw, 34px);
+  gap: 6px;
+  overflow-x: auto;
+  align-items: center;
+  background: rgba(10,11,13,.94);
+  backdrop-filter: blur(18px);
+  border-bottom: 1px solid var(--border);
+  scrollbar-width: none;
+}
+.tab-bar::-webkit-scrollbar { display:none; }
+.tab {
+  min-height: 48px;
+  padding: 13px 13px 11px;
+  border-bottom-width: 3px;
+  color: rgba(255,255,255,.52);
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: .01em;
+}
+.tab:hover { color: rgba(255,255,255,.86); }
+.tab.active { color: #fff; border-bottom-color: var(--amber); }
+.tab-badge { font-family: var(--mono); font-size: 9px; }
+
+/* Filters are content tools, not another navigation bar */
+.filter-bar {
+  position: relative;
+  top: auto;
+  z-index: 10;
+  margin: 18px auto 0;
+  max-width: 1440px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: rgba(18,20,23,.90);
+  box-shadow: 0 12px 28px rgba(0,0,0,.16);
+}
+.search-input {
+  min-height: 38px;
+  min-width: min(300px, 100%);
+  border-radius: 9px;
+  background: var(--surface2);
+  font-family: var(--sans);
+  font-size: 13px;
+}
+.sort-select { min-height: 38px; border-radius: 9px; font-family: var(--sans); font-size: 12px; }
+.filter-label { font-size: 10px; }
+.sf {
+  min-height: 34px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-family: var(--sans);
+  font-size: 11px;
+  letter-spacing: .01em;
+  text-transform: none;
+}
+.sf.active { background: #f5f5f3; color: #101114; border-color: #f5f5f3; }
+.filter-divider { opacity: .55; }
+
+.main { max-width: 1440px; padding: 22px clamp(14px, 3vw, 34px) 64px; }
+
+/* Intro block inserted by dashboard-redesign.js */
+.dp-page-intro {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  gap: 20px;
+  margin: 4px 0 20px;
+}
+.dp-eyebrow {
+  color: var(--amber);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  margin-bottom: 7px;
+}
+.dp-page-title {
+  font-family: var(--cond);
+  font-size: clamp(32px, 4vw, 48px);
+  font-weight: 900;
+  letter-spacing: -.015em;
+  line-height: .98;
+  text-transform: uppercase;
+}
+.dp-page-subtitle { color: var(--muted); max-width: 660px; margin-top: 9px; font-size: 14px; }
+.dp-intro-date { color: var(--dim); font-family: var(--mono); font-size: 11px; white-space: nowrap; }
+
+/* Week navigation */
+.dash-week-nav {
+  padding: 12px 14px;
+  margin-bottom: 16px;
+  border-radius: 13px;
+  background: linear-gradient(135deg, rgba(244,178,35,.07), transparent 40%), var(--surface);
+}
+.dwn-main { font-size: 23px; }
+.dwn-kicker, .dwn-sub { font-size: 10px; }
+.dwn-btn { min-height: 34px; border-radius: 8px; }
+
+/* Metrics */
+.summary-bar {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(120px, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.sum-card {
+  min-width: 0;
+  padding: 16px;
+  border-radius: 13px;
+  background: linear-gradient(180deg, rgba(255,255,255,.025), transparent), var(--surface);
+  transition: transform .18s ease, border-color .18s ease;
+}
+.sum-card:hover { transform: translateY(-2px); border-color: var(--border-mid); }
+.sum-num { font-size: 30px; letter-spacing: -.035em; }
+.sum-lbl { margin-top: 6px; font-size: 10px; line-height: 1.3; }
+
+/* Command centre becomes the main action queue */
+.command-center {
+  grid-template-columns: minmax(0, 1.35fr) minmax(300px, .65fr);
+  gap: 14px;
+  margin-bottom: 16px;
+}
+.cc-panel { border-radius: 14px; box-shadow: 0 16px 36px rgba(0,0,0,.13); }
+.cc-hero {
+  min-height: 82px;
+  padding: 16px 18px;
+  background:
+    radial-gradient(circle at 85% 10%, rgba(244,178,35,.13), transparent 15rem),
+    #111318;
+}
+.cc-kicker { font-size: 9px; color: rgba(255,255,255,.50); }
+.cc-title { font-size: 28px; letter-spacing: .01em; }
+.cc-score { grid-template-columns: repeat(3, minmax(66px, 1fr)); gap: 7px; }
+.cc-score-card { min-width: 66px; padding: 9px 7px; border-radius: 9px; }
+.cc-score-num { font-size: 22px; }
+.cc-score-lbl { font-size: 8px; }
+.cc-body { grid-template-columns: 1fr; }
+.cc-list { padding: 8px 16px; border-right: 0; }
+.cc-list + .cc-list { border-top: 1px solid var(--border); }
+.cc-list-title { font-size: 10px; margin: 5px 0 8px; }
+.cc-athlete { padding: 10px 0; gap: 12px; }
+.cc-athlete:last-child { border-bottom: 0; }
+.cc-detail { padding: 12px 16px 14px; }
+.cc-toggle, .cc-ack-btn, .fpc-ack-btn { min-height: 32px; border-radius: 8px; font-size: 10px; }
+
+/* Squad brief */
+.squad-brief {
+  padding: 16px 18px;
+  margin-bottom: 16px;
+  border-radius: 14px;
+  border-left: 3px solid var(--amber);
+  background: linear-gradient(90deg, rgba(244,178,35,.06), transparent 30%), var(--surface);
+}
+.sb-title { font-size: 11px; color: var(--amber); }
+.sb-text { color: var(--muted); font-size: 14px; line-height: 1.65; }
+
+/* Athlete grid and cards */
+.grid { gap: 14px; }
+.card {
+  border-radius: 15px;
+  overflow: hidden;
+  background: var(--surface);
+  border-color: var(--border);
+  box-shadow: 0 14px 34px rgba(0,0,0,.14);
+  transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
+}
+.card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(255,255,255,.16);
+  box-shadow: 0 20px 46px rgba(0,0,0,.22);
+}
+.card.red { border-color: rgba(239,100,97,.38); }
+.card.amber { border-color: rgba(242,169,59,.30); }
+.card-head { padding: 17px 18px 15px; }
+.aname { font-size: 23px; letter-spacing: -.01em; }
+.ameta { margin-top: 4px; font-size: 11px; }
+.status-banner { margin: 12px 14px 0; border-radius: 10px; padding: 10px 12px; }
+.status-banner-title { font-size: 12px; }
+.status-banner-sub { font-size: 11px; }
+.pcard-metrics { padding: 14px 16px; gap: 12px; }
+.pm-val { font-size: 22px; }
+.pm-lbl { font-size: 9px; }
+.pbar-track { height: 6px; border-radius: 999px; }
+.sec { padding: 15px 17px; }
+.sec-ttl { font-size: 10px; margin-bottom: 10px; }
+.action-ribbon { margin: 12px 14px 0; border-radius: 10px; padding: 11px 12px; }
+.action-ribbon-list { font-size: 12px; line-height: 1.55; }
+.fp { border-radius: 999px; font-size: 9px; padding: 4px 8px; }
+.cp-toggle { min-height: 42px; font-size: 11px; }
+
+/* Table view */
+.dash-table-wrap { border: 1px solid var(--border); border-radius: 14px; overflow: auto; background: var(--surface); }
+.dash-table { font-size: 13px; }
+.dash-table thead tr { background: #111318; }
+.dash-table th { min-height: 44px; padding: 12px 11px; font-size: 9px; }
+.dash-table td { padding: 12px 11px; }
+.dash-trow:hover { background: rgba(255,255,255,.025); }
+.tname { font-size: 14px; }
+.tflag, .twkbadge { border-radius: 999px; padding: 4px 8px; }
+
+/* Planning and nutrition */
+.plan-section { max-width: 1440px; padding: 22px clamp(14px, 3vw, 34px) 64px; }
+.plan-toolbar {
+  position: relative;
+  top: auto;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  margin-bottom: 16px;
+  padding: 12px;
+  background: var(--surface);
+}
+.plan-action-btn { min-height: 36px; border-radius: 9px; }
+.plan-grid, .nut-table-wrap { border-radius: 14px; overflow: hidden; }
+
+/* Modals and overlays */
+.po-overlay { backdrop-filter: blur(10px); background: rgba(0,0,0,.68); }
+.po-modal { border-radius: 18px; border-color: var(--border-mid); box-shadow: 0 28px 90px rgba(0,0,0,.5); }
+.po-input { min-height: 40px; border-radius: 9px; font-size: 13px; }
+.po-btn { min-height: 40px; border-radius: 9px; }
+#fp-overlay, #wh-overlay { background: var(--bg); }
+.fp-topbar, .wh-topbar { min-height: 64px; backdrop-filter: blur(18px); }
+
+/* Light theme keeps the premium hierarchy */
+body[data-theme="light"] {
+  --bg: #f3f4f6;
+  --surface: #ffffff;
+  --surface2: #f7f7f8;
+  --surface3: #eceef1;
+  --text: #181a1f;
+  --muted: #555b66;
+  --dim: #737985;
+  background: radial-gradient(circle at 15% -10%, rgba(244,178,35,.10), transparent 28rem), var(--bg);
+}
+body[data-theme="light"] .filter-bar,
+body[data-theme="light"] .sum-card,
+body[data-theme="light"] .cc-panel,
+body[data-theme="light"] .squad-brief,
+body[data-theme="light"] .card,
+body[data-theme="light"] .dash-week-nav { box-shadow: 0 12px 28px rgba(31,35,43,.08); }
+
+/* Pride mode is intentionally normalised so status colours remain meaningful. */
+body[data-theme="pride"] { --amber:#f4b223; --warn:#f2a93b; --ok:#54c785; --alert:#ef6461; --str:#6ea8fe; }
+body[data-theme="pride"] header,
+body[data-theme="pride"] .coach-pill,
+body[data-theme="pride"] .tab-bar,
+body[data-theme="pride"] .pbar-fill,
+body[data-theme="pride"] .aname,
+body[data-theme="pride"] .sum-num,
+body[data-theme="pride"] .cc-title { animation:none !important; background-image:none !important; -webkit-text-fill-color:initial !important; }
+body[data-theme="pride"] .card { animation:none !important; border-width:1px !important; }
+.pride-btn { display:none !important; }
+
+@media (max-width: 1080px) {
+  .summary-bar { grid-template-columns: repeat(3, 1fr); }
+  .command-center { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 760px) {
+  header { padding: 10px 13px; min-height: 64px; }
+  .logo-mark { height: 32px; }
+  .logo { font-size: 13px; }
+  .updated { display:none; }
+  .coach-select { max-width: 110px; }
+  .refresh-btn { padding-inline: 10px; }
+  .tab-bar { top:64px; padding-inline: 8px; }
+  .tab { min-height: 44px; padding: 11px 10px 9px; font-size: 12px; }
+  .filter-bar { margin: 12px 12px 0; border-radius: 12px; padding: 10px; gap: 8px; }
+  .search-input { width:100%; min-width:0; }
+  .filter-divider { display:none; }
+  .sf-group { overflow-x:auto; max-width:100%; padding-bottom:2px; }
+  .sort-select { width:100%; }
+  .main { padding: 18px 12px 48px; }
+  .dp-page-intro { display:block; }
+  .dp-intro-date { margin-top:10px; }
+  .dp-page-title { font-size:34px; }
+  .summary-bar { grid-template-columns: repeat(2, 1fr); }
+  .sum-card { padding: 13px; }
+  .sum-num { font-size:26px; }
+  .cc-hero { align-items:flex-start; flex-direction:column; }
+  .cc-score { width:100%; grid-template-columns:repeat(3, 1fr); }
+  .command-center { gap:10px; }
+  .squad-brief { padding:14px; }
+  .grid { grid-template-columns:1fr !important; }
+  .card:hover { transform:none; }
+  .plan-section { padding:18px 12px 48px; }
+}
+
+@media (max-width: 420px) {
+  .coach-pill, .logo-text .logo { display:none; }
+  .summary-bar { grid-template-columns:1fr 1fr; }
+  .sum-card { min-height:92px; }
+  .h-right { gap:5px; }
+  .theme-toggle { display:none; }
+}
