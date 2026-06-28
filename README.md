@@ -1,69 +1,71 @@
-# Dual Performance Dashboard Redesign
+# DP Athlete Portal → Coaches Dashboard Sync
 
-This package redesigns the existing coaches dashboard **without replacing or rewriting its Notion, Strava, applications, programming, nutrition, modal, or write-back logic**.
+This package fixes the full data path:
 
-## What changes
+1. Athlete portal writes structured submissions into Supabase.
+2. `api/coach-data.js` reads the server-only structured tables using the service key.
+3. The dashboard merges Supabase over legacy Notion data.
+4. Supabase wins on matching athlete/date/session/week records.
+5. Notion remains a fallback for historical or unmatched records.
+6. The athlete day-by-day section receives a cleaner, wider layout.
 
-- Cleaner unified header and primary navigation
-- Filters moved into the content flow instead of stacking as a third sticky bar
-- New coach greeting and clearer page hierarchy
-- Priority-action styling for the command centre
-- More readable summary metrics
-- Cleaner athlete cards and table view
-- Better spacing, typography, contrast and status hierarchy
-- Improved planning, nutrition and modal styling
-- Responsive tablet and mobile layouts
-- Pride animation removed so alert colours remain meaningful
-- Existing light/dark theme behaviour retained
-
-## Install automatically
-
-From this package folder:
+## Install
 
 ```bash
-python3 apply-redesign.py /path/to/dp-coaches-dashboard
+python3 apply-portal-sync.py /path/to/dp-coaches-dashboard
 ```
 
-The script:
+The installer creates:
 
-1. Copies both redesign assets into `public/`
-2. Adds the stylesheet before `</head>`
-3. Adds the script before `</body>`
-4. Creates `public/index.html.before-redesign` as a backup
+- `api/coach-data.js`
+- `public/dashboard-detail-cleanup.css`
+- a patched `public/index.html`
+- `public/index.html.before-portal-sync`
+- an updated `vercel.json`
 
-Then review and push:
+## Required Vercel variables
+
+Add these to the **dp-coaches-dashboard** Vercel project:
+
+```text
+SUPABASE_URL
+SUPABASE_SERVICE_KEY
+```
+
+Use the same Supabase project used by `dp-athlete-portal`. The service key must remain server-side.
+
+## Push
 
 ```bash
-cd /path/to/dp-coaches-dashboard
-git status
-git add public/index.html public/dashboard-redesign.css public/dashboard-redesign.js
-git commit -m "Redesign coaches dashboard UI"
+git add api/coach-data.js   public/index.html   public/dashboard-detail-cleanup.css   vercel.json
+
+git commit -m "Connect portal Supabase data and clean athlete ledger"
 git push
 ```
 
-## Install manually
+## Verify after deployment
 
-Copy these into the repo's `public/` folder:
+Open:
 
-- `public/dashboard-redesign.css`
-- `public/dashboard-redesign.js`
-
-Add this immediately before `</head>` in `public/index.html`:
-
-```html
-<link rel="stylesheet" href="/dashboard-redesign.css">
+```text
+https://dp-coaches-dashboard.vercel.app/api/coach-data
 ```
 
-Add this immediately before `</body>`:
+You should receive:
 
-```html
-<script src="/dashboard-redesign.js" defer></script>
+```json
+{
+  "ok": true,
+  "counts": {
+    "body": 1,
+    "nutrition": 1,
+    "sessions": 1,
+    "weekly": 1,
+    "goals": 1
+  }
+}
 ```
 
-## Roll back
+Counts will reflect your real database.
 
-Remove the two added tags and delete the two redesign files, or restore:
-
-```bash
-cp public/index.html.before-redesign public/index.html
-```
+Then submit a test entry in the athlete portal and confirm it appears after refreshing the coaches dashboard.
