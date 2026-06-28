@@ -6172,7 +6172,7 @@ function buildFPCard(a, weekOffset = 0) {
 
   // Body
   let bodyHtml = '';
-  if (a.bAvg.wt !== undefined || a.bAvg.sleep !== null) {
+  if (a.bAvg.wt !== undefined || a.bAvg.sleep !== null || (a.weeklies && a.weeklies.length)) {
     const bLast = [...a.body].sort((x, y) =>
       (y['date:Date:start'] || y.Date || '') > (x['date:Date:start'] || x.Date || '') ? 1 : -1)[0];
     const bn = bLast?.Notes;
@@ -6223,14 +6223,12 @@ function buildFPCard(a, weekOffset = 0) {
         + '</svg>'
         + '</div>';
     }
+    const _mlMini = buildMileageMini(a);
+    const _miniLbl = 'font-family:var(--mono);font-size:8px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px';
     bodyHtml = '<div class="fpc-section" style="margin-bottom:0">'
-      + '<div class="fpc-section-title">Body</div>'
-      + (a.bAvg.wt !== undefined ? _sparkSvg || ('<div class="fpc-weight">' + esc(String(a.bAvg.wt)) + '<span class="fpc-weight-unit">kg</span></div><div class="fpc-weight-date">' + fmtDate(a.bAvg.wtd) + '</div>') : '')
-      + '<div class="fpc-metric-grid">'
-      + [{l:'Sleep',v:a.bAvg.sleep},{l:'Energy',v:a.bAvg.energy},{l:'Stress',v:a.bAvg.stress},{l:'Soreness',v:a.bAvg.soreness}].map(m =>
-          '<div class="fpc-metric"><div class="fpc-metric-val">' + (m.v !== null ? m.v : '—') + '</div><div class="fpc-metric-lbl">' + m.l + '</div></div>'
-        ).join('')
-      + '</div>'
+      + '<div class="fpc-section-title">Body &amp; Mileage</div>'
+      + (a.bAvg.wt !== undefined ? '<div style="' + _miniLbl + '">Weight</div>' + (_sparkSvg || ('<div class="fpc-weight">' + esc(String(a.bAvg.wt)) + '<span class="fpc-weight-unit">kg</span></div><div class="fpc-weight-date">' + fmtDate(a.bAvg.wtd) + '</div>')) : '')
+      + (_mlMini ? '<div style="' + _miniLbl + ';margin-top:14px">Weekly Mileage</div>' + _mlMini : '')
       + (bn ? '<div class="fpc-bnote">' + esc(bn) + '</div>' : '')
       + '</div>';
   }
@@ -8245,6 +8243,97 @@ function _drawWH() {
   document.getElementById('wh-btn-light').classList.toggle('wh-active', _whTheme === 'light');
   document.getElementById('wh-title').textContent = a.id + ' — Athlete History';
   document.getElementById('wh-body').innerHTML = buildWeightHistory(a);
+}
+
+// ── Compact weekly-mileage sparkline for the athlete card "Body & Mileage" ────
+// Mirrors the weight sparkline: amber bars = completed weekly KM (check-in, or
+// Strava on the latest week), dashed line = planned target. Click → full history
+// overlay (where the large Weekly Mileage chart lives). Returns '' if no data.
+function buildMileageMini(a) {
+  const WK_MS = 7 * 86400000;
+  const curEnd = a.expectedWeekEnd || null;
+  const curWk  = (typeof a.weekNum === 'number') ? a.weekNum : null;
+  const tbw    = a.targetByWeek || {};
+  const plannedFor = (we) => {
+    if (curWk == null || !curEnd) return null;
+    const off = Math.round((new Date(curEnd) - new Date(we)) / WK_MS);
+    const t = tbw['Week ' + (curWk - off)];
+    if (t && t['Weekly KM Target'] != null && t['Weekly KM Target'] !== '') {
+      const pk = parseFloat(t['Weekly KM Target']); if (!isNaN(pk)) return pk;
+    }
+    return null;
+  };
+
+  const weeklies = (a.weeklies || []).filter(w => w && w['Week Ending']);
+  let pts = [...weeklies]
+    .sort((x, y) => String(x['Week Ending']).localeCompare(String(y['Week Ending'])))
+    .map(w => { const we = String(w['Week Ending']).slice(0, 10); const c = parseFloat(w['Weekly Run KM']);
+      return { date: we, completed: isNaN(c) ? null : c, planned: plannedFor(we), strava: null }; });
+
+  const skm = (typeof _stravaKmCache !== 'undefined') ? _stravaKmCache[a.id] : null;
+  if (skm && curEnd) {
+    if (skm.weeklyKm != null && !pts.some(p => p.date === curEnd)) {
+      pts.push({ date: curEnd, completed: null, planned: plannedFor(curEnd), strava: null });
+      pts.sort((x, y) => x.date.localeCompare(y.date));
+    }
+    if (skm.weeklyKm != null) pts.forEach(p => { if (p.date === curEnd) p.strava = +skm.weeklyKm; });
+    if (skm.lastWeekKm != null) {
+      const prev = new Date(new Date(curEnd) - WK_MS).toISOString().slice(0, 10);
+      pts.forEach(p => { if (p.date === prev) p.strava = +skm.lastWeekKm; });
+    }
+  }
+  pts = pts.slice(-10);
+  if (!pts.some(p => p.completed != null || p.strava != null || p.planned != null)) return '';
+
+  const latestPt = [...pts].reverse().find(p => p.completed != null || p.strava != null);
+  const latest = latestPt ? (latestPt.strava != null ? latestPt.strava : latestPt.completed) : null;
+  const latestPlanned = latestPt ? latestPt.planned : null;
+  let capTxt = '', capCol = 'var(--dim)';
+  if (latest != null && latestPlanned != null && latestPlanned > 0) {
+    const pct = latest / latestPlanned;
+    capCol = pct >= 0.9 ? 'var(--ok)' : pct >= 0.7 ? 'var(--warn)' : 'var(--alert)';
+    capTxt = latest + ' / ' + latestPlanned + ' km';
+  } else if (latest != null) { capTxt = 'this week'; }
+
+  const W = 220, H = 44, totalH = 60, pad = 4;
+  const vals = [];
+  pts.forEach(p => { if (p.completed != null) vals.push(p.completed); if (p.planned != null) vals.push(p.planned); if (p.strava != null) vals.push(p.strava); });
+  const maxV = Math.max(1, ...vals);
+  const n = pts.length, slot = (W - pad * 2) / n;
+  const barW = Math.max(3, Math.min(20, slot * 0.6));
+  const cx = i => pad + slot * i + slot / 2;
+  const toY = v => pad + (H - pad * 2) * (1 - v / maxV);
+  const baseY = pad + (H - pad * 2);
+
+  const bars = pts.map((p, i) => {
+    if (p.completed == null) return '';
+    const x = (cx(i) - barW / 2).toFixed(1);
+    const y = toY(p.completed).toFixed(1);
+    const h = Math.max(0, baseY - toY(p.completed)).toFixed(1);
+    return `<rect x="${x}" y="${y}" width="${barW.toFixed(1)}" height="${h}" rx="1.5" fill="var(--run)" opacity="${i === n - 1 ? 1 : 0.8}"/>`;
+  }).join('');
+  const plXY = pts.map((p, i) => p.planned != null ? { x: cx(i), y: toY(p.planned) } : null).filter(Boolean);
+  const plLine = plXY.length >= 2 ? `<polyline points="${plXY.map(q => q.x.toFixed(1) + ',' + q.y.toFixed(1)).join(' ')}" fill="none" stroke="var(--str)" stroke-width="1.5" stroke-dasharray="4 3" stroke-linecap="round"/>` : '';
+  const stravaDot = pts.map((p, i) => p.strava != null ? `<circle cx="${cx(i).toFixed(1)}" cy="${toY(p.strava).toFixed(1)}" r="3" fill="#fc4c02" stroke="var(--surface)" stroke-width="1"/>` : '').join('');
+
+  const _mn = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const _fmt = d => { const p = d.split('-'); return parseInt(p[2]) + ' ' + _mn[parseInt(p[1]) - 1]; };
+  const labIdx = new Set([0, n - 1]); if (n >= 5) labIdx.add(Math.round((n - 1) / 2));
+  const dateLabels = [...labIdx].sort((a, b) => a - b).map(i => {
+    const anchor = i === 0 ? 'start' : i === n - 1 ? 'end' : 'middle';
+    return `<text x="${cx(i).toFixed(1)}" y="${H + 13}" font-family="var(--mono)" font-size="7" fill="var(--dim)" text-anchor="${anchor}">${_fmt(pts[i].date)}</text>`;
+  }).join('');
+
+  return '<div class="wh-spark-wrap" data-whid="' + esc(a.id) + '" onclick="showWH(this.dataset.whid)" title="View full mileage history" style="margin-bottom:0">'
+    + '<div style="display:flex;align-items:baseline;gap:10px;margin-bottom:4px">'
+    + '<span style="font-size:36px;font-weight:900;line-height:1;letter-spacing:-.02em">' + (latest != null ? esc(String(latest)) : '—') + '</span>'
+    + '<span style="font-family:var(--mono);font-size:11px;color:var(--dim)">km</span>'
+    + (capTxt ? '<span style="font-family:var(--mono);font-size:10px;font-weight:700;color:' + capCol + ';margin-left:4px">' + capTxt + '</span>' : '')
+    + '</div>'
+    + '<svg viewBox="0 0 ' + W + ' ' + totalH + '" width="100%" height="' + totalH + '" style="display:block;overflow:visible">'
+    + bars + plLine + stravaDot + dateLabels
+    + '</svg>'
+    + '</div>';
 }
 
 // ── Per-athlete weekly mileage trend ──────────────────────────────────────────
