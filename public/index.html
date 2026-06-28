@@ -3716,6 +3716,7 @@ async function fetchCoachDataSB() {
       weekly: Array.isArray(data.weekly) ? data.weekly : [],
       goals: Array.isArray(data.goals) ? data.goals : [],
       counts: data.counts || {},
+      integrity: data.integrity || { weeklyConflicts: [], weeklySuppressed: 0 },
       generatedAt: data.generatedAt || null,
     };
   } catch (error) {
@@ -3790,26 +3791,86 @@ function mergeSessionsPortalFirst(portalRows, notionRows) {
 // (same athlete + same Week Ending). Athlete identity for Supabase rows comes
 // from _athleteCode; for Notion rows it's parsed from the title (as before).
 function mergeWeekly(supaRows, notionRows) {
-  const keyOf = (id, we) => `${id}|${we || ''}`;
-  const out = [];
-  const seen = new Set();
-  const idOf = r => r._athleteCode
-    ? nid(r._athleteCode)
-    : nid((r.Name || '').split('\u2014')[0].split('--')[0].trim());
-  // Supabase first so it takes precedence
-  (supaRows || []).forEach(r => {
-    const id = idOf(r);
-    if (!id) return;
-    seen.add(keyOf(id, r['Week Ending']));
-    out.push(r);
-  });
-  (notionRows || []).forEach(r => {
-    const id = idOf(r);
-    if (!id) return;
-    if (seen.has(keyOf(id, r['Week Ending']))) return; // Supabase already has it
-    out.push(r);
-  });
-  return out;
+  const keyOf = (id, weekEnding) => `${id}|${weekEnding || ''}`;
+  const output = [];
+  const seenIdentityWeeks = new Set();
+  const structuredOwners = new Map();
+
+  const idOf = row => row._athleteCode
+    ? nid(row._athleteCode)
+    : nid((row.Name || '').split('\u2014')[0].split('--')[0].trim());
+
+  const normNumber = value => {
+    if (value === null || value === undefined || value === '') return null;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  };
+
+  const normText = value => String(value || '').trim().toLowerCase();
+
+  const fingerprint = row => JSON.stringify([
+    String(row['Week Ending'] || '').slice(0, 10),
+    normNumber(row['Run Completed']),
+    normNumber(row['Run Planned']),
+    normNumber(row['Weekly Run KM']),
+    normNumber(row['Run Feel /10']),
+    normText(row['Runs Wins']),
+    normText(row['Run Niggles']),
+    normNumber(row['Lift Completed']),
+    normNumber(row['Lift Planned']),
+    normNumber(row['Lift Feel /10']),
+    normText(row['Lift Wins']),
+    normText(row['Lifts Niggles']),
+    normText(row['Sleep hrs']),
+    normNumber(row['Energy /10']),
+    normNumber(row['Soreness /10']),
+    normNumber(row['Nutrition Adherence /10']),
+    normText(row['Fuelling']),
+    normText(row['Social Event Upcoming']),
+    normNumber(row['Stress']),
+    normNumber(row['Motivation']),
+    normText(row['Upcoming Impact']),
+    normText(row['Testimonial']),
+  ]);
+
+  // The first collection is authoritative. For the final merge this is the
+  // structured weekly_checkins table returned by /api/coach-data.
+  for (const row of supaRows || []) {
+    const id = idOf(row);
+    if (!id) continue;
+
+    const identityWeek = keyOf(id, row['Week Ending']);
+    if (seenIdentityWeeks.has(identityWeek)) continue;
+
+    seenIdentityWeeks.add(identityWeek);
+    structuredOwners.set(fingerprint(row), id);
+    output.push(row);
+  }
+
+  for (const row of notionRows || []) {
+    const id = idOf(row);
+    if (!id) continue;
+
+    const identityWeek = keyOf(id, row['Week Ending']);
+    if (seenIdentityWeeks.has(identityWeek)) continue;
+
+    const authoritativeOwner = structuredOwners.get(fingerprint(row));
+
+    // Suppress exact legacy copies attached to the wrong athlete.
+    if (authoritativeOwner && authoritativeOwner !== id) {
+      console.warn('Suppressed cross-athlete weekly duplicate', {
+        legacyAthlete: id,
+        authoritativeOwner,
+        weekEnding: row['Week Ending'],
+      });
+      continue;
+    }
+
+    seenIdentityWeeks.add(identityWeek);
+    output.push(row);
+  }
+
+  return output;
 }
 
 // ── Build ─────────────────────────────────────────────────────────────────────
@@ -7472,6 +7533,7 @@ async function load({ bust = false } = {}) {
         ok: coachDataSB.ok,
         error: coachDataSB.error || null,
         counts: coachDataSB.counts || {},
+        integrity: coachDataSB.integrity || { weeklyConflicts: [], weeklySuppressed: 0 },
         generatedAt: coachDataSB.generatedAt || null,
       },
       loadedAt: new Date(),
