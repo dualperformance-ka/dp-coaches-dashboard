@@ -1,0 +1,175 @@
+/* Cleaner athlete full-page day-by-day ledger */
+
+#fp-overlay .fp-body {
+  width: min(1180px, calc(100vw - 48px));
+  max-width: 1180px;
+  margin: 0 auto;
+}
+
+#fp-overlay .fpc-section {
+  border-radius: 14px;
+}
+
+#fp-overlay .wd-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+#fp-overlay .wd-row {
+  display: grid;
+  grid-template-columns: 104px minmax(0, 1fr) minmax(220px, 310px);
+  gap: 16px;
+  align-items: start;
+  padding: 16px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 12px;
+  background: #fff;
+}
+
+#fp-overlay .wd-row.empty {
+  min-height: 64px;
+  align-items: center;
+  background: #fafafa;
+}
+
+#fp-overlay .wd-date {
+  position: sticky;
+  top: 76px;
+  padding-top: 2px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  color: #697386;
+}
+
+#fp-overlay .wd-day-content {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+#fp-overlay .wd-session {
+  padding: 14px 16px;
+  border-radius: 11px;
+  background: #f7f9fc;
+  border: 1px solid #e8edf4;
+  box-shadow: none;
+}
+
+#fp-overlay .wd-session.str {
+  background: #f4f7ff;
+  border-color: #dce5ff;
+  border-left: 4px solid #3767ff;
+}
+
+#fp-overlay .wd-session.run {
+  background: #fff9f0;
+  border-color: #ffe7bc;
+  border-left: 4px solid #f59e0b;
+}
+
+#fp-overlay .wd-session.other {
+  border-left: 4px solid #8b5cf6;
+}
+
+#fp-overlay .wd-sess-cat {
+  margin-bottom: 5px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .12em;
+}
+
+#fp-overlay .wd-sess-name {
+  margin-bottom: 10px;
+  font-size: 15px;
+  line-height: 1.25;
+}
+
+#fp-overlay .wd-body-row,
+#fp-overlay .wd-nutr-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  align-items: center;
+  padding: 0;
+}
+
+#fp-overlay .wd-metric {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 5px 9px;
+  border: 1px solid #edf0f4;
+  border-radius: 999px;
+  background: #f8f9fb;
+  font-size: 11px;
+  line-height: 1;
+  color: #4b5563;
+}
+
+#fp-overlay .wd-metric.body-lbl,
+#fp-overlay .wd-metric.nutr-lbl {
+  border: 0;
+  padding-left: 0;
+  background: transparent;
+  color: #9aa2af;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+#fp-overlay .wd-metric.nutr {
+  border-color: #f8e5d4;
+  background: #fff7ef;
+  color: #a85316;
+}
+
+#fp-overlay .wd-macro-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 0;
+}
+
+#fp-overlay .wd-macro-chip {
+  min-height: 27px;
+  padding: 5px 8px;
+  border-radius: 7px;
+  font-size: 10px;
+}
+
+#fp-overlay .wd-strava-col {
+  min-width: 0;
+}
+
+#fp-overlay .wd-strava-col:empty {
+  display: none;
+}
+
+#fp-overlay .wd-row:has(.wd-strava-col:empty) {
+  grid-template-columns: 104px minmax(0, 1fr);
+}
+
+#fp-overlay .wd-rest {
+  color: #a1a8b3;
+  font-size: 12px;
+}
+
+@media (max-width: 900px) {
+  #fp-overlay .fp-body {
+    width: min(100% - 24px, 760px);
+  }
+
+  #fp-overlay .wd-row,
+  #fp-overlay .wd-row:has(.wd-strava-col:empty) {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  #fp-overlay .wd-date {
+    position: static;
+  }
+}
