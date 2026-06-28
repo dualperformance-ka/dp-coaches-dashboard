@@ -125,9 +125,96 @@ function mapSession(row) {
   };
 }
 
+
+function normaliseCode(value) {
+  return String(value || '').trim().toUpperCase();
+}
+
+function normaliseNumber(value) {
+  if (value === null || value === undefined || value === '') return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function normaliseText(value) {
+  return String(value || '').trim().toLowerCase();
+}
+
+function weeklyFingerprint(row) {
+  return JSON.stringify([
+    String(row.week_ending || '').slice(0, 10),
+    normaliseNumber(row.run_completed),
+    normaliseNumber(row.run_planned),
+    normaliseNumber(row.run_km),
+    normaliseNumber(row.run_feel),
+    normaliseText(row.run_wins),
+    normaliseText(row.run_niggles),
+    normaliseNumber(row.lift_completed),
+    normaliseNumber(row.lift_planned),
+    normaliseNumber(row.lift_feel),
+    normaliseText(row.lift_wins),
+    normaliseText(row.lift_niggles),
+    normaliseText(row.sleep),
+    normaliseNumber(row.energy),
+    normaliseNumber(row.soreness),
+    normaliseNumber(row.nutrition),
+    normaliseText(row.fuelling),
+    normaliseText(row.social_eating),
+    normaliseNumber(row.stress),
+    normaliseNumber(row.motivation),
+    normaliseText(row.upcoming_impact),
+    normaliseText(row.testimonial),
+  ]);
+}
+
+function cleanWeeklyRows(rows) {
+  const byIdentityWeek = new Map();
+  const fingerprintOwners = new Map();
+  const conflicts = [];
+
+  const ordered = [...rows].sort((a, b) => {
+    const aTime = new Date(a.updated_at || a.submitted_at || 0).getTime();
+    const bTime = new Date(b.updated_at || b.submitted_at || 0).getTime();
+    return bTime - aTime;
+  });
+
+  for (const original of ordered) {
+    const row = {
+      ...original,
+      athlete_code: normaliseCode(original.athlete_code),
+      athlete_name: normaliseCode(original.athlete_code),
+    };
+
+    if (!row.athlete_code || !row.week_ending) continue;
+
+    const identityWeek = `${row.athlete_code}|${String(row.week_ending).slice(0, 10)}`;
+    if (byIdentityWeek.has(identityWeek)) continue;
+
+    const fingerprint = weeklyFingerprint(row);
+    const existingOwner = fingerprintOwners.get(fingerprint);
+
+    if (existingOwner && existingOwner !== row.athlete_code) {
+      conflicts.push({
+        suppressedAthlete: row.athlete_code,
+        authoritativeAthlete: existingOwner,
+        weekEnding: row.week_ending,
+      });
+      continue;
+    }
+
+    fingerprintOwners.set(fingerprint, row.athlete_code);
+    byIdentityWeek.set(identityWeek, row);
+  }
+
+  return {
+    rows: [...byIdentityWeek.values()],
+    conflicts,
+  };
+}
+
 function mapWeekly(row) {
   return {
-    Name: row.athlete_name || row.athlete_code,
+    Name: row.athlete_code,
     'Week Ending': row.week_ending || null,
     'Run Completed': row.run_completed,
     'Run Planned': row.run_planned,
@@ -191,13 +278,16 @@ export default async function handler(req, res) {
   }
 
   try {
-    const [body, nutrition, sessions, weekly, goals] = await Promise.all([
+    const [body, nutrition, sessions, weeklyRaw, goals] = await Promise.all([
       selectAll(TABLES.body, 'log_date'),
       selectAll(TABLES.nutrition, 'log_date'),
       selectAll(TABLES.sessions, 'session_date'),
       selectAll(TABLES.weekly, 'week_ending'),
       selectAll(TABLES.goals, 'updated_at'),
     ]);
+
+    const weeklyIntegrity = cleanWeeklyRows(weeklyRaw);
+    const weekly = weeklyIntegrity.rows;
 
     return res.status(200).json({
       ok: true,
@@ -209,6 +299,10 @@ export default async function handler(req, res) {
         sessions: sessions.length,
         weekly: weekly.length,
         goals: goals.length,
+      },
+      integrity: {
+        weeklyConflicts: weeklyIntegrity.conflicts,
+        weeklySuppressed: weeklyIntegrity.conflicts.length,
       },
       body: body.map(mapBody),
       nutrition: nutrition.map(mapNutrition),

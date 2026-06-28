@@ -104,6 +104,35 @@ async function sbInsert(table, rows) {
   }
   return inserted;
 }
+
+async function sbUpsert(table, rows, onConflict) {
+  let written = 0;
+
+  for (let i = 0; i < rows.length; i += 100) {
+    const batch = rows.slice(i, i + 100);
+    const url = `${SUPABASE_URL}/rest/v1/${table}?on_conflict=${encodeURIComponent(onConflict)}`;
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        ...SBH,
+        Prefer: 'resolution=merge-duplicates,return=minimal',
+      },
+      body: JSON.stringify(batch),
+    });
+
+    if (!response.ok) {
+      throw new Error(
+        `Supabase UPSERT ${table} ${response.status}: ` +
+        await response.text().catch(() => '')
+      );
+    }
+
+    written += batch.length;
+  }
+
+  return written;
+}
 const num = v => (v === null || v === undefined || v === '') ? null : Number(v);
 
 // ── per-type sync ──
@@ -161,38 +190,146 @@ async function syncSessions() {
 }
 
 async function syncWeekly() {
-  const notion = await fromNotion(DB.weekly);
-  const existing = await sbGet("athlete_data?select=athlete_code,key&key=like.checkin_*");
-  const have = new Set(existing.map(e => `${e.athlete_code}|${e.key}`));
-  const real = x => [x['Testimonial'], x['Run Feel /10'], x['Energy /10'], x['Weekly Run KM'], x['Runs Wins'], x['Lift Wins'], x['Motivation']]
-    .some(v => v && String(v).trim() !== '');
-  const seen = new Set(), rows = [];
-  for (const x of notion) {
-    const we = d10(x['date:Week Ending Date:start'] || x['Week Ending Date'] || x['Week Ending']);
-    const code = canon(x['Name']);
-    if (!we || !code || !real(x)) continue;
-    const key = 'checkin_' + isoWeek(we);
-    const k = `${code}|${key}`;
-    if (have.has(k) || seen.has(k)) continue;
-    seen.add(k);
-    rows.push({
-      athlete_code: code, key,
-      value: {
-        name: x['Name'], athleteName: code, athleteCode: code, weekEnding: we,
-        runCompleted: x['Run Completed'], runPlanned: x['Run Planned'], runKm: x['Weekly Run KM'],
-        runFeel: x['Run Feel /10'], runNiggles: x['Run Niggles'], runWins: x['Runs Wins'],
-        liftCompleted: x['Lift Completed'], liftPlanned: x['Lift Planned'], liftFeel: x['Lift Feel /10'],
-        liftWins: x['Lift Wins'], liftNiggles: x['Lifts Niggles'], sleep: x['Sleep hrs'],
-        energy: x['Energy /10'], soreness: x['Soreness /10'], nutrition: x['Nutrition Adherence /10'],
-        fuelling: x['Fuelling'], upcomingImpact: x['Upcoming Impact'], socialEating: x['Social Event Upcoming'],
-        stress: x['Stress'], motivation: x['Motivation'], testimonial: x['Testimonial'],
-        submittedAt: x._createdTime, source: 'notion-sync',
-      },
-      updated_at: x._createdTime || new Date().toISOString(),
-    });
+  const notionRows = await fromNotion(DB.weekly);
+  const structuredRows = await sbGet('weekly_checkins?select=*');
+
+  const meaningful = value =>
+    value !== null &&
+    value !== undefined &&
+    String(value).trim() !== '';
+
+  const isRealCheckin = row => [
+    row['Testimonial'],
+    row['Run Feel /10'],
+    row['Energy /10'],
+    row['Weekly Run KM'],
+    row['Runs Wins'],
+    row['Lift Wins'],
+    row['Motivation'],
+  ].some(meaningful);
+
+  const normNumber = value => {
+    if (value === null || value === undefined || value === '') return null;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  };
+
+  const normText = value => String(value || '').trim().toLowerCase();
+
+  const fingerprint = row => JSON.stringify([
+    d10(row.week_ending || row['Week Ending']),
+    normNumber(row.run_completed ?? row['Run Completed']),
+    normNumber(row.run_planned ?? row['Run Planned']),
+    normNumber(row.run_km ?? row['Weekly Run KM']),
+    normNumber(row.run_feel ?? row['Run Feel /10']),
+    normText(row.run_wins ?? row['Runs Wins']),
+    normText(row.run_niggles ?? row['Run Niggles']),
+    normNumber(row.lift_completed ?? row['Lift Completed']),
+    normNumber(row.lift_planned ?? row['Lift Planned']),
+    normNumber(row.lift_feel ?? row['Lift Feel /10']),
+    normText(row.lift_wins ?? row['Lift Wins']),
+    normText(row.lift_niggles ?? row['Lifts Niggles']),
+    normText(row.sleep ?? row['Sleep hrs']),
+    normNumber(row.energy ?? row['Energy /10']),
+    normNumber(row.soreness ?? row['Soreness /10']),
+    normNumber(row.nutrition ?? row['Nutrition Adherence /10']),
+    normText(row.fuelling ?? row['Fuelling']),
+    normText(row.social_eating ?? row['Social Event Upcoming']),
+    normNumber(row.stress ?? row['Stress']),
+    normNumber(row.motivation ?? row['Motivation']),
+    normText(row.upcoming_impact ?? row['Upcoming Impact']),
+    normText(row.testimonial ?? row['Testimonial']),
+  ]);
+
+  const fingerprintOwners = new Map();
+  for (const row of structuredRows) {
+    const owner = canon(row.athlete_code);
+    if (owner) fingerprintOwners.set(fingerprint(row), owner);
   }
-  const inserted = rows.length ? await sbInsert('athlete_data', rows) : 0;
-  return { notion: notion.length, existing: existing.length, inserted };
+
+  const seen = new Set();
+  const rows = [];
+  const conflicts = [];
+
+  for (const notionRow of notionRows) {
+    const weekEnding = d10(
+      notionRow['date:Week Ending Date:start'] ||
+      notionRow['Week Ending Date'] ||
+      notionRow['Week Ending']
+    );
+    const code = canon(notionRow['Name']);
+
+    if (!weekEnding || !code || !isRealCheckin(notionRow)) continue;
+
+    const weekKey = `week_ending_${weekEnding}`;
+    const identityWeek = `${code}|${weekKey}`;
+
+    if (seen.has(identityWeek)) continue;
+
+    const candidate = {
+      athlete_code: code,
+      athlete_name: code,
+      week_key: weekKey,
+      week_ending: weekEnding,
+      submitted_at: notionRow._createdTime || new Date().toISOString(),
+      run_completed: num(notionRow['Run Completed']),
+      run_planned: num(notionRow['Run Planned']),
+      run_km: num(notionRow['Weekly Run KM']),
+      run_feel: num(notionRow['Run Feel /10']),
+      run_wins: notionRow['Runs Wins'] || null,
+      run_niggles: notionRow['Run Niggles'] || null,
+      lift_completed: num(notionRow['Lift Completed']),
+      lift_planned: num(notionRow['Lift Planned']),
+      lift_feel: num(notionRow['Lift Feel /10']),
+      lift_wins: notionRow['Lift Wins'] || null,
+      lift_niggles: notionRow['Lifts Niggles'] || null,
+      sleep: notionRow['Sleep hrs'] || null,
+      energy: num(notionRow['Energy /10']),
+      soreness: num(notionRow['Soreness /10']),
+      nutrition: num(notionRow['Nutrition Adherence /10']),
+      fuelling: notionRow['Fuelling'] || null,
+      social_eating: notionRow['Social Event Upcoming'] || null,
+      stress: num(notionRow['Stress']),
+      motivation: num(notionRow['Motivation']),
+      upcoming_impact: notionRow['Upcoming Impact'] || null,
+      testimonial: notionRow['Testimonial'] || null,
+      raw_payload: {
+        source: 'notion-sync',
+        notion_name: notionRow['Name'] || null,
+      },
+      updated_at: new Date().toISOString(),
+    };
+
+    const candidateFingerprint = fingerprint(candidate);
+    const existingOwner = fingerprintOwners.get(candidateFingerprint);
+
+    // An identical submission already belongs to another athlete.
+    // Do not duplicate the same answers under a second identity.
+    if (existingOwner && existingOwner !== code) {
+      conflicts.push({
+        notionName: notionRow['Name'] || null,
+        weekEnding,
+        resolvedCode: code,
+        authoritativeOwner: existingOwner,
+      });
+      continue;
+    }
+
+    seen.add(identityWeek);
+    fingerprintOwners.set(candidateFingerprint, code);
+    rows.push(candidate);
+  }
+
+  const written = rows.length
+    ? await sbUpsert('weekly_checkins', rows, 'athlete_code,week_key')
+    : 0;
+
+  return {
+    notion: notionRows.length,
+    existing: structuredRows.length,
+    written,
+    conflicts,
+  };
 }
 
 export default async function handler(req, res) {
