@@ -1132,8 +1132,14 @@ body[data-theme="light"] .plan-chip.coach::before{color:#92400e}
 .po-close:hover{color:#fff}
 .po-modal-body{padding:16px}
 .po-field{margin-bottom:14px}
-.ps-mode-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px}
+.ps-mode-row{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:16px}
 .ps-mode-btn{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:16px 8px;color:rgba(255,255,255,.75);font-family:var(--cond);font-size:17px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;cursor:pointer;transition:all .15s;text-align:center}
+.ps-disc-days{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
+.ps-disc-day{background:#111;border:1px solid rgba(255,255,255,.15);border-radius:6px;padding:7px 2px;color:rgba(255,255,255,.55);font-family:var(--mono);font-size:10px;font-weight:700;cursor:pointer;text-align:center;line-height:1.35;transition:all .15s}
+.ps-disc-day .ps-disc-dom{display:block;font-size:9px;color:rgba(255,255,255,.35);font-weight:600}
+.ps-disc-day.on{border-color:rgba(146,210,237,.7);background:rgba(146,210,237,.14);color:#92d2ed}
+.ps-disc-day.on .ps-disc-dom{color:rgba(146,210,237,.75)}
+.ps-disc-hint{font-family:var(--mono);font-size:9px;line-height:1.5;color:rgba(255,255,255,.4);margin-top:8px}
 .ps-mode-btn:hover{border-color:rgba(255,255,255,.4);color:#fff}
 .ps-mode-btn.active{border-color:rgba(245,158,11,.6);background:rgba(245,158,11,.12);color:#fbbf24}
 .po-field:last-of-type{margin-bottom:0}
@@ -1223,6 +1229,8 @@ body[data-theme="light"] .plan-chip.coach::before{color:#92400e}
 .wd-session.run{background:var(--amber-bg);border-left:3px solid var(--run)}
 .wd-session.str{background:rgba(96,165,250,.08);border-left:3px solid var(--str)}
 .wd-session.other{background:var(--surface2);border-left:3px solid var(--border-mid)}
+.wd-session.discovery{background:rgba(146,210,237,.08);border-left:3px solid #92d2ed}
+.wd-session.discovery .wd-sess-cat{color:#92d2ed}
 .wd-sess-cat{font-family:var(--mono);font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px}
 .wd-session.run .wd-sess-cat{color:var(--run)}
 .wd-session.str .wd-sess-cat{color:var(--str)}
@@ -1726,6 +1734,7 @@ body[data-theme="light"] .strava-weekly-strip{background:#fff}
           <button type="button" class="ps-mode-btn" id="ps-mode-run" onclick="setPsMode('run')">🏃 Running</button>
           <button type="button" class="ps-mode-btn" id="ps-mode-str" onclick="setPsMode('strength')">🏋 Strength</button>
           <button type="button" class="ps-mode-btn" id="ps-mode-other" onclick="setPsMode('other')">✦ Other</button>
+          <button type="button" class="ps-mode-btn" id="ps-mode-disc" onclick="setPsMode('discovery')">📝 Discovery</button>
         </div>
       </div>
       <div id="ps-form" style="display:none">
@@ -1767,7 +1776,7 @@ body[data-theme="light"] .strava-weekly-strip{background:#fff}
       <div class="po-field-row">
         <div class="po-field">
           <div class="po-label">Date</div>
-          <input class="po-input" id="ps-date" type="date">
+          <input class="po-input" id="ps-date" type="date" onchange="if(_psMode==='discovery')renderDiscoveryDays()">
         </div>
         <div class="po-field">
           <div class="po-label">Week Label</div>
@@ -1822,7 +1831,14 @@ body[data-theme="light"] .strava-weekly-strip{background:#fff}
           </div>
         </div>
       </div>
-      <div class="po-field">
+      <div class="po-field" id="ps-discovery-fields" style="display:none">
+        <div class="po-label">Instruction shown to athlete</div>
+        <textarea class="po-input" id="ps-disc-instruction" rows="3" placeholder="e.g. Train as you normally would this week. Log each session — what you did, how it felt, distance or weights. This builds your baseline." style="resize:vertical;line-height:1.5"></textarea>
+        <div class="po-label" style="margin-top:12px">Create a notes card on these days</div>
+        <div class="ps-disc-days" id="ps-disc-days"></div>
+        <div class="ps-disc-hint" id="ps-disc-hint">Each selected day gets its own notes card in the athlete portal. Week label is set to <b>Discovery Week</b>.</div>
+      </div>
+      <div class="po-field" id="ps-notes-field">
         <div class="po-label">Notes for Athlete</div>
         <textarea class="po-input" id="ps-notes" rows="2" placeholder="Any cues, context, or motivation…" style="resize:vertical;line-height:1.5"></textarea>
       </div>
@@ -2212,7 +2228,7 @@ function splitForTitle(title, code) {
 const PLAN_TYPE_COLORS = {
   'Run':'#f59e0b','Easy Effort':'#9a9a9a','Tempo':'#4ade80','Speed':'#fb923c',
   'Long Run':'#f472b6','Recovery':'#a5b4fc','race':'#facc15','Strength':'#60a5fa',
-  'Run + Strength':'#f87171','Rest':'#38bdf8','Optional':'#34d399','Weekly KM Total':'#a78b71',
+  'Run + Strength':'#f87171','Rest':'#38bdf8','Optional':'#34d399','Weekly KM Total':'#a78b71','discovery':'#92d2ed',
 };
 const PLAN_DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 let _planAthlete = null;
@@ -2348,7 +2364,7 @@ function _nutAthleteCodes() {
   return [...codes].filter(Boolean).sort();
 }
 
-function _nutWkNum(label) { const m = String(label || '').match(/(\d+)/); return m ? parseInt(m[1], 10) : -1; }
+function _nutWkNum(label) { if (isDiscoveryWeek(label)) return 0; const m = String(label || '').match(/(\d+)/); return m ? parseInt(m[1], 10) : -1; }
 
 function _nutCurrentWeekLabel(code) {
   // NO_DISCOVERY athletes (JACOB, KHANG) skipped the Week 0 discovery week, so
@@ -2403,7 +2419,7 @@ function renderNutTable() {
     .sort((a, b) => _nutWkNum(a.week_label) - _nutWkNum(b.week_label));
 
   const curNum = curWk ? _nutWkNum(curWk) : null;
-  meta.textContent = `${_nutAthlete} — ${curNum != null ? `Week ${curNum} of ${getProgWeeks(_nutAthlete)}` : `${getProgWeeks(_nutAthlete)}-week programme`} · weekly macro & KM targets · KM auto-fills from the training plan when no manual target is set`;
+  meta.textContent = `${_nutAthlete} — ${curNum != null ? `${fmtWk(curNum, true)} of ${getProgWeeks(_nutAthlete)}` : `${getProgWeeks(_nutAthlete)}-week programme`} · weekly macro & KM targets · KM auto-fills from the training plan when no manual target is set`;
 
   if (!_nutRenderRows.length) {
     wrap.innerHTML = '<div class="nut-empty">No nutrition plan yet — use + Week to add the first week</div>';
@@ -2415,7 +2431,7 @@ function renderNutTable() {
     const isCur = curWk && r.week_label === curWk;
     const autoKm = _plannedKmForWeek(r.athlete_code, r.week_label);
     return `<tr class="nut-row${isCur ? ' current' : ''}">
-      <td><span class="nut-wk">${esc(r.week_label)}</span>${isCur ? '<span class="nut-now">NOW</span>' : ''}</td>
+      <td><span class="nut-wk">${esc(displayWeekLabel(r.week_label))}</span>${isCur ? '<span class="nut-now">NOW</span>' : ''}</td>
       <td><input class="nut-input" id="nut-${i}-cal"   value="${iv(r.calories)}" placeholder="kcal" oninput="nutDirty(${i})"></td>
       <td><input class="nut-input" id="nut-${i}-pro"   value="${iv(r.protein)}"  placeholder="g"    oninput="nutDirty(${i})"></td>
       <td><input class="nut-input" id="nut-${i}-carb"  value="${iv(r.carbs)}"    placeholder="g"    oninput="nutDirty(${i})"></td>
@@ -2530,7 +2546,7 @@ function renderPlanGrid() {
     _planWeekOffset === 0 ? 'This Week' : fmt(ws) + ' – ' + fmt(we);
 
   const rows = _planAthlete ? _planRowsForWeek(_planAthlete, ws) : [];
-  const wkLabel = rows.map(r => r.week_label).find(Boolean) || '';
+  const wkLabel = displayWeekLabel(rows.map(r => r.week_label).find(Boolean) || '');
   const totalKm = rows.reduce((s, r) => s + (parseFloat(r.distance_km) || 0), 0);
   document.getElementById('plan-week-meta').textContent =
     `${esc(_planAthlete || '—')} · ${fmt(ws)} – ${fmt(we)}${wkLabel ? ' · ' + wkLabel : ''} · ${rows.length} session${rows.length === 1 ? '' : 's'}${totalKm ? ' · ' + (Math.round(totalKm * 10) / 10) + ' km planned' : ''}`;
@@ -2554,7 +2570,7 @@ function renderPlanGrid() {
       if (sp && !r.run_details) meta.push((sp.exercises || []).length + ' exercises');
       html += `<div class="plan-card" style="border-left-color:${col}" onclick="openPlanSession('${r.id}')">
         <div class="plan-card-title">${esc(r.title || 'Session')}</div>
-        ${r.session_type ? `<div class="plan-card-meta" style="color:${col}">${esc(r.session_type)}</div>` : ''}
+        ${r.session_type ? `<div class="plan-card-meta" style="color:${col}">${esc(r.session_type === 'discovery' ? 'Discovery' : r.session_type)}</div>` : ''}
         ${meta.length ? `<div class="plan-card-meta">${meta.join(' · ')}</div>` : ''}
         <span class="plan-card-status ${esc(r.status || 'Planned')}">${esc(r.status || 'Planned')}</span>
       </div>`;
@@ -2609,20 +2625,69 @@ let _psMode = null; // 'run' | 'strength' | 'other' — chosen on step 1
 const PS_RUN_TYPES   = ['Run', 'Easy Effort', 'Tempo', 'Speed', 'Long Run', 'Recovery', 'race'];
 const PS_OTHER_TYPES = ['Run + Strength', 'Rest', 'Optional', 'Weekly KM Total'];
 
+// ── Discovery / Notes session support ─────────────────────────────────────────
+// The athlete portal renders a planned_sessions row whose session_type is one of
+// these as a free-text "notes" card (instruction from run_details, falling back
+// to notes). Week 0 is the discovery week. Mirror of the portal's isDiscoveryWeek.
+const DISCOVERY_TYPES = new Set(['discovery', 'general', 'note', 'notes', 'custom']);
+function isDiscoveryWeek(v) {
+  const s = String(v == null ? '' : v).trim().toLowerCase();
+  return s === '0' || s === 'week 0' || s === 'discovery' || s === 'discovery week';
+}
+// Display-only: never show a raw "Week 0" to a human; matches the portal label.
+function displayWeekLabel(v) {
+  if (v == null || String(v).trim() === '') return '';
+  return isDiscoveryWeek(v) ? 'Discovery Week' : String(v);
+}
+function _mondayOf(iso) {
+  const d = iso ? new Date(iso + 'T00:00:00') : _planWeekStart();
+  if (isNaN(d)) return _planWeekStart();
+  const dow = (d.getDay() + 6) % 7; // 0 = Mon
+  const mon = new Date(d); mon.setDate(d.getDate() - dow); mon.setHours(0, 0, 0, 0);
+  return mon;
+}
+// Which weekday indexes (0=Mon … 6=Sun) get a discovery notes card. Default: all 7.
+let _discDays = new Set([0, 1, 2, 3, 4, 5, 6]);
+function renderDiscoveryDays() {
+  const wrap = document.getElementById('ps-disc-days');
+  if (!wrap) return;
+  const mon = _mondayOf(document.getElementById('ps-date').value);
+  wrap.innerHTML = PLAN_DAYS.map((lbl, i) => {
+    const d = new Date(mon); d.setDate(d.getDate() + i);
+    const dom = d.getDate();
+    return `<button type="button" class="ps-disc-day${_discDays.has(i) ? ' on' : ''}" onclick="toggleDiscDay(${i})">${lbl}<span class="ps-disc-dom">${dom}</span></button>`;
+  }).join('');
+}
+function toggleDiscDay(i) {
+  if (_discDays.has(i)) _discDays.delete(i); else _discDays.add(i);
+  renderDiscoveryDays();
+}
+
 function setPsMode(mode) {
   _psMode = mode;
-  const map = { run: 'ps-mode-run', strength: 'ps-mode-str', other: 'ps-mode-other' };
+  const map = { run: 'ps-mode-run', strength: 'ps-mode-str', other: 'ps-mode-other', discovery: 'ps-mode-disc' };
   Object.entries(map).forEach(([m, id]) => document.getElementById(id).classList.toggle('active', m === mode));
   document.getElementById('ps-form').style.display = '';
   document.getElementById('ps-save').style.display = '';
 
-  // Type options narrow to the chosen mode; Strength needs no type field at all
+  // Type options narrow to the chosen mode. Strength + Discovery need no type field.
   const typeSel = document.getElementById('ps-type');
   const cur = typeSel.value;
-  const opts = mode === 'run' ? PS_RUN_TYPES : mode === 'other' ? PS_OTHER_TYPES : ['Strength'];
+  const opts = mode === 'run' ? PS_RUN_TYPES
+             : mode === 'other' ? PS_OTHER_TYPES
+             : mode === 'strength' ? ['Strength'] : [];
   typeSel.innerHTML = '<option value="">—</option>' + opts.map(t => `<option>${t}</option>`).join('');
   typeSel.value = opts.includes(cur) ? cur : (mode === 'strength' ? 'Strength' : '');
-  document.getElementById('ps-type-field').style.display = mode === 'strength' ? 'none' : '';
+  document.getElementById('ps-type-field').style.display = (mode === 'strength' || mode === 'discovery') ? 'none' : '';
+
+  if (mode === 'discovery') {
+    // Discovery sessions always belong to the discovery week and need no run/gym fields.
+    const nameEl = document.getElementById('ps-name');
+    if (!nameEl.value.trim()) nameEl.value = 'Train As You Normally Would';
+    const wkSel = document.getElementById('ps-week');
+    if (!isDiscoveryWeek(wkSel.value)) wkSel.value = 'Week 0'; // option label reads "Discovery Week"
+    renderDiscoveryDays();
+  }
   updatePsVisibility();
 }
 
@@ -2672,15 +2737,26 @@ function openPlanSession(id, dateISO) {
   document.getElementById('ps-rest').value      = row?.rest || '';
   document.getElementById('ps-cooldown').value  = row?.cool_down || '';
   document.getElementById('ps-notes').value     = row?.notes || '';
+  // Discovery: instruction comes from run_details (preferred) or notes, matching
+  // the athlete portal's read order.
+  document.getElementById('ps-disc-instruction').value = row ? (row.run_details || row.notes || '') : '';
+  // Day spread for a NEW discovery session: just the tapped day when opened from a
+  // day's "+ Add", otherwise the whole visible week so a discovery week is one action.
+  _discDays = (!row && dateISO)
+    ? new Set([(new Date(dateISO + 'T00:00:00').getDay() + 6) % 7])
+    : new Set([0, 1, 2, 3, 4, 5, 6]);
 
-  // Step 1: choose Running / Strength / Other. Editing an existing row skips
-  // straight to the form with the mode derived from its type (or matched split).
+  // Step 1: choose Running / Strength / Other / Discovery. Editing an existing row
+  // skips straight to the form with the mode derived from its type (or matched split).
   if (row) {
-    const t = row.session_type || '';
-    setPsMode(t === 'Strength' || (!t && matched) ? 'strength' : PS_OTHER_TYPES.includes(t) ? 'other' : 'run');
+    const t = (row.session_type || '').toLowerCase();
+    const mode = DISCOVERY_TYPES.has(t) ? 'discovery'
+      : (row.session_type === 'Strength' || (!row.session_type && matched)) ? 'strength'
+      : PS_OTHER_TYPES.includes(row.session_type) ? 'other' : 'run';
+    setPsMode(mode);
   } else {
     _psMode = null;
-    ['ps-mode-run', 'ps-mode-str', 'ps-mode-other'].forEach(i => document.getElementById(i).classList.remove('active'));
+    ['ps-mode-run', 'ps-mode-str', 'ps-mode-other', 'ps-mode-disc'].forEach(i => document.getElementById(i).classList.remove('active'));
     document.getElementById('ps-form').style.display = 'none';
     document.getElementById('ps-save').style.display = 'none';
   }
@@ -2753,14 +2829,28 @@ function applySplitPick() {
 // prescription, Strength shows the split picker + exercise preview,
 // Other shows run fields only for 'Run + Strength' and hides details for Rest-likes.
 function updatePsVisibility() {
+  const isDisc = _psMode === 'discovery';
   const type = document.getElementById('ps-type').value;
   const isRestLike = type === 'Rest' || type === 'Optional' || type === 'Weekly KM Total';
-  const showRun   = _psMode === 'run' || (_psMode === 'other' && type === 'Run + Strength');
-  const showSplit = _psMode === 'strength' || (_psMode === 'other' && type === 'Run + Strength');
+  const showRun   = !isDisc && (_psMode === 'run' || (_psMode === 'other' && type === 'Run + Strength'));
+  const showSplit = !isDisc && (_psMode === 'strength' || (_psMode === 'other' && type === 'Run + Strength'));
   document.getElementById('ps-run-fields').style.display  = showRun ? '' : 'none';
   document.getElementById('ps-lib-field').style.display   = showRun ? '' : 'none';
   document.getElementById('ps-split-field').style.display = showSplit ? '' : 'none';
-  document.getElementById('ps-details-field').style.display = isRestLike ? 'none' : '';
+  // Discovery uses its own instruction field; the run/strength "Details" and the
+  // generic "Notes for Athlete" are hidden to avoid duplicate instruction inputs.
+  document.getElementById('ps-details-field').style.display   = (isDisc || isRestLike) ? 'none' : '';
+  document.getElementById('ps-discovery-fields').style.display = isDisc ? '' : 'none';
+  document.getElementById('ps-notes-field').style.display     = isDisc ? 'none' : '';
+  // When editing one existing discovery row, the multi-day picker doesn't apply.
+  const dayPicker = document.getElementById('ps-disc-days');
+  const dayHint   = document.getElementById('ps-disc-hint');
+  if (dayPicker && dayHint) {
+    const showDays = isDisc && !_psEditingId;
+    dayPicker.style.display = showDays ? '' : 'none';
+    dayHint.style.display   = showDays ? '' : 'none';
+    dayPicker.previousElementSibling.style.display = showDays ? '' : 'none'; // the "Create…" label
+  }
   renderPsExPreview();
 }
 function renderPsExPreview() {
@@ -2784,6 +2874,7 @@ function renderPsExPreview() {
 async function savePlanSession() {
   if (!_planAthlete && !_psEditingId) { alert('Pick an athlete first.'); return; }
   const sb = getSB(); if (!sb) return;
+  if (_psMode === 'discovery') return saveDiscoverySession(sb);
   const v = id => document.getElementById(id).value.trim();
   const dist = v('ps-dist');
   const patch = {
@@ -2822,6 +2913,62 @@ async function savePlanSession() {
     renderPlanGrid();
     updatePlanningBadge();
   } catch(e) {
+    alert('Save failed: ' + (e.message || e));
+  } finally {
+    btn.disabled = false; btn.textContent = 'Save Session';
+  }
+}
+// ── Discovery / Notes save ────────────────────────────────────────────────────
+// Writes note-only planned_sessions rows the athlete portal renders as a free-text
+// card. New = one row per selected day of the discovery week (one action). Edit =
+// update the single row. session_type 'discovery'; instruction → run_details + notes
+// (portal prefers run_details). No run/gym fields are required or written.
+async function saveDiscoverySession(sb) {
+  const title = (document.getElementById('ps-name').value.trim()) || 'Train As You Normally Would';
+  const instruction = document.getElementById('ps-disc-instruction').value.trim() || null;
+  const status = document.getElementById('ps-status').value.trim() || 'Planned';
+  let week = document.getElementById('ps-week').value.trim();
+  if (!week || isDiscoveryWeek(week)) week = 'Discovery Week';
+
+  const btn = document.getElementById('ps-save');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    if (_psEditingId) {
+      // Single existing row: update note fields and clear any stale run/gym data.
+      const patch = {
+        title, session_type: 'discovery', status, week_label: week,
+        planned_date: document.getElementById('ps-date').value || null,
+        run_details: instruction, notes: instruction,
+        distance_km: null, target_pace: null, warm_up: null, intervals: null,
+        working_pace: null, rest: null, cool_down: null, library_id: null,
+        updated_at: new Date().toISOString(),
+      };
+      const { data, error } = await sb.from('planned_sessions').update(patch).eq('id', _psEditingId).select().single();
+      if (error) throw error;
+      const i = _planRowsSB.findIndex(r => r.id === _psEditingId);
+      if (i >= 0) _planRowsSB[i] = data;
+    } else {
+      const days = [..._discDays].sort((a, b) => a - b);
+      if (!days.length) { alert('Pick at least one day for the discovery week.'); btn.disabled = false; btn.textContent = 'Save Session'; return; }
+      const mon = _mondayOf(document.getElementById('ps-date').value);
+      const rows = days.map(i => {
+        const d = new Date(mon); d.setDate(d.getDate() + i);
+        return {
+          athlete_code: _planAthlete,
+          title, session_type: 'discovery', status, week_label: week,
+          planned_date: _isoDate(d),
+          run_details: instruction, notes: instruction,
+          updated_at: new Date().toISOString(),
+        };
+      });
+      const { data, error } = await sb.from('planned_sessions').insert(rows).select();
+      if (error) throw error;
+      _planRowsSB = _planRowsSB.concat(data || []);
+    }
+    closePlanSession();
+    renderPlanGrid();
+    updatePlanningBadge();
+  } catch (e) {
     alert('Save failed: ' + (e.message || e));
   } finally {
     btn.disabled = false; btn.textContent = 'Save Session';
@@ -4032,10 +4179,13 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [
     const _cat = (r['Session Category'] || r.Type || r.type || '').trim();
     const _isRun = _cat === 'Running' || _cat === 'Run';
     const _isStr = _cat === 'Strength' || _cat === 'Lift';
+    // Note-only "Discovery" logs (week-0 baseline) carry no structured fields —
+    // render them as free text, never through the run/strength parsers.
+    const _isDisc = DISCOVERY_TYPES.has(_cat.toLowerCase());
     const sessionName = r.Session || '';
     const k = `${id}|${sessionName}|${_cat}|${ds}`;
     if (!sessionMap[k]) {
-      sessionMap[k] = { ...r, _d: ds, _cat, _isRun, _isStr, _exercises: [] };
+      sessionMap[k] = { ...r, _d: ds, _cat, _isRun, _isStr, _isDisc, _exercises: [] };
     }
     // Accumulate each exercise's log line into _exercises
     // Note: the Exercise Log field from Make.com already starts with "ExerciseName: Set 1:…"
@@ -6323,6 +6473,19 @@ function buildFPCard(a, weekOffset = 0) {
         const sessHtml = daySessions.map(s => {
           const isRun = s._isRun;
           const isStr = s._isStr;
+          // Discovery / note-only logs: free text, no structured fields. Render the
+          // note once (exercise_log and notes hold the same text) and skip the
+          // run/strength parsers and PB detection entirely.
+          if (s._isDisc) {
+            const dRawName = s.Session || (s.Name || '').split('—').slice(1, -1).join('—').trim() || '';
+            const dNote = (s['Exercise Log'] || s.exerciseLog || s.Notes || s.notes || '').trim();
+            return `<div class="wd-session other discovery">
+              <div class="wd-sess-cat">Discovery</div>
+              ${dRawName ? `<div class="wd-sess-name">${esc(dRawName)}</div>` : ''}
+              ${dNote ? `<div class="wd-sess-notes">${esc(dNote)}</div>`
+                      : '<div class="wd-sess-notes" style="opacity:.5">No note logged</div>'}
+            </div>`;
+          }
           const cls = isRun ? 'run' : isStr ? 'str' : 'other';
           const catLabel = isRun ? 'Run' : isStr ? 'Lift' : esc(s._cat || '');
           const rawName = s.Session || (s.Name || '').split('—').slice(1, -1).join('—').trim() || '';
