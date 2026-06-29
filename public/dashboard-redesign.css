@@ -306,19 +306,6 @@ header {
 .po-btn { min-height: 40px; border-radius: 9px; }
 #fp-overlay { background: var(--bg); }
 #wh-overlay { background: var(--wh-bg); }
-
-/* Day-by-day ledger renders as light cards in both themes; give those light
-   session boxes a matching light text palette so titles, run stats and set
-   badges stay readable in dark mode (the dark Strava cards are left alone). */
-#fp-overlay .wd-session {
-  --text: #1b2330;
-  --muted: #5a6473;
-  --dim: #828b99;
-  --surface2: #e9edf4;
-  --border: rgba(15, 23, 42, .12);
-  --run: #b9740f;
-  --str: #2f5fe0;
-}
 .fp-topbar, .wh-topbar { min-height: 64px; backdrop-filter: blur(18px); }
 
 /* Light theme keeps the premium hierarchy */
