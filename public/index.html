@@ -1538,7 +1538,14 @@ body[data-theme="light"] .strava-weekly-strip{background:#fff}
       <span class="fp-idx" id="fp-idx"></span>
       <button class="fp-nav-btn" id="fp-next" onclick="fpNav(1)">Next →</button>
     </div>
-    <span class="fp-hint">Esc to close · ← → to navigate</span>
+    <div style="display:flex;align-items:center;gap:12px">
+      <span class="fp-hint">Esc to close · ← → to navigate</span>
+      <div class="theme-toggle">
+        <button class="theme-btn" data-theme="dark" onclick="setTheme('dark')" title="Dark">◑</button>
+        <button class="theme-btn" data-theme="light" onclick="setTheme('light')" title="Light">☀</button>
+        <button class="theme-btn pride-btn" data-theme="pride" onclick="setTheme('pride')" title="Pride">🏳️‍🌈</button>
+      </div>
+    </div>
   </div>
   <div class="fp-body" id="fp-body"></div>
 </div>
