@@ -22,15 +22,15 @@
   gap: 16px;
   align-items: start;
   padding: 16px;
-  border: 1px solid rgba(15, 23, 42, 0.08);
+  border: 1px solid var(--border);
   border-radius: 12px;
-  background: #fff;
+  background: var(--surface);
 }
 
 #fp-overlay .wd-row.empty {
   min-height: 64px;
   align-items: center;
-  background: #fafafa;
+  background: var(--surface2);
 }
 
 #fp-overlay .wd-date {
@@ -40,7 +40,7 @@
   font-size: 11px;
   font-weight: 700;
   letter-spacing: .08em;
-  color: #697386;
+  color: var(--muted);
 }
 
 #fp-overlay .wd-day-content {
@@ -53,21 +53,21 @@
 #fp-overlay .wd-session {
   padding: 14px 16px;
   border-radius: 11px;
-  background: #f7f9fc;
-  border: 1px solid #e8edf4;
+  background: var(--surface2);
+  border: 1px solid var(--border);
   box-shadow: none;
 }
 
 #fp-overlay .wd-session.str {
-  background: #f4f7ff;
-  border-color: #dce5ff;
-  border-left: 4px solid #3767ff;
+  background: rgba(110, 168, 254, .10);
+  border-color: rgba(110, 168, 254, .28);
+  border-left: 4px solid var(--str);
 }
 
 #fp-overlay .wd-session.run {
-  background: #fff9f0;
-  border-color: #ffe7bc;
-  border-left: 4px solid #f59e0b;
+  background: var(--amber-bg);
+  border-color: var(--amber-border);
+  border-left: 4px solid var(--run);
 }
 
 #fp-overlay .wd-session.other {
@@ -101,12 +101,12 @@
   align-items: center;
   min-height: 28px;
   padding: 5px 9px;
-  border: 1px solid #edf0f4;
+  border: 1px solid var(--border);
   border-radius: 999px;
-  background: #f8f9fb;
+  background: var(--surface2);
   font-size: 11px;
   line-height: 1;
-  color: #4b5563;
+  color: var(--muted);
 }
 
 #fp-overlay .wd-metric.body-lbl,
@@ -114,7 +114,7 @@
   border: 0;
   padding-left: 0;
   background: transparent;
-  color: #9aa2af;
+  color: var(--dim);
   font-size: 9px;
   font-weight: 800;
   letter-spacing: .1em;
@@ -122,9 +122,9 @@
 }
 
 #fp-overlay .wd-metric.nutr {
-  border-color: #f8e5d4;
-  background: #fff7ef;
-  color: #a85316;
+  border-color: var(--amber-border);
+  background: var(--amber-bg);
+  color: var(--amber-text);
 }
 
 #fp-overlay .wd-macro-row {
@@ -154,7 +154,7 @@
 }
 
 #fp-overlay .wd-rest {
-  color: #a1a8b3;
+  color: var(--dim);
   font-size: 12px;
 }
 
