@@ -1708,6 +1708,7 @@ body[data-theme="light"] .strava-weekly-strip{background:#fff}
     <div class="plan-toolbar">
       <div class="plan-ath-chips" id="nut-ath-chips"></div>
       <div class="plan-toolbar-right">
+        <span class="nut-prog">Start override <input class="nut-input wide" id="nut-start-override" type="date" onchange="saveStartDateOverride(this.value)"></span>
         <span class="nut-prog">Programme <input class="nut-input km" id="nut-prog-weeks" onchange="saveProgWeeks(this.value)"> wks</span>
         <button class="plan-action-btn" onclick="addNutWeek()">+ Week</button>
       </div>
@@ -2258,7 +2259,34 @@ let _nutAthlete = null;
 // ── Programme length (athlete_data key 'programme_weeks', default 12) ─────────
 const DEFAULT_PROG_WEEKS = 12;
 let _progWeeks = {}; // athlete_code → weeks
+let _startDateOverrides = {}; // athlete_code → YYYY-MM-DD
 function getProgWeeks(code) { return _progWeeks[code] || DEFAULT_PROG_WEEKS; }
+
+async function saveStartDateOverride(value) {
+  if (!_nutAthlete) return;
+  const date = String(value || '').trim();
+  const sb = getSB();
+  if (!sb) return;
+  try {
+    if (date) {
+      const { error } = await sb.from('athlete_data').upsert(
+        { athlete_code: _nutAthlete, key: 'start_date_override', value: date, updated_at: new Date().toISOString() },
+        { onConflict: 'athlete_code,key' }
+      );
+      if (error) throw error;
+      _startDateOverrides[_nutAthlete] = date;
+    } else {
+      const { error } = await sb.from('athlete_data').delete()
+        .eq('athlete_code', _nutAthlete).eq('key', 'start_date_override');
+      if (error) throw error;
+      delete _startDateOverrides[_nutAthlete];
+    }
+    await load({ bust: true });
+  } catch (e) {
+    console.warn('start_date_override save failed', e);
+    alert('Start-date override could not be saved. Please try again.');
+  }
+}
 
 async function saveProgWeeks(v) {
   if (!_nutAthlete) return;
@@ -2287,10 +2315,19 @@ async function fetchTargetsSB() {
     _nutPlans = data || [];
   } catch (e) { console.warn('nutrition_plans load failed', e); _nutPlans = []; }
   try {
-    const { data: pw } = await sb.from('athlete_data').select('athlete_code,value').eq('key', 'programme_weeks');
+    const { data: settings } = await sb.from('athlete_data').select('athlete_code,key,value')
+      .in('key', ['programme_weeks', 'start_date_override']);
     _progWeeks = {};
-    (pw || []).forEach(r => { const n = parseInt(r.value, 10); if (!isNaN(n) && n > 0) _progWeeks[r.athlete_code] = n; });
-  } catch (e) { console.warn('programme_weeks load failed', e); }
+    _startDateOverrides = {};
+    (settings || []).forEach(r => {
+      if (r.key === 'programme_weeks') {
+        const n = parseInt(r.value, 10);
+        if (!isNaN(n) && n > 0) _progWeeks[r.athlete_code] = n;
+      } else if (r.key === 'start_date_override' && /^\d{4}-\d{2}-\d{2}$/.test(String(r.value || ''))) {
+        _startDateOverrides[r.athlete_code] = r.value;
+      }
+    });
+  } catch (e) { console.warn('athlete settings load failed', e); }
   const badge = document.getElementById('tab-nut-count');
   if (badge) badge.textContent = new Set(_nutPlans.map(r => r.athlete_code)).size || '—';
   return _nutPlans.map(r => ({
@@ -2399,6 +2436,8 @@ function renderNutritionTab() {
   document.getElementById('nut-ath-chips').innerHTML = buildAthChipsHTML(codes, _nutAthlete, 'setNutAthlete');
   const pwEl = document.getElementById('nut-prog-weeks');
   if (pwEl) pwEl.value = _nutAthlete ? getProgWeeks(_nutAthlete) : DEFAULT_PROG_WEEKS;
+  const startEl = document.getElementById('nut-start-override');
+  if (startEl) startEl.value = (_nutAthlete && _startDateOverrides[_nutAthlete]) || '';
   renderNutTable();
 }
 function setNutAthlete(code) {
@@ -4051,6 +4090,11 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [
     if (code && sd) startDates[code] = sd;
     if (code) athleteProfiles[code] = r;
   });
+  // A coach-set Supabase date is shared with the athlete portal and takes
+  // priority over the legacy Notion profile date.
+  Object.entries(_startDateOverrides).forEach(([code, date]) => {
+    if (date) startDates[code] = date;
+  });
 
   // Build targets lookup: targetMap[athleteId][weekLabel] = row
   // weekLabel matches exactly what calcWeekNum returns, e.g. 'Week 8' or 'Week 0'
@@ -4066,7 +4110,7 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [
   function calcWeekNum(id) {
     if (COACHES.has(id)) return null;
 
-    // Priority 1: Notion Start Date (most accurate — set this per athlete in Notion)
+    // Priority 1: effective Start Date (Supabase coach override, then Notion)
     const sd = startDates[id];
     if (sd) {
       const diffDays = Math.floor((Date.now() - new Date(sd)) / 86400000);
@@ -4453,6 +4497,7 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [
       checkinStreak,
       compliance4w,
       profile: athleteProfiles[a.id] || null,
+      effectiveStartDate: startDates[a.id] || null,
       isCoach: COACHES.has(a.id),
     };
   });
@@ -6905,7 +6950,7 @@ function buildClientProfilePanel(a, variant = 'card') {
   const p = a.profile || {};
   if (!Object.keys(p).length) return '';
 
-  const start = pickFirst(p, ['date:Start Date:start', 'Start Date']);
+  const start = a.effectiveStartDate || pickFirst(p, ['date:Start Date:start', 'Start Date']);
   const submitted = pickFirst(p, ['date:Submitted:start', 'Submitted']);
   const goalRace = pickFirst(p, ['Goal Race']);
   const raceDate = pickFirst(p, ['Race Date']);
