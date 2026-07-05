@@ -1,5 +1,7 @@
 // api/progress-photos.js — Cloudinary progress photo lookup
 // Reads Cloudinary credentials server-side and returns matched athlete/week assets.
+// Note: week 0 === Discovery Week. The backend always stores/reads it as 0
+// (folder `week0`). The "Discovery Week" label is applied on the frontend only.
 
 function parseCloudinaryUrl() {
   const raw = process.env.CLOUDINARY_URL;
@@ -65,7 +67,11 @@ module.exports = async function handler(req, res) {
     return;
   }
 
-  const folder = weekNum >= 0
+  // week 0 (Discovery Week) maps to folder `week0`. Only a valid, non-negative
+  // integer resolves to a specific week folder — anything else (NaN, missing,
+  // garbage) falls back to the athlete root instead of silently dumping every
+  // week's photos into the wrong view.
+  const folder = Number.isInteger(weekNum) && weekNum >= 0
     ? `dp_progress/${athleteSlug}/week${weekNum}`
     : `dp_progress/${athleteSlug}`;
 
