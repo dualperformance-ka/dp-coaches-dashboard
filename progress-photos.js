@@ -1,31 +1,23 @@
-// rename-athlete-slug.js — bulk-rename Cloudinary public IDs for one athlete.
-// Moves every asset under dp_progress/<OLD>/** to dp_progress/<NEW>/**,
-// rewriting the slug in BOTH the folder path and the filename portion.
-//
-// Usage:
-//   node rename-athlete-slug.js            # DRY RUN — prints planned moves, changes nothing
-//   node rename-athlete-slug.js --commit   # actually renames
-//
-// Requires Cloudinary creds in env — either CLOUDINARY_URL, or the three
-// CLOUDINARY_CLOUD_NAME / CLOUDINARY_API_KEY / CLOUDINARY_API_SECRET vars.
-// (Same env this project's api/progress-photos.js already reads.)
+// api/progress-photos.js — Cloudinary progress photo lookup
+// Reads Cloudinary credentials server-side and returns matched athlete/week assets.
+// Note: week 0 === Discovery Week. The backend always stores/reads it as 0
+// (folder `week0`). The "Discovery Week" label is applied on the frontend only.
 
-const OLD_SLUG = 'thomas_trinh';
-const NEW_SLUG = 'thomas';
-const ROOT = 'dp_progress';
-
-const COMMIT = process.argv.includes('--commit');
-
-function creds() {
+function parseCloudinaryUrl() {
   const raw = process.env.CLOUDINARY_URL;
   if (raw) {
-    const u = new URL(raw);
-    return {
-      cloudName: u.hostname,
-      apiKey: decodeURIComponent(u.username),
-      apiSecret: decodeURIComponent(u.password),
-    };
+    try {
+      const url = new URL(raw);
+      return {
+        cloudName: url.hostname,
+        apiKey: decodeURIComponent(url.username),
+        apiSecret: decodeURIComponent(url.password),
+      };
+    } catch {
+      throw new Error('CLOUDINARY_URL is not valid');
+    }
   }
+
   return {
     cloudName: process.env.CLOUDINARY_CLOUD_NAME,
     apiKey: process.env.CLOUDINARY_API_KEY,
@@ -33,89 +25,93 @@ function creds() {
   };
 }
 
-const { cloudName, apiKey, apiSecret } = creds();
-if (!cloudName || !apiKey || !apiSecret) {
-  console.error('Missing Cloudinary credentials in env. Set CLOUDINARY_URL or the three CLOUDINARY_* vars.');
-  process.exit(1);
+function cleanSegment(value) {
+  return String(value || '')
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9_-]/g, '');
 }
-const auth = Buffer.from(`${apiKey}:${apiSecret}`).toString('base64');
-const base = `https://api.cloudinary.com/v1_1/${cloudName}`;
 
-// List every image under dp_progress/<OLD_SLUG>/, paging through results.
-async function listAssets() {
-  const found = [];
-  let cursor = null;
-  do {
-    const body = {
-      expression: `public_id:${ROOT}/${OLD_SLUG}/*`,
-      max_results: 100,
-      ...(cursor ? { next_cursor: cursor } : {}),
-    };
-    const r = await fetch(`${base}/resources/search`, {
+function inferPhotoType(publicId) {
+  const name = String(publicId || '').split('/').pop() || '';
+  const raw = name
+    .replace(/^[a-z0-9_-]+_week\d+_/i, '')
+    .replace(/\.(jpg|jpeg|png|webp)$/i, '');
+
+  return raw
+    .split(/[_-]+/)
+    .filter(Boolean)
+    .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ') || 'Progress Photo';
+}
+
+module.exports = async function handler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  if (req.method === 'OPTIONS') { res.status(200).end(); return; }
+  if (req.method !== 'GET') { res.status(405).json({ error: 'Method not allowed' }); return; }
+
+  const { athlete, week } = req.query;
+  const athleteSlug = cleanSegment(athlete);
+  const weekNum = parseInt(week, 10);
+
+  if (!athleteSlug) {
+    res.status(400).json({ error: 'Missing ?athlete= query parameter' });
+    return;
+  }
+
+  const { cloudName, apiKey, apiSecret } = parseCloudinaryUrl();
+  if (!cloudName || !apiKey || !apiSecret) {
+    res.status(500).json({ error: 'Cloudinary credentials are not configured' });
+    return;
+  }
+
+  // week 0 (Discovery Week) maps to folder `week0`. Only a valid, non-negative
+  // integer resolves to a specific week folder — anything else (NaN, missing,
+  // garbage) falls back to the athlete root instead of silently dumping every
+  // week's photos into the wrong view.
+  const folder = Number.isInteger(weekNum) && weekNum >= 0
+    ? `dp_progress/${athleteSlug}/week${weekNum}`
+    : `dp_progress/${athleteSlug}`;
+
+  const expression = `folder="${folder}"`;
+  const auth = Buffer.from(`${apiKey}:${apiSecret}`).toString('base64');
+
+  try {
+    const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/resources/search`, {
       method: 'POST',
-      headers: { Authorization: `Basic ${auth}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
+      headers: {
+        Authorization: `Basic ${auth}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        expression,
+        max_results: 30,
+        sort_by: [{ public_id: 'asc' }],
+      }),
     });
-    const data = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(data.error?.message || `search ${r.status}`);
-    for (const a of data.resources || []) found.push(a.public_id);
-    cursor = data.next_cursor || null;
-  } while (cursor);
-  return found;
-}
 
-// Rename one asset. Cloudinary rename is per resource_type; these are images.
-async function rename(from, to) {
-  const params = new URLSearchParams({
-    from_public_id: from,
-    to_public_id: to,
-    overwrite: 'false',
-    invalidate: 'true', // purge old CDN URLs
-  });
-  const r = await fetch(`${base}/image/upload/rename`, {
-    method: 'POST',
-    headers: { Authorization: `Basic ${auth}`, 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: params.toString(),
-  });
-  const data = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(data.error?.message || `rename ${r.status}`);
-  return data.public_id;
-}
-
-(async () => {
-  console.log(`Cloud: ${cloudName}`);
-  console.log(`Rewrite: "${OLD_SLUG}" -> "${NEW_SLUG}"  (under ${ROOT}/)`);
-  console.log(COMMIT ? '\n*** COMMIT MODE — assets will be renamed ***\n' : '\n--- DRY RUN — nothing will change (add --commit to apply) ---\n');
-
-  const ids = await listAssets();
-  if (!ids.length) {
-    console.log(`No assets found under ${ROOT}/${OLD_SLUG}/. Nothing to do.`);
-    return;
-  }
-
-  // Build move list: replace every occurrence of the old slug in the public_id.
-  const moves = ids
-    .map(from => ({ from, to: from.split(OLD_SLUG).join(NEW_SLUG) }))
-    .filter(m => m.from !== m.to);
-
-  console.log(`${moves.length} asset(s) to rename:\n`);
-  for (const m of moves) console.log(`  ${m.from}\n    -> ${m.to}\n`);
-
-  if (!COMMIT) {
-    console.log('Dry run complete. Re-run with --commit to apply.');
-    return;
-  }
-
-  let ok = 0, fail = 0;
-  for (const m of moves) {
-    try {
-      const result = await rename(m.from, m.to);
-      console.log(`renamed: ${result}`);
-      ok++;
-    } catch (e) {
-      console.error(`FAILED: ${m.from} -> ${m.to} :: ${e.message}`);
-      fail++;
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(data.error?.message || `Cloudinary API ${response.status}`);
     }
+
+    const photos = (data.resources || []).map(asset => ({
+      publicId: asset.public_id,
+      type: inferPhotoType(asset.public_id),
+      url: asset.secure_url,
+      thumbUrl: asset.secure_url?.replace('/upload/', '/upload/f_auto,q_auto,c_fill,g_auto,w_420,h_560/'),
+      width: asset.width,
+      height: asset.height,
+      createdAt: asset.created_at,
+      format: asset.format,
+    }));
+
+    res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=300');
+    res.status(200).json({ athlete: athleteSlug, week: weekNum, folder, photos });
+  } catch (e) {
+    console.error('[progress-photos]', e.message);
+    res.status(500).json({ error: e.message });
   }
-  console.log(`\nDone. ${ok} renamed, ${fail} failed.`);
-})().catch(e => { console.error(e.message); process.exit(1); });
+};
