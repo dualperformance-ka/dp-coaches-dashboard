@@ -4351,7 +4351,19 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [
 
     // Weeks reset on Monday for everyone.
     // The expected week ending is always the MOST RECENT SUNDAY (same date for all athletes).
-    const wkNum = calcWeekNum(a.id);
+    // Current programme week: prefer the coach-assigned week_label on THIS calendar
+    // week's planned sessions — that's exactly what the athlete portal shows, so it
+    // keeps coach and athlete in sync. calcWeekNum (start-date math) is the fallback,
+    // and stays authoritative for NO_DISCOVERY athletes whose plan labels lag their
+    // true programme week. Mirrors the fix already applied to the Nutrition tab.
+    let wkNum = calcWeekNum(a.id);
+    if (!NO_DISCOVERY.has(a.id)) {
+      const planLbl = _planRowsForWeek(a.id, currentWeekStart).map(r => r.week_label).find(Boolean);
+      if (planLbl) {
+        const pn = _nutWkNum(planLbl); // isDiscoveryWeek → 0, else parsed int, else -1
+        if (pn >= 0) wkNum = pn;
+      }
+    }
     const expectedWeekEnd = currentWeekEnd; // global, computed once at load time
 
     const wkEnd = w?.['Week Ending'] || '';
@@ -5417,12 +5429,15 @@ function buildTableRow(a) {
 
   if (a.acked) statusHtml += ' <span class="tack" title="Alert acknowledged — returns automatically if anything changes">✓ ack</span>';
 
-  const metaStr = a.weekNum !== null ? `${fmtWk(a.weekNum)} · ` : '';
+  // Collapsed row subtitle: show the athlete's current week only. The check-in
+  // freshness ('Last week' etc.) is dropped here — mashed against a week label
+  // like 'Discovery' it read as one confusing phrase ('Discovery · Last week').
   const checkinStr = a.hasCurrentCheckin ? 'Checked in' : a.isStale ? 'No check-in' : a.weekly ? 'Last week' : 'No data';
+  const metaStr = a.weekNum !== null ? fmtWk(a.weekNum) : checkinStr;
   const safeId = a.id.replace(/\W+/g, '-').toLowerCase();
 
   return `<tr class="dash-trow ${rowCls}" onclick="toggleTableRow('${safeId}')">
-    <td><div class="tname">${esc(a.id)}${fps}</div><div class="tmeta">${metaStr}${checkinStr}</div></td>
+    <td><div class="tname">${esc(a.id)}${fps}</div><div class="tmeta">${metaStr}</div></td>
     <td>${a.weekNum !== null ? `<span class="twkbadge">${a.weekNum === 0 ? 'D' : a.weekNum}</span>` : '<span class="tdim">—</span>'}</td>
     <td>${recovHtml}</td>
     <td ${kmTdAttr}>${kmHtml}</td>
