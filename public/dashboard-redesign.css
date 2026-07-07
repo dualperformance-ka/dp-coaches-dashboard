@@ -622,17 +622,185 @@ body[data-theme="light"] .theme-btn.active { color: #fff; background: #146b90; }
 
 @media (max-width: 560px) {
   body { font-size: 14px; }
+  header {
+    padding: 12px 12px 10px;
+    min-height: auto;
+    gap: 10px;
+  }
   .logo-block { gap: 12px; }
-  .logo-text { width: 100%; }
-  .logo-kicker { font-size: 17px; }
-  .logo-role { font-size: 8px; letter-spacing: .14em; }
-  .h-right { display: grid; grid-template-columns: 1fr 1fr; align-items: stretch; }
-  .coach-select, .updated, .refresh-btn, .gen-btn, .theme-toggle { width: 100%; max-width: none; }
-  .updated { grid-column: 1 / -1; order: -1; display: block; }
-  .theme-toggle { grid-column: 1 / -1; justify-content: space-between; display: flex; }
+  .logo-text { width: auto; min-width: 0; }
+  .logo-kicker { font-size: 16px; letter-spacing: .06em; white-space: normal; }
+  .logo-role { font-size: 8px; letter-spacing: .14em; padding: 5px 8px; }
+  .h-right {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    align-items: stretch;
+    width: 100%;
+    gap: 8px;
+  }
+  .coach-select, .updated, .refresh-btn, .gen-btn, .theme-toggle {
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+  }
+  .updated {
+    grid-column: 1 / -1;
+    order: -1;
+    display: none;
+  }
+  .theme-toggle {
+    grid-column: 1 / -1;
+    justify-content: space-between;
+    display: flex;
+  }
   .theme-btn { flex: 1 1 0; min-width: 0; }
-  .tab { padding-inline: 12px; font-size: 12px; }
+  .tab-bar {
+    padding-inline: 10px !important;
+    gap: 4px;
+    overflow-x: auto;
+    justify-content: flex-start;
+    scrollbar-width: none;
+  }
+  .tab-bar::-webkit-scrollbar { display: none; }
+  .tab {
+    padding-inline: 10px;
+    font-size: 12px;
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+  .filter-bar {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    padding: 10px;
+    margin: 12px 10px 0;
+    border-radius: 14px;
+  }
+  .sf-group {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    gap: 6px;
+    padding-bottom: 2px;
+  }
+  .sort-select {
+    width: 100%;
+  }
+  .dp-page-intro {
+    gap: 10px;
+    margin-bottom: 18px;
+  }
+  .dp-page-title {
+    font-size: 15vw;
+    line-height: .92;
+  }
+  .dp-page-subtitle {
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  .dp-intro-date {
+    font-size: 10px;
+    padding: 8px 12px;
+  }
+  .main, .plan-section, .coaches-section, .sched-section {
+    padding: 18px 10px 42px;
+  }
+  .dash-week-nav {
+    padding: 12px;
+    gap: 10px;
+  }
+  .dwn-controls {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+  .dwn-btn,
+  .dwn-hist-badge {
+    width: 100%;
+    text-align: center;
+  }
+  .summary-bar {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .sum-card {
+    padding: 12px;
+    min-width: 0;
+  }
+  .sum-num {
+    font-size: 24px;
+  }
+  .cc-panel,
+  .card,
+  .sched-card,
+  .coach-card,
+  .squad-brief,
+  .dash-week-nav {
+    border-radius: 14px;
+  }
+  .cc-hero {
+    padding: 14px;
+  }
+  .cc-title {
+    font-size: 24px;
+  }
+  .cc-score {
+    gap: 6px;
+  }
+  .cc-score-card {
+    padding: 8px 6px;
+  }
+  .cc-action {
+    grid-template-columns: 18px 1fr auto;
+    padding: 8px;
+  }
+  .cc-health {
+    grid-template-columns: 1fr 1fr;
+  }
+  .aname {
+    font-size: 22px;
+  }
   .sum-card, .dash-week-nav, .cc-panel, .squad-brief, .card, .sched-card, .coach-card { border-radius: 16px; }
   .fpc-photo-grid, .pcard-training, .fpc-nutr-row, .body-grid, .bmet { grid-template-columns: 1fr !important; display: grid; }
   .scores, .pcard-metrics, .pcard-stats, .coach-scores { overflow-x: auto; }
+}
+
+@media (max-width: 420px) {
+  header {
+    padding-inline: 10px;
+  }
+  .logo-mark {
+    height: 26px;
+    width: 26px;
+  }
+  .logo-kicker {
+    font-size: 14px;
+  }
+  .logo-role {
+    font-size: 7px;
+    padding: 5px 7px;
+  }
+  .h-right {
+    grid-template-columns: 1fr;
+  }
+  .refresh-btn,
+  .coach-select,
+  .theme-toggle {
+    min-height: 36px;
+  }
+  .dp-page-title {
+    font-size: 52px;
+  }
+  .summary-bar {
+    grid-template-columns: 1fr 1fr;
+  }
+  .dwn-controls {
+    grid-template-columns: 1fr;
+  }
+  .cc-score {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .cc-health {
+    grid-template-columns: 1fr;
+  }
 }
