@@ -1586,6 +1586,7 @@ body[data-theme="light"] .strava-weekly-strip{background:#fff}
       <option value="ALEX">ALEX</option>
     </select>
     <span class="updated" id="updated"></span>
+    <button class="refresh-btn" id="manage-athletes-btn" onclick="openManageAthletes()">⚙ Manage Athletes</button>
     <button class="refresh-btn" id="refresh-btn">↻ Refresh</button>
     <div class="theme-toggle" id="theme-toggle">
       <button class="theme-btn active" data-theme="dark" onclick="setTheme('dark')" title="Dark">◑</button>
@@ -1595,6 +1596,202 @@ body[data-theme="light"] .strava-weekly-strip{background:#fff}
     <button class="gen-btn" id="gen-btn" style="display:none">✦ AI Summaries</button>
   </div>
 </header>
+
+<!-- ══ MANAGE ATHLETES — Supabase roster (public.athletes) via the portal's /api/athletes ══ -->
+<style>
+.ma-backdrop{position:fixed;inset:0;z-index:900;display:none;align-items:flex-start;justify-content:center;background:rgba(10,13,16,.72);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);overflow-y:auto;padding:6vh 16px 40px}
+.ma-backdrop.open{display:flex}
+.ma-card{width:100%;max-width:600px;background:rgba(16,21,26,.92);border:1px solid rgba(146,210,237,.16);border-radius:16px;backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);box-shadow:0 24px 70px rgba(0,0,0,.55);padding:22px}
+.ma-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.ma-title{font-family:var(--cond);font-size:20px;font-weight:900;text-transform:uppercase;letter-spacing:.06em;color:#f0ede8}
+.ma-title span{color:#92d2ed}
+.ma-close{background:transparent;border:0;color:rgba(240,237,232,.5);font-size:18px;cursor:pointer;padding:4px 8px}
+.ma-close:hover{color:#fff}
+.ma-add{background:rgba(146,210,237,.05);border:1px solid rgba(146,210,237,.14);border-radius:12px;padding:14px;margin-bottom:16px}
+.ma-add-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
+.ma-add input,.ma-add select{background:rgba(10,13,16,.7);border:1px solid rgba(255,255,255,.1);border-radius:8px;color:#f0ede8;font:inherit;font-size:12.5px;padding:8px 10px;width:100%}
+.ma-add input:focus,.ma-add select:focus{outline:none;border-color:rgba(146,210,237,.5)}
+.ma-add-name{grid-column:1/-1}
+.ma-add-btn{background:#92d2ed;border:0;border-radius:8px;color:#0a0d10;font-family:var(--cond);font-size:13px;font-weight:900;text-transform:uppercase;letter-spacing:.06em;padding:9px 18px;cursor:pointer;width:100%}
+.ma-add-btn:disabled{opacity:.5;cursor:wait}
+.ma-result{display:none;margin-top:10px;background:rgba(74,222,128,.08);border:1px solid rgba(74,222,128,.25);border-radius:8px;padding:10px;font-size:12px;color:#4ade80}
+.ma-result code{font-family:var(--mono);color:#92d2ed;font-size:12px}
+.ma-row{display:flex;align-items:center;gap:10px;padding:10px 4px;border-bottom:1px solid rgba(255,255,255,.06)}
+.ma-row:last-child{border-bottom:none}
+.ma-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;background:#92d2ed;box-shadow:0 0 8px rgba(146,210,237,.6)}
+.ma-row.paused .ma-dot{background:#f59e0b;box-shadow:0 0 8px rgba(245,158,11,.5)}
+.ma-name{font-family:var(--cond);font-size:15px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:#f0ede8;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ma-row.paused .ma-name{opacity:.55}
+.ma-code{font-family:var(--mono);font-size:10px;color:#92d2ed;background:rgba(146,210,237,.1);border:1px solid rgba(146,210,237,.22);border-radius:5px;padding:2px 7px;flex-shrink:0}
+.ma-paused-tag{font-family:var(--mono);font-size:8.5px;text-transform:uppercase;letter-spacing:.08em;color:#fbbf24;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.25);border-radius:10px;padding:2px 7px;flex-shrink:0}
+.ma-btn{background:transparent;border:1px solid rgba(255,255,255,.14);border-radius:6px;color:rgba(240,237,232,.65);font-family:var(--mono);font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;padding:5px 9px;cursor:pointer;flex-shrink:0;transition:all .15s}
+.ma-btn:hover{border-color:rgba(146,210,237,.6);color:#92d2ed}
+.ma-btn.danger:hover{border-color:rgba(248,113,113,.6);color:#f87171}
+.ma-btn.copied{border-color:rgba(74,222,128,.6);color:#4ade80}
+.ma-status{font-size:11.5px;color:#f87171;min-height:16px;margin-top:10px;text-align:center}
+.ma-empty{color:rgba(240,237,232,.4);font-size:12px;text-align:center;padding:18px 0}
+@media(max-width:560px){.ma-add-grid{grid-template-columns:1fr}}
+</style>
+<div class="ma-backdrop" id="ma-backdrop" onclick="if(event.target===this)closeManageAthletes()">
+  <div class="ma-card">
+    <div class="ma-head">
+      <div class="ma-title">Manage <span>Athletes</span></div>
+      <button class="ma-close" onclick="closeManageAthletes()">✕</button>
+    </div>
+    <div class="ma-add">
+      <div class="ma-add-grid">
+        <input class="ma-add-name" id="ma-name" placeholder="Athlete name (e.g. Thomas Trinh)" maxlength="120">
+        <input id="ma-start" type="date" title="Start date (optional)">
+        <input id="ma-race" placeholder="Race target (optional)" maxlength="200">
+        <select id="ma-coach"><option value="karl">Coach: karl</option><option value="alex">Coach: alex</option></select>
+        <button class="ma-add-btn" id="ma-add-btn" onclick="maAddAthlete()">+ Add Athlete</button>
+      </div>
+      <div class="ma-result" id="ma-result"></div>
+    </div>
+    <div id="ma-list"><div class="ma-empty">Loading roster…</div></div>
+    <div class="ma-status" id="ma-status"></div>
+  </div>
+</div>
+<script>
+// ── Roster state — Supabase public.athletes is the single source of truth.
+// RLS blocks anon access by design; all reads/writes go through the portal's
+// /api/athletes serverless function (service role key lives in Vercel env).
+const ROSTER_API = 'https://dp-athlete-portal.vercel.app/api/athletes';
+let _roster = [];   // non-archived athletes (active + paused)
+
+async function loadRoster() {
+  try {
+    const r = await fetch(ROSTER_API + '?action=roster', { cache: 'no-store' });
+    const j = await r.json();
+    _roster = (j && j.athletes) || [];
+  } catch (e) {
+    console.warn('[roster] load failed — falling back to legacy athlete list', e);
+    _roster = [];
+  }
+  return _roster;
+}
+
+function maAdminKey(forcePrompt) {
+  let k = localStorage.getItem('dp_admin_key') || '';
+  if (!k || forcePrompt) {
+    k = (prompt('Admin key (matches ADMIN_KEY in the portal’s Vercel env):') || '').trim();
+    if (k) localStorage.setItem('dp_admin_key', k);
+  }
+  return k.trim();
+}
+
+async function maPost(payload) {
+  const key = maAdminKey(false);
+  if (!key) throw new Error('Admin key required');
+  const r = await fetch(ROSTER_API, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Admin-Key': key },
+    body: JSON.stringify(payload),
+  });
+  const j = await r.json().catch(() => ({}));
+  if (r.status === 401) { localStorage.removeItem('dp_admin_key'); throw new Error('Admin key rejected — reopen and try again'); }
+  if (!r.ok || j.ok === false) throw new Error(j.error || ('HTTP ' + r.status));
+  return j;
+}
+
+function maStatus(msg, ok) {
+  const el = document.getElementById('ma-status');
+  el.style.color = ok ? '#4ade80' : '#f87171';
+  el.textContent = msg || '';
+  if (msg) setTimeout(() => { if (el.textContent === msg) el.textContent = ''; }, 4000);
+}
+
+function openManageAthletes() {
+  document.getElementById('ma-backdrop').classList.add('open');
+  renderManageList();
+  loadRoster().then(renderManageList);
+}
+function closeManageAthletes() {
+  document.getElementById('ma-backdrop').classList.remove('open');
+  document.getElementById('ma-result').style.display = 'none';
+  refreshRosterDrivenUI();
+}
+
+function maEsc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+function renderManageList() {
+  const el = document.getElementById('ma-list');
+  if (!_roster.length) { el.innerHTML = '<div class="ma-empty">No athletes in the roster yet.</div>'; return; }
+  el.innerHTML = _roster.map(a => {
+    const paused = a.active === false;
+    return `<div class="ma-row${paused ? ' paused' : ''}">
+      <div class="ma-dot"></div>
+      <div class="ma-name" title="${maEsc(a.name)}">${maEsc(a.name)}</div>
+      <span class="ma-code">${maEsc(a.code)}</span>
+      ${paused ? '<span class="ma-paused-tag">Paused</span>' : ''}
+      <button class="ma-btn" onclick="maCopyLink('${maEsc(a.code)}', this)" title="${maEsc(a.portalLink || '')}">⧉ Link</button>
+      <button class="ma-btn" onclick="maToggleActive('${maEsc(a.code)}', ${paused})">${paused ? '▶ Resume' : '⏸ Pause'}</button>
+      <button class="ma-btn danger" onclick="maArchive('${maEsc(a.code)}', '${maEsc(a.name)}')">Archive</button>
+    </div>`;
+  }).join('');
+}
+
+async function maAddAthlete() {
+  const name = document.getElementById('ma-name').value.trim();
+  if (!name) { maStatus('Enter the athlete’s name'); return; }
+  const btn = document.getElementById('ma-add-btn');
+  btn.disabled = true; btn.textContent = 'Adding…';
+  try {
+    const j = await maPost({
+      action: 'add', name,
+      start_date: document.getElementById('ma-start').value || null,
+      race_target: document.getElementById('ma-race').value.trim() || null,
+      coach: document.getElementById('ma-coach').value,
+    });
+    const box = document.getElementById('ma-result');
+    box.innerHTML = `✓ Added <b>${maEsc(name)}</b> — code <code>${maEsc(j.code)}</code>
+      <button class="ma-btn" style="margin-left:8px" onclick="maCopyText('${maEsc(j.portalLink)}', this)">⧉ Copy portal link</button>`;
+    box.style.display = 'block';
+    document.getElementById('ma-name').value = '';
+    document.getElementById('ma-start').value = '';
+    document.getElementById('ma-race').value = '';
+    await loadRoster(); renderManageList();
+  } catch (e) { maStatus(e.message); }
+  btn.disabled = false; btn.textContent = '+ Add Athlete';
+}
+
+async function maToggleActive(code, resume) {
+  try {
+    await maPost({ action: 'update', code, fields: { active: !!resume } });
+    await loadRoster(); renderManageList();
+    maStatus(code + (resume ? ' resumed' : ' paused'), true);
+  } catch (e) { maStatus(e.message); }
+}
+
+async function maArchive(code, name) {
+  if (!confirm('Archive ' + name + ' (' + code + ')?\n\nThey lose portal access and leave the roster. All their history stays in Supabase (soft archive — nothing is deleted).')) return;
+  try {
+    await maPost({ action: 'archive', code });
+    await loadRoster(); renderManageList();
+    maStatus(code + ' archived', true);
+  } catch (e) { maStatus(e.message); }
+}
+
+function maCopyLink(code, btn) {
+  const a = _roster.find(x => x.code === code);
+  maCopyText((a && a.portalLink) || ('https://dp-athlete-portal.vercel.app/?code=' + encodeURIComponent(code)), btn);
+}
+function maCopyText(text, btn) {
+  const done = () => { if (btn) { const t = btn.textContent; btn.classList.add('copied'); btn.textContent = '✓ Copied'; setTimeout(() => { btn.classList.remove('copied'); btn.textContent = t; }, 1600); } };
+  if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done).catch(() => { window.prompt('Copy portal link:', text); }); }
+  else window.prompt('Copy portal link:', text);
+}
+
+// Re-render any roster-driven UI (plan/nutrition chips) after roster changes.
+function refreshRosterDrivenUI() {
+  try {
+    const planTab = document.getElementById('tab-planning-content');
+    if (planTab && planTab.style.display !== 'none' && typeof renderPlanning === 'function') renderPlanning();
+    const nutTab = document.getElementById('tab-nut-content');
+    if (nutTab && nutTab.style.display !== 'none' && typeof renderNutritionTab === 'function') renderNutritionTab();
+  } catch (e) {}
+}
+</script>
 
 <div class="tab-bar">
   <button class="tab active" id="tab-athletes-btn" onclick="switchTab('athletes')">
@@ -2246,6 +2443,15 @@ function _planWeekStart() {
   return mon;
 }
 function _planAthleteCodes() {
+  // Supabase roster (public.athletes) is the canonical chip list: active,
+  // non-archived athletes only. Paused athletes drop off the chips but keep
+  // all their history. Falls back to the legacy derived list only if the
+  // roster endpoint was unreachable.
+  if (_roster.length) {
+    const codes = new Set(_roster.filter(a => a.active !== false).map(a => String(a.code || '').toUpperCase()));
+    COACHES.forEach(c => codes.add(c));
+    return [...codes].filter(Boolean).sort();
+  }
   const codes = new Set(_planRowsSB.map(r => r.athlete_code));
   _allAthletes.forEach(a => codes.add(a.id));
   COACHES.forEach(c => codes.add(c));
@@ -7731,6 +7937,7 @@ async function load({ bust = false } = {}) {
       loadSessionLogs(), loadSessionLibrary(),
       getSB().from('application_decisions').select('notion_id,decision,decided_by,decided_at'),
       loadCallNotes(), loadAcks(),
+      loadRoster(), // Supabase athletes roster — canonical athlete chip list
     ]);
 
     // Weekly check-ins now come from Supabase (full payload, primary) merged
