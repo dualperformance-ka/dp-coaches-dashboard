@@ -12,6 +12,9 @@
     },
     "api/coach-data.js": {
       "maxDuration": 30
+    },
+    "api/athletes.js": {
+      "maxDuration": 30
     }
   },
   "crons": [
