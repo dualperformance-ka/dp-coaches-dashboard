@@ -52,6 +52,10 @@ function normaliseCode(value) {
   return String(value || '').trim().toUpperCase();
 }
 
+function sanitiseCustomCode(value) {
+  return normaliseCode(value).replace(/[^A-Z0-9]/g, '').slice(0, 24);
+}
+
 function toProfileRow(athlete, goal) {
   const value = (primary, fallback = null) =>
     primary !== undefined && primary !== null && String(primary).trim() !== ''
@@ -158,7 +162,17 @@ async function hasHistory(code) {
 
 async function addAthlete(payload) {
   const roster = await loadRosterRows({ includeArchived: true });
-  const code = nextAvailableCode(payload.name, roster.map(row => row.code));
+  const existingCodes = roster.map(row => row.code);
+  const requestedCode = sanitiseCustomCode(payload.code);
+  const code = requestedCode || nextAvailableCode(payload.name, existingCodes);
+
+  if (requestedCode && requestedCode !== normaliseCode(payload.code)) {
+    throw new Error('Athlete code can only use letters and numbers');
+  }
+  if (!code) throw new Error('Athlete code is required');
+  if (existingCodes.map(normaliseCode).includes(code)) {
+    throw new Error(`Athlete code ${code} is already in use`);
+  }
 
   const [created] = await sb('athletes', {
     method: 'POST',
