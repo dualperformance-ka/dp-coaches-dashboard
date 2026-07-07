@@ -1642,12 +1642,13 @@ body[data-theme="light"] .strava-weekly-strip{background:#fff}
     <div class="ma-add">
       <div class="ma-add-grid">
         <input class="ma-add-name" id="ma-name" placeholder="Athlete name (e.g. Thomas Trinh)" maxlength="120">
+        <input id="ma-code" placeholder="Athlete code / portal password" maxlength="24">
         <input id="ma-start" type="date" title="Start date (optional)">
         <input id="ma-race" placeholder="Race target (optional)" maxlength="200">
         <select id="ma-coach"><option value="karl">Coach: karl</option><option value="alex">Coach: alex</option></select>
         <button class="ma-add-btn" id="ma-add-btn" onclick="maAddAthlete()">+ Add Athlete</button>
       </div>
-      <div class="ma-add-hint">Adding a client creates their athlete portal code here in the dashboard. Removing them takes them off the portal roster while keeping their history.</div>
+      <div class="ma-add-hint">Set the athlete code yourself here. That same code is what they use as their portal password.</div>
       <div class="ma-result" id="ma-result"></div>
     </div>
     <div id="ma-list"><div class="ma-empty">Loading roster…</div></div>
@@ -1688,7 +1689,7 @@ async function fetchAthleteProfilesSB() {
 function maAdminKey(forcePrompt) {
   let k = localStorage.getItem('dp_admin_key') || '';
   if (!k || forcePrompt) {
-    k = (prompt('Admin key (matches ADMIN_KEY in the portal’s Vercel env):') || '').trim();
+    k = (prompt('Admin key (matches ADMIN_KEY in the dashboard Vercel env):') || '').trim();
     if (k) localStorage.setItem('dp_admin_key', k);
   }
   return k.trim();
@@ -1749,20 +1750,23 @@ function renderManageList() {
 async function maAddAthlete() {
   const name = document.getElementById('ma-name').value.trim();
   if (!name) { maStatus('Enter the athlete’s name'); return; }
+  const code = String(document.getElementById('ma-code').value || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (!code) { maStatus('Enter the athlete code / portal password'); return; }
   const btn = document.getElementById('ma-add-btn');
   btn.disabled = true; btn.textContent = 'Adding…';
   try {
     const j = await maPost({
-      action: 'add', name,
+      action: 'add', name, code,
       start_date: document.getElementById('ma-start').value || null,
       race_target: document.getElementById('ma-race').value.trim() || null,
       coach: document.getElementById('ma-coach').value,
     });
     const box = document.getElementById('ma-result');
-    box.innerHTML = `✓ Added <b>${maEsc(name)}</b> — code <code>${maEsc(j.code)}</code>
+    box.innerHTML = `✓ Added <b>${maEsc(name)}</b> — code/password <code>${maEsc(j.code)}</code>
       <button class="ma-btn" style="margin-left:8px" onclick="maCopyText('${maEsc(j.portalLink)}', this)">⧉ Copy portal link</button>`;
     box.style.display = 'block';
     document.getElementById('ma-name').value = '';
+    document.getElementById('ma-code').value = '';
     document.getElementById('ma-start').value = '';
     document.getElementById('ma-race').value = '';
     await loadRoster(); renderManageList();
