@@ -159,7 +159,6 @@ async function hasHistory(code) {
 async function addAthlete(payload) {
   const roster = await loadRosterRows({ includeArchived: true });
   const code = nextAvailableCode(payload.name, roster.map(row => row.code));
-  const now = new Date().toISOString();
 
   const [created] = await sb('athletes', {
     method: 'POST',
@@ -172,7 +171,6 @@ async function addAthlete(payload) {
       start_date: payload.start_date ? String(payload.start_date).slice(0, 10) : null,
       race_target: String(payload.race_target || '').trim() || null,
       archived_at: null,
-      updated_at: now,
     },
   });
 
@@ -191,7 +189,6 @@ async function addAthlete(payload) {
 async function updateAthlete(code, fields) {
   const clean = allowedFields(fields);
   if (!Object.keys(clean).length) throw new Error('No editable fields supplied');
-  clean.updated_at = new Date().toISOString();
 
   const rows = await sb(`athletes?code=eq.${encodeURIComponent(normaliseCode(code))}`, {
     method: 'PATCH',
@@ -219,7 +216,6 @@ async function archiveAthlete(code) {
     body: {
       active: false,
       archived_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
     },
   });
 
