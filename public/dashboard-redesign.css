@@ -468,13 +468,12 @@ body[data-theme="light"] header {
   object-position: center;
   content: url("/dp-mark-light.png");
   filter: drop-shadow(0 10px 18px rgba(0,0,0,.18));
-  transform: scale(1);
-  transform-origin: center;
 }
 body[data-theme="light"] .logo-mark {
   content: url("/dp-mark-dark.png");
   filter: none;
-  transform: scale(1.14);
+  width: 40px;
+  height: 40px;
 }
 .logo-text { gap: 0; min-width: 0; display: flex; align-items: center; }
 .logo { display: none; }
@@ -611,7 +610,7 @@ body[data-theme="light"] .theme-btn.active { color: #fff; background: #146b90; }
   .logo-block, .dp-page-intro, .dash-week-nav, .card-head-top, .fpc-hero-top { align-items: flex-start; }
   .logo-block { width: 100%; }
   .logo-mark { height: 30px; width: 30px; }
-  body[data-theme="light"] .logo-mark { transform: scale(1.12); }
+  body[data-theme="light"] .logo-mark { width: 35px; height: 35px; }
   .logo-kicker { font-size: 20px; letter-spacing: .07em; }
   .logo-role { font-size: 9px; padding: 6px 10px; }
   .h-right { gap: 8px; }
@@ -780,7 +779,7 @@ body[data-theme="light"] .theme-btn.active { color: #fff; background: #146b90; }
     height: 26px;
     width: 26px;
   }
-  body[data-theme="light"] .logo-mark { transform: scale(1.1); }
+  body[data-theme="light"] .logo-mark { width: 30px; height: 30px; }
   .logo-kicker {
     font-size: 14px;
   }
