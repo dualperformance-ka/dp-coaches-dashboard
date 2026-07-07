@@ -1643,12 +1643,12 @@ body[data-theme="light"] .strava-weekly-strip{background:#fff}
       <div class="ma-add-grid">
         <input class="ma-add-name" id="ma-name" placeholder="Athlete name (e.g. Thomas Trinh)" maxlength="120">
         <input id="ma-code" placeholder="Athlete code / portal password" maxlength="24">
-        <input id="ma-start" type="date" title="Start date (optional)">
+        <input id="ma-start" type="date" title="Discovery start date (optional)" aria-label="Discovery start date">
         <input id="ma-race" placeholder="Race target (optional)" maxlength="200">
         <select id="ma-coach"><option value="karl">Coach: karl</option><option value="alex">Coach: alex</option></select>
         <button class="ma-add-btn" id="ma-add-btn" onclick="maAddAthlete()">+ Add Athlete</button>
       </div>
-      <div class="ma-add-hint">Set the athlete code yourself here. That same code is what they use as their portal password.</div>
+      <div class="ma-add-hint">Set the athlete code yourself here. That same code is what they use as their portal password. The date is their discovery start date, which anchors their week numbering in the portal and dashboard.</div>
       <div class="ma-result" id="ma-result"></div>
     </div>
     <div id="ma-list"><div class="ma-empty">Loading roster…</div></div>
