@@ -1727,6 +1727,7 @@ function renderManageList() {
       <button class="ma-btn" onclick="maCopyLink('${maEsc(a.code)}', this)" title="${maEsc(a.portalLink || '')}">⧉ Link</button>
       <button class="ma-btn" onclick="maToggleActive('${maEsc(a.code)}', ${paused})">${paused ? '▶ Resume' : '⏸ Pause'}</button>
       <button class="ma-btn danger" onclick="maArchive('${maEsc(a.code)}', '${maEsc(a.name)}')">Archive</button>
+      <button class="ma-btn danger" onclick="maDelete('${maEsc(a.code)}', '${maEsc(a.name)}')" title="Hard delete — only allowed when the athlete has no history">✕</button>
     </div>`;
   }).join('');
 }
@@ -1769,6 +1770,15 @@ async function maArchive(code, name) {
     await maPost({ action: 'archive', code });
     await loadRoster(); renderManageList();
     maStatus(code + ' archived', true);
+  } catch (e) { maStatus(e.message); }
+}
+
+async function maDelete(code, name) {
+  if (!confirm('DELETE ' + name + ' (' + code + ') permanently?\n\nOnly works for athletes with NO history (typos / test entries). If they have any logged data the server will refuse — use Archive for real athletes.')) return;
+  try {
+    await maPost({ action: 'delete', code });
+    await loadRoster(); renderManageList();
+    maStatus(code + ' deleted', true);
   } catch (e) { maStatus(e.message); }
 }
 
