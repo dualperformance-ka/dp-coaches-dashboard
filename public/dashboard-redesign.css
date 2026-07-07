@@ -629,14 +629,34 @@ body[data-theme="light"] .theme-btn.active { color: #fff; background: #146b90; }
 @media (max-width: 560px) {
   body { font-size: 14px; }
   header {
-    padding: 12px 12px 10px;
+    display: grid;
+    grid-template-columns: 1fr;
+    align-items: start;
+    justify-content: stretch;
+    padding: 10px 10px 8px;
     min-height: auto;
-    gap: 10px;
+    gap: 8px;
   }
-  .logo-block { gap: 12px; }
-  .logo-text { width: auto; min-width: 0; }
-  .logo-kicker { font-size: 16px; letter-spacing: .06em; white-space: normal; }
-  .logo-role { font-size: 8px; letter-spacing: .14em; padding: 5px 8px; }
+  .logo-block {
+    width: 100%;
+    gap: 10px;
+    align-items: center;
+  }
+  .logo-text {
+    width: auto;
+    min-width: 0;
+    flex: 1;
+  }
+  .logo-kicker {
+    font-size: 15px;
+    letter-spacing: .05em;
+    white-space: nowrap;
+  }
+  .logo-role {
+    font-size: 7px;
+    letter-spacing: .14em;
+    padding: 5px 7px;
+  }
   .h-right {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -644,24 +664,36 @@ body[data-theme="light"] .theme-btn.active { color: #fff; background: #146b90; }
     width: 100%;
     gap: 8px;
   }
-  .coach-select, .updated, .refresh-btn, .gen-btn, .theme-toggle {
+  .coach-select, .updated, .refresh-btn, .gen-btn, .theme-toggle, #manage-athletes-btn {
     width: 100%;
     max-width: none;
     min-width: 0;
+  }
+  #manage-athletes-btn,
+  #gen-btn {
+    display: none !important;
   }
   .updated {
     grid-column: 1 / -1;
     order: -1;
     display: none;
   }
+  .coach-select,
+  .refresh-btn {
+    min-height: 36px;
+    padding-inline: 12px;
+    font-size: 11px;
+  }
   .theme-toggle {
     grid-column: 1 / -1;
     justify-content: space-between;
     display: flex;
+    min-height: 36px;
   }
   .theme-btn { flex: 1 1 0; min-width: 0; }
   .tab-bar {
-    padding-inline: 10px !important;
+    padding-inline: 8px !important;
+    padding-top: 0;
     gap: 4px;
     overflow-x: auto;
     justify-content: flex-start;
@@ -669,16 +701,21 @@ body[data-theme="light"] .theme-btn.active { color: #fff; background: #146b90; }
   }
   .tab-bar::-webkit-scrollbar { display: none; }
   .tab {
+    min-height: 42px;
     padding-inline: 10px;
-    font-size: 12px;
+    font-size: 11px;
     flex: 0 0 auto;
     white-space: nowrap;
   }
+  .tab-badge {
+    font-size: 8px;
+    padding-inline: 6px;
+  }
   .filter-bar {
     grid-template-columns: 1fr;
-    gap: 8px;
+    gap: 7px;
     padding: 10px;
-    margin: 12px 10px 0;
+    margin: 10px 10px 0;
     border-radius: 14px;
   }
   .sf-group {
@@ -692,27 +729,27 @@ body[data-theme="light"] .theme-btn.active { color: #fff; background: #146b90; }
     width: 100%;
   }
   .dp-page-intro {
-    gap: 10px;
-    margin-bottom: 18px;
+    gap: 8px;
+    margin-bottom: 14px;
   }
   .dp-page-title {
-    font-size: 15vw;
-    line-height: .92;
+    font-size: 44px;
+    line-height: .94;
   }
   .dp-page-subtitle {
-    font-size: 13px;
-    line-height: 1.5;
+    font-size: 12px;
+    line-height: 1.45;
   }
   .dp-intro-date {
-    font-size: 10px;
-    padding: 8px 12px;
+    font-size: 9px;
+    padding: 7px 11px;
   }
   .main, .plan-section, .coaches-section, .sched-section {
-    padding: 18px 10px 42px;
+    padding: 14px 10px 36px;
   }
   .dash-week-nav {
-    padding: 12px;
-    gap: 10px;
+    padding: 10px;
+    gap: 8px;
   }
   .dwn-controls {
     width: 100%;
@@ -730,11 +767,11 @@ body[data-theme="light"] .theme-btn.active { color: #fff; background: #146b90; }
     gap: 8px;
   }
   .sum-card {
-    padding: 12px;
+    padding: 10px;
     min-width: 0;
   }
   .sum-num {
-    font-size: 24px;
+    font-size: 21px;
   }
   .cc-panel,
   .card,
@@ -745,26 +782,51 @@ body[data-theme="light"] .theme-btn.active { color: #fff; background: #146b90; }
     border-radius: 14px;
   }
   .cc-hero {
-    padding: 14px;
+    padding: 12px;
   }
   .cc-title {
-    font-size: 24px;
+    font-size: 18px;
+  }
+  .cc-kicker {
+    font-size: 8px;
   }
   .cc-score {
     gap: 6px;
   }
   .cc-score-card {
-    padding: 8px 6px;
+    padding: 7px 5px;
+  }
+  .cc-score-num {
+    font-size: 18px;
+  }
+  .cc-list,
+  .cc-detail,
+  .cc-actions,
+  .cc-side-head {
+    padding-left: 12px;
+    padding-right: 12px;
   }
   .cc-action {
     grid-template-columns: 18px 1fr auto;
-    padding: 8px;
+    padding: 7px;
   }
   .cc-health {
     grid-template-columns: 1fr 1fr;
   }
   .aname {
-    font-size: 22px;
+    font-size: 18px;
+  }
+  .card-head,
+  .sched-card-head {
+    padding: 12px;
+  }
+  .sec,
+  .sched-card-body,
+  .coach-notes,
+  .coach-training,
+  .coach-body-row {
+    padding-left: 12px;
+    padding-right: 12px;
   }
   .sum-card, .dash-week-nav, .cc-panel, .squad-brief, .card, .sched-card, .coach-card { border-radius: 16px; }
   .fpc-photo-grid, .pcard-training, .fpc-nutr-row, .body-grid, .bmet { grid-template-columns: 1fr !important; display: grid; }
@@ -773,7 +835,7 @@ body[data-theme="light"] .theme-btn.active { color: #fff; background: #146b90; }
 
 @media (max-width: 420px) {
   header {
-    padding-inline: 10px;
+    padding-inline: 8px;
   }
   .logo-mark {
     height: 26px;
@@ -781,14 +843,14 @@ body[data-theme="light"] .theme-btn.active { color: #fff; background: #146b90; }
   }
   body[data-theme="light"] .logo-mark { width: 30px; height: 30px; }
   .logo-kicker {
-    font-size: 14px;
+    font-size: 13px;
   }
   .logo-role {
     font-size: 7px;
-    padding: 5px 7px;
+    padding: 4px 6px;
   }
   .h-right {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr 1fr;
   }
   .refresh-btn,
   .coach-select,
@@ -796,7 +858,7 @@ body[data-theme="light"] .theme-btn.active { color: #fff; background: #146b90; }
     min-height: 36px;
   }
   .dp-page-title {
-    font-size: 52px;
+    font-size: 38px;
   }
   .summary-bar {
     grid-template-columns: 1fr 1fr;
