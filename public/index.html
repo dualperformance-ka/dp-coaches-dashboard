@@ -1597,7 +1597,7 @@ body[data-theme="light"] .strava-weekly-strip{background:#fff}
   </div>
 </header>
 
-<!-- ══ MANAGE ATHLETES — Supabase roster (public.athletes) via the portal's /api/athletes ══ -->
+<!-- ══ MANAGE ATHLETES — dashboard-owned Supabase roster (public.athletes) ══ -->
 <style>
 .ma-backdrop{position:fixed;inset:0;z-index:900;display:none;align-items:flex-start;justify-content:center;background:rgba(10,13,16,.72);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);overflow-y:auto;padding:6vh 16px 40px}
 .ma-backdrop.open{display:flex}
@@ -1609,6 +1609,7 @@ body[data-theme="light"] .strava-weekly-strip{background:#fff}
 .ma-close:hover{color:#fff}
 .ma-add{background:rgba(146,210,237,.05);border:1px solid rgba(146,210,237,.14);border-radius:12px;padding:14px;margin-bottom:16px}
 .ma-add-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
+.ma-add-hint{font-size:11px;line-height:1.45;color:rgba(240,237,232,.58);margin-top:8px}
 .ma-add input,.ma-add select{background:rgba(10,13,16,.7);border:1px solid rgba(255,255,255,.1);border-radius:8px;color:#f0ede8;font:inherit;font-size:12.5px;padding:8px 10px;width:100%}
 .ma-add input:focus,.ma-add select:focus{outline:none;border-color:rgba(146,210,237,.5)}
 .ma-add-name{grid-column:1/-1}
@@ -1646,6 +1647,7 @@ body[data-theme="light"] .strava-weekly-strip{background:#fff}
         <select id="ma-coach"><option value="karl">Coach: karl</option><option value="alex">Coach: alex</option></select>
         <button class="ma-add-btn" id="ma-add-btn" onclick="maAddAthlete()">+ Add Athlete</button>
       </div>
+      <div class="ma-add-hint">Adding a client creates their athlete portal code here in the dashboard. Removing them takes them off the portal roster while keeping their history.</div>
       <div class="ma-result" id="ma-result"></div>
     </div>
     <div id="ma-list"><div class="ma-empty">Loading roster…</div></div>
@@ -1654,9 +1656,9 @@ body[data-theme="light"] .strava-weekly-strip{background:#fff}
 </div>
 <script>
 // ── Roster state — Supabase public.athletes is the single source of truth.
-// RLS blocks anon access by design; all reads/writes go through the portal's
-// /api/athletes serverless function (service role key lives in Vercel env).
-const ROSTER_API = 'https://dp-athlete-portal.vercel.app/api/athletes';
+// Reads/writes go through this dashboard's own /api/athletes function so the
+// coaches dashboard now owns client add/remove actions directly.
+const ROSTER_API = '/api/athletes';
 let _roster = [];   // non-archived athletes (active + paused)
 
 async function loadRoster() {
@@ -1669,6 +1671,18 @@ async function loadRoster() {
     _roster = [];
   }
   return _roster;
+}
+
+async function fetchAthleteProfilesSB() {
+  try {
+    const res = await fetch(ROSTER_API + '?action=profiles', { cache: 'no-store' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    return Array.isArray(data.results) ? data.results : [];
+  } catch (error) {
+    console.warn('fetchAthleteProfilesSB failed', error);
+    return [];
+  }
 }
 
 function maAdminKey(forcePrompt) {
@@ -1726,7 +1740,7 @@ function renderManageList() {
       ${paused ? '<span class="ma-paused-tag">Paused</span>' : ''}
       <button class="ma-btn" onclick="maCopyLink('${maEsc(a.code)}', this)" title="${maEsc(a.portalLink || '')}">⧉ Link</button>
       <button class="ma-btn" onclick="maToggleActive('${maEsc(a.code)}', ${paused})">${paused ? '▶ Resume' : '⏸ Pause'}</button>
-      <button class="ma-btn danger" onclick="maArchive('${maEsc(a.code)}', '${maEsc(a.name)}')">Archive</button>
+      <button class="ma-btn danger" onclick="maRemove('${maEsc(a.code)}', '${maEsc(a.name)}')">Remove</button>
       <button class="ma-btn danger" onclick="maDelete('${maEsc(a.code)}', '${maEsc(a.name)}')" title="Hard delete — only allowed when the athlete has no history">✕</button>
     </div>`;
   }).join('');
@@ -1764,12 +1778,12 @@ async function maToggleActive(code, resume) {
   } catch (e) { maStatus(e.message); }
 }
 
-async function maArchive(code, name) {
-  if (!confirm('Archive ' + name + ' (' + code + ')?\n\nThey lose portal access and leave the roster. All their history stays in Supabase (soft archive — nothing is deleted).')) return;
+async function maRemove(code, name) {
+  if (!confirm('Remove ' + name + ' (' + code + ')?\n\nThey will lose portal access and leave the active roster. All history stays in Supabase.')) return;
   try {
-    await maPost({ action: 'archive', code });
+    await maPost({ action: 'remove', code });
     await loadRoster(); renderManageList();
-    maStatus(code + ' archived', true);
+    maStatus(code + ' removed from the portal roster', true);
   } catch (e) { maStatus(e.message); }
 }
 
@@ -2238,7 +2252,6 @@ const DB = {
   sessions:     '1c55a96c-c70b-825b-9bdf-819abea4ef7c',
   body:         '3405a96c-c70b-80a4-b1b9-cf5b9c236f18',
   nutrition:    '3405a96c-c70b-804b-aa9c-f165f2d2e0e9',
-  athletes:     '4a25a96c-c70b-82ff-a679-0139eaa8b458',
   targets:      '3405a96c-c70b-80de-9221-c2a40653277c',
   planning:     '0b85a96c-c70b-8368-98fd-013e0e15c4f2',
   applications: '33f5a96c-c70b-8008-ac37-e11d3b48d8c1',
@@ -4307,7 +4320,7 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [
     if (code) athleteProfiles[code] = r;
   });
   // A coach-set Supabase date is shared with the athlete portal and takes
-  // priority over the legacy Notion profile date.
+  // priority over the roster profile date.
   Object.entries(_startDateOverrides).forEach(([code, date]) => {
     if (date) startDates[code] = date;
   });
@@ -4326,7 +4339,7 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [
   function calcWeekNum(id) {
     if (COACHES.has(id)) return null;
 
-    // Priority 1: effective Start Date (Supabase coach override, then Notion)
+    // Priority 1: effective Start Date (Supabase coach override, then roster profile)
     const sd = startDates[id];
     if (sd) {
       const diffDays = Math.floor((Date.now() - new Date(sd)) / 86400000);
@@ -4340,7 +4353,7 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [
       return Math.floor(diffDays / 7);
     }
 
-    // Priority 2: Date-anchored override — fallback for athletes missing a Notion Start Date.
+    // Priority 2: Date-anchored override — fallback for athletes missing a roster Start Date.
     // anchor.week = the week number that ENDED on anchor.endDate (Sunday).
     // Auto-advances each Monday without manual edits.
     if (WEEK_OVERRIDES.hasOwnProperty(id)) {
@@ -7941,7 +7954,7 @@ async function load({ bust = false } = {}) {
   try {
     const [weeklyNotion, sessionsNotion, bodyNotion, nutritionNotion, athleteDb, targets, planning, applications, weeklySupa, coachDataSB, , libRows, decisionsRes] = await Promise.all([
       fetchDB(DB.weekly, bust), fetchDB(DB.sessions, bust), fetchDB(DB.body, bust),
-      fetchDB(DB.nutrition, bust), fetchDB(DB.athletes, bust), fetchTargetsSB(),
+      fetchDB(DB.nutrition, bust), fetchAthleteProfilesSB(), fetchTargetsSB(),
       fetchPlanningSB(), fetchDB(DB.applications, bust),
       fetchWeeklyFromSupabase(), fetchCoachDataSB(),
       loadSessionLogs(), loadSessionLibrary(),
