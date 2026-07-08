@@ -1651,11 +1651,10 @@ header{background:linear-gradient(180deg,#111 0%,#0a0a0a 100%);border-bottom:1px
 .refresh-btn:hover{border-color:var(--brand-border);color:var(--brand-text)}
 .coach-select:focus{border-color:var(--brand-border)}
 
-/* Clean icon theme toggle (all sizes) */
-.theme-btn{font-size:0;width:28px;height:26px}
-.theme-btn::before{font-size:13px;line-height:1}
-.theme-btn[data-theme="dark"]::before{content:'\263E'}
-.theme-btn[data-theme="light"]::before{content:'\2600'}
+/* Compact text theme toggle (all sizes) */
+.theme-btn{font-size:9px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;width:auto;min-width:0;height:24px;padding:0 10px}
+.theme-btn::before{content:none}
+.theme-btn.active{background:rgba(255,255,255,.2);color:#fff}
 
 /* ── Mobile flow ── */
 @media(max-width:760px){
@@ -1674,7 +1673,7 @@ header{background:linear-gradient(180deg,#111 0%,#0a0a0a 100%);border-bottom:1px
   .refresh-btn{font-size:0;padding:7px 9px}
   .refresh-btn::before{content:'\21BB';font-size:14px}
   .coach-select{font-size:10px;padding:7px 8px;max-width:104px}
-  .theme-btn{width:26px;height:26px}
+  .theme-btn{height:24px;padding:0 8px}
   .tab-bar{top:56px}
   .tab{padding:10px 13px 9px;font-size:11px;min-height:38px}
   .filter-bar{top:88px;padding:8px 12px;gap:8px}
