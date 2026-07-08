@@ -1660,6 +1660,19 @@ body[data-theme="light"] .filter-bar .sort-select{background:rgba(255,255,255,.0
 .filter-bar .sf.sf-amber.active,body[data-theme="light"] .filter-bar .sf.sf-amber.active{background:var(--warn);border-color:var(--warn);color:#fff}
 .filter-bar .sf.sf-green.active,body[data-theme="light"] .filter-bar .sf.sf-green.active{background:var(--ok);border-color:var(--ok);color:#fff}
 .filter-bar .sf:disabled{opacity:.38}
+/* Header controls stay readable on the black strip in light mode */
+body[data-theme="light"] .coach-select,
+body[data-theme="light"] .refresh-btn,
+body[data-theme="light"] .gen-btn{background:rgba(255,255,255,.07);border-color:rgba(255,255,255,.16);color:#eef4f8}
+body[data-theme="light"] .coach-select option{background:#0a0a0a;color:#fff}
+body[data-theme="light"] .coach-select:hover,
+body[data-theme="light"] .refresh-btn:hover,
+body[data-theme="light"] .gen-btn:hover{border-color:rgba(146,210,237,.5);color:#fff;background:rgba(146,210,237,.10)}
+body[data-theme="light"] .updated{color:rgba(231,239,246,.5)}
+body[data-theme="light"] .theme-toggle{background:rgba(255,255,255,.07);border-color:rgba(255,255,255,.14)}
+body[data-theme="light"] .theme-btn{color:rgba(238,244,248,.55)}
+body[data-theme="light"] .theme-btn:hover{color:#fff;background:rgba(255,255,255,.1)}
+body[data-theme="light"] .theme-btn.active{background:rgba(255,255,255,.22);color:#fff}
 
 /* Brand accent — tabs, kickers, focus, cards */
 .tab.active,body[data-theme="light"] .tab.active{border-bottom-color:var(--brand)}
