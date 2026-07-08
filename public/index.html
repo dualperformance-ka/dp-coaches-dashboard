@@ -1639,6 +1639,28 @@ header{background:linear-gradient(180deg,#111 0%,#0a0a0a 100%);border-bottom:1px
 .logo-mark-sm{height:30px;width:auto;display:none}
 .logo-role{font-family:var(--mono);font-size:8px;font-weight:800;text-transform:uppercase;letter-spacing:.18em;color:var(--brand-text);background:var(--brand-bg);border:1px solid var(--brand-border);padding:4px 9px;border-radius:5px;white-space:nowrap;align-self:center}
 
+/* ── Brand strip: header, tab bar & filter bar stay logo-black in both themes ── */
+header,body[data-theme="light"] header{background:linear-gradient(180deg,#111 0%,#0a0a0a 100%);border-bottom:1px solid var(--brand-border);backdrop-filter:none;-webkit-backdrop-filter:none}
+.tab-bar,body[data-theme="light"] .tab-bar{background:rgba(10,10,10,.96);border-bottom-color:rgba(121,195,232,.10)}
+body[data-theme="light"] .tab{color:rgba(244,248,251,.62)}
+body[data-theme="light"] .tab:hover{color:rgba(255,255,255,.86)}
+body[data-theme="light"] .tab.active{color:#fff}
+.filter-bar,body[data-theme="light"] .filter-bar{background:linear-gradient(180deg,#14161a,#0e1013);border:1px solid rgba(146,210,237,.14);box-shadow:0 14px 32px rgba(0,0,0,.28);backdrop-filter:none;-webkit-backdrop-filter:none}
+.filter-bar .search-input,.filter-bar .sort-select,
+body[data-theme="light"] .filter-bar .search-input,
+body[data-theme="light"] .filter-bar .sort-select{background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.14);color:#eef4f8}
+.filter-bar .search-input::placeholder{color:rgba(238,244,248,.45)}
+.filter-bar .sort-select option{color:#14161a;background:#fff}
+.filter-bar .filter-label,body[data-theme="light"] .filter-bar .filter-label{color:rgba(238,244,248,.5)}
+.filter-bar .filter-divider,body[data-theme="light"] .filter-bar .filter-divider{background:rgba(255,255,255,.12)}
+.filter-bar .sf,body[data-theme="light"] .filter-bar .sf{background:transparent;border-color:rgba(255,255,255,.16);color:rgba(238,244,248,.66)}
+.filter-bar .sf:hover,body[data-theme="light"] .filter-bar .sf:hover{border-color:rgba(146,210,237,.5);color:#d3eef9}
+.filter-bar .sf.active,body[data-theme="light"] .filter-bar .sf.active{background:#92d2ed;border-color:#92d2ed;color:#061019}
+.filter-bar .sf.sf-red.active,body[data-theme="light"] .filter-bar .sf.sf-red.active{background:var(--alert);border-color:var(--alert);color:#fff}
+.filter-bar .sf.sf-amber.active,body[data-theme="light"] .filter-bar .sf.sf-amber.active{background:var(--warn);border-color:var(--warn);color:#fff}
+.filter-bar .sf.sf-green.active,body[data-theme="light"] .filter-bar .sf.sf-green.active{background:var(--ok);border-color:var(--ok);color:#fff}
+.filter-bar .sf:disabled{opacity:.38}
+
 /* Brand accent — tabs, kickers, focus, cards */
 .tab.active,body[data-theme="light"] .tab.active{border-bottom-color:var(--brand)}
 .tab.active{color:#fff}
