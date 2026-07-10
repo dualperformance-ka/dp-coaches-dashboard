@@ -81,6 +81,16 @@ async function handleSend(req, res) {
   });
 
   const data = await response.json().catch(() => ({ ok: false, error: `Portal returned HTTP ${response.status}` }));
+
+  // Don't pass the portal's 401 through as-is — the dashboard UI treats 401
+  // as "admin key rejected". A portal 401 means the NOTIFY_SECRET values on
+  // the two Vercel projects don't match.
+  if (response.status === 401) {
+    return res.status(502).json({
+      ok: false,
+      error: 'Portal rejected the NOTIFY_SECRET — set the SAME value on both Vercel projects and redeploy both (env changes only apply on the next deploy)',
+    });
+  }
   return res.status(response.status).json(data);
 }
 
