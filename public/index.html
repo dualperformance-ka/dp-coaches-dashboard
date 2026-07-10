@@ -1958,6 +1958,9 @@ function refreshRosterDrivenUI() {
   <button class="tab" id="tab-notif-btn" onclick="switchTab('notifications')">
     New <span class="tab-badge" id="tab-notif-count">—</span>
   </button>
+  <button class="tab" id="tab-send-btn" onclick="switchTab('send')">
+    Notify 🔔
+  </button>
 </div>
 
 <!-- Filter bar (athletes only) -->
@@ -2341,6 +2344,13 @@ function refreshRosterDrivenUI() {
 <!-- NOTIFICATIONS TAB -->
 <div id="tab-notif-content" style="display:none">
   <div class="notif-section">
+    <div id="notif-grid"></div>
+  </div>
+</div>
+
+<!-- NOTIFY (SEND) TAB -->
+<div id="tab-send-content" style="display:none">
+  <div class="notif-section">
     <div class="cn-composer">
       <div class="cn-title"><span class="cn-dot"></span>Send Portal Notification</div>
       <div class="cn-row">
@@ -2353,7 +2363,6 @@ function refreshRosterDrivenUI() {
         <span class="cn-status" id="cn-status"></span>
       </div>
     </div>
-    <div id="notif-grid"></div>
   </div>
 </div>
 
@@ -7958,7 +7967,7 @@ async function cnSend() {
 // Quick-send from an athlete's full profile: jump to the composer pre-targeted.
 function fpNotify(id) {
   hideFP();
-  switchTab('notifications');
+  switchTab('send');
   Promise.resolve(cnPopulate()).then(() => {
     const sel = document.getElementById('cn-recipient');
     if (sel) {
@@ -8052,10 +8061,10 @@ async function decideApplication(notionId, name, decision) {
 // ── Tab switching ─────────────────────────────────────────────────────────────
 function switchTab(tab) {
   const idMap = { applications: 'apps', notifications: 'notif', nutrition: 'nut' };
-  const tabs = ['athletes','planning','nutrition','coaches','sync','applications','notifications'];
+  const tabs = ['athletes','planning','nutrition','coaches','sync','applications','notifications','send'];
   if (tab === 'planning') renderPlanning();
   if (tab === 'nutrition') renderNutritionTab();
-  if (tab === 'notifications') cnPopulate();
+  if (tab === 'send') cnPopulate();
   tabs.forEach(t => {
     const key = idMap[t] || t;
     const btn     = document.getElementById(`tab-${key}-btn`);
