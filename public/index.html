@@ -63,6 +63,23 @@ header{background:#0a0a0a;padding:0 18px;height:62px;display:flex;align-items:ce
 .notif-dot{width:6px;height:6px;border-radius:50%;background:#f59e0b;flex-shrink:0}
 .notif-mark-seen{background:transparent;border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.4);font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.08em;padding:3px 10px;border-radius:4px;cursor:pointer;transition:all .15s;margin-left:auto}
 .notif-mark-seen:hover{border-color:rgba(255,255,255,.35);color:rgba(255,255,255,.7)}
+/* ── Custom notification composer ── */
+.cn-composer{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:16px;margin-bottom:24px}
+.cn-title{font-family:var(--mono);font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.1em;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.cn-dot{width:6px;height:6px;border-radius:50%;background:#3b82f6;flex-shrink:0}
+.cn-row{display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+.cn-row select,.cn-row input,.cn-composer textarea{background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.12);color:rgba(255,255,255,.85);font-family:var(--mono);font-size:12px;padding:8px 10px;border-radius:6px;outline:none}
+.cn-row select:focus,.cn-row input:focus,.cn-composer textarea:focus{border-color:rgba(59,130,246,.5)}
+.cn-row select{min-width:220px}
+.cn-row input{flex:1;min-width:180px}
+.cn-composer textarea{width:100%;min-height:64px;resize:vertical;box-sizing:border-box;margin-bottom:10px}
+.cn-foot{display:flex;align-items:center;gap:12px}
+.cn-send-btn{background:rgba(59,130,246,.15);border:1px solid rgba(59,130,246,.4);color:#60a5fa;font-family:var(--mono);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;padding:7px 18px;border-radius:5px;cursor:pointer;transition:all .15s}
+.cn-send-btn:hover{background:rgba(59,130,246,.25)}
+.cn-send-btn:disabled{opacity:.4;cursor:default}
+.cn-status{font-family:var(--mono);font-size:10px;color:var(--dim);letter-spacing:.05em}
+.cn-status.ok{color:#4ade80}
+.cn-status.err{color:#f87171}
 .app-actions{display:flex;gap:8px;padding:12px 16px 14px;border-top:1px solid rgba(255,255,255,.06)}
 .app-accept-btn{background:rgba(245,158,11,.15);border:1px solid rgba(245,158,11,.35);color:#f59e0b;font-family:var(--mono);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;padding:6px 16px;border-radius:5px;cursor:pointer;transition:all .15s}
 .app-accept-btn:hover{background:rgba(245,158,11,.28);border-color:#f59e0b}
@@ -2324,6 +2341,18 @@ function refreshRosterDrivenUI() {
 <!-- NOTIFICATIONS TAB -->
 <div id="tab-notif-content" style="display:none">
   <div class="notif-section">
+    <div class="cn-composer">
+      <div class="cn-title"><span class="cn-dot"></span>Send Portal Notification</div>
+      <div class="cn-row">
+        <select id="cn-recipient"><option value="ALL">All athletes</option></select>
+        <input id="cn-msg-title" type="text" maxlength="80" placeholder="Title (optional — defaults to 'Message from your coach')">
+      </div>
+      <textarea id="cn-msg-body" maxlength="500" placeholder="Message — lands as a push notification on the athlete's device, same as a coach update ping"></textarea>
+      <div class="cn-foot">
+        <button class="cn-send-btn" id="cn-send-btn" onclick="cnSend()">Send Notification</button>
+        <span class="cn-status" id="cn-status"></span>
+      </div>
+    </div>
     <div id="notif-grid"></div>
   </div>
 </div>
@@ -6594,6 +6623,7 @@ function buildFPCard(a, weekOffset = 0) {
         <div class="fpc-hero-actions">
           <button class="fpc-act-btn" onclick="copyDM('${esc(a.id)}')">💬 DM</button>
           <button class="fpc-act-btn" onclick="fpPlanWeek('${esc(a.id)}')">⚏ Plan Week</button>
+          <button class="fpc-act-btn" onclick="fpNotify('${esc(a.id)}')">🔔 Notify</button>
         </div>
       </div>
       ${ctx.selectedWeekNum !== null ? ctx.selectedWeekNum === 0 ? `<div class="fpc-week-badge"><div class="fpc-week-num" style="font-size:24px;letter-spacing:.04em">DISC</div><div class="fpc-week-lbl">WEEK</div></div>` : `<div class="fpc-week-badge"><div class="fpc-week-num">${ctx.selectedWeekNum}</div><div class="fpc-week-lbl">Week</div></div>` : ''}
@@ -7827,6 +7857,121 @@ function renderApplications(apps, decisions = []) {
   }).join('');
 }
 
+// ── Custom portal notification sender ─────────────────────────────────────────
+// Sends instant web pushes to athlete portals via /api/notify — same pipeline
+// as the automatic "Coach update" pings, but with a coach-written message.
+let _cnRecipients = null; // cached [{code, name, devices}]
+
+async function cnPopulate(force = false) {
+  const sel = document.getElementById('cn-recipient');
+  if (!sel || (_cnRecipients && !force)) return;
+
+  // Try the API for accurate codes + device counts (only if an admin key is
+  // already stored — never prompt just for populating the dropdown).
+  const storedKey = (localStorage.getItem('dp_admin_key') || '').trim();
+  if (storedKey) {
+    try {
+      const r = await fetch('/api/notify', { headers: { 'x-admin-key': storedKey } });
+      if (r.ok) {
+        const data = await r.json();
+        if (data.ok && Array.isArray(data.recipients)) {
+          _cnRecipients = data.recipients;
+          const opts = ['<option value="ALL">All athletes' +
+            (data.totalDevices ? ` (${data.totalDevices} device${data.totalDevices === 1 ? '' : 's'})` : '') +
+            '</option>'];
+          for (const rec of data.recipients) {
+            const label = `${rec.name || rec.code}${rec.devices ? '' : ' — no devices subscribed'}`;
+            opts.push(`<option value="${esc(rec.code)}">${esc(label)}</option>`);
+          }
+          const prev = sel.value;
+          sel.innerHTML = opts.join('');
+          if ([...sel.options].some(o => o.value === prev)) sel.value = prev;
+          return;
+        }
+      }
+    } catch (_) { /* fall through to roster fallback */ }
+  }
+
+  // Fallback: populate from the loaded roster (server resolves name → code).
+  if (_allAthletes.length && sel.options.length <= 1) {
+    const opts = ['<option value="ALL">All athletes</option>'];
+    for (const a of _allAthletes) opts.push(`<option value="${esc(a.id)}">${esc(a.id)}</option>`);
+    sel.innerHTML = opts.join('');
+  }
+}
+
+async function cnSend() {
+  const sel = document.getElementById('cn-recipient');
+  const titleEl = document.getElementById('cn-msg-title');
+  const bodyEl = document.getElementById('cn-msg-body');
+  const btn = document.getElementById('cn-send-btn');
+  const status = document.getElementById('cn-status');
+
+  const message = (bodyEl.value || '').trim();
+  if (!message) {
+    status.className = 'cn-status err';
+    status.textContent = 'Write a message first';
+    bodyEl.focus();
+    return;
+  }
+
+  const key = maAdminKey(false);
+  if (!key) { status.className = 'cn-status err'; status.textContent = 'Admin key required'; return; }
+
+  btn.disabled = true;
+  status.className = 'cn-status';
+  status.textContent = 'Sending…';
+
+  try {
+    const r = await fetch('/api/notify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-admin-key': key },
+      body: JSON.stringify({ code: sel.value, title: (titleEl.value || '').trim(), message }),
+    });
+    const data = await r.json().catch(() => ({}));
+
+    if (r.status === 401) {
+      localStorage.removeItem('dp_admin_key');
+      status.className = 'cn-status err';
+      status.textContent = 'Admin key rejected — click Send to re-enter it';
+      return;
+    }
+    if (!r.ok || !data.ok) {
+      status.className = 'cn-status err';
+      status.textContent = data.error || `Send failed (HTTP ${r.status})`;
+      return;
+    }
+
+    status.className = 'cn-status ok';
+    status.textContent = `Sent to ${data.athletes} athlete${data.athletes === 1 ? '' : 's'} · ${data.sent} device${data.sent === 1 ? '' : 's'}` +
+      (data.failed && data.failed.length ? ` · ${data.failed.length} failed` : '');
+    titleEl.value = '';
+    bodyEl.value = '';
+  } catch (error) {
+    status.className = 'cn-status err';
+    status.textContent = String(error.message || error);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// Quick-send from an athlete's full profile: jump to the composer pre-targeted.
+function fpNotify(id) {
+  hideFP();
+  switchTab('notifications');
+  Promise.resolve(cnPopulate()).then(() => {
+    const sel = document.getElementById('cn-recipient');
+    if (sel) {
+      const want = String(id || '').toUpperCase();
+      const match = [...sel.options].find(o =>
+        o.value.toUpperCase() === want || o.textContent.toUpperCase().includes(want));
+      if (match) sel.value = match.value;
+    }
+    const bodyEl = document.getElementById('cn-msg-body');
+    if (bodyEl) bodyEl.focus();
+  });
+}
+
 // ── renderNotifications ───────────────────────────────────────────────────────
 function renderNotifications(applications, decisions = []) {
   const grid = document.getElementById('notif-grid');
@@ -7910,6 +8055,7 @@ function switchTab(tab) {
   const tabs = ['athletes','planning','nutrition','coaches','sync','applications','notifications'];
   if (tab === 'planning') renderPlanning();
   if (tab === 'nutrition') renderNutritionTab();
+  if (tab === 'notifications') cnPopulate();
   tabs.forEach(t => {
     const key = idMap[t] || t;
     const btn     = document.getElementById(`tab-${key}-btn`);
