@@ -223,6 +223,29 @@ async function updateAthlete(code, fields) {
   };
 }
 
+// Change an athlete's code (portal password) atomically across every table
+// that references it, via the rename_athlete_code() Postgres function.
+// The function suspends the coach-change triggers during the rename so
+// athletes don't get spurious "Coach update" pushes, and rolls everything
+// back if anything fails.
+async function recodeAthlete(oldCode, newCode) {
+  const from = normaliseCode(oldCode);
+  const to = sanitiseCustomCode(newCode);
+  if (!from) throw new Error('Current athlete code is required');
+  if (!to || to.length < 2) throw new Error('New code must be at least 2 letters/numbers');
+
+  const result = await sb('rpc/rename_athlete_code', {
+    method: 'POST',
+    body: { old_code: from, new_code: to },
+  });
+
+  return {
+    ok: true,
+    ...(result && typeof result === 'object' ? result : {}),
+    portalLink: athletePortalLink(to),
+  };
+}
+
 async function archiveAthlete(code) {
   const rows = await sb(`athletes?code=eq.${encodeURIComponent(normaliseCode(code))}`, {
     method: 'PATCH',
@@ -306,6 +329,12 @@ export default async function handler(req, res) {
     if (action === 'update') {
       if (!req.body?.code) return res.status(400).json({ ok: false, error: 'Athlete code is required' });
       return res.status(200).json(await updateAthlete(req.body.code, req.body.fields || {}));
+    }
+
+    if (action === 'recode') {
+      if (!req.body?.code) return res.status(400).json({ ok: false, error: 'Athlete code is required' });
+      if (!req.body?.new_code) return res.status(400).json({ ok: false, error: 'New code is required' });
+      return res.status(200).json(await recodeAthlete(req.body.code, req.body.new_code));
     }
 
     if (action === 'archive' || action === 'remove') {
