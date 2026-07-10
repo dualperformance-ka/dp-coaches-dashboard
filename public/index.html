@@ -1854,6 +1854,7 @@ function renderManageList() {
       <div class="ma-name" title="${maEsc(a.name)}">${maEsc(a.name)}</div>
       <span class="ma-code">${maEsc(a.code)}</span>
       ${paused ? '<span class="ma-paused-tag">Paused</span>' : ''}
+      <button class="ma-btn" onclick="maRename('${maEsc(a.code)}')" title="Edit athlete name">✎ Edit</button>
       <button class="ma-btn" onclick="maCopyLink('${maEsc(a.code)}', this)" title="${maEsc(a.portalLink || '')}">⧉ Link</button>
       <button class="ma-btn" onclick="maToggleActive('${maEsc(a.code)}', ${paused})">${paused ? '▶ Resume' : '⏸ Pause'}</button>
       <button class="ma-btn danger" onclick="maRemove('${maEsc(a.code)}', '${maEsc(a.name)}')">Remove</button>
@@ -1887,6 +1888,18 @@ async function maAddAthlete() {
     await loadRoster(); renderManageList();
   } catch (e) { maStatus(e.message); }
   btn.disabled = false; btn.textContent = '+ Add Athlete';
+}
+
+async function maRename(code) {
+  const a = _roster.find(x => x.code === code);
+  const current = (a && a.name) || '';
+  const name = (window.prompt('New name for ' + code + ':', current) || '').trim();
+  if (!name || name === current) return;
+  try {
+    await maPost({ action: 'update', code, fields: { name } });
+    await loadRoster(); renderManageList();
+    maStatus(code + ' renamed to ' + name, true);
+  } catch (e) { maStatus(e.message); }
 }
 
 async function maToggleActive(code, resume) {
