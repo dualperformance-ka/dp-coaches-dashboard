@@ -7906,31 +7906,28 @@ async function cnPopulate(force = false) {
   const sel = document.getElementById('cn-recipient');
   if (!sel || (_cnRecipients && !force)) return;
 
-  // Try the API for accurate codes + device counts (only if an admin key is
-  // already stored — never prompt just for populating the dropdown).
-  const storedKey = (localStorage.getItem('dp_admin_key') || '').trim();
-  if (storedKey) {
-    try {
-      const r = await fetch('/api/notify', { headers: { 'x-admin-key': storedKey } });
-      if (r.ok) {
-        const data = await r.json();
-        if (data.ok && Array.isArray(data.recipients)) {
-          _cnRecipients = data.recipients;
-          const opts = ['<option value="ALL">All athletes' +
-            (data.totalDevices ? ` (${data.totalDevices} device${data.totalDevices === 1 ? '' : 's'})` : '') +
-            '</option>'];
-          for (const rec of data.recipients) {
-            const label = `${rec.name || rec.code}${rec.devices ? '' : ' — no devices subscribed'}`;
-            opts.push(`<option value="${esc(rec.code)}">${esc(label)}</option>`);
-          }
-          const prev = sel.value;
-          sel.innerHTML = opts.join('');
-          if ([...sel.options].some(o => o.value === prev)) sel.value = prev;
-          return;
+  // Full recipient list (names + subscribed device counts). The GET endpoint
+  // is public — same exposure as GET /api/athletes — so no admin key needed.
+  try {
+    const r = await fetch('/api/notify', { cache: 'no-store' });
+    if (r.ok) {
+      const data = await r.json();
+      if (data.ok && Array.isArray(data.recipients)) {
+        _cnRecipients = data.recipients;
+        const opts = ['<option value="ALL">All athletes' +
+          (data.totalDevices ? ` (${data.totalDevices} device${data.totalDevices === 1 ? '' : 's'})` : '') +
+          '</option>'];
+        for (const rec of data.recipients) {
+          const label = `${rec.name || rec.code}${rec.devices ? '' : ' — no devices subscribed'}`;
+          opts.push(`<option value="${esc(rec.code)}">${esc(label)}</option>`);
         }
+        const prev = sel.value;
+        sel.innerHTML = opts.join('');
+        if ([...sel.options].some(o => o.value === prev)) sel.value = prev;
+        return;
       }
-    } catch (_) { /* fall through to roster fallback */ }
-  }
+    }
+  } catch (_) { /* fall through to roster fallback */ }
 
   // Fallback: populate from the loaded roster (server resolves name → code).
   if (_allAthletes.length && sel.options.length <= 1) {
