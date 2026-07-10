@@ -173,3 +173,25 @@
     position: static;
   }
 }
+
+/* ============================================
+   PREMIUM TYPE POLISH — Geist Mono / Barlow Semi Condensed
+   ============================================ */
+
+/* Tabular numerals: every metric aligns to the grid, numbers stop jittering on refresh */
+body{
+  font-variant-numeric:tabular-nums;
+  font-feature-settings:"tnum" 1,"ss01" 1;
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+  text-rendering:optimizeLegibility;
+}
+
+/* Geist Mono runs slightly wide vs DM Mono — pull data tracking in for a tighter, engineered feel */
+[style*="var(--mono)"],.tval{letter-spacing:-0.01em}
+
+/* Condensed headings: semi-condensed needs a touch less squeeze-compensation than full condensed */
+h1,h2,h3,[style*="var(--cond)"]{letter-spacing:0.01em}
+
+/* Uppercase micro-labels get airline-ticket tracking — the single biggest premium tell */
+[class*="label"],[class*="eyebrow"],th{letter-spacing:0.09em}
