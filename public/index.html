@@ -1852,7 +1852,7 @@ function renderManageList() {
     return `<div class="ma-row${paused ? ' paused' : ''}">
       <div class="ma-dot"></div>
       <div class="ma-name" title="${maEsc(a.name)}">${maEsc(a.name)}</div>
-      <span class="ma-code">${maEsc(a.code)}</span>
+      <span class="ma-code" onclick="maRecode('${maEsc(a.code)}')" style="cursor:pointer" title="Click to change the code (portal password)">${maEsc(a.code)}</span>
       ${paused ? '<span class="ma-paused-tag">Paused</span>' : ''}
       <button class="ma-btn" onclick="maRename('${maEsc(a.code)}')" title="Edit athlete name">✎ Edit</button>
       <button class="ma-btn" onclick="maCopyLink('${maEsc(a.code)}', this)" title="${maEsc(a.portalLink || '')}">⧉ Link</button>
@@ -1899,6 +1899,24 @@ async function maRename(code) {
     await maPost({ action: 'update', code, fields: { name } });
     await loadRoster(); renderManageList();
     maStatus(code + ' renamed to ' + name, true);
+  } catch (e) { maStatus(e.message); }
+}
+
+async function maRecode(code) {
+  const entered = (window.prompt(
+    'New code / portal password for ' + code + ':\n\n' +
+    'This renames their code across ALL history (logs, sessions, check-ins, notifications) in one atomic operation. ' +
+    'Their old code and portal link stop working immediately — send them the new one.', code) || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (!entered || entered === code) return;
+  if (!confirm('Change ' + code + ' → ' + entered + '?\n\nThe athlete must log in with the new code from now on.')) return;
+  try {
+    const j = await maPost({ action: 'recode', code, new_code: entered });
+    await loadRoster(); renderManageList();
+    const box = document.getElementById('ma-result');
+    box.innerHTML = `✓ Code changed to <code>${maEsc(entered)}</code>
+      <button class="ma-btn" style="margin-left:8px" onclick="maCopyText('${maEsc(j.portalLink || '')}', this)">⧉ Copy new portal link</button>`;
+    box.style.display = 'block';
+    maStatus('', true);
   } catch (e) { maStatus(e.message); }
 }
 
