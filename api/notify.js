@@ -80,6 +80,10 @@ async function handleSend(req, res) {
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${secret}`,
+      // Authorization gets stripped if the portal URL redirects to another
+      // domain (fetch drops it on cross-origin redirects). Custom headers
+      // survive, and the portal accepts this one too.
+      'x-notify-secret': secret,
     },
     body: JSON.stringify({ code, title, message }),
   });
