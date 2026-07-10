@@ -99,8 +99,10 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   try {
-    requireAdmin(req);
+    // GET (recipient list) is public — same exposure as GET /api/athletes.
+    // POST (actually sending) requires the admin key.
     if (req.method === 'GET') return await handleRecipients(req, res);
+    requireAdmin(req);
     if (req.method === 'POST') return await handleSend(req, res);
     return res.status(405).json({ ok: false, error: 'Method not allowed' });
   } catch (error) {
