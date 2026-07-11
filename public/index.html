@@ -1705,8 +1705,12 @@ body[data-theme="light"] .strava-weekly-strip{background:#fff}
 .ma-add-btn:disabled{opacity:.5;cursor:wait}
 .ma-result{display:none;margin-top:10px;background:rgba(74,222,128,.08);border:1px solid rgba(74,222,128,.25);border-radius:8px;padding:10px;font-size:12px;color:#4ade80}
 .ma-result code{font-family:var(--mono);color:#92d2ed;font-size:12px}
-.ma-row{display:flex;align-items:center;gap:10px;padding:10px 4px;border-bottom:1px solid rgba(255,255,255,.06)}
+/* Two-line rows: identity (name/code/status) on top, actions below — so long
+   names are never crushed by the button cluster. */
+.ma-row{display:block;padding:11px 4px;border-bottom:1px solid rgba(255,255,255,.06)}
 .ma-row:last-child{border-bottom:none}
+.ma-row-top{display:flex;align-items:center;gap:9px;min-width:0}
+.ma-row-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px;padding-left:17px}
 .ma-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;background:#92d2ed;box-shadow:0 0 8px rgba(146,210,237,.6)}
 .ma-row.paused .ma-dot{background:#f59e0b;box-shadow:0 0 8px rgba(245,158,11,.5)}
 .ma-name{font-family:var(--cond);font-size:15px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:#f0ede8;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -1942,17 +1946,21 @@ function renderManageList() {
       ? `<span class="ma-mail linked" title="${maEsc(a.email || '')} — signed in with email">✉ Linked</span>`
       : (a.email ? `<span class="ma-mail invited" title="${maEsc(a.email)} — hasn’t signed in with email yet">✉ Invited</span>` : '');
     return `<div class="ma-row${paused ? ' paused' : ''}">
-      <div class="ma-dot"></div>
-      <div class="ma-name" title="${maEsc(a.name)}">${maEsc(a.name)}</div>
-      <span class="ma-code" onclick="maRecode('${maEsc(a.code)}')" style="cursor:pointer" title="Click to change the code (portal password)">${maEsc(a.code)}</span>
-      ${mailChip}
-      ${paused ? '<span class="ma-paused-tag">Paused</span>' : ''}
-      <button class="ma-btn" onclick="maSetEmail('${maEsc(a.code)}')" title="${a.email ? 'Change or clear their sign-in email' : 'Set an email to enable email sign-in'}">✉ Email</button>
-      <button class="ma-btn" onclick="maRename('${maEsc(a.code)}')" title="Edit athlete name">✎ Edit</button>
-      <button class="ma-btn" onclick="maCopyLink('${maEsc(a.code)}', this)" title="${maEsc(a.portalLink || '')}">⧉ Link</button>
-      <button class="ma-btn" onclick="maToggleActive('${maEsc(a.code)}', ${paused})">${paused ? '▶ Resume' : '⏸ Pause'}</button>
-      <button class="ma-btn danger" onclick="maRemove('${maEsc(a.code)}', '${maEsc(a.name)}')">Remove</button>
-      <button class="ma-btn danger" onclick="maDelete('${maEsc(a.code)}', '${maEsc(a.name)}')" title="Hard delete — only allowed when the athlete has no history">✕</button>
+      <div class="ma-row-top">
+        <div class="ma-dot"></div>
+        <div class="ma-name" title="${maEsc(a.name)}">${maEsc(a.name)}</div>
+        <span class="ma-code" onclick="maRecode('${maEsc(a.code)}')" style="cursor:pointer" title="Click to change the code (portal password)">${maEsc(a.code)}</span>
+        ${mailChip}
+        ${paused ? '<span class="ma-paused-tag">Paused</span>' : ''}
+      </div>
+      <div class="ma-row-actions">
+        <button class="ma-btn" onclick="maSetEmail('${maEsc(a.code)}')" title="${a.email ? 'Change or clear their sign-in email' : 'Set an email to enable email sign-in'}">✉ Email</button>
+        <button class="ma-btn" onclick="maRename('${maEsc(a.code)}')" title="Edit athlete name">✎ Edit</button>
+        <button class="ma-btn" onclick="maCopyLink('${maEsc(a.code)}', this)" title="${maEsc(a.portalLink || '')}">⧉ Link</button>
+        <button class="ma-btn" onclick="maToggleActive('${maEsc(a.code)}', ${paused})">${paused ? '▶ Resume' : '⏸ Pause'}</button>
+        <button class="ma-btn danger" onclick="maRemove('${maEsc(a.code)}', '${maEsc(a.name)}')">Remove</button>
+        <button class="ma-btn danger" onclick="maDelete('${maEsc(a.code)}', '${maEsc(a.name)}')" title="Hard delete — only allowed when the athlete has no history">✕</button>
+      </div>
     </div>`;
   }).join('');
 }
