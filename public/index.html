@@ -1719,6 +1719,10 @@ body[data-theme="light"] .strava-weekly-strip{background:#fff}
 .ma-btn.copied{border-color:rgba(74,222,128,.6);color:#4ade80}
 .ma-status{font-size:11.5px;color:#f87171;min-height:16px;margin-top:10px;text-align:center}
 .ma-empty{color:rgba(240,237,232,.4);font-size:12px;text-align:center;padding:18px 0}
+/* Email sign-in enrolment status: linked (signed in) / invited (email set, not yet signed in) */
+.ma-mail{font-family:var(--mono);font-size:8.5px;text-transform:uppercase;letter-spacing:.08em;border-radius:10px;padding:2px 7px;flex-shrink:0;cursor:default}
+.ma-mail.linked{color:#4ade80;background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.3)}
+.ma-mail.invited{color:#fbbf24;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.25)}
 @media(max-width:560px){.ma-add-grid{grid-template-columns:1fr}}
 
 /* ═══════════════ DP REFRESH — branding, accents & mobile flow ═══════════════ */
@@ -1841,10 +1845,11 @@ body[data-theme="light"] .theme-btn.active{background:rgba(255,255,255,.22);colo
         <input id="ma-code" placeholder="Athlete code / portal password" maxlength="24">
         <input id="ma-start" type="date" title="Discovery start date (optional)" aria-label="Discovery start date">
         <input id="ma-race" placeholder="Race target (optional)" maxlength="200">
+        <input class="ma-add-name" id="ma-email" type="email" placeholder="Email (optional — enables email sign-in)" maxlength="254">
         <select id="ma-coach"><option value="karl">Coach: karl</option><option value="alex">Coach: alex</option></select>
         <button class="ma-add-btn" id="ma-add-btn" onclick="maAddAthlete()">+ Add Athlete</button>
       </div>
-      <div class="ma-add-hint">Set the athlete code yourself here. That same code is what they use as their portal password. The date is their discovery start date, which anchors their week numbering in the portal and dashboard.</div>
+      <div class="ma-add-hint">Set the athlete code yourself here. That same code is what they use as their portal password. The date is their discovery start date, which anchors their week numbering in the portal and dashboard. Add an email to let them sign in to the portal with a one-time email code — they link automatically on their first sign-in (code keeps working too).</div>
       <div class="ma-result" id="ma-result"></div>
     </div>
     <div id="ma-list"><div class="ma-empty">Loading roster…</div></div>
@@ -1930,11 +1935,19 @@ function renderManageList() {
   if (!_roster.length) { el.innerHTML = '<div class="ma-empty">No athletes in the roster yet.</div>'; return; }
   el.innerHTML = _roster.map(a => {
     const paused = a.active === false;
+    // Email sign-in status: linked = signed in at least once (auth_user_id
+    // set); invited = email on file, awaiting first sign-in; neither = legacy
+    // code-only athlete.
+    const mailChip = a.auth_user_id
+      ? `<span class="ma-mail linked" title="${maEsc(a.email || '')} — signed in with email">✉ Linked</span>`
+      : (a.email ? `<span class="ma-mail invited" title="${maEsc(a.email)} — hasn’t signed in with email yet">✉ Invited</span>` : '');
     return `<div class="ma-row${paused ? ' paused' : ''}">
       <div class="ma-dot"></div>
       <div class="ma-name" title="${maEsc(a.name)}">${maEsc(a.name)}</div>
       <span class="ma-code" onclick="maRecode('${maEsc(a.code)}')" style="cursor:pointer" title="Click to change the code (portal password)">${maEsc(a.code)}</span>
+      ${mailChip}
       ${paused ? '<span class="ma-paused-tag">Paused</span>' : ''}
+      <button class="ma-btn" onclick="maSetEmail('${maEsc(a.code)}')" title="${a.email ? 'Change or clear their sign-in email' : 'Set an email to enable email sign-in'}">✉ Email</button>
       <button class="ma-btn" onclick="maRename('${maEsc(a.code)}')" title="Edit athlete name">✎ Edit</button>
       <button class="ma-btn" onclick="maCopyLink('${maEsc(a.code)}', this)" title="${maEsc(a.portalLink || '')}">⧉ Link</button>
       <button class="ma-btn" onclick="maToggleActive('${maEsc(a.code)}', ${paused})">${paused ? '▶ Resume' : '⏸ Pause'}</button>
@@ -1952,23 +1965,50 @@ async function maAddAthlete() {
   const btn = document.getElementById('ma-add-btn');
   btn.disabled = true; btn.textContent = 'Adding…';
   try {
+    const email = document.getElementById('ma-email').value.trim().toLowerCase() || null;
     const j = await maPost({
       action: 'add', name, code,
       start_date: document.getElementById('ma-start').value || null,
       race_target: document.getElementById('ma-race').value.trim() || null,
       coach: document.getElementById('ma-coach').value,
+      email,
     });
     const box = document.getElementById('ma-result');
     box.innerHTML = `✓ Added <b>${maEsc(name)}</b> — code/password <code>${maEsc(j.code)}</code>
+      ${email ? `— email sign-in enabled for <code>${maEsc(email)}</code>` : ''}
       <button class="ma-btn" style="margin-left:8px" onclick="maCopyText('${maEsc(j.portalLink)}', this)">⧉ Copy portal link</button>`;
     box.style.display = 'block';
     document.getElementById('ma-name').value = '';
     document.getElementById('ma-code').value = '';
     document.getElementById('ma-start').value = '';
     document.getElementById('ma-race').value = '';
+    document.getElementById('ma-email').value = '';
     await loadRoster(); renderManageList();
   } catch (e) { maStatus(e.message); }
   btn.disabled = false; btn.textContent = '+ Add Athlete';
+}
+
+// Set / change / clear an athlete's sign-in email. Linking to their Supabase
+// auth identity happens automatically on their next email sign-in — nothing
+// else to do here. Clearing the email un-enrols them (code login unaffected).
+async function maSetEmail(code) {
+  const a = _roster.find(x => x.code === code);
+  const current = (a && a.email) || '';
+  const entered = window.prompt(
+    'Sign-in email for ' + code + ':\n\n' +
+    'They’ll use this to sign in to the portal with a one-time code. ' +
+    'Leave the box empty and press OK to remove email sign-in (their access code keeps working either way).',
+    current);
+  if (entered === null) return; // cancelled
+  const email = entered.trim().toLowerCase();
+  if (email === current.toLowerCase()) return;
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { maStatus('That email doesn’t look valid'); return; }
+  if (!email && current && !confirm('Remove email sign-in for ' + code + '? They’ll be back to code-only access.')) return;
+  try {
+    await maPost({ action: 'update', code, fields: { email: email || null } });
+    await loadRoster(); renderManageList();
+    maStatus(email ? (code + ' can now sign in with ' + email) : (code + ' back to code-only access'), true);
+  } catch (e) { maStatus(e.message); }
 }
 
 async function maRename(code) {
