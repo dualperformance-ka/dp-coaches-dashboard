@@ -139,6 +139,15 @@ function requireAdmin(req) {
   }
 }
 
+const AUTH_MODES = ['code', 'both', 'email'];
+
+function cleanEmail(value) {
+  const email = String(value || '').trim().toLowerCase().slice(0, 254);
+  if (!email) return null;
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error('That email address is not valid');
+  return email;
+}
+
 function allowedFields(input = {}) {
   const out = {};
   if ('name' in input) out.name = String(input.name || '').trim();
@@ -146,6 +155,23 @@ function allowedFields(input = {}) {
   if ('start_date' in input) out.start_date = input.start_date ? String(input.start_date).slice(0, 10) : null;
   if ('race_target' in input) out.race_target = String(input.race_target || '').trim() || null;
   if ('active' in input) out.active = input.active === false ? false : Boolean(input.active);
+  // Email-auth enrolment: setting an email stamps invited_at and defaults
+  // auth_mode to 'both' (email sign-in enabled, legacy code still works).
+  // The auth_user_id link happens automatically on the athlete's first OTP
+  // sign-in via the portal. Clearing the email un-enrols; the code and all
+  // history are never touched.
+  if ('email' in input) {
+    const email = cleanEmail(input.email);
+    out.email = email;
+    out.invited_at = email ? new Date().toISOString() : null;
+    if (!('auth_mode' in input)) out.auth_mode = email ? 'both' : 'code';
+    if (!email) out.auth_user_id = null; // un-enrol severs the auth link too
+  }
+  if ('auth_mode' in input) {
+    const mode = String(input.auth_mode || '').trim().toLowerCase();
+    if (!AUTH_MODES.includes(mode)) throw new Error(`auth_mode must be one of: ${AUTH_MODES.join(', ')}`);
+    out.auth_mode = mode;
+  }
   return out;
 }
 
@@ -174,6 +200,9 @@ async function addAthlete(payload) {
     throw new Error(`Athlete code ${code} is already in use`);
   }
 
+  // Optional email at creation = enrolled for email sign-in from day one.
+  const email = cleanEmail(payload.email);
+
   const [created] = await sb('athletes', {
     method: 'POST',
     prefer: 'return=representation',
@@ -185,6 +214,9 @@ async function addAthlete(payload) {
       start_date: payload.start_date ? String(payload.start_date).slice(0, 10) : null,
       race_target: String(payload.race_target || '').trim() || null,
       archived_at: null,
+      email,
+      auth_mode: email ? 'both' : 'code',
+      invited_at: email ? new Date().toISOString() : null,
     },
   });
 
