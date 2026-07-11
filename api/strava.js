@@ -92,6 +92,18 @@ async function fetchActivityDetail(accessToken, id) {
   return res.json();
 }
 
+// Time-in-HR-zones for one activity. Returns [{min,max,time}] seconds per zone
+// (Z1→Z5) or null. Requires the athlete to have HR zones set up in Strava.
+async function fetchActivityZones(accessToken, id) {
+  const res = await fetch(`${STRAVA_API}/activities/${id}/zones`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!res.ok) return null;
+  const zones = await res.json();
+  const hr = Array.isArray(zones) ? zones.find(z => z.type === 'heartrate') : null;
+  return hr && Array.isArray(hr.distribution_buckets) ? hr.distribution_buckets : null;
+}
+
 // ── Weekly stats helper ───────────────────────────────────────────────────────
 
 function weeklyStats(activities) {
@@ -160,20 +172,29 @@ export default async function handler(req, res) {
       await updateTokens(athleteCode, access_token, refreshed.expires_at, tokens);
     }
 
-    const activities = await fetchActivities(access_token, 20);
+    const activities = await fetchActivities(access_token, 30);
     const stats      = weeklyStats(activities);
 
-    // Fetch detail (description + splits) for the 5 most recent runs only
-    const runs    = activities.filter(a => a.type === 'Run' || a.sport_type === 'Run');
-    const details = await Promise.all(runs.slice(0, 5).map(a => fetchActivityDetail(access_token, a.id)));
-    const detailMap = {};
+    // Enrich every activity (all sport types) from the last 14 days, capped at 8
+    // to stay well inside Strava's rate limits (each costs 1 detail + 1 zones call).
+    const cutoff = new Date(Date.now() - 14 * 86400000).toISOString().slice(0, 10);
+    const toEnrich = activities
+      .filter(a => (a.start_date_local || a.start_date || '').slice(0, 10) >= cutoff)
+      .slice(0, 8);
+    const details = await Promise.all(toEnrich.map(a => fetchActivityDetail(access_token, a.id)));
+    const zoneResults = await Promise.all(toEnrich.map(a =>
+      a.has_heartrate ? fetchActivityZones(access_token, a.id) : Promise.resolve(null)
+    ));
+    const detailMap = {}, zonesMap = {};
     details.forEach(d => { if (d) detailMap[d.id] = d; });
+    toEnrich.forEach((a, i) => { if (zoneResults[i]) zonesMap[a.id] = zoneResults[i]; });
 
-    const enriched = activities.slice(0, 10).map(a => {
+    const enriched = activities.slice(0, 20).map(a => {
       const d = detailMap[a.id];
-      if (!d) return a;
+      const base = { ...a, hr_zones: zonesMap[a.id] || null };
+      if (!d) return base;
       return {
-        ...a,
+        ...base,
         description:        d.description        || null,
         splits_metric:      d.splits_metric       || [],
         laps:               d.laps                || [],
@@ -183,10 +204,20 @@ export default async function handler(req, res) {
         calories:           d.calories            ?? null,
         gear:               d.gear                || null,
         workout_type:       d.workout_type        ?? null,
+        device_name:        d.device_name         || null,
+        athlete_count:      d.athlete_count       ?? null,
+        max_speed:          d.max_speed           ?? a.max_speed ?? null,
+        // Best efforts trimmed to what the dashboard needs (name, time, PR rank)
+        best_efforts: (d.best_efforts || []).map(be => ({
+          name:        be.name,
+          distance:    be.distance,
+          moving_time: be.moving_time,
+          pr_rank:     be.pr_rank ?? null,
+        })),
       };
     });
 
-    res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=60');
+    res.setHeader('Cache-Control', 's-maxage=600, stale-while-revalidate=120');
     return res.status(200).json({
       connected:  true,
       stats,
