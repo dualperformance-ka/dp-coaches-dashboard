@@ -1252,8 +1252,28 @@ body[data-theme="light"] .plan-chip.coach::before{color:#92400e}
 .wd-sess-cat{font-family:var(--mono);font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px}
 .wd-session.run .wd-sess-cat{color:var(--run)}
 .wd-session.str .wd-sess-cat{color:var(--str)}
-.wd-sess-name{font-size:13px;font-weight:600;color:var(--text);margin-bottom:3px;line-height:1.4}
+.wd-sess-name{font-family:var(--cond);font-size:18px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;color:var(--text);margin-bottom:6px;line-height:1.15}
 .wd-sess-log{font-family:var(--mono);font-size:10px;color:var(--muted);line-height:1.5}
+/* ── Structured set table: Exercise | Weight | Sets | Reps | RPE ── */
+.wd-ex-table{margin-top:8px;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:rgba(0,0,0,.18)}
+.wd-ext-head,.wd-ext-row{display:grid;grid-template-columns:minmax(150px,1fr) minmax(84px,110px) 56px 56px 60px;gap:10px;align-items:baseline;padding:6px 12px}
+.wd-ext-head{background:rgba(255,255,255,.04);border-bottom:1px solid var(--border);font-family:var(--mono);font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--dim);padding:7px 12px}
+.wd-ext-row{border-top:1px solid rgba(255,255,255,.05)}
+.wd-ext-row.grp{border-top:1px solid var(--border)}
+.wd-ext-head + .wd-ext-row,.wd-ext-head + .wd-ext-row.grp{border-top:none}
+.wd-ext-row.pb{background:rgba(245,158,11,.07)}
+.wd-ext-ex{font-size:12.5px;font-weight:500;color:var(--text);line-height:1.35;text-transform:capitalize;min-width:0;overflow-wrap:break-word}
+.wd-ext-num{font-family:var(--mono);font-size:12px;color:var(--text);text-align:center;white-space:nowrap;font-variant-numeric:tabular-nums}
+.wd-ext-num.w{text-align:right}
+.wd-ext-num.w strong{font-weight:600}
+.wd-ext-num.w em{font-style:normal;font-size:9px;color:var(--dim);margin-left:2px}
+.wd-ext-num.rpe{color:var(--muted)}
+.wd-ext-num.rpe.hot{color:var(--amber,#f59e0b);font-weight:600}
+.wd-ext-pb{color:#f59e0b;font-size:10px;margin-right:4px}
+.wd-ext-raw{font-family:var(--mono);font-size:11px;color:var(--muted);line-height:1.45}
+.wd-ext-row .wd-ext-raw:first-child{grid-column:1/-1}
+.wd-ext-ex + .wd-ext-raw{grid-column:2/-1;text-align:left}
+/* Legacy chip styles kept for any external callers */
 .wd-ex-list{display:flex;flex-direction:column;gap:2px;margin-top:4px}
 .wd-ex-row{display:flex;align-items:baseline;gap:8px;min-height:20px}
 .wd-ex-name{font-family:var(--mono);font-size:9px;color:var(--muted);width:160px;flex-shrink:0;line-height:1.4;padding-top:1px;text-transform:capitalize}
@@ -1262,9 +1282,16 @@ body[data-theme="light"] .plan-chip.coach::before{color:#92400e}
 .wd-ex-set.pb-set{background:rgba(245,158,11,.15);border-color:#f59e0b;color:#b45309;font-weight:600}
 .wd-session.run .wd-ex-set{background:rgba(245,158,11,.12);border-color:var(--amber-border);color:var(--run)}
 .wd-run-stats{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
-.wd-run-stat{font-family:var(--mono);font-size:10px;color:var(--muted)}
-.wd-run-stat strong{color:var(--text);font-size:11px}
+.wd-run-stat{font-family:var(--mono);font-size:11px;color:var(--muted)}
+.wd-run-stat strong{color:var(--text);font-size:12px}
 .wd-sess-notes{font-size:11px;color:var(--muted);font-style:italic;margin-top:3px;line-height:1.4}
+/* ── Athlete reflection — visually separated from workout data ── */
+.wd-sess-reflect{margin-top:10px;padding:8px 12px;background:rgba(255,255,255,.03);border-left:2px solid var(--border-mid);border-radius:0 6px 6px 0}
+.wd-reflect-lbl{display:block;font-family:var(--mono);font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--dim);margin-bottom:3px}
+.wd-reflect-txt{display:block;font-size:11.5px;color:var(--muted);font-style:italic;line-height:1.55}
+/* Collapse the Strava column when it has nothing, so sessions use the full width */
+.wd-row:has(>.wd-strava-col:empty){grid-template-columns:80px minmax(0,1fr)}
+.wd-strava-col:empty{display:none}
 .wd-body-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 .wd-nutr-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 .wd-metric{font-family:var(--mono);font-size:10px;color:var(--muted);background:var(--surface2);padding:3px 8px;border-radius:20px;white-space:nowrap}
@@ -1325,9 +1352,34 @@ body[data-theme="light"] .plan-chip.coach::before{color:#92400e}
   .fpc-photo-grid{grid-template-columns:1fr}
   .cc-ack-btn{padding:6px 11px;font-size:10px}
   .fpc-ack-btn{padding:7px 12px}
-  .wd-date{width:60px}
-  .wd-row{grid-template-columns:60px 1fr}
+
+  /* ── Day-by-day timeline: stack instead of squeeze ── */
+  .fpc-section{padding:16px 14px;border-radius:12px}
+  .wd-timeline{margin:0 -14px}
+  .wd-row{grid-template-columns:1fr;row-gap:8px;padding:14px}
+  .wd-row.empty{display:grid;grid-template-columns:72px 1fr;align-items:baseline}
+  .wd-date{width:auto;font-size:10px;color:var(--muted);padding:0;letter-spacing:.1em}
+  .wd-day-content{padding-right:0;gap:10px}
   .wd-strava-col{display:none}
+  .wd-session{padding:12px}
+  .wd-sess-name{font-size:17px}
+
+  /* Set table: tighter columns, same readability */
+  .wd-ext-head,.wd-ext-row{grid-template-columns:minmax(0,1fr) 62px 40px 44px 44px;gap:6px;padding:7px 10px}
+  .wd-ext-ex{font-size:12px}
+  .wd-ext-num{font-size:12px}
+
+  /* Body + nutrition chips: real tap-friendly sizes */
+  .wd-metric{font-size:12px;padding:6px 11px}
+  .wd-metric.body-lbl,.wd-metric.nutr-lbl{font-size:9px;padding:6px 4px 6px 0;align-self:center}
+  .wd-body-row,.wd-nutr-row{gap:6px}
+  .wd-macro-chip{font-size:12px;padding:4px 9px}
+  .wd-run-stat{font-size:12px}
+  .wd-run-stat strong{font-size:13px}
+  .wd-run-stats{gap:5px 12px}
+  .wd-sess-reflect{padding:9px 12px}
+  .wd-reflect-txt{font-size:12px}
+  .wd-sess-notes{font-size:12px;line-height:1.5}
 }
 
 /* ── Action Required Ribbon (squad card + full-page) ── */
@@ -1727,14 +1779,14 @@ body[data-theme="light"] .theme-btn.active{background:rgba(255,255,255,.22);colo
   .coach-select{font-size:10px;padding:7px 8px;max-width:104px}
   .theme-btn{height:24px;padding:0 8px}
   .tab-bar{top:56px}
-  .tab{padding:10px 13px 9px;font-size:11px;min-height:38px}
+  .tab{padding:10px 13px 9px;font-size:11px;min-height:40px}
   .filter-bar{top:88px;padding:8px 12px;gap:8px}
-  .search-input{min-width:0;width:100%;font-size:12px;padding:9px 12px}
-  .sf{padding:6px 12px;font-size:10px;min-height:34px}
-  .sort-select{min-height:34px}
+  .search-input{min-width:0;width:100%;font-size:13px;padding:10px 12px}
+  .sf{padding:7px 13px;font-size:11px;min-height:38px}
+  .sort-select{min-height:38px}
   .main{padding:12px 12px 52px}
   .summary-bar{gap:8px}
-  .sum-card{flex:1 1 calc(50% - 4px);min-width:0;padding:11px 13px}
+  .sum-card{flex:1 1 calc(50% - 4px);min-width:0;padding:12px 14px}
   .sum-num{font-size:22px}
   .cc-title{font-size:20px}
   .cc-athlete-name{font-size:15px}
@@ -1742,6 +1794,14 @@ body[data-theme="light"] .theme-btn.active{background:rgba(255,255,255,.22);colo
   .tname{font-size:19px}
   .dash-table td{padding:13px 9px}
   .refresh-btn,.coach-select{min-height:38px}
+  /* Expanded-row daily log: readable chips, stacked days */
+  .texp-daily-row{flex-direction:column;gap:5px;padding:9px 0}
+  .texp-daily-day{width:auto;font-size:10px;padding-top:0}
+  .texp-daily-chips{gap:5px}
+  .texp-daily-chip{font-size:11px;padding:5px 9px;border-radius:6px}
+  .texp-daily-avg-val{font-size:16px}
+  .texp-daily-avg-lbl{font-size:8px}
+  .texp-chip{font-size:9px;padding:3px 7px}
 }
 @media(max-width:380px){
   .coach-select{max-width:82px}
@@ -6543,46 +6603,77 @@ function renderExerciseLog(logStr, isRun, priorBests) {
     }).filter(Boolean).join('');
     return stats ? `<div class="wd-run-stats">${stats}</div>` : '';
   }
-  // Strength: one exercise per line, format "ExName: Set 1: Xkg × Yreps | Set 2: ..."
-  const rows = logStr.split('\n').map(line => {
+  // Strength: one exercise per line, format "ExName: Set 1: Xkg × Yreps @ RPE Z | Set 2: ..."
+  // Rendered as a structured table — Exercise | Weight | Sets | Reps | RPE.
+  // Consecutive identical sets are collapsed into one row (Sets column shows the count),
+  // so every logged set is still represented while the card stays scannable.
+  const bodyRows = [];
+  logStr.split('\n').forEach(line => {
     line = line.trim();
-    if (!line) return '';
+    if (!line) return;
     const colonSet = line.indexOf(': Set ');
     if (colonSet === -1) {
-      // Fallback: no sets detected — just show the raw line
-      return `<div class="wd-ex-row"><span class="wd-ex-name" style="width:auto">${esc(line)}</span></div>`;
+      // Fallback: no sets detected — show the raw line across the full row
+      bodyRows.push(`<div class="wd-ext-row grp"><span class="wd-ext-raw">${esc(line)}</span></div>`);
+      return;
     }
     const exName = line.substring(0, colonSet).trim();
     const setsStr = line.substring(colonSet + 2); // "Set 1: Xkg × Yreps | Set 2: ..."
     const priorBest = priorBests && priorBests[exName.toLowerCase()];
-    const setBadges = setsStr.split('|').map(s => {
+    // Parse each set into { w, r, rpe, raw, pb }
+    const sets = setsStr.split('|').map(s => {
       const m = s.trim().match(/Set\s*\d+:\s*(.+)/);
       const val = m ? m[1].trim() : s.trim();
-      // Compact: "40kg × 12reps" → "40×12"
-      const compact = val         .replace(/\s*×\s*/g, '×')         .replace(/reps/g, '')         .replace(/\s*kg/gi, '')         .replace(/\s*@\s*RPE\s*([\d.]+)/i, (_, n) => String(n).replace(/\d/g, d => '⁰¹²³⁴⁵⁶⁷⁸⁹'[d]))         .trim();
-      if (!compact) return '';
-      // PB detection: check if this set beats prior best by e1rm
-      const setM = val.match(/([\d.]+)\s*kg\s*[×x]\s*(\d+)/i);
-      let isPB = false;
-      if (setM && priorBest) {
-        const w = parseFloat(setM[1]), r = parseInt(setM[2]);
-        if (!isNaN(w) && !isNaN(r)) {
-          const e1rm = w * (1 + r / 30);
-          isPB = e1rm > priorBest.e1rm + 0.5;
-        }
-      } else if (setM && !priorBest) {
-        isPB = false; // no history yet, can't confirm PB
+      if (!val) return null;
+      const wm = val.match(/([\d.]+)\s*kg/i);
+      const rm = val.match(/[×x]\s*([\d.]+)\s*(?:reps?)?/i) || val.match(/([\d.]+)\s*reps?/i);
+      const pm = val.match(/@\s*RPE\s*([\d.]+)/i);
+      const w = wm ? parseFloat(wm[1]) : null;
+      const r = rm ? parseFloat(rm[1]) : null;
+      let pb = false;
+      if (w !== null && r !== null && priorBest) {
+        const e1rm = w * (1 + r / 30);
+        pb = e1rm > priorBest.e1rm + 0.5;
       }
-      return isPB
-        ? `<span class="wd-ex-set pb-set" title="Personal Best">⭐ ${esc(compact)}</span>`
-        : `<span class="wd-ex-set">${esc(compact)}</span>`;
-    }).filter(Boolean).join('');
-    return `<div class="wd-ex-row">
-      <span class="wd-ex-name">${esc(exName)}</span>
-      <span class="wd-ex-sets">${setBadges}</span>
-    </div>`;
-  }).filter(Boolean).join('');
-  return rows ? `<div class="wd-ex-list">${rows}</div>` : '';
+      return { w, r, rpe: pm ? pm[1] : null, raw: val, pb };
+    }).filter(Boolean);
+    if (!sets.length) return;
+    // Collapse consecutive identical sets into grouped rows
+    const groups = [];
+    sets.forEach(st => {
+      const g = groups[groups.length - 1];
+      const parsed = st.w !== null || st.r !== null;
+      if (g && g.parsed && parsed && g.w === st.w && g.r === st.r && g.rpe === st.rpe) {
+        g.n++; g.pb = g.pb || st.pb;
+      } else {
+        groups.push({ ...st, n: 1, parsed });
+      }
+    });
+    groups.forEach((g, i) => {
+      const first = i === 0;
+      const exCell = `<span class="wd-ext-ex">${first ? esc(exName) : ''}</span>`;
+      if (!g.parsed) {
+        bodyRows.push(`<div class="wd-ext-row${first ? ' grp' : ''}">${exCell}<span class="wd-ext-raw">${esc(g.raw)}</span></div>`);
+        return;
+      }
+      const wCell = g.w !== null
+        ? `${g.pb ? '<span class="wd-ext-pb" title="Personal Best">★</span>' : ''}<strong>${g.w}</strong><em>kg</em>`
+        : '<strong>BW</strong>';
+      const rpeNum = g.rpe !== null ? parseFloat(g.rpe) : null;
+      bodyRows.push(`<div class="wd-ext-row${first ? ' grp' : ''}${g.pb ? ' pb' : ''}">
+        ${exCell}
+        <span class="wd-ext-num w">${wCell}</span>
+        <span class="wd-ext-num">${g.n}</span>
+        <span class="wd-ext-num">${g.r !== null ? g.r : '—'}</span>
+        <span class="wd-ext-num rpe${rpeNum !== null && rpeNum >= 9 ? ' hot' : ''}">${g.rpe !== null ? esc(g.rpe) : '—'}</span>
+      </div>`);
+    });
+  });
+  if (!bodyRows.length) return '';
+  return `<div class="wd-ex-table">
+    <div class="wd-ext-head"><span>Exercise</span><span class="wd-ext-num w">Weight</span><span class="wd-ext-num">Sets</span><span class="wd-ext-num">Reps</span><span class="wd-ext-num">RPE</span></div>
+    ${bodyRows.join('')}
+  </div>`;
 }
 
 // ── Full-page Card (clean reading layout for screen-sharing) ─────────────────
@@ -6963,7 +7054,7 @@ function buildFPCard(a, weekOffset = 0) {
             <div class="wd-sess-cat">${catLabel}</div>
             ${rawName ? `<div class="wd-sess-name">${esc(rawName)}</div>` : ''}
             ${logHtml}
-            ${notes ? `<div class="wd-sess-notes">${esc(notes)}</div>` : ''}
+            ${notes ? `<div class="wd-sess-reflect"><span class="wd-reflect-lbl">Athlete note</span><span class="wd-reflect-txt">${esc(notes)}</span></div>` : ''}
           </div>`;
         }).join('');
 
