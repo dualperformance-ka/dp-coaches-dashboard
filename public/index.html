@@ -1256,13 +1256,15 @@ body[data-theme="light"] .plan-chip.coach::before{color:#92400e}
 .wd-sess-log{font-family:var(--mono);font-size:10px;color:var(--muted);line-height:1.5}
 /* ── Structured set table: Exercise | Weight | Sets | Reps | RPE ── */
 .wd-ex-table{margin-top:8px;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:rgba(0,0,0,.18)}
-.wd-ext-head,.wd-ext-row{display:grid;grid-template-columns:minmax(150px,1fr) minmax(84px,110px) 56px 56px 60px;gap:10px;align-items:baseline;padding:6px 12px}
+.wd-ext-head,.wd-ext-row{display:grid;grid-template-columns:minmax(150px,1fr) minmax(84px,110px) 64px 64px;gap:10px;align-items:baseline;padding:6px 12px}
 .wd-ext-head{background:rgba(255,255,255,.04);border-bottom:1px solid var(--border);font-family:var(--mono);font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--dim);padding:7px 12px}
 .wd-ext-row{border-top:1px solid rgba(255,255,255,.05)}
 .wd-ext-row.grp{border-top:1px solid var(--border)}
 .wd-ext-head + .wd-ext-row,.wd-ext-head + .wd-ext-row.grp{border-top:none}
 .wd-ext-row.pb{background:rgba(245,158,11,.07)}
-.wd-ext-ex{font-size:12.5px;font-weight:500;color:var(--text);line-height:1.35;text-transform:capitalize;min-width:0;overflow-wrap:break-word}
+.wd-ext-ex{display:flex;align-items:baseline;gap:8px;font-size:12.5px;font-weight:500;color:var(--text);line-height:1.35;text-transform:capitalize;min-width:0}
+.wd-ext-exname{min-width:0;overflow-wrap:break-word}
+.wd-ext-setlbl{margin-left:auto;font-family:var(--mono);font-style:normal;font-size:8.5px;font-weight:500;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;white-space:nowrap;padding-right:6px}
 .wd-ext-num{font-family:var(--mono);font-size:12px;color:var(--text);text-align:center;white-space:nowrap;font-variant-numeric:tabular-nums}
 .wd-ext-num.w{text-align:right}
 .wd-ext-num.w strong{font-weight:600}
@@ -1368,7 +1370,7 @@ body[data-theme="light"] .plan-chip.coach::before{color:#92400e}
   .wd-sess-name{font-size:17px}
 
   /* Set table: tighter columns, same readability */
-  .wd-ext-head,.wd-ext-row{grid-template-columns:minmax(0,1fr) 62px 40px 44px 44px;gap:6px;padding:7px 10px}
+  .wd-ext-head,.wd-ext-row{grid-template-columns:minmax(0,1fr) 64px 48px 48px;gap:6px;padding:7px 10px}
   .wd-ext-ex{font-size:12px}
   .wd-ext-num{font-size:12px}
 
@@ -6607,9 +6609,8 @@ function renderExerciseLog(logStr, isRun, priorBests, plannedExs) {
     return stats ? `<div class="wd-run-stats">${stats}</div>` : '';
   }
   // Strength: one exercise per line, format "ExName: Set 1: Xkg × Yreps @ RPE Z | Set 2: ..."
-  // Rendered as a structured table — Exercise | Weight | Set | Reps | RPE.
-  // One row per set; identical consecutive sets merge into a single row whose Set
-  // column shows the range (e.g. "1–2"), so every logged set stays represented.
+  // Rendered as a structured table — Exercise | Weight | Reps | RPE.
+  // One row per set in logged order: the row sequence is the set sequence.
   // When the session matches a workout split (plannedExs), rows follow the athlete
   // portal's exercise order and planned exercises with no log are flagged Not done.
 
@@ -6683,41 +6684,31 @@ function renderExerciseLog(logStr, isRun, priorBests, plannedExs) {
       </div>`);
       return;
     }
-    // Merge identical consecutive sets, tracking real set numbers
-    const groups = [];
+    // One row per set, in logged order — every row carries its own "Set n"
+    // label so continuation rows never read as floating numbers
     en.sets.forEach((st, si) => {
-      const g = groups[groups.length - 1];
+      const first = si === 0;
+      const exCell = `<span class="wd-ext-ex">${first ? `<span class="wd-ext-exname">${esc(en.exName)}</span>` : ''}<em class="wd-ext-setlbl">Set ${si + 1}</em></span>`;
       const parsed = st.w !== null || st.r !== null;
-      if (g && g.parsed && parsed && g.w === st.w && g.r === st.r && g.rpe === st.rpe) {
-        g.to = si + 1; g.pb = g.pb || st.pb;
-      } else {
-        groups.push({ ...st, from: si + 1, to: si + 1, parsed });
-      }
-    });
-    groups.forEach((g, i) => {
-      const first = i === 0;
-      const exCell = `<span class="wd-ext-ex">${first ? esc(en.exName) : ''}</span>`;
-      if (!g.parsed) {
-        bodyRows.push(`<div class="wd-ext-row${first ? ' grp' : ''}">${exCell}<span class="wd-ext-raw">${esc(g.raw)}</span></div>`);
+      if (!parsed) {
+        bodyRows.push(`<div class="wd-ext-row${first ? ' grp' : ''}">${exCell}<span class="wd-ext-raw">${esc(st.raw)}</span></div>`);
         return;
       }
-      const wCell = g.w !== null
-        ? `${g.pb ? '<span class="wd-ext-pb" title="Personal Best">★</span>' : ''}<strong>${g.w}</strong><em>kg</em>`
+      const wCell = st.w !== null
+        ? `${st.pb ? '<span class="wd-ext-pb" title="Personal Best">★</span>' : ''}<strong>${st.w}</strong><em>kg</em>`
         : '<strong>BW</strong>';
-      const setLbl = g.from === g.to ? String(g.from) : `${g.from}–${g.to}`;
-      const rpeNum = g.rpe !== null ? parseFloat(g.rpe) : null;
-      bodyRows.push(`<div class="wd-ext-row${first ? ' grp' : ''}${g.pb ? ' pb' : ''}">
+      const rpeNum = st.rpe !== null ? parseFloat(st.rpe) : null;
+      bodyRows.push(`<div class="wd-ext-row${first ? ' grp' : ''}${st.pb ? ' pb' : ''}">
         ${exCell}
         <span class="wd-ext-num w">${wCell}</span>
-        <span class="wd-ext-num">${setLbl}</span>
-        <span class="wd-ext-num">${g.r !== null ? g.r : '—'}</span>
-        <span class="wd-ext-num rpe${rpeNum !== null && rpeNum >= 9 ? ' hot' : ''}">${g.rpe !== null ? esc(g.rpe) : '—'}</span>
+        <span class="wd-ext-num">${st.r !== null ? st.r : '—'}</span>
+        <span class="wd-ext-num rpe${rpeNum !== null && rpeNum >= 9 ? ' hot' : ''}">${st.rpe !== null ? esc(st.rpe) : '—'}</span>
       </div>`);
     });
   });
   if (!bodyRows.length) return '';
   return `<div class="wd-ex-table">
-    <div class="wd-ext-head"><span>Exercise</span><span class="wd-ext-num w">Weight</span><span class="wd-ext-num">Set</span><span class="wd-ext-num">Reps</span><span class="wd-ext-num">RPE</span></div>
+    <div class="wd-ext-head"><span>Exercise</span><span class="wd-ext-num w">Weight</span><span class="wd-ext-num">Reps</span><span class="wd-ext-num">RPE</span></div>
     ${bodyRows.join('')}
   </div>`;
 }
@@ -8747,9 +8738,9 @@ async function loadStravaData(a) {
     const fmtDist = m => (m / 1000).toFixed(2);
     const fmtPace = (speed) => {
       if (!speed) return '—';
-      const secPerKm = 1000 / speed;
+      const secPerKm = Math.round(1000 / speed); // round total seconds first — avoids "5:60"
       const m = Math.floor(secPerKm / 60);
-      const s = Math.round(secPerKm % 60).toString().padStart(2, '0');
+      const s = (secPerKm % 60).toString().padStart(2, '0');
       return `${m}:${s}`;
     };
     const fmtTime = secs => {
@@ -8764,10 +8755,18 @@ async function loadStravaData(a) {
 
     const fmtSplitPace = speed => {
       if (!speed) return '—';
-      const spm = 1000 / speed;
+      const spm = Math.round(1000 / speed); // round total seconds first — avoids "5:60"
       const m = Math.floor(spm / 60);
-      const s = Math.round(spm % 60).toString().padStart(2, '0');
+      const s = (spm % 60).toString().padStart(2, '0');
       return `${m}:${s}`;
+    };
+    // Strava auto-laps: every full lap ≈1km means the athlete never pressed lap —
+    // those just duplicate the km splits. Only a genuinely structured session
+    // (varied lap distances) earns an Interval Laps table.
+    const hasRealLaps = laps => {
+      if (!laps || laps.length < 2) return false;
+      const full = laps.slice(0, -1); // last lap is usually a partial remainder
+      return full.some(lp => Math.abs((lp.distance || 0) - 1000) > 120);
     };
 
     const cards = acts.map(act => {
@@ -8805,8 +8804,11 @@ async function loadStravaData(a) {
       const rpeHtml = rpe != null
         ? `<div class="strava-act-rpe">RPE <strong>${rpe}</strong>/10</div>` : '';
 
-      // Show laps table only if it looks like an interval session (>3 laps and not just km splits)
-      const lapsHtml = (act.laps && act.laps.length > 3)
+      // One table per activity: a structured session (real, varied laps) shows
+      // Interval Laps; a continuous run shows KM Splits. Never both — Strava's
+      // automatic 1km laps are just the km splits repeated.
+      const _realLaps = hasRealLaps(act.laps);
+      const lapsHtml = _realLaps
         ? (() => {
             const lapSpeeds = act.laps.map(lp => lp.average_speed).filter(Boolean);
             const maxLapSpd = Math.max(...lapSpeeds);
@@ -8826,7 +8828,7 @@ async function loadStravaData(a) {
               </table></details>`;
           })() : '';
 
-      const splitsHtml = (act.splits_metric && act.splits_metric.length)
+      const splitsHtml = (!_realLaps && act.splits_metric && act.splits_metric.length)
         ? (() => {
             const speeds = act.splits_metric.map(sp => sp.average_speed).filter(Boolean);
             const maxSpd = Math.max(...speeds);
@@ -8931,8 +8933,10 @@ async function loadStravaData(a) {
           ? `<div class="wd-strava-desc">"${esc(act.description)}"</div>` : '';
 
         // Splits table — scrollable fixed-height box
+        // One table only: real varied laps → Interval Laps; otherwise KM Splits
+        const _realLaps = hasRealLaps(act.laps);
         let splitsHtml = '';
-        if (act.splits_metric && act.splits_metric.length) {
+        if (!_realLaps && act.splits_metric && act.splits_metric.length) {
           const speeds = act.splits_metric.map(sp => sp.average_speed).filter(Boolean);
           const maxSpd = Math.max(...speeds), minSpd = Math.min(...speeds);
           const bestIdx = speeds.indexOf(maxSpd);
@@ -8958,7 +8962,7 @@ async function loadStravaData(a) {
 
         // Laps table (interval sessions) — same scrollable box
         let lapsHtml = '';
-        if (act.laps && act.laps.length > 3) {
+        if (_realLaps) {
           const lapSpeeds = act.laps.map(lp => lp.average_speed).filter(Boolean);
           const maxLS = Math.max(...lapSpeeds), minLS = Math.min(...lapSpeeds);
           const lapRows = act.laps.map((lp, i) => {
