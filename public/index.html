@@ -1238,6 +1238,21 @@ body[data-theme="light"] .plan-chip.coach::before{color:#92400e}
 .wd-strava-act[open] .wd-strava-chevron{transform:rotate(180deg)}
 .wd-strava-detail{padding-top:8px;border-top:1px solid var(--border);margin-top:8px}
 .wd-strava-desc{font-size:11px;color:var(--muted);font-style:italic;margin-top:6px;padding:5px 8px;background:rgba(255,255,255,.03);border-radius:5px;border-left:2px solid var(--border);line-height:1.45}
+/* ── Time-in-HR-zones bar + best efforts ── */
+.hrz-wrap{margin-top:8px}
+.hrz-lbl{font-family:var(--mono);font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--dim);margin-bottom:4px}
+.hrz-bar{display:flex;height:10px;border-radius:5px;overflow:hidden;background:var(--surface2)}
+.hrz-seg{display:block;height:100%;min-width:1px}
+.hrz-legend{display:flex;flex-wrap:wrap;gap:4px 10px;margin-top:4px}
+.hrz-leg{font-family:var(--mono);font-size:9px;color:var(--muted);display:inline-flex;align-items:center;gap:4px}
+.hrz-leg strong{color:var(--text)}
+.hrz-dot{width:7px;height:7px;border-radius:2px;display:inline-block}
+.be-wrap{margin-top:8px}
+.be-row{display:flex;flex-wrap:wrap;gap:4px}
+.be-chip{font-family:var(--mono);font-size:9px;color:var(--muted);background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:2px 8px;white-space:nowrap}
+.be-chip strong{color:var(--text)}
+.be-chip.pr{background:rgba(245,158,11,.1);border-color:rgba(245,158,11,.4);color:var(--amber-text,#f59e0b)}
+.be-chip.pr strong{color:inherit}
 .wd-splits-scroll{max-height:160px;overflow-y:auto;border-radius:6px;border:1px solid var(--border);scrollbar-width:thin;scrollbar-color:var(--border-mid) transparent}
 .wd-splits-scroll::-webkit-scrollbar{width:4px}
 .wd-splits-scroll::-webkit-scrollbar-thumb{background:var(--border-mid);border-radius:2px}
@@ -1261,7 +1276,8 @@ body[data-theme="light"] .plan-chip.coach::before{color:#92400e}
 .wd-ext-row{border-top:1px solid rgba(255,255,255,.05)}
 .wd-ext-row.grp{border-top:1px solid var(--border)}
 .wd-ext-head + .wd-ext-row,.wd-ext-head + .wd-ext-row.grp{border-top:none}
-.wd-ext-row.pb{background:rgba(245,158,11,.07)}
+.wd-ext-row.pb{background:rgba(139,92,246,.12);box-shadow:inset 3px 0 0 #8b5cf6}
+.wd-ext-row.pb .wd-ext-num strong,.wd-ext-row.pb .wd-ext-num{color:#c4b5fd}
 .wd-ext-ex{display:flex;align-items:baseline;gap:8px;font-size:12.5px;font-weight:500;color:var(--text);line-height:1.35;text-transform:capitalize;min-width:0}
 .wd-ext-exname{min-width:0;overflow-wrap:break-word}
 .wd-ext-setlbl{margin-left:auto;font-family:var(--mono);font-style:normal;font-size:8.5px;font-weight:500;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;white-space:nowrap;padding-right:6px}
@@ -1271,7 +1287,7 @@ body[data-theme="light"] .plan-chip.coach::before{color:#92400e}
 .wd-ext-num.w em{font-style:normal;font-size:9px;color:var(--dim);margin-left:2px}
 .wd-ext-num.rpe{color:var(--muted)}
 .wd-ext-num.rpe.hot{color:var(--amber,#f59e0b);font-weight:600}
-.wd-ext-pb{color:#f59e0b;font-size:10px;margin-right:4px}
+.wd-ext-pb{display:inline-block;font-family:var(--mono);font-size:8px;font-weight:800;letter-spacing:.06em;background:linear-gradient(135deg,#8b5cf6,#6d28d9);color:#fff;border-radius:4px;padding:1.5px 6px;margin-right:7px;vertical-align:1.5px;white-space:nowrap}
 .wd-ext-row.missed{background:rgba(239,68,68,.06)}
 .wd-ext-row.missed .wd-ext-ex{color:var(--dim)}
 .wd-ext-missed{grid-column:2/-1;font-family:var(--mono);font-size:10px;font-weight:700;color:var(--red-text,#f87171);text-transform:uppercase;letter-spacing:.08em;text-align:right;white-space:nowrap}
@@ -6695,7 +6711,7 @@ function renderExerciseLog(logStr, isRun, priorBests, plannedExs) {
         return;
       }
       const wCell = st.w !== null
-        ? `${st.pb ? '<span class="wd-ext-pb" title="Personal Best">★</span>' : ''}<strong>${st.w}</strong><em>kg</em>`
+        ? `${st.pb ? '<span class="wd-ext-pb" title="Personal Best — beats their previous best for this exercise">🏆 PB</span>' : ''}<strong>${st.w}</strong><em>kg</em>`
         : '<strong>BW</strong>';
       const rpeNum = st.rpe !== null ? parseFloat(st.rpe) : null;
       bodyRows.push(`<div class="wd-ext-row${first ? ' grp' : ''}${st.pb ? ' pb' : ''}">
@@ -8769,6 +8785,32 @@ async function loadStravaData(a) {
       return full.some(lp => Math.abs((lp.distance || 0) - 1000) > 120);
     };
 
+    // ── Time-in-HR-zones bar (Z1→Z5 stacked, minutes legend) ──
+    const HRZ_COLORS = ['#94a3b8', '#4ade80', '#facc15', '#fb923c', '#ef4444'];
+    const hrZonesHtml = zones => {
+      if (!zones || !zones.length) return '';
+      const total = zones.reduce((t, z) => t + (z.time || 0), 0);
+      if (total < 120) return ''; // under 2 min of HR data isn't worth a bar
+      const segs = zones.map((z, i) => z.time
+        ? `<span class="hrz-seg" style="width:${(z.time / total * 100).toFixed(1)}%;background:${HRZ_COLORS[i] || HRZ_COLORS[4]}" title="Z${i + 1} · ${Math.round(z.time / 60)} min"></span>` : '').join('');
+      const legend = zones.map((z, i) => (z.time || 0) >= 60
+        ? `<span class="hrz-leg"><span class="hrz-dot" style="background:${HRZ_COLORS[i] || HRZ_COLORS[4]}"></span>Z${i + 1} <strong>${Math.round(z.time / 60)}m</strong></span>` : '').filter(Boolean).join('');
+      return `<div class="hrz-wrap"><div class="hrz-lbl">Time in HR zones</div><div class="hrz-bar">${segs}</div>${legend ? `<div class="hrz-legend">${legend}</div>` : ''}</div>`;
+    };
+
+    // ── Best efforts (Strava's estimated bests within the run; PRs first) ──
+    const fmtEffortTime = secs => {
+      const m = Math.floor(secs / 60), s = secs % 60;
+      return m > 0 ? `${m}:${String(s).padStart(2, '0')}` : `${s}s`;
+    };
+    const bestEffortsHtml = bes => {
+      if (!bes || !bes.length) return '';
+      const show = bes.filter(b => b.pr_rank).concat(bes.filter(b => !b.pr_rank)).slice(0, 4);
+      if (!show.length) return '';
+      return `<div class="be-wrap"><div class="hrz-lbl">Best efforts</div><div class="be-row">${show.map(b =>
+        `<span class="be-chip${b.pr_rank ? ' pr' : ''}">${b.pr_rank ? '🏆 ' : ''}${esc(b.name)} <strong>${fmtEffortTime(b.moving_time)}</strong>${b.pr_rank ? ` · PR #${b.pr_rank}` : ''}</span>`).join('')}</div></div>`;
+    };
+
     const cards = acts.map(act => {
       const dist = fmtDist(act.distance);
       const pace = fmtPace(act.average_speed);
@@ -8785,15 +8827,19 @@ async function loadStravaData(a) {
       const wtype   = act.workout_type;
       const wtypeLabel = wtype === 1 ? 'Race' : wtype === 2 ? 'Long Run' : wtype === 3 ? 'Workout' : null;
 
+      const maxPace = act.max_speed ? fmtPace(act.max_speed) : '—';
       const chips = [
         pace !== '—' ? `<span class="strava-chip strava-chip-primary"><strong>${pace}</strong>/km</span>` : '',
         `<span class="strava-chip strava-chip-primary"><strong>${time}</strong> moving</span>`,
+        maxPace !== '—' && /run/i.test(act.type || '') ? `<span class="strava-chip">max <strong>${maxPace}</strong>/km</span>` : '',
         hr    ? `<span class="strava-chip strava-chip-hr">♥ <strong>${hr}</strong>${maxHr ? `–${maxHr}` : ''} bpm</span>` : '',
         elev  ? `<span class="strava-chip">↑ <strong>${elev}</strong>m</span>` : '',
         cadence ? `<span class="strava-chip">⟳ <strong>${cadence}</strong> spm</span>` : '',
         suffer  ? `<span class="strava-chip">⚡ <strong>${suffer}</strong> effort</span>` : '',
         cals    ? `<span class="strava-chip">🔥 <strong>${cals}</strong> kcal</span>` : '',
         gear    ? `<span class="strava-chip">👟 ${esc(gear)}</span>` : '',
+        act.athlete_count > 1 ? `<span class="strava-chip">👥 group of ${act.athlete_count}</span>` : '',
+        act.device_name ? `<span class="strava-chip">⌚ ${esc(act.device_name)}</span>` : '',
         prCount ? `<span class="strava-chip strava-chip-pr">🏆 <strong>${prCount}</strong> PR${prCount > 1 ? 's' : ''}</span>` : '',
         wtypeLabel ? `<span class="strava-chip strava-chip-pr">${esc(wtypeLabel)}</span>` : '',
       ].filter(Boolean).join('');
@@ -8866,6 +8912,8 @@ async function loadStravaData(a) {
           <div class="strava-act-chips">${chips}</div>
           ${descHtml}
           ${rpeHtml}
+          ${hrZonesHtml(act.hr_zones)}
+          ${bestEffortsHtml(act.best_efforts)}
           ${lapsHtml}
           ${splitsHtml}
         </div>
@@ -8920,12 +8968,16 @@ async function loadStravaData(a) {
         ].filter(Boolean).join('');
 
         // Expanded detail chips
+        const maxPace = act.max_speed ? fmtPace(act.max_speed) : '—';
         const detailChips = [
+          maxPace !== '—' && isRun ? `<span class="wd-strava-stat">max <strong>${maxPace}</strong>/km</span>` : '',
           elev    ? `<span class="wd-strava-stat">↑ <strong>${elev}</strong>m</span>` : '',
           cadence ? `<span class="wd-strava-stat">⟳ <strong>${cadence}</strong> spm</span>` : '',
           suffer  ? `<span class="wd-strava-stat">⚡ <strong>${suffer}</strong> effort</span>` : '',
           cals    ? `<span class="wd-strava-stat">🔥 <strong>${cals}</strong> kcal</span>` : '',
           gear    ? `<span class="wd-strava-stat">👟 ${esc(gear)}</span>` : '',
+          act.athlete_count > 1 ? `<span class="wd-strava-stat">👥 group of ${act.athlete_count}</span>` : '',
+          act.device_name ? `<span class="wd-strava-stat">⌚ ${esc(act.device_name)}</span>` : '',
           rpe     ? `<span class="wd-strava-stat">RPE <strong>${rpe}</strong>/10</span>` : '',
         ].filter(Boolean).join('');
 
@@ -8980,7 +9032,8 @@ async function loadStravaData(a) {
           </div></div>`;
         }
 
-        const hasDetail = detailChips || descHtml || splitsHtml || lapsHtml;
+        const hasDetail = detailChips || descHtml || splitsHtml || lapsHtml
+          || (act.hr_zones && act.hr_zones.length) || (act.best_efforts && act.best_efforts.length);
 
         return `<details class="wd-strava-act" style="border-left-color:${accent}">
           <summary class="wd-strava-summary">
@@ -8991,6 +9044,8 @@ async function loadStravaData(a) {
           ${hasDetail ? `<div class="wd-strava-detail">
             ${detailChips ? `<div class="wd-strava-stats" style="margin-top:6px">${detailChips}</div>` : ''}
             ${descHtml}
+            ${hrZonesHtml(act.hr_zones)}
+            ${bestEffortsHtml(act.best_efforts)}
             ${lapsHtml}
             ${splitsHtml}
           </div>` : ''}
