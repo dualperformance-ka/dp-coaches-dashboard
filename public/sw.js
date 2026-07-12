@@ -12,7 +12,7 @@
       would risk showing stale or cross-coach data offline)
    ============================================================ */
 
-const VERSION = 'dp-coaches-v2';
+const VERSION = 'dp-coaches-v4';
 const SHELL_CACHE = `${VERSION}-shell`;
 const STATIC_CACHE = `${VERSION}-static`;
 const FONT_CACHE = `${VERSION}-fonts`;
@@ -26,6 +26,7 @@ const SHELL_ASSETS = [
   '/dashboard-redesign.css',
   '/dashboard-detail-cleanup.css',
   '/dashboard-mobile.css',
+  '/dashboard-mobilenav.js',
   '/manifest.webmanifest',
   '/dp-mark-blue.png',
   '/dp-mark-light.png',
