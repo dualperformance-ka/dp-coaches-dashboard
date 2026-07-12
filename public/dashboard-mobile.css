@@ -271,6 +271,114 @@
   .sum-card { padding: 12px; }
   .sum-num { font-size: 24px; }
 
+  /* ── 6b. Athlete full-page: stat CARDS, not sideways slide ──
+     The hero metrics / scores / bottom stats were flex rows set to
+     overflow-x:auto (a horizontal swipe). On mobile we turn them into
+     wrapping card grids so every stat is visible in one view. */
+
+  /* 6-metric hero row → 2×3 card grid */
+  #fp-overlay .pcard-metrics,
+  .pcard-metrics {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 7px;
+    padding: 11px 12px;
+    overflow: visible !important;
+  }
+  .pcard-metrics .pm {
+    border-right: 0 !important;
+    padding: 10px 5px;
+    background: var(--surface2, #131a22);
+    border: 1px solid var(--border, rgba(255,255,255,.08));
+    border-radius: 10px;
+  }
+  .pcard-metrics .pm-lbl { margin-bottom: 5px; }
+  .pcard-metrics .pm-val { font-size: 19px; }
+
+  /* Weekly check-in scores row → card grid */
+  #fp-overlay .scores,
+  .scores {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 7px;
+    padding: 10px 12px;
+    overflow: visible !important;
+  }
+  .scores .sc {
+    border-right: 0 !important;
+    padding: 9px 5px;
+    background: var(--surface2, #131a22);
+    border: 1px solid var(--border, rgba(255,255,255,.08));
+    border-radius: 10px;
+  }
+  .scores .sc-lbl { margin-bottom: 4px; }
+  .scores .sc-val { font-size: 16px; }
+
+  /* Bottom stats strip → wrapping cards (overrides inline column count) */
+  #fp-overlay .pcard-stats,
+  .pcard-stats {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fit, minmax(92px, 1fr)) !important;
+    gap: 7px;
+    padding: 10px 12px;
+    overflow: visible !important;
+  }
+  .pcard-stats .pstat {
+    border-right: 0 !important;
+    padding: 10px 6px;
+    background: var(--bg, #060b11);
+    border: 1px solid var(--border, rgba(255,255,255,.08));
+    border-radius: 10px;
+  }
+
+  /* Coaches-tab score row (same pattern) */
+  .coach-scores {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 7px;
+    padding: 10px 12px;
+    overflow: visible !important;
+  }
+  .coach-scores .sc {
+    border-right: 0 !important;
+    background: var(--surface2, #131a22);
+    border: 1px solid var(--border, rgba(255,255,255,.08));
+    border-radius: 10px;
+  }
+
+  /* Body block: weight + its metric chips stack cleanly */
+  #fp-overlay .body-grid, .body-grid {
+    flex-direction: column;
+    gap: 12px;
+  }
+  .bmet {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 7px;
+    width: 100%;
+  }
+  .bmet .bm {
+    background: var(--surface2, #131a22);
+    border: 1px solid var(--border, rgba(255,255,255,.08));
+    border-radius: 10px;
+    padding: 9px 5px;
+  }
+
+  /* Training split stays 2-up but tighter; feels like paired cards */
+  #fp-overlay .pcard-training { grid-template-columns: 1fr 1fr !important; gap: 7px; padding: 10px 12px; }
+  .pcard-training .ptrain {
+    border-right: 0 !important;
+    background: var(--surface2, #131a22);
+    border: 1px solid var(--border, rgba(255,255,255,.08));
+    border-radius: 10px;
+    padding: 10px;
+  }
+
+  /* Tighter hero + section padding so it reads as one screen */
+  #fp-overlay .fpc-hero { padding: 18px 16px 16px; border-radius: 16px; margin-bottom: 14px; }
+  #fp-overlay .sec { padding: 10px 12px; }
+  #fp-overlay .fp-body { padding-left: 10px; padding-right: 10px; }
+
   /* ── 6. Tables: contained horizontal scroll ─────────────── */
   .dash-table-wrap {
     overflow-x: auto;
