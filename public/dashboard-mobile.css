@@ -1,0 +1,230 @@
+/* ============================================================
+   DP Coaches Dashboard — mobile layer (loads LAST)
+   Single source of truth for ≤720px. Overrides the conflicting
+   mobile rules in the inline styles, dashboard-redesign.css and
+   the premium pass. Desktop (>720px) is untouched.
+   ============================================================ */
+
+/* Safe-area support for installed PWA (requires viewport-fit=cover) */
+:root {
+  --dp-hdr-h: 56px;
+  --dp-tab-h: 44px;
+  --dp-safe-top: env(safe-area-inset-top, 0px);
+  --dp-safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+@media (max-width: 720px) {
+
+  /* ── 1. Header: one compact sticky row ─────────────────── */
+  header,
+  body[data-theme="light"] header {
+    position: sticky;
+    top: 0;
+    z-index: 120;
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    min-height: var(--dp-hdr-h);
+    height: auto;
+    padding: 6px 12px;
+    padding-top: calc(6px + var(--dp-safe-top));
+    background: rgba(8, 16, 25, .96);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+  }
+
+  .logo-block {
+    width: auto;
+    flex: 0 0 auto;
+    gap: 8px;
+    align-items: center;
+  }
+  .logo-mark, .logo-mark-sm { height: 28px; width: auto; }
+  .logo-wordmark { display: none; }
+  .logo-kicker { font-size: 14px; letter-spacing: .05em; white-space: nowrap; }
+  .logo-role, .coach-pill, .updated { display: none; }
+
+  .h-right {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: flex-end;
+    width: auto;
+    flex: 1 1 auto;
+    min-width: 0;
+    gap: 6px;
+  }
+
+  .coach-select {
+    width: auto;
+    max-width: 118px;
+    min-height: 34px;
+    font-size: 10px;
+    padding: 6px 8px;
+  }
+
+  /* Manage + Refresh as icon buttons (premium pass hid manage entirely) */
+  #manage-athletes-btn,
+  #gen-btn { display: inline-flex !important; }
+  #gen-btn[style*="display:none"], #gen-btn[style*="display: none"] { display: none !important; }
+  #manage-athletes-btn, .refresh-btn {
+    width: 34px;
+    min-height: 34px;
+    padding: 0;
+    font-size: 0;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+  }
+  #manage-athletes-btn::before { content: '\2699'; font-size: 15px; }
+  .refresh-btn::before { content: '\21BB'; font-size: 15px; }
+  #manage-athletes-btn::before, .refresh-btn::before { line-height: 1; }
+
+  /* Compact theme toggle, never full-width */
+  .theme-toggle {
+    display: flex;
+    width: auto;
+    min-height: 34px;
+    flex: 0 0 auto;
+    grid-column: auto;
+    padding: 2px;
+  }
+  .theme-btn {
+    flex: 0 0 auto;
+    min-width: 0;
+    height: 28px;
+    padding: 0 9px;
+    font-size: 9px;
+  }
+
+  /* ── 2. Tab bar: sticky directly under the header ──────── */
+  .tab-bar,
+  body[data-theme="light"] .tab-bar {
+    position: sticky;
+    top: calc(var(--dp-hdr-h) + var(--dp-safe-top));
+    z-index: 110;
+    display: flex;
+    align-items: stretch;
+    gap: 2px;
+    padding: 0 8px !important;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    background: rgba(8, 16, 25, .96);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+  }
+  .tab-bar::-webkit-scrollbar { display: none; }
+  .tab {
+    flex: 0 0 auto;
+    min-height: var(--dp-tab-h);
+    padding: 12px 12px 10px;
+    font-size: 12px;
+    white-space: nowrap;
+    scroll-snap-align: start;
+  }
+
+  /* Filter card is content, never sticky (kills the 3rd sticky layer) */
+  .filter-bar,
+  body[data-theme="light"] .filter-bar {
+    position: relative;
+    top: auto;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    margin: 12px 10px 0;
+    padding: 10px;
+    border-radius: 14px;
+  }
+  .search-input { width: 100%; min-width: 0; min-height: 40px; font-size: 14px; }
+  .sort-select { width: 100%; min-height: 38px; }
+  .filter-label, .filter-divider { display: none; }
+
+  /* Status pills: one horizontal scroll row, no wrap-stacking */
+  .sf-group {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    gap: 6px;
+    padding-bottom: 2px;
+    max-width: 100%;
+  }
+  .sf-group::-webkit-scrollbar { display: none; }
+  .sf {
+    flex: 0 0 auto;
+    min-height: 36px;
+    padding: 6px 13px;
+    font-size: 11px;
+    white-space: nowrap;
+  }
+
+  /* ── 3. Page intro: fix the giant headline ─────────────── */
+  .dp-page-intro { display: block; margin: 2px 0 14px; }
+  .dp-page-title {
+    font-size: clamp(22px, 6.5vw, 28px);
+    line-height: 1.05;
+    letter-spacing: 0;
+    overflow-wrap: anywhere;
+  }
+  .dp-eyebrow { font-size: 9px; }
+  .dp-page-subtitle { font-size: 12.5px; line-height: 1.5; margin-top: 6px; max-width: none; }
+  .dp-intro-date { display: inline-block; margin-top: 8px; font-size: 9px; }
+
+  /* ── 4. Week nav + view toggle: tight rows ──────────────── */
+  .dash-week-nav { flex-direction: column; align-items: stretch; gap: 8px; padding: 10px; }
+  .dwn-controls {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+    width: 100%;
+  }
+  .dwn-btn { min-height: 38px; padding: 6px 4px; font-size: 9px; white-space: nowrap; }
+
+  /* ── 5. Priority score cards ────────────────────────────── */
+  .cc-hero { padding: 14px; }
+  .cc-title { font-size: 21px; }
+  .cc-score { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; width: 100%; }
+  .cc-score-card { padding: 10px 6px; min-width: 0; }
+  .cc-score-num { font-size: 21px; }
+
+  .summary-bar { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .sum-card { padding: 12px; }
+  .sum-num { font-size: 24px; }
+
+  /* ── 6. Tables: contained horizontal scroll ─────────────── */
+  .dash-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 12px;
+  }
+  .dash-table { table-layout: auto; min-width: 560px; font-size: 12px; }
+  .dash-table th, .dash-table td { padding: 11px 9px; white-space: nowrap; }
+
+  /* ── 7. Content padding + safe areas ────────────────────── */
+  .main, .plan-section, .coaches-section, .sched-section {
+    padding: 14px 10px calc(48px + var(--dp-safe-bottom));
+  }
+
+  /* Full-page overlays respect the notch too */
+  #fp-overlay .fp-topbar, #wh-overlay .wh-topbar {
+    padding-top: calc(10px + var(--dp-safe-top));
+  }
+  .fp-hint { display: none; }
+
+  /* Comfortable tap targets everywhere */
+  button, select { touch-action: manipulation; }
+}
+
+/* ── Extra-small phones ───────────────────────────────────── */
+@media (max-width: 400px) {
+  .coach-select { max-width: 96px; }
+  .logo-kicker { display: none; }
+  .theme-btn { padding: 0 7px; font-size: 8px; }
+  .dp-page-title { font-size: 21px; }
+}

@@ -11,9 +11,14 @@
     const select = qs(".coach-select");
     const name = select?.selectedOptions?.[0]?.textContent?.trim();
 
-    if (!name || /all/i.test(name)) return "Coaches";
+    if (!name || /all|select/i.test(name)) return "Coaches";
 
-    return name.replace(/coach/gi, "").trim() || "Coach";
+    const cleaned = name
+      .replace(/coach/gi, "")
+      .replace(/[^a-z\s'-]/gi, "")
+      .trim();
+
+    return cleaned || "Coach";
   }
 
   function formatToday() {
