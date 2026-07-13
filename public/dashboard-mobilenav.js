@@ -211,6 +211,24 @@
     if (moreDot) { moreDot.hidden = !moreHasCount; moreDot.textContent = ''; moreDot.classList.toggle('dot', moreHasCount); }
   }
 
+  /* ---- table → card labels ----
+     The athlete Table has 13 columns; on mobile CSS collapses each row
+     into a card and shows these labels above each metric. We stamp them
+     as data-label since the table markup doesn't carry them. */
+  var TABLE_LABELS = ['', 'Wk', 'Recovery', 'Weekly KM', 'Comp', 'Weight',
+    'Energy', 'Sleep', 'Stress', 'Calories', 'Run', 'Str', 'Status'];
+  function stampTableLabels() {
+    var rows = document.querySelectorAll('#grid.table-mode .dash-trow');
+    rows.forEach(function (row) {
+      var cells = row.children;
+      for (var i = 1; i < cells.length && i < TABLE_LABELS.length; i++) {
+        if (cells[i] && !cells[i].getAttribute('data-label')) {
+          cells[i].setAttribute('data-label', TABLE_LABELS[i]);
+        }
+      }
+    });
+  }
+
   /* ---- boot ---- */
   function init() {
     build();
@@ -236,8 +254,16 @@
       });
     }
     mirrorBadges();
+    stampTableLabels();
     var pt = 0;
     var pi = setInterval(function () { mirrorBadges(); if (++pt > 20) clearInterval(pi); }, 500);
+
+    // Re-stamp table labels whenever the grid re-renders (sort/filter/view switch).
+    var grid = document.getElementById('grid');
+    if (grid && 'MutationObserver' in window) {
+      new MutationObserver(function () { stampTableLabels(); })
+        .observe(grid, { childList: true, subtree: true });
+    }
 
     // Close the sheet on Escape.
     document.addEventListener('keydown', function (e) {

@@ -379,14 +379,94 @@
   #fp-overlay .sec { padding: 10px 12px; }
   #fp-overlay .fp-body { padding-left: 10px; padding-right: 10px; }
 
-  /* ── 6. Tables: contained horizontal scroll ─────────────── */
-  .dash-table-wrap {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    border-radius: 12px;
+  /* ── 6. Athlete TABLE → per-athlete cards (no sideways scroll) ──
+     13 columns can't live in a horizontal-scroll table on a phone.
+     We collapse each row into a card: name/meta header, then the
+     metrics as small labelled stat cells. Labels come from data-label
+     stamped by dashboard-mobilenav.js. */
+  #grid.table-mode .dash-table-wrap { overflow-x: visible; }
+  #grid.table-mode .dash-table {
+    display: block;
+    min-width: 0 !important;
+    table-layout: auto;
+    border-collapse: separate;
   }
-  .dash-table { table-layout: auto; min-width: 560px; font-size: 12px; }
-  .dash-table th, .dash-table td { padding: 11px 9px; white-space: nowrap; }
+  #grid.table-mode .dash-table colgroup,
+  #grid.table-mode .dash-table thead { display: none; }
+  #grid.table-mode .dash-table tbody { display: block; }
+
+  #grid.table-mode .dash-trow {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 9px 6px;
+    padding: 13px 13px 14px;
+    margin-bottom: 9px;
+    background: var(--surface, #0f151d);
+    border: 1px solid var(--border, rgba(255,255,255,.08));
+    border-radius: 14px;
+  }
+  #grid.table-mode .dash-trow.trow-red   { border-left: 3px solid rgba(240,130,130,.7); }
+  #grid.table-mode .dash-trow.trow-amber { border-left: 3px solid rgba(242,183,102,.7); }
+
+  #grid.table-mode .dash-trow td {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 3px;
+    padding: 0 !important;
+    text-align: left !important;
+    overflow: visible;
+    min-width: 0;
+  }
+  /* metric label above each value */
+  #grid.table-mode .dash-trow td:not(:first-child)::before {
+    content: attr(data-label);
+    font-family: var(--mono, monospace);
+    font-size: 7px;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--dim, #6b7d8c);
+  }
+  /* name cell = full-width card header */
+  #grid.table-mode .dash-trow td:first-child {
+    grid-column: 1 / -1;
+    padding-bottom: 9px !important;
+    margin-bottom: 3px;
+    border-bottom: 1px solid var(--border, rgba(255,255,255,.07));
+  }
+  #grid.table-mode .dash-trow td:first-child::before { display: none; }
+  #grid.table-mode .tname { font-family: var(--cond, sans-serif); font-size: 18px; font-weight: 900; letter-spacing: .03em; }
+  #grid.table-mode .tmeta { font-size: 10px; margin-top: 2px; }
+  /* status cell spans full width at the foot of the card */
+  #grid.table-mode .dash-trow td:last-child { grid-column: 1 / -1; }
+  /* drop empty metric cells so cards stay tight */
+  #grid.table-mode .dash-trow td:not(:first-child):not(:last-child):has(> .tdim:only-child) { display: none; }
+
+  /* expanded detail: full-width single column */
+  #grid.table-mode .trow-expand { display: none; }
+  #grid.table-mode .trow-expand td { display: block; padding: 0 !important; border: 0; }
+  .texp-panel { grid-template-columns: 1fr !important; }
+  .texp-left { border-right: 0 !important; border-bottom: 1px solid var(--border); }
+
+  /* ── This Week's Plan rows: no date/badge overlap ─────────── */
+  .sched-session-row {
+    display: grid !important;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    column-gap: 8px;
+    row-gap: 5px;
+    padding: 10px 0;
+  }
+  .sched-session-row .sched-date { grid-row: 1; grid-column: 1; min-width: 0; font-size: 10px; padding-top: 0; }
+  .sched-session-row > .sbadge { grid-row: 1; grid-column: 2; justify-self: start; }
+  .sched-session-row .sched-status-icon,
+  .sched-session-row .po-edit-icon { grid-row: 1; grid-column: 3; justify-self: end; }
+  .sched-session-row .sched-session-name { grid-row: 2; grid-column: 1 / -1; font-size: 13px; }
+
+  /* Week detail day-by-day rows stack cleanly too */
+  .wd-row { grid-template-columns: 1fr !important; row-gap: 8px; padding: 12px 14px; }
+  .wd-date { width: auto; padding-top: 0; }
 
   /* ── 7. Content padding + safe areas ────────────────────── */
   .main, .plan-section, .coaches-section, .sched-section {
