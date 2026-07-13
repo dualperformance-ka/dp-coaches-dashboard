@@ -949,10 +949,10 @@ body[data-theme="pride"] .texp-name{background:linear-gradient(90deg,#FF8C00,#FF
 .wh-table td:first-child{text-align:left;font-weight:700}
 .wh-wt{font-size:13px;font-weight:800}
 .wh-dn{color:#22c55e}.wh-up{color:#ef4444}.wh-fl{color:var(--wh-dim)}
-.wh-range-btns{display:flex;gap:4px}
-.wh-range-btn{background:transparent;border:1px solid var(--wh-border);color:var(--wh-dim);font-family:var(--mono);font-size:8px;font-weight:700;padding:3px 9px;border-radius:20px;cursor:pointer;text-transform:uppercase;letter-spacing:.07em;transition:all .12s}
-.wh-range-btn:hover{border-color:var(--wh-text);color:var(--wh-text)}
-.wh-range-btn.wh-active{background:var(--wh-str);border-color:var(--wh-str);color:#fff}
+.wh-range-control{display:flex;align-items:center;gap:8px}
+.wh-range-label{font-family:var(--mono);font-size:8px;font-weight:700;color:var(--wh-dim);text-transform:uppercase;letter-spacing:.1em}
+.wh-range-select{appearance:none;-webkit-appearance:none;-moz-appearance:none;background:var(--wh-bg);border:1px solid var(--wh-border);color:var(--wh-text);font-family:var(--mono);font-size:9px;font-weight:700;padding:6px 28px 6px 10px;border-radius:999px;cursor:pointer;text-transform:uppercase;letter-spacing:.07em;line-height:1.2;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%236b7280' d='M1 1l4 4 4-4'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;background-size:10px 6px;transition:border-color .12s,color .12s}
+.wh-range-select:hover,.wh-range-select:focus{border-color:var(--wh-text);outline:none}
 .wh-spark-wrap{cursor:pointer;position:relative}
 .wh-spark-wrap::after{content:'↗ Full history';font-family:var(--mono);font-size:7px;text-transform:uppercase;letter-spacing:.06em;color:var(--dim);position:absolute;bottom:18px;right:0;opacity:.5}
 
@@ -9370,6 +9370,32 @@ function buildMileageMini(a) {
 let _mtRange = 16; // weeks shown in the mileage trend
 function setMTRange(n) { _mtRange = n; _drawWH(); }
 
+const _historyWeekRangeOptions = [
+  { value: 1, label: '7D' },
+  { value: 2, label: '2WK' },
+  { value: 4, label: '4WK' },
+  { value: 8, label: '8WK' },
+  { value: 10, label: '10WK' },
+  { value: 12, label: '12WK' },
+  { value: 16, label: '16WK' },
+  { value: 26, label: '26WK' },
+  { value: 52, label: '52WK' },
+  { value: 999, label: 'ALL' }
+];
+
+const _historyDayRangeOptions = [
+  { value: 7, label: '7D' },
+  { value: 14, label: '2WK' },
+  { value: 28, label: '4WK' },
+  { value: 56, label: '8WK' },
+  { value: 70, label: '10WK' },
+  { value: 84, label: '12WK' },
+  { value: 112, label: '16WK' },
+  { value: 182, label: '26WK' },
+  { value: 365, label: '52WK' },
+  { value: 9999, label: 'ALL' }
+];
+
 function buildMileageTrend(a) {
   const _mn = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const _fmtD = d => { if (!d) return '—'; const p = d.split('-'); return parseInt(p[2]) + ' ' + _mn[parseInt(p[1]) - 1]; };
@@ -9417,10 +9443,12 @@ function buildMileageTrend(a) {
 
   if (pts.length > _mtRange) pts = pts.slice(pts.length - _mtRange);
 
-  const _ranges = [{ w: 8, l: '8W' }, { w: 16, l: '16W' }, { w: 26, l: '26W' }, { w: 52, l: '52W' }, { w: 999, l: 'ALL' }];
-  const _rangeBtns = _ranges.map(r =>
-    `<button class="wh-range-btn${_mtRange === r.w ? ' wh-active' : ''}" onclick="setMTRange(${r.w})">${r.l}</button>`
-  ).join('');
+  const _rangeSelect = `<div class="wh-range-control">
+    <span class="wh-range-label">Range</span>
+    <select class="wh-range-select" aria-label="Mileage history range" onchange="setMTRange(Number(this.value))">
+      ${_historyWeekRangeOptions.map(r => `<option value="${r.value}"${_mtRange === r.value ? ' selected' : ''}>${r.label}</option>`).join('')}
+    </select>
+  </div>`;
 
   const hasData = pts.some(p => p.completed != null || p.planned != null || p.strava != null);
   let chartHtml = '<p style="font-family:var(--mono);font-size:11px;color:var(--wh-dim)">No mileage data yet.</p>';
@@ -9511,7 +9539,7 @@ function buildMileageTrend(a) {
   return `<div class="wh-section">
     <div class="wh-section-title">
       <span>Weekly Mileage</span>
-      <div class="wh-range-btns">${_rangeBtns}</div>
+      ${_rangeSelect}
     </div>
     ${chartHtml}
   </div>`;
@@ -9622,17 +9650,19 @@ function buildWeightHistory(a) {
     </tr>`;
   }).join('');
 
-  const _ranges = [{d:7,l:'1W'},{d:14,l:'2W'},{d:28,l:'4W'},{d:56,l:'8W'},{d:90,l:'12W'}];
-  const _rangeBtns = _ranges.map(r =>
-    `<button class="wh-range-btn${_whRange===r.d?' wh-active':''}" onclick="setWHRange(${r.d})">${r.l}</button>`
-  ).join('');
+  const _rangeSelect = `<div class="wh-range-control">
+    <span class="wh-range-label">Range</span>
+    <select class="wh-range-select" aria-label="Body history range" onchange="setWHRange(Number(this.value))">
+      ${_historyDayRangeOptions.map(r => `<option value="${r.value}"${_whRange === r.value ? ' selected' : ''}>${r.label}</option>`).join('')}
+    </select>
+  </div>`;
 
   return `
     ${buildMileageTrend(a)}
     <div class="wh-section">
       <div class="wh-section-title">
         <span>Weight Trend${wtPts.length > 0 ? ' · <span style="font-weight:400;opacity:.7">' + _fmtFull(wtPts[0].date) + ' → ' + _fmtFull(wtPts[wtPts.length-1].date) + '</span>' : ''}</span>
-        <div class="wh-range-btns">${_rangeBtns}</div>
+        ${_rangeSelect}
       </div>
       ${chartHtml}
     </div>
