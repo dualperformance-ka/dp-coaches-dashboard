@@ -2,18 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>DP Coaches Dashboard</title>
 <link rel="icon" type="image/png" href="/dp-mark-blue.png">
-<!-- PWA -->
-<link rel="manifest" href="/manifest.webmanifest">
-<meta name="theme-color" content="#0a0a0a">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="DP Coaches">
-<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
-<script src="/app.js" defer></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@600;700;800&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -1104,8 +1095,14 @@ body[data-theme="light"] .plan-chip.coach::before{color:#92400e}
 .nut-km-cap{font-family:var(--mono);font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.05em;margin-top:3px;white-space:nowrap}
 .nut-km-cap b{color:var(--amber);font-weight:500}
 .nut-save{font-family:var(--mono);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:6px 10px;border-radius:6px;border:1px solid var(--border-mid);background:transparent;color:var(--dim);cursor:pointer;transition:all .15s;white-space:nowrap}
-.nut-save.dirty{border-color:rgba(245,158,11,.4);background:var(--amber-bg);color:var(--amber-text)}
-.nut-save:disabled{opacity:.6;cursor:default}
+.nut-save.dirty{border-color:#dc2626;background:#dc2626;color:#fff;box-shadow:0 0 0 3px rgba(220,38,38,.18);animation:nutSavePulse 1.3s ease-in-out infinite}
+.nut-save.dirty:hover{background:#b91c1c;border-color:#b91c1c}
+@keyframes nutSavePulse{0%,100%{box-shadow:0 0 0 3px rgba(220,38,38,.18)}50%{box-shadow:0 0 0 6px rgba(220,38,38,.30)}}
+.nut-save:disabled{opacity:.6;cursor:default;animation:none;box-shadow:none}
+.nut-actions{white-space:nowrap}
+.nut-del{font-family:var(--mono);font-size:12px;line-height:1;padding:6px 9px;margin-left:6px;border-radius:6px;border:1px solid var(--border-mid);background:transparent;color:var(--dim);cursor:pointer;transition:all .15s;vertical-align:middle}
+.nut-del:hover{border-color:#dc2626;color:#dc2626;background:var(--red-bg)}
+.nut-del:disabled{opacity:.5;cursor:default}
 .nut-empty{padding:32px;text-align:center;font-family:var(--mono);font-size:11px;color:var(--dim)}
 .nut-prog{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--dim)}
 .plan-day{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:8px;min-height:120px;display:flex;flex-direction:column;gap:6px}
@@ -1575,7 +1572,6 @@ body[data-theme="light"] .strava-weekly-strip{background:#fff}
 </style>
 <link rel="stylesheet" href="/dashboard-redesign.css">
 <link rel="stylesheet" href="/dashboard-detail-cleanup.css">
-<link rel="stylesheet" href="/dashboard-mobile.css">
 </head>
 <body>
 
@@ -3017,7 +3013,7 @@ function renderNutTable() {
       <td><input class="nut-input" id="nut-${i}-fib"   value="${iv(r.fibre)}"    placeholder="g"    oninput="nutDirty(${i})"></td>
       <td><input class="nut-input km" id="nut-${i}-km" data-auto="${autoKm}" value="${iv(r.weekly_km_target)}" placeholder="${autoKm > 0 ? autoKm : 'auto'}" oninput="nutDirty(${i});updateNutKmCap(${i})"><div class="nut-km-cap" id="nut-${i}-kmcap">${_nutKmCapHtml(r.weekly_km_target, autoKm)}</div></td>
       <td><input class="nut-input wide" id="nut-${i}-notes" value="${iv(r.notes)}" placeholder="Coach note" oninput="nutDirty(${i})"></td>
-      <td><button class="nut-save" id="nut-${i}-save" onclick="saveNutRow(${i})">Save</button></td>
+      <td class="nut-actions"><button class="nut-save" id="nut-${i}-save" onclick="saveNutRow(${i})">Save</button><button class="nut-del" id="nut-${i}-del" onclick="deleteNutRow(${i})" title="Delete this week">&#10005;</button></td>
     </tr>`;
   }).join('');
 
@@ -3061,6 +3057,30 @@ async function saveNutRow(i) {
   } catch (e) {
     console.warn('nutrition_plans save failed', e);
     if (btn) { btn.textContent = 'Retry'; btn.disabled = false; }
+  }
+}
+
+// Delete a single week row. Removes it from Supabase (if it was ever saved) and
+// from the local list, then re-renders. Safe for freshly-added, never-saved
+// rows too — the DB delete simply matches nothing.
+async function deleteNutRow(i) {
+  const r = _nutRenderRows[i]; if (!r) return;
+  if (!confirm(`Delete ${displayWeekLabel(r.week_label)} for ${r.athlete_code}?\nThis removes its macro & KM targets.`)) return;
+  const sb = getSB();
+  const btn = document.getElementById(`nut-${i}-del`);
+  if (btn) { btn.textContent = '…'; btn.disabled = true; }
+  try {
+    if (sb) {
+      const { error } = await sb.from('nutrition_plans').delete()
+        .eq('athlete_code', r.athlete_code).eq('week_label', r.week_label);
+      if (error) throw error;
+    }
+    _nutPlans = _nutPlans.filter(p => !(p.athlete_code === r.athlete_code && p.week_label === r.week_label));
+    renderNutTable();
+  } catch (e) {
+    console.warn('nutrition_plans delete failed', e);
+    if (btn) { btn.textContent = '✕'; btn.disabled = false; }
+    alert('Delete failed — please try again.');
   }
 }
 
