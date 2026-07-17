@@ -14,6 +14,8 @@
 //   NOTIFY_SECRET                       -> same value as on the portal project.
 //     Create it yourself, e.g. run:  openssl rand -hex 32
 
+import { coachError, requireCoach, setCoachCors } from './_coach-auth.js';
+
 const ADMIN_KEY = String(process.env.ADMIN_KEY || '').trim();
 const PORTAL_URL = String(process.env.ATHLETE_PORTAL_URL || 'https://dp-athlete-portal.vercel.app').replace(/\/+$/, '');
 
@@ -103,18 +105,15 @@ async function handleSend(req, res) {
 }
 
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-admin-key');
+  setCoachCors(req, res, 'GET, POST, OPTIONS');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   try {
-    // GET (recipient list) is public — same exposure as GET /api/athletes.
-    // POST (actually sending) requires the admin key.
+    requireCoach(req);
     if (req.method === 'GET') return await handleRecipients(req, res);
-    requireAdmin(req);
     if (req.method === 'POST') return await handleSend(req, res);
     return res.status(405).json({ ok: false, error: 'Method not allowed' });
   } catch (error) {
-    const status = error.status || 500;
-    return res.status(status).json({ ok: false, error: String(error.message || error).slice(0, 500) });
+    return coachError(res, error);
   }
 }

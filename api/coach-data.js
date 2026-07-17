@@ -1,6 +1,7 @@
 // /api/coach-data.js
 // Server-side bridge from athlete portal Supabase tables to the coaches dashboard.
 // Requires SUPABASE_URL and SUPABASE_SERVICE_KEY in the dashboard Vercel project.
+import { coachError, requireCoach, setCoachCors } from './_coach-auth.js';
 
 const TABLES = {
   body: 'daily_body_logs',
@@ -271,11 +272,15 @@ function mapGoal(row) {
 }
 
 export default async function handler(req, res) {
-  res.setHeader('Cache-Control', 'no-store, max-age=0');
+  setCoachCors(req, res, 'GET, OPTIONS');
+
+  if (req.method === 'OPTIONS') return res.status(200).end();
 
   if (req.method !== 'GET') {
     return res.status(405).json({ ok: false, error: 'Method not allowed' });
   }
+
+  try { requireCoach(req); } catch (error) { return coachError(res, error); }
 
   try {
     const [body, nutrition, sessions, weeklyRaw, goals] = await Promise.all([
@@ -313,7 +318,7 @@ export default async function handler(req, res) {
   } catch (error) {
     console.error('[coach-data]', error);
 
-    return res.status(200).json({
+    return res.status(502).json({
       ok: false,
       source: 'portal_supabase',
       generatedAt: new Date().toISOString(),

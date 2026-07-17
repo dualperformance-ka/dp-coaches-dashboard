@@ -29,6 +29,8 @@
 // must exist. Unmapped database IDs fall through to Notion automatically.
 // ---------------------------------------------------------------------------
 
+import { coachError, requireCoach, setCoachCors } from './_coach-auth.js';
+
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://rugdupplsswxmpoudhpv.supabase.co';
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
 const NOTION_TOKEN = process.env.NOTION_TOKEN;
@@ -295,10 +297,10 @@ function mergeWeekly(sup, notion) {
 
 // ─── Handler ──────────────────────────────────────────────────────────────
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  setCoachCors(req, res, 'GET, OPTIONS');
   if (req.method === 'OPTIONS') { res.status(200).end(); return; }
+  if (req.method !== 'GET') { res.status(405).json({ error: 'Method not allowed' }); return; }
+  try { requireCoach(req); } catch (error) { return coachError(res, error); }
 
   const { db } = req.query;
   if (!db) { res.status(400).json({ error: 'Missing ?db= query parameter' }); return; }

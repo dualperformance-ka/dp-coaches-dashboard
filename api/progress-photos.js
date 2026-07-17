@@ -1,5 +1,6 @@
 // api/progress-photos.js — Cloudinary progress photo lookup
 // Uses the Admin API resources endpoint with prefix filtering (works with path-based public IDs).
+import { coachError, requireCoach, setCoachCors } from './_coach-auth.js';
 
 function parseCloudinaryUrl() {
   const raw = process.env.CLOUDINARY_URL;
@@ -40,11 +41,10 @@ function inferPhotoType(publicId) {
 }
 
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  setCoachCors(req, res, 'GET, OPTIONS');
   if (req.method === 'OPTIONS') { res.status(200).end(); return; }
   if (req.method !== 'GET') { res.status(405).json({ error: 'Method not allowed' }); return; }
+  try { requireCoach(req); } catch (error) { return coachError(res, error); }
 
   const { athlete, week } = req.query;
   const athleteSlug = cleanSegment(athlete);

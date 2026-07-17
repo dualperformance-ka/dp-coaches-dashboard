@@ -1,0 +1,60 @@
+:root{--focus-ring:0 0 0 3px rgba(121,195,232,.28)}
+html{scroll-behavior:smooth}
+body.modal-open{overflow:hidden}
+button,input,select,textarea{font:inherit}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,[role="button"]:focus-visible{outline:2px solid var(--brand);outline-offset:2px;box-shadow:var(--focus-ring)}
+
+.dp-access-gate{position:fixed;inset:0;z-index:2000;display:grid;place-items:center;padding:20px;background:radial-gradient(circle at 50% 20%,rgba(121,195,232,.16),transparent 34%),#090b0d}
+.dp-access-gate.is-hidden{display:none}
+.dp-access-card{width:min(430px,100%);display:flex;flex-direction:column;gap:10px;padding:32px;background:#12171b;border:1px solid rgba(121,195,232,.25);border-radius:18px;box-shadow:0 30px 100px rgba(0,0,0,.6)}
+.dp-access-logo{width:210px;max-width:70%;margin-bottom:18px}
+.dp-access-kicker,.coach-actions-kicker{font:800 9px/1 var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--brand-text)}
+.dp-access-card h1{font:800 30px/1.05 var(--cond);text-transform:uppercase;letter-spacing:.02em}
+.dp-access-card p{color:var(--muted);margin-bottom:12px}
+.dp-access-card label{font:700 10px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.dp-access-card input,.dp-access-card select{min-height:44px;padding:9px 12px;background:#0a0d0f;color:#fff;border:1px solid var(--border-mid);border-radius:8px}
+.dp-access-card button{min-height:46px;margin-top:8px;border:0;border-radius:8px;background:var(--brand);color:#071016;font-weight:800;cursor:pointer}
+.dp-access-card small{color:var(--dim);text-align:center;margin-top:4px}
+.dp-access-error,.coach-action-error{min-height:18px;color:var(--alert);font-size:12px}
+.dp-logout-btn{font-size:9px}
+
+.coach-actions{margin:0 0 12px;background:linear-gradient(145deg,rgba(23,30,35,.96),rgba(15,18,21,.96));border:1px solid rgba(121,195,232,.18);border-radius:14px;overflow:hidden}
+.coach-actions-head{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:17px 18px 13px}
+.coach-actions-head h2{font:800 22px/1.1 var(--cond);text-transform:uppercase;letter-spacing:.04em;margin-top:5px}
+.coach-actions-head p{font-size:11px;color:var(--muted);margin-top:3px}
+.coach-action-new{border:1px solid var(--brand-border);border-radius:7px;background:var(--brand-bg);color:var(--brand-text);font:800 10px var(--mono);text-transform:uppercase;padding:9px 12px;cursor:pointer;white-space:nowrap}
+.coach-data-warning{margin:0 18px 12px;padding:9px 11px;border:1px solid rgba(245,158,11,.25);border-radius:7px;background:rgba(245,158,11,.08);color:#fcd34d;font-size:11px}
+.coach-action-filters{display:flex;gap:5px;padding:0 18px 12px;overflow:auto}
+.coach-action-filters button{border:1px solid var(--border-mid);border-radius:18px;background:transparent;color:var(--muted);font:700 9px var(--mono);text-transform:uppercase;letter-spacing:.05em;padding:6px 10px;cursor:pointer;white-space:nowrap}
+.coach-action-filters button.active{background:var(--brand);border-color:var(--brand);color:#061019}
+.coach-action-list{border-top:1px solid var(--border)}
+.coach-action-row{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;border-left:3px solid var(--brand);border-bottom:1px solid var(--border)}
+.coach-action-row:last-child{border-bottom:0}
+.coach-action-row.priority-urgent{border-left-color:var(--alert)}.coach-action-row.priority-high{border-left-color:var(--warn)}.coach-action-row.priority-low{border-left-color:var(--dim)}
+.coach-action-row.is-overdue{background:rgba(248,113,113,.04)}
+.coach-action-main{display:grid;grid-template-columns:96px minmax(180px,1fr) minmax(180px,.7fr);gap:10px;align-items:center;text-align:left;padding:12px 15px;border:0;background:transparent;color:inherit;cursor:pointer;min-width:0}
+.coach-action-athlete{font:800 11px var(--mono);color:var(--brand-text);overflow:hidden;text-overflow:ellipsis}
+.coach-action-title{font-size:12px;font-weight:650;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.coach-action-meta{font:9px var(--mono);color:var(--muted);text-transform:capitalize}
+.coach-action-complete{margin-right:12px;border:1px solid rgba(74,222,128,.25);border-radius:6px;background:rgba(74,222,128,.07);color:var(--ok);font:700 9px var(--mono);padding:6px 9px;cursor:pointer;white-space:nowrap}
+.coach-action-empty,.coach-action-load-error{padding:18px;color:var(--dim);font-size:12px;text-align:center;border:1px solid var(--border);border-radius:10px;margin-bottom:12px}
+
+.coach-action-backdrop{position:fixed;inset:0;z-index:1800;display:grid;place-items:center;padding:20px;background:rgba(5,7,8,.78);backdrop-filter:blur(7px)}
+.coach-action-backdrop[hidden]{display:none}
+.coach-action-dialog{width:min(660px,100%);max-height:92vh;overflow:auto;padding:22px;background:#14191d;border:1px solid var(--brand-border);border-radius:14px;box-shadow:0 28px 80px rgba(0,0,0,.6)}
+.coach-action-dialog-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:18px}.coach-action-dialog-head h2{font:800 24px var(--cond);text-transform:uppercase;margin-top:5px}
+.coach-action-close{border:0;background:transparent;color:var(--muted);font-size:28px;cursor:pointer}
+.coach-action-grid{display:grid;grid-template-columns:1fr 1fr;gap:13px}
+.coach-action-grid label{display:flex;flex-direction:column;gap:6px;font:700 9px var(--mono);text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.coach-action-grid .span-2{grid-column:span 2}
+.coach-action-grid input,.coach-action-grid select,.coach-action-grid textarea{width:100%;padding:9px 10px;background:#0c0f11;color:var(--text);border:1px solid var(--border-mid);border-radius:7px;text-transform:none;letter-spacing:0;resize:vertical}
+.coach-action-dialog-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}.coach-action-dialog-actions button{padding:9px 14px;border:1px solid var(--border-mid);border-radius:7px;background:transparent;color:var(--muted);cursor:pointer}.coach-action-dialog-actions .primary{background:var(--brand);border-color:var(--brand);color:#061019;font-weight:800}
+
+/* Keep operational tabs visually secondary to the three daily coaching surfaces. */
+.tab-bar .tab:nth-last-child(-n+5){font-size:9px;opacity:.74}
+.tab-bar .tab:nth-last-child(-n+5).active,.tab-bar .tab:nth-last-child(-n+5):hover{opacity:1}
+
+@media(max-width:760px){
+  .coach-actions{border-radius:11px}.coach-actions-head{align-items:flex-start;padding:14px}.coach-actions-head h2{font-size:19px}.coach-action-new{padding:8px 9px}.coach-action-filters{padding:0 14px 11px}.coach-action-main{grid-template-columns:72px 1fr;padding:11px 10px}.coach-action-meta{grid-column:2}.coach-action-complete{margin-right:8px}.coach-action-grid{grid-template-columns:1fr}.coach-action-grid .span-2{grid-column:span 1}.coach-action-dialog{padding:18px}.dp-access-card{padding:24px}.dp-logout-btn{display:none}
+}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}

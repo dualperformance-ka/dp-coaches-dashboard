@@ -1,3 +1,5 @@
+import { coachError, requireCoach, setCoachCors } from './_coach-auth.js';
+
 const SUPABASE_URL = String(process.env.SUPABASE_URL || '').replace(/\/+$/, '');
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
 const ADMIN_KEY = String(process.env.ADMIN_KEY || '').trim();
@@ -317,14 +319,12 @@ async function deleteAthlete(code) {
 }
 
 export default async function handler(req, res) {
-  res.setHeader('Cache-Control', 'no-store, max-age=0');
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Admin-Key');
+  setCoachCors(req, res, 'GET, POST, OPTIONS');
 
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   try {
+    requireCoach(req);
     if (req.method === 'GET') {
       const action = String(req.query.action || 'roster').trim().toLowerCase();
 
@@ -346,8 +346,6 @@ export default async function handler(req, res) {
     if (req.method !== 'POST') {
       return res.status(405).json({ ok: false, error: 'Method not allowed' });
     }
-
-    requireAdmin(req);
 
     const action = String(req.body?.action || '').trim().toLowerCase();
 
@@ -381,7 +379,6 @@ export default async function handler(req, res) {
 
     return res.status(400).json({ ok: false, error: 'Unknown action' });
   } catch (error) {
-    const status = error.status || 500;
-    return res.status(status).json({ ok: false, error: error.message || 'Request failed' });
+    return coachError(res, error);
   }
 }

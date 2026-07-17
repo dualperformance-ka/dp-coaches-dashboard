@@ -10,6 +10,7 @@
  *   STRAVA_CLIENT_ID     — Strava app client ID
  *   STRAVA_CLIENT_SECRET — Strava app client secret
  */
+import { coachError, requireCoach, setCoachCors } from './_coach-auth.js';
 
 const STRAVA_API  = 'https://www.strava.com/api/v3';
 const STRAVA_AUTH = 'https://www.strava.com/oauth/token';
@@ -141,10 +142,10 @@ function weeklyStats(activities) {
 // ── Handler ───────────────────────────────────────────────────────────────────
 
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  setCoachCors(req, res, 'GET, OPTIONS');
   if (req.method === 'OPTIONS') return res.status(200).end();
+  if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
+  try { requireCoach(req); } catch (error) { return coachError(res, error); }
 
   // Support both ?code= and legacy ?athlete= params
   const athleteCode = ((req.query.code || req.query.athlete) || '').trim().toUpperCase();
