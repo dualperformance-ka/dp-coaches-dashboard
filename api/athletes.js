@@ -1,4 +1,4 @@
-import { coachError, requireCoach, setCoachCors } from './_coach-auth.js';
+import { coachError, requireCoach, setCoachCors } from '../server/coach-auth.js';
 
 const SUPABASE_URL = String(process.env.SUPABASE_URL || '').replace(/\/+$/, '');
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;

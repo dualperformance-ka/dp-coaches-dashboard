@@ -4362,7 +4362,7 @@ function buildActionList(a) {
 // (one row per exercise logged) only returns the first ~100 entries, which for
 // a busy squad means recent sessions are silently missing. This function keeps
 // requesting the next page until there is no more data.
-// Requires the /api/notion backend to:
+// Requires the /api/data backend to:
 //   • Accept ?cursor=<next_cursor> and pass it to the Notion API as start_cursor
 //   • Return has_more (boolean) and next_cursor (string) from the Notion response
 async function fetchDB(dbId, bust = false) {
@@ -8331,9 +8331,6 @@ async function decideApplication(notionId, name, decision) {
 function switchTab(tab) {
   const idMap = { applications: 'apps', notifications: 'notif', nutrition: 'nut' };
   const tabs = ['athletes','planning','nutrition','coaches','sync','applications','notifications','send'];
-  if (tab === 'planning') renderPlanning();
-  if (tab === 'nutrition') renderNutritionTab();
-  if (tab === 'send') cnPopulate();
   tabs.forEach(t => {
     const key = idMap[t] || t;
     const btn     = document.getElementById(`tab-${key}-btn`);
@@ -8351,6 +8348,16 @@ function switchTab(tab) {
   });
   document.getElementById('filter-bar').style.display = tab === 'athletes' ? '' : 'none';
   document.getElementById('gen-btn').style.display    = tab === 'athletes' && _allAthletes.length ? 'block' : 'none';
+
+  // Navigation should never be blocked by a slow or incomplete data render.
+  // Paint the destination first, then hydrate its content independently.
+  try {
+    if (tab === 'planning') renderPlanning();
+    if (tab === 'nutrition') renderNutritionTab();
+    if (tab === 'send') cnPopulate();
+  } catch (err) {
+    console.warn('[tabs] content render failed for ' + tab, err);
+  }
 
 }
 

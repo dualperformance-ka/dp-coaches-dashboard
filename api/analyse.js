@@ -2,7 +2,7 @@
 // Accepts POST with athlete data, returns per-athlete recommendations + squad brief.
 
 import Anthropic from '@anthropic-ai/sdk';
-import { coachError, requireCoach, setCoachCors } from './_coach-auth.js';
+import { coachError, requireCoach, setCoachCors } from '../server/coach-auth.js';
 
 const clip = (value, max = 800) => typeof value === 'string' ? value.slice(0, max) : value;
 

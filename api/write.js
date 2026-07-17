@@ -10,7 +10,7 @@
 //   "goals"                              -> updates the athlete's profile row in the Athlete DB
 //   "test_ping"                          -> ignored (returns ok), matches the old Make "skip test pings" filter
 //
-// Reads (/api/notion, notion.js) are untouched.
+// Reads are handled by the authenticated /api/data proxy.
 // Env required: NOTION_TOKEN.
 // Env required for GHL check-in tagging: SUPABASE_URL, SUPABASE_SERVICE_KEY, GHL_API_KEY.
 //

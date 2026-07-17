@@ -22,9 +22,10 @@
   window.fetch = async function coachFetch(input, init) {
     const url = typeof input === 'string' ? input : input?.url || '';
     const sameOriginApi = url.startsWith('/api/') || url.startsWith(`${location.origin}/api/`);
-    if (sameOriginApi && !url.includes('/api/session')) await ready;
+    const isSessionCheck = url.includes('/api/actions?mode=session');
+    if (sameOriginApi && !isSessionCheck) await ready;
     const response = await nativeFetch(input, withCoachHeaders(input, init));
-    if (sameOriginApi && response.status === 401 && !url.includes('/api/session')) showGate('Your session expired. Enter the dashboard access key again.');
+    if (sameOriginApi && response.status === 401 && !isSessionCheck) showGate('Your session expired. Enter the dashboard access key again.');
     return response;
   };
 
@@ -55,7 +56,7 @@
   }
 
   async function verify(key, selectedCoach) {
-    const response = await nativeFetch('/api/session', {
+    const response = await nativeFetch('/api/actions?mode=session', {
       cache: 'no-store',
       headers: { 'X-Dashboard-Key': key, 'X-Coach-Name': selectedCoach },
     });

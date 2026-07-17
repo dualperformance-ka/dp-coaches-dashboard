@@ -14,7 +14,7 @@
 //   NOTIFY_SECRET                       -> same value as on the portal project.
 //     Create it yourself, e.g. run:  openssl rand -hex 32
 
-import { coachError, requireCoach, setCoachCors } from './_coach-auth.js';
+import { coachError, requireCoach, setCoachCors } from '../server/coach-auth.js';
 
 const ADMIN_KEY = String(process.env.ADMIN_KEY || '').trim();
 const PORTAL_URL = String(process.env.ATHLETE_PORTAL_URL || 'https://dp-athlete-portal.vercel.app').replace(/\/+$/, '');

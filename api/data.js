@@ -1,10 +1,8 @@
 // api/data.js — Supabase-first data proxy with automatic Notion fallback
 // ---------------------------------------------------------------------------
-// Drop-in companion to api/notion.js. The dashboard currently calls
-//   /api/notion?db=<notion-database-id>
-// Point those calls at
+// Canonical dashboard data proxy. The dashboard calls
 //   /api/data?db=<notion-database-id>
-// (same query param, same response shape) and the dashboard will read from
+// and reads from
 // Supabase — where the athlete portals now write — instead of Notion.
 //
 // Behaviour per database:
@@ -15,7 +13,7 @@
 // If Supabase errors or returns nothing for a database, it transparently
 // falls back to the Notion proxy logic, so nothing breaks during cutover.
 //
-// Response shape is identical to api/notion.js: { results, total }.
+// Response shape is { results, total }.
 // Each row uses the SAME property names the dashboard already reads from
 // Notion (e.g. "Run Completed", "Weekly Run KM", "Weight"), plus the
 // date:<Prop>:start / :end / :is_datetime expansions.
@@ -29,7 +27,7 @@
 // must exist. Unmapped database IDs fall through to Notion automatically.
 // ---------------------------------------------------------------------------
 
-import { coachError, requireCoach, setCoachCors } from './_coach-auth.js';
+import { coachError, requireCoach, setCoachCors } from '../server/coach-auth.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://rugdupplsswxmpoudhpv.supabase.co';
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -195,7 +193,7 @@ async function fromSupabase(type) {
   }
 }
 
-// ─── Notion fallback (mirrors api/notion.js exactly) ──────────────────────
+// ─── Notion fallback ─────────────────────────────────────────────────────
 function extractProp(prop) {
   if (!prop) return null;
   switch (prop.type) {

@@ -229,9 +229,68 @@
     });
   }
 
+  /* ---- compact mobile controls ------------------------------------------ */
+  function enhanceMobileControls() {
+    var filter = document.getElementById('filter-bar');
+    var search = document.getElementById('search-input');
+    if (filter && search && !document.getElementById('dp-mobile-filter-toggle')) {
+      var toggle = document.createElement('button');
+      toggle.id = 'dp-mobile-filter-toggle';
+      toggle.className = 'dp-mobile-filter-toggle';
+      toggle.type = 'button';
+      toggle.setAttribute('aria-expanded', 'false');
+      toggle.textContent = 'Filters';
+      toggle.addEventListener('click', function () {
+        var open = filter.classList.toggle('mobile-expanded');
+        toggle.setAttribute('aria-expanded', String(open));
+        toggle.textContent = open ? 'Less' : 'Filters';
+      });
+      search.insertAdjacentElement('afterend', toggle);
+    }
+
+    var headerControls = document.querySelector('.h-right');
+    if (headerControls && !document.getElementById('dp-theme-switch')) {
+      var theme = document.createElement('button');
+      theme.id = 'dp-theme-switch';
+      theme.className = 'dp-theme-switch';
+      theme.type = 'button';
+      theme.setAttribute('aria-label', 'Switch colour theme');
+      theme.innerHTML = '<span aria-hidden="true">◐</span>';
+      theme.addEventListener('click', function () {
+        var next = document.body.dataset.theme === 'light' ? 'dark' : 'light';
+        if (typeof window.setTheme === 'function') window.setTheme(next);
+      });
+      headerControls.appendChild(theme);
+    }
+  }
+
+  function addMobileSectionTitles() {
+    var sections = {
+      'tab-planning-content': ['Programming', 'Build and adjust the week'],
+      'tab-nut-content': ['Nutrition', 'Targets and weekly progression'],
+      'tab-coaches-content': ['Coaches', 'Karl and Alex training'],
+      'tab-sync-content': ['Data health', 'Spot gaps before coaching decisions'],
+      'tab-apps-content': ['Pipeline', 'Review every application'],
+      'tab-notif-content': ['Applications', 'New decisions waiting'],
+      'tab-send-content': ['Notify', 'Message the athlete portal']
+    };
+    Object.keys(sections).forEach(function (id) {
+      var section = document.getElementById(id);
+      if (!section || section.querySelector(':scope > .dp-mobile-section-head')) return;
+      var copy = sections[id];
+      var head = document.createElement('div');
+      head.className = 'dp-mobile-section-head';
+      head.innerHTML = '<div class="dp-mobile-section-kicker">Dual Performance</div>' +
+        '<h1>' + copy[0] + '</h1><p>' + copy[1] + '</p>';
+      section.insertBefore(head, section.firstChild);
+    });
+  }
+
   /* ---- boot ---- */
   function init() {
     build();
+    enhanceMobileControls();
+    addMobileSectionTitles();
 
     // Reflect whichever tab is active on load.
     var current = document.querySelector('.tab.active');

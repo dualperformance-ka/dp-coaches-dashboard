@@ -10,7 +10,7 @@
  *   STRAVA_CLIENT_ID     — Strava app client ID
  *   STRAVA_CLIENT_SECRET — Strava app client secret
  */
-import { coachError, requireCoach, setCoachCors } from './_coach-auth.js';
+import { coachError, requireCoach, setCoachCors } from '../server/coach-auth.js';
 
 const STRAVA_API  = 'https://www.strava.com/api/v3';
 const STRAVA_AUTH = 'https://www.strava.com/oauth/token';

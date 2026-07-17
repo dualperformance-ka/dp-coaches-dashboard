@@ -1,7 +1,7 @@
 // /api/coach-data.js
 // Server-side bridge from athlete portal Supabase tables to the coaches dashboard.
 // Requires SUPABASE_URL and SUPABASE_SERVICE_KEY in the dashboard Vercel project.
-import { coachError, requireCoach, setCoachCors } from './_coach-auth.js';
+import { coachError, requireCoach, setCoachCors } from '../server/coach-auth.js';
 
 const TABLES = {
   body: 'daily_body_logs',

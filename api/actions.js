@@ -1,4 +1,4 @@
-import { coachError, requireCoach, setCoachCors } from './_coach-auth.js';
+import { allowedCoachNames, coachError, requireCoach, setCoachCors } from '../server/coach-auth.js';
 
 const SUPABASE_URL = String(process.env.SUPABASE_URL || '').replace(/\/+$/, '');
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -94,6 +94,10 @@ export default async function handler(req, res) {
 
   try {
     const { coach } = requireCoach(req);
+
+    if (req.method === 'GET' && String(req.query.mode || '') === 'session') {
+      return res.status(200).json({ ok: true, coach, coaches: allowedCoachNames() });
+    }
 
     if (req.method === 'GET') {
       const status = text(req.query.status, 40).toLowerCase();

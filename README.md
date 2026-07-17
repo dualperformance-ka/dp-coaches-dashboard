@@ -22,13 +22,17 @@ Deploy only after the `coach_actions` migration has been applied. The live Supab
 
 1. Add `DASHBOARD_ACCESS_KEY` and `COACH_NAMES` to Vercel.
 2. Deploy this dashboard.
-3. Confirm a request without `X-Dashboard-Key` returns `401` for `/api/session`, `/api/athletes`, and `/api/coach-data`.
+3. Confirm a request without `X-Dashboard-Key` returns `401` for `/api/actions?mode=session`, `/api/athletes`, and `/api/coach-data`.
 4. Unlock the UI, create one test action, assign it, add an outcome, complete it, then reopen it.
 5. Test Overview, Programming, Nutrition, Notify, and a full athlete view on desktop and mobile.
 
 ## Important security follow-up
 
 The dashboard surface is now gated, but the shared Supabase project still contains legacy browser-direct policies used by the athlete portal. Do not remove those policies from this repository alone: move the remaining dashboard browser writes behind server APIs, verify the athlete portal’s authenticated policies, then tighten legacy `anon` policies in a coordinated portal release.
+
+## Vercel Hobby function budget
+
+The Hobby plan allows 12 Serverless Functions per deployment. This repository currently has 11 files in `api/`, leaving one slot free. Keep shared helpers in `server/`, not `api/`, and extend an existing endpoint with an explicit mode before adding another function. `/api/actions?mode=session` intentionally shares the actions function, and `/api/data` is the only Notion/Supabase data proxy.
 
 ## Local checks
 
