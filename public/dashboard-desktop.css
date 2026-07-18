@@ -118,7 +118,7 @@
   .cc-action { min-height: 58px; padding: 10px 11px; }
   .coach-actions { margin: 20px 0; }
   .dash-table-wrap { border-radius: 15px; }
-  .dash-table th { position: sticky; top: 216px; z-index: 5; }
+  .dash-table th { position: static; }
   .dash-table td { padding-block: 13px; }
   .dash-table tbody tr:hover td { background: color-mix(in srgb, var(--brand) 6%, var(--surface)); }
 
@@ -147,9 +147,7 @@
   #tab-nut-content .plan-section { max-width: var(--desktop-max); }
   .nut-table-wrap { border-radius: 14px; }
   .nut-table th {
-    position: sticky;
-    top: 130px;
-    z-index: 4;
+    position: static;
     padding: 12px 10px;
     background: var(--surface);
     font-size: 9px;
@@ -175,7 +173,7 @@
   /* Sync: fix alert-row contrast and make the dense audit scannable */
   .sync-intro { padding: 18px 20px; border-radius: 14px; }
   .sync-table-wrap { border-radius: 14px; }
-  .sync-table th { top: 130px; padding: 11px 10px; font-size: 8px; }
+  .sync-table th { position: static; padding: 11px 10px; font-size: 8px; }
   .sync-table td { padding: 13px 10px; }
   body:not([data-theme="light"]) .sync-table tr.bad td {
     background: rgba(239,100,97,.09);
