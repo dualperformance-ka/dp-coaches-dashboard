@@ -214,6 +214,15 @@
   .app-card,
   .coach-card { border-radius: 14px !important; }
 
+  /* Application headers follow the active palette instead of staying black in light mode. */
+  body[data-theme="light"] .app-card-head {
+    color: var(--text) !important;
+    background: linear-gradient(180deg, var(--surface2), var(--surface3)) !important;
+    border-bottom: 1px solid var(--border) !important;
+  }
+  body[data-theme="light"] .app-name { color: var(--text) !important; }
+  body[data-theme="light"] .app-meta { color: var(--muted) !important; }
+
   /* Bottom navigation is a true app bar with 48px touch targets. */
   .dp-mobilenav {
     min-height: var(--dp-mobile-nav-h) !important;
