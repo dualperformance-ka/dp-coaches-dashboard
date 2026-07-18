@@ -8,7 +8,7 @@
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@600;700;800&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800;900&family=Geist+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{
   --bg:#0d0d0d;--surface:#161616;--surface2:#1e1e1e;
@@ -19,7 +19,7 @@
   --ok:#4ade80;--warn:#f59e0b;--alert:#f87171;
   --mono:'Geist Mono','SF Mono','Fira Code',monospace;
   --sans:'Geist',system-ui,sans-serif;
-  --cond:'Barlow Semi Condensed','Arial Narrow',sans-serif;
+  --cond:'Geist',system-ui,sans-serif;
   --green-bg:rgba(74,222,128,.08);--green-border:rgba(74,222,128,.22);--green-text:#4ade80;
   --amber-bg:rgba(245,158,11,.08);--amber-border:rgba(245,158,11,.22);--amber-text:#fbbf24;
   --red-bg:rgba(248,113,113,.08);--red-border:rgba(248,113,113,.22);--red-text:#f87171;
@@ -1848,6 +1848,7 @@ body[data-theme="light"] .theme-btn.active{background:rgba(255,255,255,.22);colo
   .sum-card{flex:1 1 100%}
 }
 </style>
+<link rel="stylesheet" href="/dashboard-theme-system.css">
 <div class="ma-backdrop" id="ma-backdrop" role="dialog" aria-modal="true" aria-label="Manage athletes" onclick="if(event.target===this)closeManageAthletes()">
   <div class="ma-card">
     <div class="ma-head">

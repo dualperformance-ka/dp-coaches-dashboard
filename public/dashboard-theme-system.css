@@ -1,0 +1,339 @@
+/* ============================================================
+   Dual Performance — final theme + typography contract
+   Loaded after every legacy style block so light/dark mode has
+   one predictable source of truth.
+   ============================================================ */
+
+:root {
+  --font-ui: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-data: 'Geist Mono', 'SFMono-Regular', Consolas, monospace;
+  --sans: var(--font-ui);
+  --cond: var(--font-ui);
+  --mono: var(--font-data);
+  --chrome: #081019;
+  --chrome-text: #f3f8fb;
+  --control-bg: #0d141b;
+  --control-text: #edf5f8;
+  --control-placeholder: rgba(237,245,248,.42);
+  --elevated: #151d24;
+  --elevated-2: #1a242d;
+  --shadow-soft: 0 14px 36px rgba(0,0,0,.28);
+}
+
+body[data-theme="light"] {
+  color-scheme: light;
+  --bg: #edf3f7;
+  --surface: #ffffff;
+  --surface2: #f3f7fa;
+  --surface3: #e7eef3;
+  --border: rgba(15,35,49,.10);
+  --border-mid: rgba(15,35,49,.18);
+  --text: #101d27;
+  --muted: #4b6070;
+  --dim: #657987;
+  --brand-text: #12688f;
+  --brand-bg: rgba(31,139,184,.10);
+  --brand-border: rgba(31,139,184,.28);
+  --control-bg: #ffffff;
+  --control-text: #101d27;
+  --control-placeholder: #718390;
+  --elevated: #ffffff;
+  --elevated-2: #f3f7fa;
+  --shadow-soft: 0 14px 34px rgba(20,48,66,.10);
+  --ok: #0f7650;
+  --warn: #99600d;
+  --alert: #b83f50;
+  --run: #136d98;
+  --str: #334d69;
+  background: linear-gradient(180deg,#f8fbfd 0%,#edf3f7 46%,#e8f0f4 100%);
+}
+
+body:not([data-theme="light"]) {
+  color-scheme: dark;
+  background: radial-gradient(circle at 50% 0,rgba(121,195,232,.08),transparent 30rem),var(--bg);
+}
+
+/* Typography: one UI family, with Mono reserved for actual data. */
+html,body { font-family: var(--font-ui); font-synthesis: none; }
+button,input,select,textarea,table,
+.tab,.sf,.theme-btn,.refresh-btn,.gen-btn,.coach-select,
+.plan-chip,.plan-action-btn,.plan-add-btn,.nut-save,.nut-del,
+.app-accept-btn,.app-reject-btn,.notif-mark-seen,.cn-send-btn,
+.po-btn,.ma-btn,.ma-add-btn,.coach-action-new,.coach-action-filters button,
+.coach-action-complete,.fp-back,.fp-nav-btn,.fpc-act-btn,.fp-open-btn,
+.wh-back,.wh-theme-btn,.week-jump-btn {
+  font-family: var(--font-ui) !important;
+}
+
+h1,h2,h3,h4,
+.dp-page-title,.cc-title,.aname,.tname,.texp-name,.coach-name,
+.fpc-name,.sched-card-name,.plan-card-title,.plan-lib-name,.nut-wk,
+.ma-title,.ma-name,.week-jump-main,.dp-access-card h1,
+.coach-actions-head h2,.coach-action-dialog-head h2,
+.dp-mobile-section-head h1 {
+  font-family: var(--font-ui) !important;
+  letter-spacing: -.025em !important;
+}
+
+.sum-num,.cc-score-num,.tval,.tcell-num,.tdim,.twkbadge,
+.sc-val,.wk-num,.pstat-val,.coach-wk-num,.fpc-score-val,
+.fpc-week-num,.sync-score-num,.nut-km-auto,.wh-stat-val,.wh-wt,
+.dp-intro-date,.updated,.act-ts,.wdate,.fp-idx,
+.week-jump-sub,.plan-week-meta,.nut-meta {
+  font-family: var(--font-data) !important;
+  font-variant-numeric: tabular-nums;
+}
+
+body,button,input,select,textarea { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+
+/* Brand chrome stays dark in both themes, and its controls stay legible. */
+header,body[data-theme="light"] header,
+.tab-bar,body[data-theme="light"] .tab-bar {
+  color: var(--chrome-text);
+  background: rgba(8,16,25,.97);
+}
+
+header .coach-select,header .refresh-btn,header .gen-btn,header .theme-btn,
+body[data-theme="light"] header .coach-select,
+body[data-theme="light"] header .refresh-btn,
+body[data-theme="light"] header .gen-btn,
+body[data-theme="light"] header .theme-btn {
+  color: rgba(243,248,251,.78);
+}
+
+header .coach-select option { color:#f5f8fa; background:#0b141c; }
+.tab,.tab-bar .tab,body[data-theme="light"] .tab { color:rgba(243,248,251,.62); }
+.tab:hover,body[data-theme="light"] .tab:hover { color:#fff; }
+.tab.active,body[data-theme="light"] .tab.active { color:#fff; border-bottom-color:var(--brand); }
+
+/* Overview filter deliberately stays dark; all of its children inherit that contract. */
+.filter-bar,body[data-theme="light"] .filter-bar {
+  color:var(--chrome-text);
+  background:linear-gradient(180deg,#141c24,#0d141b);
+  border-color:rgba(146,210,237,.17);
+}
+.filter-bar .search-input,.filter-bar .sort-select,
+body[data-theme="light"] .filter-bar .search-input,
+body[data-theme="light"] .filter-bar .sort-select {
+  color:#eef5f8;
+  background:rgba(255,255,255,.055);
+  border-color:rgba(255,255,255,.14);
+}
+.filter-bar .search-input::placeholder { color:rgba(238,245,248,.45); }
+.filter-bar .sort-select option { color:#12202a; background:#fff; }
+
+/* Shared surfaces. */
+.sum-card,.cc-panel,.card,.squad-brief,.dash-table-wrap,.sched-card,.coach-card,
+.plan-toolbar,.plan-day,.plan-lib-card,.nut-table-wrap,.sync-intro,.sync-table-wrap,
+.app-card,.cn-composer,.coach-actions,.coach-action-dialog,.fpc-section,.fpc-cp,
+.wh-section,.week-jump {
+  color:var(--text);
+  border-color:var(--border);
+  box-shadow:var(--shadow-soft);
+}
+
+body[data-theme="light"] .sum-card,
+body[data-theme="light"] .cc-panel,
+body[data-theme="light"] .card,
+body[data-theme="light"] .squad-brief,
+body[data-theme="light"] .dash-table-wrap,
+body[data-theme="light"] .sched-card,
+body[data-theme="light"] .coach-card,
+body[data-theme="light"] .plan-toolbar,
+body[data-theme="light"] .plan-day,
+body[data-theme="light"] .plan-lib-card,
+body[data-theme="light"] .nut-table-wrap,
+body[data-theme="light"] .sync-intro,
+body[data-theme="light"] .sync-table-wrap,
+body[data-theme="light"] .app-card,
+body[data-theme="light"] .cn-composer,
+body[data-theme="light"] .coach-actions,
+body[data-theme="light"] .coach-action-dialog,
+body[data-theme="light"] .fpc-section,
+body[data-theme="light"] .fpc-cp,
+body[data-theme="light"] .wh-section,
+body[data-theme="light"] .week-jump {
+  color:var(--text);
+  background:var(--surface);
+}
+
+/* Light theme renders card/table headers as light surfaces instead of stranded black blocks. */
+body[data-theme="light"] .cc-hero,
+body[data-theme="light"] .card-head,
+body[data-theme="light"] .sched-card-head,
+body[data-theme="light"] .fpc-hero,
+body[data-theme="light"] .fpc-cp-head,
+body[data-theme="light"] .cp-header,
+body[data-theme="light"] .dash-table thead tr,
+body[data-theme="light"] .sync-table th,
+body[data-theme="light"] .texp-header {
+  color:var(--text);
+  background:linear-gradient(180deg,#f8fbfd,#edf3f7);
+  border-color:var(--border);
+}
+
+body[data-theme="light"] .aname,
+body[data-theme="light"] .cc-title,
+body[data-theme="light"] .sched-card-name,
+body[data-theme="light"] .fpc-name,
+body[data-theme="light"] .fpc-cp-head-title,
+body[data-theme="light"] .cp-title,
+body[data-theme="light"] .dash-table th,
+body[data-theme="light"] .sync-table th {
+  color:var(--text);
+  -webkit-text-fill-color:currentColor;
+}
+
+body[data-theme="light"] .ameta,
+body[data-theme="light"] .act-ts,
+body[data-theme="light"] .sched-card-meta,
+body[data-theme="light"] .fpc-meta,
+body[data-theme="light"] .wk-lbl,
+body[data-theme="light"] .cp-toggle,
+body[data-theme="light"] .dash-table th:hover {
+  color:var(--muted);
+}
+
+body[data-theme="light"] .squad-brief { color:var(--text); }
+body[data-theme="light"] .sb-title { color:var(--dim); }
+body[data-theme="light"] .pcard-metrics,
+body[data-theme="light"] .scores,
+body[data-theme="light"] .pcard-stats,
+body[data-theme="light"] .coach-scores { background:var(--surface2); }
+
+/* Controls and editable fields use the theme rather than fixed black/white values. */
+.cn-row select,.cn-row input,.cn-composer textarea,
+.nut-input,.po-input,.ma-add input,.ma-add select,
+.coach-action-grid input,.coach-action-grid select,.coach-action-grid textarea,
+.cp-note,.fpc-note,.search-input,.sort-select {
+  color:var(--control-text) !important;
+  background:var(--control-bg) !important;
+  border-color:var(--border-mid) !important;
+}
+.cn-row input::placeholder,.cn-composer textarea::placeholder,.po-input::placeholder,
+.ma-add input::placeholder,.coach-action-grid input::placeholder,
+.coach-action-grid textarea::placeholder,.cp-note::placeholder,.fpc-note::placeholder,
+.search-input::placeholder { color:var(--control-placeholder) !important; opacity:1; }
+
+/* Programming and nutrition. */
+body[data-theme="light"] .plan-card,
+body[data-theme="light"] .sync-score,
+body[data-theme="light"] .fpc-nutr-cell,
+body[data-theme="light"] .coach-body-item,
+body[data-theme="light"] .texp-metric,
+body[data-theme="light"] .texp-wip {
+  color:var(--text);
+  background:var(--surface2);
+  border-color:var(--border);
+}
+body[data-theme="light"] .plan-card-status.Planned { color:var(--muted); background:var(--surface3); }
+body[data-theme="light"] .plan-chip { color:var(--muted); background:var(--surface); border-color:var(--border-mid); }
+body[data-theme="light"] .plan-chip.active { color:#0d6288; background:rgba(31,139,184,.11); border-color:rgba(31,139,184,.38); }
+body[data-theme="light"] .plan-action-btn { color:#0d6288; background:rgba(31,139,184,.08); border-color:rgba(31,139,184,.30); }
+body[data-theme="light"] .nut-row.current td { background:rgba(31,139,184,.08); }
+body[data-theme="light"] .nut-row.current .nut-wk { color:#0d6288; }
+
+/* Notify, pipeline and action queue. */
+body[data-theme="light"] .notif-mark-seen,
+body[data-theme="light"] .app-reject-btn,
+body[data-theme="light"] .coach-action-dialog-actions button {
+  color:var(--muted);
+  border-color:var(--border-mid);
+  background:transparent;
+}
+body[data-theme="light"] .app-actions,
+body[data-theme="light"] .coach-action-list { border-color:var(--border); }
+body[data-theme="light"] .cn-send-btn { color:#0d6288; }
+body[data-theme="light"] .coach-actions {
+  background:linear-gradient(145deg,#fff,#f3f7fa);
+}
+
+/* Modals and sheets. */
+body[data-theme="light"] .po-modal,
+body[data-theme="light"] .po-modal-body,
+body[data-theme="light"] .po-modal-foot,
+body[data-theme="light"] .coach-action-dialog,
+body[data-theme="light"] .ma-card,
+body[data-theme="light"] .ma-add,
+body[data-theme="light"] .dp-sheet {
+  color:var(--text);
+  background:var(--surface);
+  border-color:var(--border-mid);
+}
+body[data-theme="light"] .po-modal-head,
+body[data-theme="light"] .coach-action-dialog-head {
+  color:var(--text);
+  background:var(--surface2);
+  border-color:var(--border);
+}
+body[data-theme="light"] .po-modal-title,
+body[data-theme="light"] .ma-title,
+body[data-theme="light"] .ma-name { color:var(--text); }
+body[data-theme="light"] .po-modal-sub,
+body[data-theme="light"] .po-label,
+body[data-theme="light"] .po-close,
+body[data-theme="light"] .ma-close,
+body[data-theme="light"] .ma-add-hint,
+body[data-theme="light"] .ma-empty,
+body[data-theme="light"] .ma-btn { color:var(--muted); }
+body[data-theme="light"] .ma-row { border-color:var(--border); }
+body[data-theme="light"] .ma-btn { border-color:var(--border-mid); }
+body[data-theme="light"] .ma-close:hover { color:var(--text); }
+body[data-theme="light"] .po-btn.clear { color:var(--muted); background:var(--surface2); border-color:var(--border-mid); }
+body[data-theme="light"] .ps-mode-btn {
+  color:var(--text);
+  background:var(--surface2);
+  border-color:var(--border-mid);
+}
+body[data-theme="light"] .ps-mode-btn:hover {
+  color:#0d6288;
+  border-color:rgba(31,139,184,.42);
+}
+body[data-theme="light"] .ps-mode-btn.active {
+  color:#0d6288;
+  background:rgba(31,139,184,.10);
+  border-color:rgba(31,139,184,.42);
+}
+
+/* Athlete detail top bar is chrome; the content below follows the active theme. */
+.fp-topbar { color:var(--chrome-text); background:var(--chrome); }
+.fp-topbar .fp-back,.fp-topbar .fp-nav-btn { color:rgba(243,248,251,.70); border-color:rgba(255,255,255,.17); }
+body[data-theme="light"] #fp-overlay { color:var(--text); background:var(--bg); }
+body[data-theme="light"] .fpc-act-btn {
+  color:var(--muted);
+  border-color:var(--border-mid);
+  background:var(--surface);
+}
+body[data-theme="light"] .fpc-week-badge { background:var(--surface2); border-color:var(--border-mid); }
+body[data-theme="light"] .fpc-week-num { color:var(--text); }
+body[data-theme="light"] .fpc-week-lbl { color:var(--dim); }
+
+/* Bottom navigation remains readable in both modes. */
+.dp-mobilenav { color:rgba(238,245,248,.62); background:rgba(8,16,25,.97); }
+body[data-theme="light"] .dp-mobilenav { color:var(--muted); background:rgba(255,255,255,.97); border-top-color:var(--border); }
+body[data-theme="light"] .dp-mnav-item { color:var(--muted); }
+body[data-theme="light"] .dp-mnav-item.active { color:#12688f; }
+body[data-theme="light"] .dp-sheet-cell { color:var(--text); background:var(--surface2); border-color:var(--border); }
+
+/* Focus is visible against either palette. */
+body[data-theme="light"] button:focus-visible,
+body[data-theme="light"] input:focus-visible,
+body[data-theme="light"] select:focus-visible,
+body[data-theme="light"] textarea:focus-visible {
+  outline-color:#147aa7;
+  box-shadow:0 0 0 3px rgba(20,122,167,.18);
+}
+
+@media(max-width:720px) {
+  body[data-theme="light"] .nut-table .nut-row,
+  body[data-theme="light"] .sync-table tbody tr {
+    color:var(--text);
+    background:var(--surface);
+    border-color:var(--border);
+  }
+  body[data-theme="light"] .dp-theme-switch {
+    color:#eef5f8;
+    background:rgba(255,255,255,.06);
+    border-color:rgba(255,255,255,.14);
+  }
+}
