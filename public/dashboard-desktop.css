@@ -116,6 +116,26 @@
   .cc-side-head { padding: 15px 16px 12px; }
   .cc-actions { padding: 10px; gap: 9px; }
   .cc-action { min-height: 58px; padding: 10px 11px; }
+  body[data-theme="light"] .cc-hero {
+    background:
+      radial-gradient(circle at 82% 12%, rgba(121,195,232,.20), transparent 16rem),
+      linear-gradient(135deg, #f8fbfd, #edf4f8);
+  }
+  body[data-theme="light"] .cc-score-card {
+    background: rgba(255,255,255,.9);
+    border-color: #cedbe4;
+    box-shadow: 0 7px 18px rgba(35,72,93,.08);
+  }
+  body[data-theme="light"] .cc-score-lbl { color: #60717d; }
+  body[data-theme="light"] .cc-toggle {
+    color: #243743;
+    background: rgba(255,255,255,.78);
+    border-color: #c8d6df;
+  }
+  body[data-theme="light"] .cc-toggle:hover {
+    color: #10202a;
+    border-color: #8fb9cf;
+  }
   .coach-actions { margin: 20px 0; }
   .dash-table-wrap { border-radius: 15px; }
   .dash-table th { position: static; }
