@@ -1,0 +1,266 @@
+/* Dual Performance — mobile finish pass
+   Loaded last. Every rule is phone-scoped so desktop remains unchanged. */
+
+@media (max-width: 720px) {
+  :root {
+    --dp-mobile-edge: 10px;
+    --dp-mobile-nav-h: 72px;
+  }
+
+  html { scroll-padding-bottom: calc(var(--dp-mobile-nav-h) + var(--dp-safe-bottom)); }
+  body { -webkit-text-size-adjust: 100%; }
+
+  /* Shared mobile rhythm */
+  .main,
+  .plan-section,
+  .coaches-section,
+  .sync-section,
+  .apps-section,
+  .notif-section,
+  .sched-section {
+    padding-left: var(--dp-mobile-edge) !important;
+    padding-right: var(--dp-mobile-edge) !important;
+    padding-bottom: calc(var(--dp-mobile-nav-h) + 22px + var(--dp-safe-bottom)) !important;
+  }
+
+  .dp-mobile-section-head {
+    margin: 14px var(--dp-mobile-edge) 0 !important;
+    padding: 0 0 7px !important;
+  }
+  .dp-mobile-section-head h1 {
+    font-size: clamp(23px, 7vw, 28px) !important;
+    line-height: .98 !important;
+  }
+  .dp-mobile-section-head p {
+    color: var(--muted) !important;
+    font-size: 12px !important;
+  }
+
+  /* Overview filter: one quiet row until the coach asks for more. */
+  #filter-bar,
+  body[data-theme="light"] #filter-bar {
+    margin: 8px var(--dp-mobile-edge) 0 !important;
+    padding: 8px !important;
+    gap: 7px !important;
+    border-radius: 14px !important;
+  }
+  #filter-bar > .search-input {
+    min-height: 42px !important;
+    padding: 9px 12px !important;
+    font-size: 13px !important;
+  }
+  .dp-mobile-filter-toggle {
+    min-height: 42px !important;
+    flex-basis: 78px !important;
+    border-color: rgba(146,210,237,.24) !important;
+    background: rgba(146,210,237,.08) !important;
+    color: #bde7f8 !important;
+    font-size: 9px !important;
+  }
+  #filter-bar > .filter-label + .sf-group {
+    display: none !important;
+    margin: 0 !important;
+    padding: 2px 10px 2px 0 !important;
+  }
+  #filter-bar.mobile-expanded > .filter-label + .sf-group {
+    display: flex !important;
+  }
+  #filter-bar .sf {
+    min-height: 36px !important;
+    padding: 7px 12px !important;
+    font-size: 10px !important;
+  }
+  #filter-bar.mobile-expanded > .sort-select {
+    min-height: 42px !important;
+  }
+
+  /* Overview heading and date read as a single header, not two floating items. */
+  .dp-page-intro {
+    align-items: center !important;
+    margin: 3px 2px 11px !important;
+    padding-top: 5px !important;
+  }
+  .dp-page-title {
+    max-width: 70vw;
+    font-size: clamp(22px, 6.2vw, 27px) !important;
+  }
+  .dp-intro-date {
+    color: var(--muted) !important;
+    background: var(--surface2) !important;
+    border-color: var(--border) !important;
+  }
+
+  /* Priority panel: remove the washed-out block and restore metric hierarchy. */
+  .cc-panel { overflow: hidden !important; }
+  .cc-hero,
+  body[data-theme="light"] .cc-hero {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    align-items: center !important;
+    gap: 12px 8px !important;
+    padding: 14px !important;
+    color: var(--text) !important;
+    background: linear-gradient(155deg, var(--surface), var(--surface2)) !important;
+    border-bottom: 1px solid var(--border) !important;
+    box-shadow: inset 0 2px 0 rgba(121,195,232,.28) !important;
+  }
+  .cc-kicker { color: var(--brand-text) !important; }
+  .cc-title {
+    color: var(--text) !important;
+    font-size: 20px !important;
+    line-height: 1.03 !important;
+  }
+  .cc-toggle {
+    grid-column: 2;
+    grid-row: 1;
+    min-height: 32px;
+    padding: 6px 9px !important;
+    color: var(--brand-text) !important;
+    background: var(--brand-bg) !important;
+    border-color: var(--brand-border) !important;
+    font-family: var(--font-ui) !important;
+    font-size: 9px !important;
+    letter-spacing: .02em !important;
+  }
+  .cc-score {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 7px !important;
+    width: 100% !important;
+  }
+  .cc-score-card,
+  body[data-theme="light"] .cc-score-card {
+    min-height: 62px !important;
+    padding: 9px 5px !important;
+    color: var(--text) !important;
+    background: var(--surface2) !important;
+    border: 1px solid var(--border-mid) !important;
+    border-radius: 10px !important;
+    box-shadow: none !important;
+  }
+  .cc-score-num { font-size: 23px !important; }
+  .cc-score-lbl,
+  body[data-theme="light"] .cc-score-lbl {
+    margin-top: 5px !important;
+    color: var(--muted) !important;
+    font-family: var(--font-ui) !important;
+    font-size: 8px !important;
+    font-weight: 700 !important;
+    letter-spacing: .04em !important;
+  }
+  .command-center.collapsed .cc-hero { border-bottom: 0 !important; }
+  .cc-body { background: var(--surface) !important; }
+  .cc-athlete { padding-inline: 12px !important; }
+
+  /* Coaching action queue: readable warning, stable touch rows, no clipped filters. */
+  .coach-actions { border-radius: 14px !important; }
+  .coach-actions-head { padding: 14px 13px 11px !important; }
+  .coach-actions-head h2 { font-size: 20px !important; }
+  .coach-action-new { min-height: 36px; }
+  .coach-data-warning,
+  body[data-theme="light"] .coach-data-warning {
+    margin: 0 13px 11px !important;
+    padding: 10px 11px !important;
+    color: var(--warn) !important;
+    background: color-mix(in srgb, var(--warn) 8%, transparent) !important;
+    border-color: color-mix(in srgb, var(--warn) 24%, transparent) !important;
+    line-height: 1.45 !important;
+  }
+  .coach-action-filters {
+    padding: 0 13px 11px !important;
+    scrollbar-width: none;
+  }
+  .coach-action-filters::-webkit-scrollbar { display: none; }
+  .coach-action-filters button { min-height: 32px; }
+  .coach-action-row { align-items: stretch !important; }
+  .coach-action-main { min-height: 62px; }
+  .coach-action-complete { align-self: center; min-height: 34px; }
+
+  /* Athlete cards get clear separation and reliable data contrast. */
+  #grid.table-mode .dash-trow {
+    gap: 10px 7px !important;
+    margin-bottom: 10px !important;
+    padding: 14px !important;
+    border-radius: 14px !important;
+    box-shadow: 0 8px 22px rgba(15,35,49,.06);
+  }
+  #grid.table-mode .dash-trow td:not(:first-child)::before {
+    color: var(--muted) !important;
+    font-family: var(--font-ui) !important;
+    letter-spacing: .05em !important;
+  }
+  #grid.table-mode .tname { font-size: 19px !important; }
+
+  /* Long chip rails stay swipeable without clipping the selected athlete. */
+  .plan-ath-chips,
+  .nut-athlete-tabs {
+    scroll-padding-left: 2px;
+    scrollbar-width: none;
+  }
+  .plan-ath-chips::-webkit-scrollbar,
+  .nut-athlete-tabs::-webkit-scrollbar { display: none; }
+  .plan-chip,
+  .nut-athlete-tab { min-height: 38px !important; }
+
+  /* Forms and tables use one type scale on phones. */
+  input, select, textarea, button { font-family: var(--font-ui) !important; }
+  .cn-composer,
+  .plan-toolbar,
+  .nut-table-wrap,
+  .sync-intro,
+  .sync-table-wrap,
+  .app-card,
+  .coach-card { border-radius: 14px !important; }
+
+  /* Bottom navigation is a true app bar with 48px touch targets. */
+  .dp-mobilenav {
+    min-height: var(--dp-mobile-nav-h) !important;
+    padding: 7px 6px calc(7px + var(--dp-safe-bottom)) !important;
+    gap: 3px !important;
+  }
+  .dp-mnav-item {
+    min-height: 50px;
+    padding: 5px 2px 4px !important;
+    border-radius: 14px !important;
+  }
+  .dp-mnav-item.active { background: rgba(121,195,232,.10) !important; }
+  .dp-mnav-item.active .dp-mnav-ic::before { display: none; }
+  .dp-mnav-lbl {
+    font-family: var(--font-ui) !important;
+    font-size: 9px !important;
+    font-weight: 700 !important;
+    letter-spacing: .01em !important;
+  }
+  .dp-sheet-cell {
+    min-height: 84px;
+    font-family: var(--font-ui) !important;
+    font-weight: 700;
+  }
+
+  /* Never let an app-update notice cover the fixed navigation. */
+  body > .dp-app-toast[role="status"] {
+    left: 10px !important;
+    right: 10px !important;
+    bottom: calc(var(--dp-mobile-nav-h) + 10px + var(--dp-safe-bottom)) !important;
+    width: auto !important;
+    max-width: none !important;
+    justify-content: space-between !important;
+    gap: 9px !important;
+    padding: 10px 11px !important;
+    border-radius: 12px !important;
+    font-family: var(--font-ui) !important;
+    font-size: 11px !important;
+  }
+  body > .dp-app-toast[role="status"] button { min-height: 34px; }
+}
+
+@media (max-width: 380px) {
+  .dp-page-title { max-width: 66vw; }
+  .cc-score { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+  .cc-score-card { min-height: 58px !important; }
+  .cc-score-num { font-size: 21px !important; }
+  .coach-actions-head { gap: 8px !important; }
+  .coach-action-new { padding-inline: 8px !important; }
+}

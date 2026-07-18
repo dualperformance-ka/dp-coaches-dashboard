@@ -27,6 +27,7 @@
     dismissToast();
 
     const toast = document.createElement('div');
+    toast.className = 'dp-app-toast';
     toast.setAttribute('role', 'status');
     toast.style.cssText = [
       'position:fixed', 'bottom:18px', 'right:18px', 'z-index:9999',
