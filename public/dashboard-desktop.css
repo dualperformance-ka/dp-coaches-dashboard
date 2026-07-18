@@ -1,0 +1,254 @@
+/* Dual Performance Coaches Dashboard — desktop layout layer
+   Loaded last. Everything here is deliberately scoped above the tablet breakpoint. */
+
+@media (min-width: 1024px) {
+  :root {
+    --desktop-gutter: clamp(28px, 3.2vw, 52px);
+    --desktop-max: 1600px;
+  }
+
+  body {
+    font-size: 15px;
+    background:
+      radial-gradient(circle at 12% -8%, rgba(121,195,232,.09), transparent 34rem),
+      radial-gradient(circle at 86% 4%, rgba(121,195,232,.035), transparent 28rem),
+      var(--bg);
+  }
+
+  /* Desktop command chrome */
+  header {
+    min-height: 76px;
+    padding: 14px var(--desktop-gutter);
+    gap: 28px;
+  }
+  .logo-block { gap: 14px; }
+  .logo-mark { height: 40px; }
+  .logo { font-size: 17px; letter-spacing: .11em; }
+  .coach-pill { padding: 5px 10px; }
+  .h-right { gap: 10px; flex-wrap: nowrap; }
+  .updated { font-size: 10px; }
+  .coach-select,
+  .refresh-btn,
+  .dp-logout-btn {
+    min-height: 40px;
+    border-radius: 10px;
+    font-size: 11px;
+  }
+  .coach-select { min-width: 118px; padding-inline: 12px; }
+  .refresh-btn { padding-inline: 15px; }
+  .theme-toggle { min-height: 40px; padding: 4px; border-radius: 11px; }
+  .theme-btn { min-width: 35px; height: 30px; padding-inline: 9px; }
+
+  .tab-bar {
+    top: 76px;
+    min-height: 54px;
+    padding: 0 var(--desktop-gutter);
+    gap: 4px;
+  }
+  .tab {
+    min-height: 54px;
+    padding: 0 16px;
+    font-size: 13px;
+  }
+  .tab-badge { font-size: 9px; padding: 2px 7px; }
+
+  /* A stable, single-line command bar on wide screens */
+  .filter-bar {
+    position: sticky;
+    top: 142px;
+    z-index: 70;
+    display: grid;
+    grid-template-columns: minmax(220px, 1fr) auto minmax(160px, auto) auto auto;
+    align-items: center;
+    gap: 12px;
+    max-width: var(--desktop-max);
+    margin: 18px auto 0;
+    padding: 12px 14px;
+    border-radius: 15px;
+    background: color-mix(in srgb, var(--surface) 94%, transparent);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+  }
+  .filter-bar > .filter-divider,
+  .filter-bar > .filter-label { display: none; }
+  .filter-bar > .search-input { grid-column: 1; width: 100%; min-width: 0; }
+  .filter-bar > .filter-label + .sf-group { grid-column: 2; }
+  .filter-bar > .sort-select { grid-column: 3; width: 100%; }
+  .filter-bar > #dash-week-controls { grid-column: 4; }
+  .filter-bar > .sf-group:has(#view-cards-btn) { grid-column: 5; }
+  .search-input,
+  .sort-select { min-height: 42px; font-size: 13px; }
+  .sf { min-height: 38px; padding: 7px 13px; font-size: 11px; }
+
+  /* Shared desktop canvas and hierarchy */
+  .main,
+  .plan-section,
+  .coaches-section,
+  .sync-section,
+  .apps-section,
+  .sched-section {
+    width: 100%;
+    max-width: var(--desktop-max);
+    margin-inline: auto;
+    padding: 28px var(--desktop-gutter) 72px;
+  }
+  .dp-page-intro { margin: 2px 0 24px; align-items: end; }
+  .dp-page-title { font-size: clamp(40px, 3.4vw, 54px); letter-spacing: -.035em; }
+  .dp-page-subtitle { font-size: 15px; max-width: 760px; }
+  .dp-intro-date { padding: 10px 14px; border: 1px solid var(--border); border-radius: 999px; }
+
+  /* Overview: stop the action rail stretching to the height of the priority list */
+  .command-center {
+    grid-template-columns: minmax(0, 2.05fr) minmax(330px, .95fr);
+    gap: 18px;
+    align-items: start;
+    margin-bottom: 20px;
+  }
+  .cc-panel,
+  .cc-side { align-self: start; }
+  .cc-side { height: auto; }
+  .cc-hero { min-height: 104px; padding: 20px 22px; }
+  .cc-title { font-size: 29px; }
+  .cc-score-card { min-width: 72px; padding: 10px 8px; }
+  .cc-score-num { font-size: 24px; }
+  .cc-list { padding: 10px 18px; }
+  .cc-athlete { min-height: 52px; padding: 11px 0; }
+  .cc-side-head { padding: 15px 16px 12px; }
+  .cc-actions { padding: 10px; gap: 9px; }
+  .cc-action { min-height: 58px; padding: 10px 11px; }
+  .coach-actions { margin: 20px 0; }
+  .dash-table-wrap { border-radius: 15px; }
+  .dash-table th { position: sticky; top: 216px; z-index: 5; }
+  .dash-table td { padding-block: 13px; }
+  .dash-table tbody tr:hover td { background: color-mix(in srgb, var(--brand) 6%, var(--surface)); }
+
+  /* Programming: give seven-day planning enough visual weight */
+  #tab-planning-content .plan-section { overflow-x: auto; }
+  .plan-toolbar {
+    padding: 15px 16px;
+    margin-bottom: 16px;
+    border: 1px solid var(--border);
+    border-radius: 15px;
+    background: var(--surface);
+    box-shadow: 0 14px 34px rgba(0,0,0,.12);
+  }
+  .plan-chip { min-height: 36px; padding: 8px 13px; font-size: 10px; }
+  .plan-action-btn { min-height: 38px; padding: 8px 13px; }
+  .plan-week-meta { margin: 3px 2px 14px; font-size: 10px; }
+  .plan-grid { min-width: 1180px; gap: 12px; }
+  .plan-day { min-height: 248px; padding: 11px; border-radius: 12px; gap: 8px; }
+  .plan-day-head { padding-bottom: 8px; font-size: 9px; }
+  .plan-card { padding: 10px 11px; border-radius: 9px; }
+  .plan-card-title { font-size: 15px; font-weight: 650; }
+  .plan-card-meta { font-size: 9px; line-height: 1.6; }
+  .plan-add-btn { min-height: 36px; }
+
+  /* Nutrition: readable table density and persistent column labels */
+  #tab-nut-content .plan-section { max-width: var(--desktop-max); }
+  .nut-table-wrap { border-radius: 14px; }
+  .nut-table th {
+    position: sticky;
+    top: 130px;
+    z-index: 4;
+    padding: 12px 10px;
+    background: var(--surface);
+    font-size: 9px;
+  }
+  .nut-table td { padding: 10px; }
+  .nut-wk { font-size: 16px; }
+  .nut-input { min-height: 38px; font-size: 12px; }
+  .nut-save,
+  .nut-del { min-height: 36px; }
+
+  /* Coach cards should use the available canvas, not reserve an empty third slot */
+  .coaches-intro { padding: 18px 20px; margin-bottom: 18px; font-size: 14px; }
+  .coaches-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px;
+    align-items: start;
+  }
+  .coach-card { width: 100%; }
+  .coach-card-head { padding: 18px 20px; }
+  .coach-name { font-size: 29px; }
+  .coach-body { padding: 16px; }
+
+  /* Sync: fix alert-row contrast and make the dense audit scannable */
+  .sync-intro { padding: 18px 20px; border-radius: 14px; }
+  .sync-table-wrap { border-radius: 14px; }
+  .sync-table th { top: 130px; padding: 11px 10px; font-size: 8px; }
+  .sync-table td { padding: 13px 10px; }
+  body:not([data-theme="light"]) .sync-table tr.bad td {
+    background: rgba(239,100,97,.09);
+    color: var(--text);
+  }
+  body:not([data-theme="light"]) .sync-table tr.warn td {
+    background: rgba(242,169,59,.09);
+    color: var(--text);
+  }
+
+  /* Accepted pipeline: masonry-like columns prevent tall cards stretching short ones */
+  #tab-apps-content #apps-grid {
+    display: block;
+    columns: 3 380px;
+    column-gap: 18px;
+  }
+  #tab-apps-content .app-card {
+    display: inline-block;
+    width: 100%;
+    margin: 0 0 18px;
+    break-inside: avoid;
+  }
+  .app-card { border-radius: 14px; }
+  .app-card-head { padding: 15px 16px 13px; }
+  .app-name { font-size: 23px; line-height: 1.05; }
+  .app-meta { font-size: 8px; margin-top: 5px; }
+  .app-body { padding: 15px 16px; }
+  .app-field { margin-bottom: 10px; }
+  .app-field-val { font-size: 13px; line-height: 1.5; }
+
+  /* New applications receive the full desktop canvas; Notify stays focused and centred */
+  #tab-notif-content .notif-section {
+    width: 100%;
+    max-width: var(--desktop-max);
+    margin-inline: auto;
+    padding: 30px var(--desktop-gutter) 72px;
+  }
+  #tab-notif-content .apps-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 18px;
+    align-items: start;
+  }
+  #tab-send-content .notif-section {
+    width: min(1060px, calc(100% - (2 * var(--desktop-gutter))));
+    max-width: none;
+    margin: 38px auto 72px;
+    padding: 0;
+  }
+  #tab-send-content .cn-composer {
+    padding: 24px;
+    border-radius: 15px;
+    box-shadow: 0 18px 45px rgba(0,0,0,.14);
+  }
+  #tab-send-content .cn-title { margin-bottom: 16px; font-size: 11px; }
+  #tab-send-content .cn-row select,
+  #tab-send-content .cn-row input { min-height: 44px; font-size: 13px; }
+  #tab-send-content .cn-composer textarea { min-height: 116px; padding: 13px 14px; font-size: 13px; }
+  #tab-send-content .cn-send-btn { min-height: 40px; padding-inline: 20px; }
+}
+
+/* Laptop widths: use a deliberate two-row filter instead of an accidental wrap. */
+@media (min-width: 1024px) and (max-width: 1319px) {
+  .filter-bar {
+    grid-template-columns: minmax(220px, 1fr) minmax(170px, .7fr) auto;
+    grid-template-areas:
+      "search sort view"
+      "status week week";
+  }
+  .filter-bar > .search-input { grid-area: search; }
+  .filter-bar > .filter-label + .sf-group { grid-area: status; }
+  .filter-bar > .sort-select { grid-area: sort; }
+  .filter-bar > #dash-week-controls { grid-area: week; justify-self: end; }
+  .filter-bar > .sf-group:has(#view-cards-btn) { grid-area: view; }
+  .command-center { grid-template-columns: minmax(0, 1.7fr) minmax(300px, .8fr); }
+  #tab-notif-content .apps-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
