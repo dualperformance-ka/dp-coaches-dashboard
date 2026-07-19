@@ -177,6 +177,27 @@ function mapSessions(rows) {
   }));
 }
 
+// Roster: Supabase public.athletes → the roster-row shape the dashboard reads.
+// Only 'Code' + 'Start Date' are structurally required; overlayGoals() layers
+// the athlete_goals fields (Goal Race, Target Weight, times, milestones…) on top.
+function mapRoster(rows) {
+  return rows.map(r => ({
+    _id: r.code, _url: '', _createdTime: r.created_at,
+    'Code': s(r.code),
+    'Athlete': s(r.code),
+    'Name': s(r.name || r.code),
+    'Coach': s(r.coach),
+    'Start Date': s(r.start_date),
+    ...dateFields('Start Date', r.start_date || null),
+    'Goal Race': s(r.race_target),   // athlete_goals.goal_race overrides this if present
+    'Email': s(r.email),
+    'Active': r.active === false ? 0 : 1,
+  }));
+}
+async function fromSupabaseRoster() {
+  return mapRoster(await sbFetch('athletes?select=*&archived_at=is.null&order=code'));
+}
+
 async function fromSupabase(type) {
   switch (type) {
     case 'weekly':
@@ -314,10 +335,20 @@ export default async function handler(req, res) {
     return;
   }
 
-  // Athlete roster: serve Notion roster + overlay live portal goals from Supabase.
+  // Athlete roster: serve the Supabase public.athletes roster + overlay live
+  // portal goals from athlete_goals. Notion is only a fallback if Supabase is
+  // unavailable or empty, so the dashboard no longer depends on it here.
   if (norm(db) === norm(ATHLETE_DB)) {
     let roster = [];
-    try { roster = await fromNotion(db); } catch (e) { console.error('[data] roster notion:', e.message); }
+    let rosterSource = 'supabase';
+    if (SUPABASE_KEY) {
+      try { roster = await fromSupabaseRoster(); }
+      catch (e) { console.error('[data] roster supabase:', e.message); roster = []; }
+    }
+    if ((!roster || roster.length === 0) && NOTION_TOKEN) {
+      try { roster = await fromNotion(db); rosterSource = 'notion'; }
+      catch (e) { console.error('[data] roster notion fallback:', e.message); }
+    }
     let goals = [];
     if (SUPABASE_KEY) {
       try { goals = await sbFetch('athlete_goals?select=*'); }
@@ -325,8 +356,8 @@ export default async function handler(req, res) {
     }
     const results = overlayGoals(roster, goals);
     res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate=30');
-    res.setHeader('X-Data-Source', 'notion+supabase-goals');
-    res.status(200).json({ results, total: results.length, source: 'notion+supabase-goals' });
+    res.setHeader('X-Data-Source', `${rosterSource}+supabase-goals`);
+    res.status(200).json({ results, total: results.length, source: `${rosterSource}+supabase-goals` });
     return;
   }
 
