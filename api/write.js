@@ -25,6 +25,11 @@
 const NOTION_TOKEN = process.env.NOTION_TOKEN;
 const NOTION_VERSION = '2022-06-28';
 
+// Supabase (service role) — weekly check-ins now write DIRECTLY here so the
+// dashboard no longer depends on the nightly Notion→Supabase sync.
+const SB_URL = process.env.SUPABASE_URL || 'https://rugdupplsswxmpoudhpv.supabase.co';
+const SB_KEY = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+
 // Database IDs (classic Notion API accepts the 32-char hyphenless form).
 const DB = {
   athlete:   '4a25a96cc70b82ffa6790139eaa8b458', // Athlete DB (profile / goals target + relation source)
@@ -78,6 +83,45 @@ function ddmmyyyy(iso) {
   return m ? `${m[3]}-${m[2]}-${m[1]}` : String(iso || '');
 }
 
+// ── Supabase helpers for the direct weekly check-in write ───────────────────
+const d10 = (v) => (v ? String(v).slice(0, 10) : '');       // ISO date → YYYY-MM-DD
+const nnum = (v) => {                                        // plain number or null
+  if (v === null || v === undefined || String(v).trim() === '') return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+};
+const txt = (v) => (has(v) ? String(v).slice(0, 4000) : null);
+
+// Normalise the athlete code the same way api/sync-notion.js did, so a direct
+// write upserts onto (and dedupes against) any historically synced row.
+function canonCode(raw) {
+  let v = String(raw || '').toUpperCase().trim().split('—')[0].split(' - ')[0].trim();
+  if (!v) return '';
+  if (v.startsWith('VINCENT') || v === 'VINO') return 'VINO';
+  if (v.startsWith('THOMAS')) return 'THOMAS';
+  if (v.startsWith('BRYAN')) return 'BRYAN';
+  return v.split(/\s+/)[0].trim();
+}
+
+// Upsert one row into public.weekly_checkins keyed on (athlete_code, week_key).
+async function sbUpsertWeekly(row) {
+  if (!SB_KEY) throw new Error('SUPABASE_SERVICE_KEY not configured');
+  const url = `${SB_URL}/rest/v1/weekly_checkins?on_conflict=athlete_code,week_key`;
+  const r = await fetch(url, {
+    method: 'POST',
+    headers: {
+      apikey: SB_KEY,
+      Authorization: `Bearer ${SB_KEY}`,
+      'Content-Type': 'application/json',
+      Prefer: 'resolution=merge-duplicates,return=representation',
+    },
+    body: JSON.stringify([row]),
+  });
+  const json = await r.json().catch(() => null);
+  if (!r.ok) throw new Error(`Supabase weekly upsert ${r.status}: ${JSON.stringify(json)}`);
+  return Array.isArray(json) && json[0] ? json[0] : null;
+}
+
 async function createPage(databaseId, properties) {
   return notion('pages', 'POST', {
     parent: { database_id: databaseId },
@@ -101,7 +145,58 @@ async function handleTraining(p) {
   return createPage(DB.training, properties);
 }
 
+// Weekly check-in — Supabase is now the source of truth. We upsert straight
+// into public.weekly_checkins so the dashboard sees the submission immediately
+// (no waiting on the nightly Notion sync). Notion is written only as a
+// best-effort backup during cutover and never blocks the Supabase write.
 async function handleCheckin(p) {
+  const code = canonCode(p.athleteCode || p.athleteName || p.name);
+  if (!code) throw new Error('weekly_checkin: missing athleteCode');
+  const weekEnding = d10(p.weekEnding);
+  if (!weekEnding) throw new Error('weekly_checkin: missing weekEnding');
+
+  const nowIso = new Date().toISOString();
+  const row = {
+    athlete_code: code,
+    athlete_name: p.athleteName || code,
+    week_key: `week_ending_${weekEnding}`,
+    week_ending: weekEnding,
+    submitted_at: nowIso,
+    run_completed: nnum(p.runCompleted),
+    run_planned:   nnum(p.runPlanned),
+    run_km:        nnum(p.runKm),
+    run_feel:      nnum(p.runFeel),
+    run_wins:      txt(p.runWins),
+    run_niggles:   txt(p.runNiggles),
+    lift_completed: nnum(p.liftCompleted),
+    lift_planned:   nnum(p.liftPlanned),
+    lift_feel:      nnum(p.liftFeel),
+    lift_wins:      txt(p.liftWins),
+    lift_niggles:   txt(p.liftNiggles),
+    sleep:         txt(p.sleep),
+    energy:        nnum(p.energy),
+    soreness:      nnum(p.soreness),
+    nutrition:     nnum(p.nutrition),
+    fuelling:      txt(p.fuelling),
+    social_eating: txt(p.socialEating),
+    stress:        nnum(p.stress),
+    motivation:    nnum(p.motivation),
+    upcoming_impact: txt(p.upcomingImpact),
+    testimonial:   txt(p.testimonial),
+    raw_payload:   { source: 'portal', notion_name: p.name || null },
+    updated_at:    nowIso,
+  };
+
+  const saved = await sbUpsertWeekly(row);
+
+  // Best-effort Notion backup — safe to remove once the Supabase cutover is confirmed.
+  try { if (NOTION_TOKEN) await handleCheckinNotion(p); }
+  catch (e) { console.warn('[write] weekly Notion backup failed:', e && e.message); }
+
+  return saved || { id: undefined };
+}
+
+async function handleCheckinNotion(p) {
   const name = p.name || (p.athleteName || '');
   const fullName = has(p.weekEnding) ? `${name} - ${ddmmyyyy(p.weekEnding)}` : name;
   const properties = build([
@@ -280,13 +375,19 @@ export default async function handler(req, res) {
 
   if (req.method === 'OPTIONS') return res.status(204).end();
   if (req.method !== 'POST') return res.status(405).json({ ok: false, error: 'Method not allowed' });
-  if (!NOTION_TOKEN) return res.status(500).json({ ok: false, error: 'NOTION_TOKEN not configured' });
 
   let p;
   try { p = await readBody(req); } catch { return res.status(400).json({ ok: false, error: 'Invalid JSON' }); }
 
   const type = String(p && p.type || '').trim();
   if (type === 'test_ping') return res.status(200).json({ ok: true, skipped: 'test_ping' });
+
+  // Weekly check-ins write to Supabase; every other type still writes to Notion.
+  if (type === 'weekly_checkin') {
+    if (!SB_KEY) return res.status(500).json({ ok: false, error: 'SUPABASE_SERVICE_KEY not configured' });
+  } else if (!NOTION_TOKEN) {
+    return res.status(500).json({ ok: false, error: 'NOTION_TOKEN not configured' });
+  }
 
   try {
     let result;
