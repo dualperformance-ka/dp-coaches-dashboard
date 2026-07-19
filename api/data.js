@@ -50,6 +50,10 @@ const TYPE_BY_NORM = Object.fromEntries(Object.entries(DB).map(([k, v]) => [norm
 // athlete's own portal-submitted goals (Supabase athlete_goals) on top.
 const ATHLETE_DB = '4a25a96c-c70b-82ff-a679-0139eaa8b458';
 
+// Notion "Athlete Applications" id — now served from Supabase public.applications
+// (migrated off Notion 2026-07). Falls back to Notion only if Supabase is empty.
+const APPLICATIONS_DB = '33f5a96c-c70b-8008-ac37-e11d3b48d8c1';
+
 // ─── small helpers ────────────────────────────────────────────────────────
 const s = v => (v === null || v === undefined) ? '' : String(v);
 const num = v => (v === null || v === undefined || v === '') ? null : Number(v);
@@ -196,6 +200,34 @@ function mapRoster(rows) {
 }
 async function fromSupabaseRoster() {
   return mapRoster(await sbFetch('athletes?select=*&archived_at=is.null&order=code'));
+}
+
+// Applications: Supabase public.applications → the exact Notion-shaped fields the
+// dashboard's application cards read. _id preserves the original Notion page id so
+// existing accept/reject rows in application_decisions still match.
+function mapApplications(rows) {
+  return rows.map(r => ({
+    _id: r.notion_page_id || r.id, _url: '', _createdTime: r.created_at,
+    'Name': s(r.name),
+    'Age': r.age,
+    'Email': r.email,
+    'Phone Number': r.phone,
+    'Instagram': r.instagram,
+    'Occupation': r.occupation,
+    'Current Status': r.current_status,
+    'Days Per Week (Run)': r.days_run,
+    'Days per Week (Gym)': r.days_gym,
+    'Injuries': r.injuries,
+    'Biggest Barrier': r.biggest_barrier,
+    'Three Month Goal': r.three_month_goal,
+    'Nutrition Hurdles': r.nutrition_hurdles,
+    'Life Change': r.life_change,
+    'Submitted at': r.submitted_at,
+    ...dateFields('Submitted at', r.submitted_at || null),
+  }));
+}
+async function fromSupabaseApplications() {
+  return mapApplications(await sbFetch('applications?select=*&order=submitted_at.desc'));
 }
 
 async function fromSupabase(type) {
@@ -358,6 +390,25 @@ export default async function handler(req, res) {
     res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate=30');
     res.setHeader('X-Data-Source', `${rosterSource}+supabase-goals`);
     res.status(200).json({ results, total: results.length, source: `${rosterSource}+supabase-goals` });
+    return;
+  }
+
+  // Athlete applications: serve from Supabase public.applications. Fall back to
+  // Notion only if Supabase is unavailable/empty (safe during cutover).
+  if (norm(db) === norm(APPLICATIONS_DB)) {
+    let results = [];
+    let appsSource = 'supabase';
+    if (SUPABASE_KEY) {
+      try { results = await fromSupabaseApplications(); }
+      catch (e) { console.error('[data] applications supabase:', e.message); results = []; }
+    }
+    if ((!results || results.length === 0) && NOTION_TOKEN) {
+      try { results = await fromNotion(db); appsSource = 'notion'; }
+      catch (e) { console.error('[data] applications notion fallback:', e.message); }
+    }
+    res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate=30');
+    res.setHeader('X-Data-Source', appsSource);
+    res.status(200).json({ results, total: results.length, source: appsSource });
     return;
   }
 
