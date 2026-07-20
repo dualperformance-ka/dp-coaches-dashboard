@@ -271,6 +271,146 @@ function mapGoal(row) {
   };
 }
 
+// ── Reconciler ──────────────────────────────────────────────────────────────
+// The athlete portal writes each session log to TWO places: the legacy
+// `athlete_data` key/value blob (key='logs', drives the dashboard "done" tick)
+// and the structured `training_session_logs` table (drives coach-visible detail
+// + counts). When the structured write fails but the blob write succeeds, a
+// session shows as "done" with no data. This rebuilds the missing sessions at
+// read time, mapped to the correct athlete, so they always appear. No portal
+// change and no duplicate DB writes — synthesized rows exist only in the
+// response and only when the structured feed is missing that session entirely.
+
+// Fetch just the `logs` rows from athlete_data (small table, one row/athlete).
+async function selectLogsBlobs() {
+  const baseUrl = cleanBaseUrl(process.env.SUPABASE_URL);
+  const key = process.env.SUPABASE_SERVICE_KEY;
+  if (!baseUrl || !key) throw new Error('SUPABASE_URL or SUPABASE_SERVICE_KEY is not configured');
+
+  const url = `${baseUrl}/rest/v1/athlete_data?select=athlete_code,value&key=eq.logs`;
+  const response = await fetch(url, {
+    headers: { apikey: key, Authorization: `Bearer ${key}` },
+  });
+  const text = await response.text();
+  if (!response.ok) throw new Error(`Supabase ${response.status} for athlete_data`);
+  try { return text ? JSON.parse(text) : []; } catch { throw new Error('Invalid Supabase response for athlete_data'); }
+}
+
+function strengthSetsHaveData(sets) {
+  return Array.isArray(sets) && sets.some(s => s && (s.reps || s.weight || s.rpe || s.done));
+}
+
+function runPayloadHasData(v) {
+  return v && typeof v === 'object'
+    && !Object.values(v).some(Array.isArray)
+    && (v.distance || v.duration || v.pace || v.rpe || v.notes);
+}
+
+function formatSets(sets) {
+  return sets.map((s, i) => {
+    const w = (s.weight ?? '') === '' ? '—' : s.weight;
+    const r = (s.reps ?? '') === '' ? '—' : s.reps;
+    const rpe = (s.rpe ?? '') === '' ? '' : ` @ RPE ${s.rpe}`;
+    return `Set ${i + 1}: ${w}kg × ${r}reps${rpe}`;
+  }).join(' | ');
+}
+
+function reconSessionShape(o) {
+  const label = o.exerciseName
+    ? `${o.athleteName} — ${o.exerciseName} — ${o.date}`
+    : `${o.athleteName} — ${o.title} — ${o.date}`;
+  return {
+    'Athlete Code': o.code,
+    AthleteID: o.code,
+    AthleteName: o.athleteName,
+    Name: label,
+    Session: o.title,
+    'Session Category': o.category,
+    'Exercise Log': o.exerciseLog || '',
+    Notes: o.notes || '',
+    Date: o.date,
+    'date:Date:start': o.date,
+    _clientWriteId: `recon_${o.code}_${o.planId}_${normaliseText(o.exerciseName || o.title)}`.slice(0, 200),
+    _source: 'portal_supabase_recon',
+    _reconciled: true,
+    _submittedAt: o.submittedAt,
+    _updatedAt: o.submittedAt,
+  };
+}
+
+// structuredRows = raw training_session_logs rows (pre-map).
+function reconcileMissingSessions({ logsRows, plannedRows, athletes, structuredRows }) {
+  const planById = new Map();
+  for (const p of plannedRows || []) {
+    planById.set(String(p.id), {
+      code: normaliseCode(p.athlete_code),
+      title: p.title || '',
+      date: p.planned_date ? String(p.planned_date).slice(0, 10) : '',
+      type: p.session_type || '',
+    });
+  }
+
+  const nameByCode = new Map();
+  for (const a of athletes || []) nameByCode.set(normaliseCode(a.code), a.name || '');
+
+  // Sessions already present in the structured feed: code|date|lower(name).
+  const have = new Set();
+  for (const s of structuredRows || []) {
+    const code = normaliseCode(s.athlete_code);
+    const date = s.session_date ? String(s.session_date).slice(0, 10) : '';
+    have.add(`${code}|${date}|${normaliseText(s.session_name)}`);
+  }
+
+  const rows = [];
+  const recovered = [];
+
+  for (const r of logsRows || []) {
+    const code = normaliseCode(r.athlete_code);
+    const blob = r.value || {};
+
+    for (const [planId, payload] of Object.entries(blob)) {
+      if (planId === '__savedAt' || !payload || typeof payload !== 'object') continue;
+
+      const plan = planById.get(planId);
+      if (!plan || !plan.date) continue;                       // can't place on a date
+      if (plan.code && plan.code !== code) continue;           // guard wrong-person
+
+      if (have.has(`${code}|${plan.date}|${normaliseText(plan.title)}`)) continue; // structured write already landed
+
+      const athleteName = nameByCode.get(code) || code;
+      const submittedAt = payload.__submittedAt || null;
+
+      if (runPayloadHasData(payload)) {
+        const bits = [];
+        if (payload.distance) bits.push(`${payload.distance} km`);
+        if (payload.duration) bits.push(`${payload.duration} min`);
+        if (payload.pace) bits.push(`${payload.pace}/km`);
+        if (payload.rpe) bits.push(`RPE ${payload.rpe}`);
+        rows.push(reconSessionShape({
+          code, athleteName, title: plan.title, category: 'Run', date: plan.date,
+          exerciseLog: bits.join(' · '), notes: payload.notes || '', submittedAt, planId,
+        }));
+        recovered.push({ athlete: code, session: plan.title, date: plan.date, kind: 'run' });
+        continue;
+      }
+
+      let any = false;
+      for (const [exName, sets] of Object.entries(payload)) {
+        if (exName.startsWith('__') || !strengthSetsHaveData(sets)) continue;
+        any = true;
+        rows.push(reconSessionShape({
+          code, athleteName, title: plan.title, category: 'Strength', date: plan.date,
+          exerciseLog: `${exName}: ${formatSets(sets)}`, notes: payload.__notes || '',
+          submittedAt, planId, exerciseName: exName,
+        }));
+      }
+      if (any) recovered.push({ athlete: code, session: plan.title, date: plan.date, kind: 'strength' });
+    }
+  }
+
+  return { rows, recovered };
+}
+
 export default async function handler(req, res) {
   setCoachCors(req, res, 'GET, OPTIONS');
 
@@ -283,16 +423,26 @@ export default async function handler(req, res) {
   try { requireCoach(req); } catch (error) { return coachError(res, error); }
 
   try {
-    const [body, nutrition, sessions, weeklyRaw, goals] = await Promise.all([
+    const [body, nutrition, sessions, weeklyRaw, goals, logsRows, plannedRows, athletes] = await Promise.all([
       selectAll(TABLES.body, 'log_date'),
       selectAll(TABLES.nutrition, 'log_date'),
       selectAll(TABLES.sessions, 'session_date'),
       selectAll(TABLES.weekly, 'week_ending'),
       selectAll(TABLES.goals, 'updated_at'),
+      selectLogsBlobs().catch(() => []),
+      selectAll('planned_sessions', 'planned_date').catch(() => []),
+      selectAll('athletes').catch(() => []),
     ]);
 
     const weeklyIntegrity = cleanWeeklyRows(weeklyRaw);
     const weekly = weeklyIntegrity.rows;
+
+    // Rebuild any session that reached the "done" blob but not the structured
+    // table, so blob-only logs still surface against the correct athlete.
+    const reconciled = reconcileMissingSessions({
+      logsRows, plannedRows, athletes, structuredRows: sessions,
+    });
+    const sessionsOut = sessions.map(mapSession).concat(reconciled.rows);
 
     return res.status(200).json({
       ok: true,
@@ -301,17 +451,20 @@ export default async function handler(req, res) {
       counts: {
         body: body.length,
         nutrition: nutrition.length,
-        sessions: sessions.length,
+        sessions: sessionsOut.length,
+        sessionsStructured: sessions.length,
+        sessionsReconciled: reconciled.rows.length,
         weekly: weekly.length,
         goals: goals.length,
       },
       integrity: {
         weeklyConflicts: weeklyIntegrity.conflicts,
         weeklySuppressed: weeklyIntegrity.conflicts.length,
+        reconciledSessions: reconciled.recovered,
       },
       body: body.map(mapBody),
       nutrition: nutrition.map(mapNutrition),
-      sessions: sessions.map(mapSession),
+      sessions: sessionsOut,
       weekly: weekly.map(mapWeekly),
       goals: goals.map(mapGoal),
     });
