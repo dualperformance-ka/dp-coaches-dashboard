@@ -2119,7 +2119,7 @@ function refreshRosterDrivenUI() {
     Nutrition <span class="tab-badge" id="tab-nut-count">—</span>
   </button>
   <button class="tab" id="tab-coaches-btn" onclick="switchTab('coaches')">
-    Coaches <span class="tab-badge">2</span>
+    Coaches <span class="tab-badge">3</span>
   </button>
   <button class="tab" id="tab-sync-btn" onclick="switchTab('sync')">
     Sync <span class="tab-badge" id="tab-sync-count">—</span>
@@ -2545,7 +2545,7 @@ function refreshRosterDrivenUI() {
     <div class="coaches-intro">
       <div class="coaches-intro-icon">🎯</div>
       <div class="coaches-intro-text">
-        <strong>Coaching Team</strong> — Karl &amp; Alex's own training data.
+        <strong>Coaching Team</strong> — Karl, Alex &amp; Jojo's own training data.
         This tab tracks your personal check-ins separate from the athlete roster.
       </div>
     </div>
@@ -3105,7 +3105,7 @@ function addNutWeek() {
   renderNutTable();
 }
 
-// Athlete chips first, then a divider and coach chips (KARL/ALEX) — coaches are
+// Athlete chips first, then a divider and coach chips — coaches are
 // selectable for their own plans but visually separated from the athlete roster.
 function buildAthChipsHTML(codes, active, handlerName) {
   const ath = codes.filter(c => !COACHES.has(c));
@@ -3946,7 +3946,7 @@ function getPlanningAthleteId(r) {
 const ALIASES = { 'JACOB TUAZON': 'JACOB', 'BRYAN GOH': 'BRYAN' };
 
 // Coaches are filtered OUT of the athletes grid and shown on the Coaches tab
-const COACHES = new Set(['KARL', 'ALEX']);
+const COACHES = new Set(['KARL', 'ALEX', 'JOJO']);
 
 // ── Legacy athletes: no discovery week ───────────────────────────────────────
 // These athletes started on Week 1 directly (no Week 0 discovery week).
@@ -6165,14 +6165,15 @@ function _syncWeekNavButtons() {
 function renderCoaches(coaches) {
   const grid = document.getElementById('coaches-grid');
   if (!coaches.length) {
-    grid.innerHTML = `<div class="coach-no-data"><div class="coach-no-data-txt">No coach data found for Karl or Alex</div></div>`;
+    grid.innerHTML = `<div class="coach-no-data"><div class="coach-no-data-txt">No coach data found for Karl, Alex or Jojo</div></div>`;
     return;
   }
-  // Always show Karl first, then Alex, then others
+  // Always show Karl first, then Alex, then Jojo, then others
   const ordered = [
     ...coaches.filter(c => c.id === 'KARL'),
     ...coaches.filter(c => c.id === 'ALEX'),
-    ...coaches.filter(c => c.id !== 'KARL' && c.id !== 'ALEX'),
+    ...coaches.filter(c => c.id === 'JOJO'),
+    ...coaches.filter(c => c.id !== 'KARL' && c.id !== 'ALEX' && c.id !== 'JOJO'),
   ];
   grid.innerHTML = ordered.map(buildCoachCard).join('');
 }
