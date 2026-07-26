@@ -2159,7 +2159,7 @@ function refreshRosterDrivenUI() {
   <div class="filter-divider"></div>
   <div class="sf-group" id="dash-week-controls">
     <button class="sf" id="dwc-prev" onclick="dashboardWeekNav(-1)">← Prev Week</button>
-    <button class="sf" id="dwc-next" onclick="dashboardWeekNav(1)" disabled>Next Week →</button>
+    <button class="sf" id="dwc-next" onclick="dashboardWeekNav(1)">Next Week →</button>
     <button class="sf" id="dwc-reset" onclick="dashboardWeekReset()" disabled>Current</button>
   </div>
   <div class="filter-divider"></div>
@@ -5206,6 +5206,7 @@ function render({ athletes, coaches, applications = [], dataHealth = null, syncA
   document.getElementById('view-table-btn')?.classList.toggle('active', _dashboardView === 'table');
 
   renderWeekNavBar();
+  _syncWeekNavButtons();
   applyFilters();
   renderCoaches(coaches);
   renderSyncAudit(syncAudit);
@@ -6881,7 +6882,9 @@ function buildFPCard(a, weekOffset = 0) {
   // Meta text (same logic as buildCard)
   let metaText;
   const wkEndDisplay = fmtDate(ctx.weekEndStr);
-  if (ctx.weekly) {
+  if (ctx.weekOffset > 0) {
+    metaText = `Upcoming ${ctx.weekLabel || 'week'} · ${ctx.plan.length} planned session${ctx.plan.length === 1 ? '' : 's'}`;
+  } else if (ctx.weekly) {
     metaText = `Viewing ${ctx.weekLabel || 'week'} · check-in ${fmtDate(w['Week Ending'])}`;
   } else if (ctx.weekOffset < 0) {
     metaText = `Viewing ${ctx.weekLabel || 'previous week'} · no weekly check-in found`;
@@ -7151,10 +7154,14 @@ function buildFPCard(a, weekOffset = 0) {
       const dayRows = days.map(dateStr => {
         const dt = new Date(dateStr + 'T12:00:00');
         const dayLabel = dt.toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' });
-        const isFuture = ctx.weekOffset === 0 && dateStr > todayStr;
+        const isFuture = dateStr > todayStr;
 
         // Sessions for this day
         const daySessions = a.sessions.filter(s => s._d === dateStr);
+        const dayPlan = ctx.plan.filter(r => {
+          const plannedDate = r['date:Planned Date:start'] || r['Planned Date'] || '';
+          return plannedDate.split('T')[0] === dateStr;
+        });
 
         // Body log for this day
         const dayBody = a.body.find(r => (r['date:Date:start'] || r.Date || '').split('T')[0] === dateStr);
@@ -7162,7 +7169,7 @@ function buildFPCard(a, weekOffset = 0) {
         // Nutrition log for this day
         const dayNutr = a.nutrition.find(r => (r['date:Date:start'] || r.Date || '').split('T')[0] === dateStr);
 
-        const hasData = daySessions.length > 0 || dayBody || dayNutr;
+        const hasData = daySessions.length > 0 || dayPlan.length > 0 || dayBody || dayNutr;
 
         if (!hasData) {
           return `<div class="wd-row empty">
@@ -7209,6 +7216,26 @@ function buildFPCard(a, weekOffset = 0) {
             ${rawName ? `<div class="wd-sess-name">${esc(rawName)}</div>` : ''}
             ${logHtml}
             ${notes ? `<div class="wd-sess-reflect"><span class="wd-reflect-lbl">Athlete note</span><span class="wd-reflect-txt">${esc(notes)}</span></div>` : ''}
+          </div>`;
+        }).join('');
+
+        // Coach-assigned sessions make upcoming weeks useful before the athlete
+        // has logged anything. Keep them visually distinct from completed logs.
+        const planHtml = dayPlan.map(r => {
+          const sessionType = r['Session Type'] || r['SessionType'] || '';
+          const isRun = RUN_SESSION_TYPES.has(sessionType);
+          const cls = isRun ? 'run' : sessionType ? 'str' : 'other';
+          const rowId = r._id || r.id || '';
+          const override = isRun && rowId ? getPlanOverride(rowId) : null;
+          const sessionName = override?.name || r.Session || sessionType || 'Session';
+          const detail = [
+            override?.dist ? `${override.dist} km` : '',
+            override?.pace || '',
+          ].filter(Boolean).join(' · ');
+          return `<div class="wd-session ${cls}" style="opacity:.82">
+            <div class="wd-sess-cat">Planned ${isRun ? 'Run' : sessionType ? 'Lift' : 'Session'}</div>
+            <div class="wd-sess-name">${esc(sessionName)}</div>
+            ${detail ? `<div class="wd-sess-notes">${esc(detail)}</div>` : ''}
           </div>`;
         }).join('');
 
@@ -7282,6 +7309,7 @@ function buildFPCard(a, weekOffset = 0) {
         return `<div class="wd-row">
           <div class="wd-date">${dayLabel}</div>
           <div class="wd-day-content">
+            ${planHtml}
             ${sessHtml}
             ${bodyRowHtml}
             ${nutrRowHtml}
@@ -7290,8 +7318,9 @@ function buildFPCard(a, weekOffset = 0) {
         </div>`;
       });
 
+      const detailTitle = ctx.weekOffset > 0 ? 'Upcoming Week' : ctx.weekOffset < 0 ? 'Selected Week' : 'This Week';
       weekDetailHtml = `<div class="fpc-section">
-        <div class="fpc-section-title">This Week — Day by Day · ${weekStartStr} → ${ctx.weekEndStr}</div>
+        <div class="fpc-section-title">${detailTitle} — Day by Day · ${weekStartStr} → ${ctx.weekEndStr}</div>
         <div class="wd-timeline">${dayRows.join('')}</div>
       </div>`;
     }
@@ -8669,7 +8698,7 @@ function fpPlanWeek(id) {
 }
 
 function fpWeekNav(dir) {
-  _fpWeekOffset = Math.min(0, _fpWeekOffset + dir);
+  _fpWeekOffset = Math.max(-52, Math.min(4, _fpWeekOffset + dir));
   _drawFP();
 }
 
