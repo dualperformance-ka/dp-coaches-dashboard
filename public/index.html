@@ -213,6 +213,10 @@ body[data-theme="light"] .gen-btn:hover{background:#e8e6e2}
 /* Light: table expand panel */
 body[data-theme="light"] .trow-expand td{background:#f9f8f5}
 body[data-theme="light"] .texp-header{background:#fff;border-bottom-color:rgba(0,0,0,.08)}
+body[data-theme="light"] .texp-week-nav{background:#f4f7f9;border-bottom-color:rgba(0,0,0,.08)}
+body[data-theme="light"] .texp-week-btn{background:#fff;border-color:rgba(0,0,0,.14);color:#4b5563}
+body[data-theme="light"] .texp-week-btn:hover{border-color:#2563eb;color:#111827}
+body[data-theme="light"] .texp-week-btn.active{background:#2563eb;border-color:#2563eb;color:#fff}
 body[data-theme="light"] .texp-left{border-right-color:rgba(0,0,0,.08)}
 body[data-theme="light"] .texp-bar-track{background:rgba(0,0,0,.08)}
 body[data-theme="light"] .texp-daily-chip{background:#eeecea;border-color:rgba(0,0,0,.1);color:#1a1a1a}
@@ -464,6 +468,16 @@ body[data-theme="light"] .cc-chip.green{background:rgba(21,128,61,.08);color:#15
 .texp-left{padding:16px 18px;border-right:1px solid var(--border)}
 .texp-right{padding:16px 18px}
 .texp-header{display:flex;align-items:center;justify-content:space-between;padding:10px 18px;background:var(--surface);border-bottom:1px solid var(--border)}
+.texp-week-nav{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:10px 18px;background:var(--surface2);border-bottom:1px solid var(--border)}
+.texp-week-summary{min-width:190px}
+.texp-week-kicker{font-family:var(--mono);font-size:7px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:.12em}
+.texp-week-selected{font-family:var(--cond);font-size:17px;font-weight:900;color:var(--text);text-transform:uppercase;letter-spacing:.04em;margin-top:2px}
+.texp-week-dates{font-family:var(--mono);font-size:8px;color:var(--dim);margin-top:2px}
+.texp-week-switch{display:grid;grid-template-columns:repeat(3,minmax(116px,1fr));gap:5px}
+.texp-week-btn{appearance:none;border:1px solid var(--border-mid);border-radius:7px;background:var(--surface);color:var(--muted);padding:7px 12px;cursor:pointer;font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;white-space:nowrap;transition:background .15s,border-color .15s,color .15s}
+.texp-week-btn:hover{border-color:var(--str);color:var(--text)}
+.texp-week-btn.active{background:var(--str);border-color:var(--str);color:#fff}
+.texp-week-btn:disabled{opacity:.35;cursor:not-allowed}
 .texp-name{font-family:var(--cond);font-size:22px;font-weight:900;text-transform:uppercase;letter-spacing:.05em;color:var(--text);display:flex;align-items:center;gap:8px}
 .texp-actions{display:flex;gap:6px;align-items:center}
 .texp-section{margin-bottom:14px}
@@ -1357,7 +1371,10 @@ body[data-theme="light"] .wd-ext-row.pb .wd-ext-num strong,body[data-theme="ligh
   .dash-table th:first-child,.dash-trow td:first-child{position:sticky;left:0;z-index:2;background:var(--bg)}
   .dash-trow.trow-red td:first-child{box-shadow:inset 3px 0 0 rgba(220,38,38,.6)}
   .dash-trow.trow-amber td:first-child{box-shadow:inset 3px 0 0 rgba(245,158,11,.5)}
-  .trow-expand .texp-header,.trow-expand .texp-panel{position:sticky;left:0;max-width:calc(100vw - 28px)}
+  .trow-expand .texp-header,.trow-expand .texp-week-nav,.trow-expand .texp-panel{position:sticky;left:0;max-width:calc(100vw - 28px)}
+  .texp-week-nav{align-items:stretch;flex-direction:column}
+  .texp-week-switch{width:100%;grid-template-columns:repeat(3,1fr)}
+  .texp-week-btn{min-width:0;padding:8px 5px}
   .texp-panel{grid-template-columns:1fr}
   .texp-left{border-right:none;border-bottom:1px solid var(--border)}
   .sync-table th:first-child,.sync-table td:first-child{position:sticky;left:0;z-index:2;background:var(--surface)}
@@ -5528,15 +5545,15 @@ function setDashboardView(v) {
 }
 
 function buildTableExpandPanel(a) {
-  const w = a.weekly;
-  const hW = !!w;
   const weekOffset = _dashboardWeekOffset;
+  const isHistorical = weekOffset < 0;
   const isFuture = weekOffset > 0;
-  const futCtx = isFuture ? getSelectedWeekContext(a, weekOffset) : null;
+  const isCurrent = weekOffset === 0;
+  const selectedCtx = getSelectedWeekContext(a, weekOffset);
 
   // ── Header
   const fps = a.flags.map(f => `<span class="tflag ${f.t}">${esc(f.l)}</span>`).join('');
-  const wkBadge = a.weekNum !== null ? `<span class="twkbadge" style="font-size:11px">${fmtWk(a.weekNum)}</span>` : '';
+  const wkBadge = selectedCtx.selectedWeekNum !== null ? `<span class="twkbadge" style="font-size:11px">${fmtWk(selectedCtx.selectedWeekNum)}</span>` : '';
   const dmBtn = `<button class="fp-open-btn" onclick="event.stopPropagation();copyDM('${esc(a.id)}')" style="padding:4px 10px;font-size:10px">💬 DM</button>`;
   const fullBtn = `<button class="fp-open-btn" onclick="event.stopPropagation();showFP('${esc(a.id)}')" style="padding:4px 10px;font-size:10px">⤢ Full Page</button>`;
 
@@ -5546,14 +5563,36 @@ function buildTableExpandPanel(a) {
     <div class="texp-actions">${wkBadge}${dmBtn}${fullBtn}</div>
   </div>`;
 
+  const selectedWeekLabel = isCurrent
+    ? 'Current Week'
+    : weekOffset === -1
+    ? 'Previous Week'
+    : weekOffset === 1
+    ? 'Next Week'
+    : isHistorical
+    ? `${Math.abs(weekOffset)} Weeks Ago`
+    : `${weekOffset} Weeks Ahead`;
+  const weekNav = `<div class="texp-week-nav">
+    <div class="texp-week-summary">
+      <div class="texp-week-kicker">Schedule View</div>
+      <div class="texp-week-selected">${selectedWeekLabel}${selectedCtx.weekLabel ? ` · ${selectedCtx.weekLabel}` : ''}</div>
+      <div class="texp-week-dates">${fmtDate(selectedCtx.weekStartStr)} → ${fmtDate(selectedCtx.weekEndStr)}</div>
+    </div>
+    <div class="texp-week-switch" role="group" aria-label="Select schedule week">
+      <button class="texp-week-btn ${weekOffset === -1 ? 'active' : ''}" onclick="event.stopPropagation();dashboardWeekSet(-1)" aria-pressed="${weekOffset === -1}">← Previous Week</button>
+      <button class="texp-week-btn ${isCurrent ? 'active' : ''}" onclick="event.stopPropagation();dashboardWeekReset()" aria-pressed="${isCurrent}">Current Week</button>
+      <button class="texp-week-btn ${weekOffset === 1 ? 'active' : ''}" onclick="event.stopPropagation();dashboardWeekSet(1)" aria-pressed="${weekOffset === 1}">Next Week →</button>
+    </div>
+  </div>`;
+
   // ── Left panel: action ribbon + performance bars + current-week daily data
 
   // Action ribbon
   let ribbonHtml = '';
-  if (a.actions?.severity === 'red' && a.actions.critical?.length) {
+  if (isCurrent && a.actions?.severity === 'red' && a.actions.critical?.length) {
     const items = a.actions.critical.map(t => `• ${esc(t)}`).join('<br>');
     ribbonHtml = `<div class="texp-action-ribbon red"><div class="texp-action-title">🚨 Action Required</div>${items}</div>`;
-  } else if (a.actions?.severity === 'amber' && a.actions.watch?.length) {
+  } else if (isCurrent && a.actions?.severity === 'amber' && a.actions.watch?.length) {
     const items = a.actions.watch.map(t => `• ${esc(t)}`).join('<br>');
     ribbonHtml = `<div class="texp-action-ribbon amber"><div class="texp-action-title">⚠ Watch</div>${items}</div>`;
   }
@@ -5584,13 +5623,13 @@ function buildTableExpandPanel(a) {
       <span class="texp-bar-val pbar-val run">${label}${srcChip}</span>
     </div>`;
   }
-  const perfBarsHtml = (recovBar || kmBar)
+  const perfBarsHtml = isCurrent && (recovBar || kmBar)
     ? `<div class="texp-section"><div class="texp-label">Performance</div>${recovBar}${kmBar}</div>`
     : '';
 
-  // ── Daily log: current-week body + nutrition entries merged by date
+  // ── Daily log: body + nutrition entries for the selected week
   // Target macros (used for per-day chip signals)
-  const _dT = a.target;
+  const _dT = selectedCtx.target || a.target;
   const _dTCal   = _dT?.Calories ? parseFloat(String(_dT.Calories).replace(/[^\d.]/g,'')) : null;
   const _dTPro   = _dT?.Protein  ? parseFloat(String(_dT.Protein).replace(/[^\d.]/g,''))  : null;
   const _dTCarb  = _dT?.Carbs    ? parseFloat(String(_dT.Carbs).replace(/[^\d.]/g,''))    : null;
@@ -5599,12 +5638,12 @@ function buildTableExpandPanel(a) {
 
   const _DAYS_S = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   const cwBodyEntries = (a.body || []).filter(r => {
-    const d = new Date(r['date:Date:start'] || r.Date || '');
-    return d >= currentWeekStart;
+    const iso = String(r['date:Date:start'] || r.Date || '').split('T')[0];
+    return iso >= selectedCtx.weekStartStr && iso <= selectedCtx.weekEndStr;
   });
   const cwNutrEntries = (a.nutrition || []).filter(r => {
-    const d = new Date(r['date:Date:start'] || r.Date || '');
-    return d >= currentWeekStart;
+    const iso = String(r['date:Date:start'] || r.Date || '').split('T')[0];
+    return iso >= selectedCtx.weekStartStr && iso <= selectedCtx.weekEndStr;
   });
 
   // Merge by date ISO string
@@ -5622,7 +5661,7 @@ function buildTableExpandPanel(a) {
 
   let dailyRowsHtml = '';
   if (_sortedDates.length === 0) {
-    dailyRowsHtml = `<div class="texp-daily-none">No daily data logged this week</div>`;
+    dailyRowsHtml = `<div class="texp-daily-none">No daily data logged for this week</div>`;
   } else {
     dailyRowsHtml = _sortedDates.map(iso => {
       const dt = new Date(iso + 'T12:00:00');
@@ -5731,16 +5770,16 @@ function buildTableExpandPanel(a) {
     : '';
 
   const dailySectionHtml = `<div class="texp-section">
-    <div class="texp-label">This Week — Daily Log</div>
+    <div class="texp-label">${selectedWeekLabel} — Daily Log</div>
     ${dailyRowsHtml}
     ${summaryHtml}
   </div>`;
 
-  // Left panel header (current week label)
+  // Left panel header (selected week label)
   const leftPanelHeader = `<div class="texp-ci-header">
-    <span class="texp-ci-header-label">Current Week</span>
-    <span class="texp-ci-wk">${a.weekNum !== null ? fmtWk(a.weekNum) : ''}</span>
-    <span class="texp-ci-date">ends ${fmtDate(a.expectedWeekEnd)}</span>
+    <span class="texp-ci-header-label">${selectedWeekLabel}</span>
+    <span class="texp-ci-wk">${selectedCtx.selectedWeekNum !== null ? fmtWk(selectedCtx.selectedWeekNum) : ''}</span>
+    <span class="texp-ci-date">${fmtDate(selectedCtx.weekStartStr)} → ${fmtDate(selectedCtx.weekEndStr)}</span>
   </div>`;
 
   const leftPanel = `<div class="texp-left">
@@ -5760,7 +5799,7 @@ function buildTableExpandPanel(a) {
     return `<span style="font-weight:700;color:var(--muted)">${day}</span> <span style="color:var(--dim)">${fmtDate(iso)}</span>`;
   }
 
-  const activePlan = isFuture ? (futCtx?.plan || []) : (a.thisWeekPlan || []);
+  const activePlan = isCurrent ? (a.thisWeekPlan || []) : (selectedCtx.plan || []);
 
   // Completion counts — "Done" requires a submitted log (or Notion = Completed).
   // A box ticked WITHOUT a submitted log counts as "Marked", not Done.
@@ -5778,8 +5817,8 @@ function buildTableExpandPanel(a) {
   const planTotal  = activePlan.length;
 
   let wipHtml = '';
-  if (isFuture && futCtx) {
-    const fPlan = futCtx.plan || [];
+  if (isFuture) {
+    const fPlan = selectedCtx.plan || [];
     const fRun = fPlan.filter(r => { const t = r['Session Type'] || r['SessionType'] || ''; return RUN_SESSION_TYPES.has(t); });
     const fStr = fPlan.filter(r => { const t = r['Session Type'] || r['SessionType'] || ''; return !RUN_SESSION_TYPES.has(t) && t; });
     wipHtml = `<div class="texp-wip">
@@ -5788,6 +5827,24 @@ function buildTableExpandPanel(a) {
         <div class="texp-scard"><div class="texp-snum run">${fRun.length}</div><div class="texp-slbl">Run</div></div>
         <div class="texp-scard"><div class="texp-snum str">${fStr.length}</div><div class="texp-slbl">Strength</div></div>
       </div>
+    </div>`;
+  } else if (isHistorical) {
+    const hRun = (a.sessions || []).filter(s =>
+      s._d >= selectedCtx.weekStartStr && s._d <= selectedCtx.weekEndStr && s._isRun
+    );
+    const hStr = (a.sessions || []).filter(s =>
+      s._d >= selectedCtx.weekStartStr && s._d <= selectedCtx.weekEndStr && s._isStr
+    );
+    const compPill = planTotal > 0
+      ? `<span style="font-family:var(--mono);font-size:10px;margin-left:auto;color:${planDone===planTotal?'var(--ok)':planMissed>0?'var(--alert)':'var(--muted)'}">${planDone}/${planTotal} done${planMissed>0?` · <span style="color:var(--alert)">${planMissed} missed</span>`:''}</span>`
+      : '';
+    wipHtml = `<div class="texp-wip">
+      <div class="texp-wip-label" style="display:flex;align-items:center">${selectedCtx.weekLabel || 'Historical Week'} · ${fmtDate(selectedCtx.weekStartStr)} → ${fmtDate(selectedCtx.weekEndStr)}${compPill}</div>
+      <div class="texp-sess-row">
+        <div class="texp-scard"><div class="texp-snum run">${hRun.length}</div><div class="texp-slbl">Run logged</div></div>
+        <div class="texp-scard"><div class="texp-snum str">${hStr.length}</div><div class="texp-slbl">Str logged</div></div>
+      </div>
+      ${hRun.length === 0 && hStr.length === 0 ? `<div style="font-family:var(--mono);font-size:9px;color:var(--dim);margin-top:6px;text-transform:uppercase;letter-spacing:.06em">No sessions logged for this week</div>` : ''}
     </div>`;
   } else {
     const rCount = a.currRunS.length;
@@ -5867,21 +5924,29 @@ function buildTableExpandPanel(a) {
     planRowsHtml = `<div class="texp-plan-none">No plan set for this week</div>`;
   }
 
-  const thisWkLabel = isFuture
-    ? (a.weekNum !== null ? fmtWk(a.weekNum + weekOffset) : 'Upcoming')
-    : (a.weekNum !== null ? fmtWk(a.weekNum) : 'This Week');
+  const thisWkLabel = selectedCtx.selectedWeekNum !== null
+    ? fmtWk(selectedCtx.selectedWeekNum)
+    : selectedWeekLabel;
+  const planSectionLabel = isCurrent
+    ? "Current Week's Plan"
+    : weekOffset === -1
+    ? "Previous Week's Plan"
+    : weekOffset === 1
+    ? "Next Week's Plan"
+    : "Selected Week's Plan";
   const rightPanelHeader = `<div class="texp-ci-header">
-    <span class="texp-ci-header-label">${isFuture ? 'Upcoming Week' : 'This Week'}</span>
+    <span class="texp-ci-header-label">${selectedWeekLabel}</span>
     <span class="texp-ci-wk">${thisWkLabel}</span>
+    <span class="texp-ci-date">${fmtDate(selectedCtx.weekStartStr)} → ${fmtDate(selectedCtx.weekEndStr)}</span>
   </div>`;
 
   const rightPanel = `<div class="texp-right">
     ${rightPanelHeader}
     <div class="texp-section">${wipHtml}</div>
-    <div class="texp-section"><div class="texp-label">${isFuture ? 'Upcoming Plan' : "This Week's Plan"}</div>${planRowsHtml}</div>
+    <div class="texp-section"><div class="texp-label">${planSectionLabel}</div>${planRowsHtml}</div>
   </div>`;
 
-  return `${header}<div class="texp-panel">${leftPanel}${rightPanel}</div>`;
+  return `${header}${weekNav}<div class="texp-panel">${leftPanel}${rightPanel}</div>`;
 }
 
 function toggleTableRow(safeId) {
@@ -6137,17 +6202,18 @@ function renderWeekNavBar() {
 }
 
 function dashboardWeekNav(dir) {
-  _dashboardWeekOffset = Math.max(-52, Math.min(4, _dashboardWeekOffset + dir));
+  dashboardWeekSet(_dashboardWeekOffset + dir);
+}
+
+function dashboardWeekSet(offset) {
+  _dashboardWeekOffset = Math.max(-52, Math.min(4, offset));
   renderWeekNavBar();
   _syncWeekNavButtons();
   applyFilters();
 }
 
 function dashboardWeekReset() {
-  _dashboardWeekOffset = 0;
-  renderWeekNavBar();
-  _syncWeekNavButtons();
-  applyFilters();
+  dashboardWeekSet(0);
 }
 
 function _syncWeekNavButtons() {
