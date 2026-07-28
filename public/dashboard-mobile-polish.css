@@ -47,6 +47,19 @@
   .dp-access-logo { width: 190px; margin-bottom: 10px; }
   .dp-access-card h1 { font-size: 26px; }
   .dp-access-card p { margin-bottom: 8px; font-size: 13px; }
+  .dp-access-card .dp-access-remember {
+    min-height: 46px;
+    margin-top: 1px;
+    padding: 7px 2px;
+  }
+  .dp-access-card .dp-access-remember input {
+    width: 20px;
+    height: 20px;
+    min-height: 20px;
+    flex-basis: 20px;
+  }
+  .dp-access-remember strong { font-size: 13px; }
+  .dp-access-card .dp-access-remember small { font-size: 10.5px; }
 
   /* Shared mobile rhythm */
   .main,
@@ -235,10 +248,23 @@
   }
   #grid.table-mode .tname { font-size: 19px !important; }
 
-  /* The squad list is for triage. Show five decision-making fields, then open
-     the athlete screen for body, nutrition, stress and session detail. */
-  #grid.table-mode .dash-trow td:nth-child(n+6):not(:last-child) {
-    display: none !important;
+  /* Mobile keeps full desktop data parity. Every populated summary field is a
+     compact stat tile; empty desktop cells remain visible as an honest dash. */
+  #grid.table-mode .dash-trow {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+  #grid.table-mode .dash-trow td:nth-child(n+2):not(:last-child),
+  #grid.table-mode .dash-trow td:not(:first-child):not(:last-child):has(> .tdim:only-child) {
+    display: flex !important;
+    min-height: 52px;
+    justify-content: center;
+    padding: 7px !important;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+  }
+  #grid.table-mode .dash-trow td:nth-child(n+2):not(:last-child) > * {
+    max-width: 100%;
   }
   #grid.table-mode .dash-trow td:first-child {
     position: relative;
@@ -330,6 +356,15 @@
   #fp-overlay .fpc-hero-actions {
     gap: 6px !important;
   }
+  #fp-overlay .fpc-expand-all {
+    display: inline-flex !important;
+    grid-column: 1 / -1;
+    align-items: center;
+    justify-content: center;
+    color: var(--brand-text);
+    background: var(--brand-bg);
+    border-color: var(--brand-border);
+  }
   #fp-overlay .fpc-section {
     margin-bottom: 9px !important;
     padding: 13px 11px !important;
@@ -378,6 +413,16 @@
   #fp-overlay svg,
   #fp-overlay table {
     max-width: 100%;
+  }
+  /* The old phone layer removed day-specific Strava detail entirely. Keep it
+     in the one-column timeline, directly below that day's coaching data. */
+  #fp-overlay .wd-strava-col {
+    display: block !important;
+    width: 100%;
+    min-width: 0;
+  }
+  #fp-overlay .wd-strava-col:empty {
+    display: none !important;
   }
 
   /* Long chip rails stay swipeable without clipping the selected athlete. */

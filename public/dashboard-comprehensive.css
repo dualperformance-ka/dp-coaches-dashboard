@@ -13,10 +13,16 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .dp-access-card p{color:var(--muted);margin-bottom:12px}
 .dp-access-card label{font:700 10px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
 .dp-access-card input,.dp-access-card select{min-height:44px;padding:9px 12px;background:#0a0d0f;color:#fff;border:1px solid var(--border-mid);border-radius:8px}
+.dp-access-card .dp-access-remember{display:flex;align-items:center;gap:10px;padding:3px 1px;cursor:pointer;text-transform:none;letter-spacing:0}
+.dp-access-card .dp-access-remember input{appearance:auto;width:18px;height:18px;min-height:18px;flex:0 0 18px;margin:0;padding:0;accent-color:var(--brand)}
+.dp-access-remember span{display:flex;flex-direction:column;gap:2px;min-width:0}
+.dp-access-remember strong{color:var(--text);font:700 12px/1.25 var(--sans)}
+.dp-access-card .dp-access-remember small{margin:0;color:var(--dim);font:400 10px/1.3 var(--sans);text-align:left}
 .dp-access-card button{min-height:46px;margin-top:8px;border:0;border-radius:8px;background:var(--brand);color:#071016;font-weight:800;cursor:pointer}
 .dp-access-card small{color:var(--dim);text-align:center;margin-top:4px}
 .dp-access-error,.coach-action-error{min-height:18px;color:var(--alert);font-size:12px}
 .dp-logout-btn{font-size:9px}
+.fpc-expand-all{display:none}
 
 .coach-actions{margin:0 0 12px;background:linear-gradient(145deg,rgba(23,30,35,.96),rgba(15,18,21,.96));border:1px solid rgba(121,195,232,.18);border-radius:14px;overflow:hidden}
 .coach-actions-head{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:17px 18px 13px}

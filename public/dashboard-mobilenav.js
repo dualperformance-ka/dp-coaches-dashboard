@@ -20,7 +20,8 @@
     { key: 'applications',  label: 'Pipeline', icon: 'pipeline' },
     { key: 'notifications', label: 'New',      icon: 'bell'     },
     { key: 'coaches',       label: 'Coaches',  icon: 'coaches'  },
-    { key: 'sync',          label: 'Sync',     icon: 'sync'     }
+    { key: 'sync',          label: 'Sync',     icon: 'sync'     },
+    { key: 'lock',          label: 'Lock app', icon: 'lock'     }
   ];
 
   // Maps a tab key to its existing top-bar badge id (for live count mirror).
@@ -42,6 +43,7 @@
     sync:    '<path d="M20 11a8 8 0 0 0-14-4.5L3 9"/><path d="M4 13a8 8 0 0 0 14 4.5L21 15"/><path d="M3 5v4h4M21 19v-4h-4"/>',
     bell:    '<path d="M18 8a6 6 0 0 0-12 0c0 7-3 8-3 8h18s-3-1-3-8Z"/><path d="M10.3 21a2 2 0 0 0 3.4 0"/>',
     send:    '<path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4 20-7Z"/>',
+    lock:    '<rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/>',
     more:    '<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>'
   };
 
@@ -122,6 +124,10 @@
         '<span>' + e.label + '</span>';
       cell.addEventListener('click', function () {
         closeSheet();
+        if (e.key === 'lock') {
+          if (window.DP_COACH_AUTH?.logout) window.DP_COACH_AUTH.logout();
+          return;
+        }
         if (typeof window.switchTab === 'function') window.switchTab(e.key);
         setActive(e.key);
         window.scrollTo({ top: 0, behavior: 'smooth' });

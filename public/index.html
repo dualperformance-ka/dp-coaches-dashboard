@@ -6988,6 +6988,7 @@ function buildFPCard(a, weekOffset = 0) {
           <button class="fpc-act-btn" onclick="DP_ACTIONS.open('${esc(a.id)}')">＋ Action</button>
           <button class="fpc-act-btn" onclick="fpPlanWeek('${esc(a.id)}')">⚏ Plan Week</button>
           <button class="fpc-act-btn" onclick="fpNotify('${esc(a.id)}')">🔔 Notify</button>
+          <button class="fpc-act-btn fpc-expand-all" onclick="fpExpandAll(this)">▾ Show all data</button>
         </div>
       </div>
       ${ctx.selectedWeekNum !== null ? ctx.selectedWeekNum === 0 ? `<div class="fpc-week-badge"><div class="fpc-week-num" style="font-size:24px;letter-spacing:.04em">DISC</div><div class="fpc-week-lbl">WEEK</div></div>` : `<div class="fpc-week-badge"><div class="fpc-week-num">${ctx.selectedWeekNum}</div><div class="fpc-week-lbl">Week</div></div>` : ''}
@@ -8834,6 +8835,19 @@ function fpWeekNav(dir) {
 function fpWeekReset() {
   _fpWeekOffset = 0;
   _drawFP();
+}
+
+function fpExpandAll(button) {
+  document.querySelectorAll('#fp-body .fpc-section.collapsed').forEach(section => {
+    section.classList.remove('collapsed');
+  });
+  document.querySelectorAll('#fp-body details').forEach(detail => {
+    detail.open = true;
+  });
+  if (button) {
+    button.textContent = '✓ All data shown';
+    button.disabled = true;
+  }
 }
 
 function initCollapsibleSections() {
