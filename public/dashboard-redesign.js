@@ -30,6 +30,14 @@
     }).format(new Date());
   }
 
+  function timeGreeting(date = new Date()) {
+    const hour = date.getHours();
+
+    if (hour < 12) return "Good morning";
+    if (hour < 17) return "Good afternoon";
+    return "Good evening";
+  }
+
   function replaceFirstTextNode(element, newText, validLabels = []) {
     if (!element?.childNodes?.length) return;
 
@@ -57,7 +65,7 @@
         <div class="dp-eyebrow">Coach overview</div>
 
         <h1 class="dp-page-title">
-          Good morning,
+          <span id="dp-intro-greeting">${timeGreeting()}</span>,
           <span id="dp-intro-coach">${coachName()}</span>
         </h1>
 
@@ -128,11 +136,11 @@
   }
 
   function updateGreeting() {
-    const greeting = qs("#dp-intro-coach");
+    const salutation = qs("#dp-intro-greeting");
+    const coach = qs("#dp-intro-coach");
 
-    if (greeting) {
-      greeting.textContent = coachName();
-    }
+    if (salutation) salutation.textContent = timeGreeting();
+    if (coach) coach.textContent = coachName();
   }
 
   function enhance() {
@@ -149,6 +157,10 @@
     enhance();
 
     qs(".coach-select")?.addEventListener("change", updateGreeting);
+    window.addEventListener("focus", updateGreeting);
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) updateGreeting();
+    });
 
     /*
      * The original dashboard renders asynchronously.
@@ -164,5 +176,8 @@
         window.clearInterval(timer);
       }
     }, 500);
+
+    // Keep a long-running dashboard session accurate as the day changes.
+    window.setInterval(updateGreeting, 60 * 1000);
   });
 })();

@@ -1657,7 +1657,7 @@ body[data-theme="light"] .strava-weekly-strip{background:#fff}
 </div>
 
 <!-- ── Full-page athlete view ── -->
-<div id="fp-overlay" role="dialog" aria-modal="true" aria-label="Athlete coaching detail">
+<div id="fp-overlay" role="dialog" aria-modal="true" aria-hidden="true" aria-label="Athlete coaching detail">
   <div class="fp-topbar">
     <button class="fp-back" onclick="hideFP()">← Back to Squad</button>
     <div class="fp-nav">
@@ -1868,6 +1868,7 @@ body[data-theme="light"] .theme-btn.active{background:rgba(255,255,255,.22);colo
 </style>
 <link rel="stylesheet" href="/dashboard-theme-system.css">
 <link rel="stylesheet" href="/dashboard-desktop.css">
+<link rel="stylesheet" href="/dashboard-mobile-polish.css">
 <div class="ma-backdrop" id="ma-backdrop" role="dialog" aria-modal="true" aria-label="Manage athletes" onclick="if(event.target===this)closeManageAthletes()">
   <div class="ma-card">
     <div class="ma-head">
@@ -5952,6 +5953,15 @@ function buildTableExpandPanel(a) {
 function toggleTableRow(safeId) {
   const exp = document.getElementById('texp-' + safeId);
   if (!exp) return;
+
+  // A wide inline table expansion is not a useful phone interaction. Open the
+  // focused athlete screen instead; it has its own compact layout and back path.
+  if (window.matchMedia('(max-width: 720px)').matches) {
+    const mobileAthlete = _allAthletes.find(x => x.id.replace(/\W+/g, '-').toLowerCase() === safeId);
+    if (mobileAthlete) showFP(mobileAthlete.id);
+    return;
+  }
+
   const open = exp.style.display !== 'none';
   if (open) {
     exp.style.display = 'none';
@@ -6079,7 +6089,10 @@ function buildTableRow(a) {
   const metaStr = a.weekNum !== null ? fmtWk(a.weekNum) : checkinStr;
   const safeId = a.id.replace(/\W+/g, '-').toLowerCase();
 
-  return `<tr class="dash-trow ${rowCls}" onclick="toggleTableRow('${safeId}')">
+  return `<tr class="dash-trow ${rowCls}" role="button" tabindex="0"
+    aria-label="Open ${esc(a.id)} athlete details"
+    onclick="toggleTableRow('${safeId}')"
+    onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleTableRow('${safeId}')}">
     <td><div class="tname">${esc(a.id)}${fps}</div><div class="tmeta">${metaStr}</div></td>
     <td>${a.weekNum !== null ? `<span class="twkbadge">${a.weekNum === 0 ? 'D' : a.weekNum}</span>` : '<span class="tdim">—</span>'}</td>
     <td>${recovHtml}</td>
@@ -8731,8 +8744,15 @@ async function generateAI() {
 let _fpOrder = [];   // athlete IDs in nav order (mirrors visible grid cards)
 let _fpIdx   = 0;
 let _fpWeekOffset = 0;
+let _fpReturnFocus = null;
 
-function showFP(id) {
+function showFP(id, options = {}) {
+  const overlay = document.getElementById('fp-overlay');
+  const wasOpen = overlay.style.display === 'block';
+  if (!wasOpen && document.activeElement instanceof HTMLElement) {
+    _fpReturnFocus = document.activeElement;
+  }
+
   // Nav order = current filtered/sorted athlete list — works from both table and card view
   _fpOrder = (_visibleAthletes.length ? _visibleAthletes : _allAthletes).map(a => a.id);
   // If the id isn't in the visible list (e.g. called from a coach card), just show it alone
@@ -8740,20 +8760,63 @@ function showFP(id) {
   _fpIdx = Math.max(0, _fpOrder.indexOf(id));
   _fpWeekOffset = 0;
   _drawFP();
-  document.getElementById('fp-overlay').style.display = 'block';
+  overlay.style.display = 'block';
+  overlay.setAttribute('aria-hidden', 'false');
   document.body.style.overflow = 'hidden';
+  requestAnimationFrame(() => {
+    overlay.querySelector('.fp-back')?.focus({ preventScroll: true });
+  });
+
+  if (!wasOpen && !options.fromHistory) {
+    history.pushState(
+      { ...(history.state || {}), dpView: 'athlete', athleteId: id },
+      '',
+      location.href
+    );
+  }
 }
 
-function hideFP() {
-  document.getElementById('fp-overlay').style.display = 'none';
+function hideFP(options = {}) {
+  const overlay = document.getElementById('fp-overlay');
+  overlay.style.display = 'none';
+  overlay.setAttribute('aria-hidden', 'true');
   document.body.style.overflow = '';
+  if (_fpReturnFocus?.isConnected) {
+    _fpReturnFocus.focus({ preventScroll: true });
+  }
+  _fpReturnFocus = null;
+
+  if (!options.fromHistory && history.state?.dpView === 'athlete') {
+    history.back();
+  }
 }
 
 function fpNav(dir) {
   _fpIdx = Math.max(0, Math.min(_fpOrder.length - 1, _fpIdx + dir));
   _fpWeekOffset = 0;
   _drawFP();
+  if (history.state?.dpView === 'athlete') {
+    history.replaceState(
+      { ...history.state, athleteId: _fpOrder[_fpIdx] },
+      '',
+      location.href
+    );
+  }
 }
+
+window.addEventListener('popstate', event => {
+  const overlay = document.getElementById('fp-overlay');
+  if (!overlay) return;
+
+  if (event.state?.dpView === 'athlete' && event.state.athleteId) {
+    showFP(event.state.athleteId, { fromHistory: true });
+    return;
+  }
+
+  if (overlay.style.display === 'block') {
+    hideFP({ fromHistory: true });
+  }
+});
 
 // Jump from the FP view straight into planning for this athlete
 function fpPlanWeek(id) {

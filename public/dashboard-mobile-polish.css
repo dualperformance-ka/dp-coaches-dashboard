@@ -5,10 +5,48 @@
   :root {
     --dp-mobile-edge: 10px;
     --dp-mobile-nav-h: 72px;
+    --dp-mobile-header-row: 54px;
   }
 
-  html { scroll-padding-bottom: calc(var(--dp-mobile-nav-h) + var(--dp-safe-bottom)); }
-  body { -webkit-text-size-adjust: 100%; }
+  html {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: clip;
+    scroll-padding-top: calc(var(--dp-mobile-header-row) + var(--dp-safe-top));
+    scroll-padding-bottom: calc(var(--dp-mobile-nav-h) + var(--dp-safe-bottom));
+  }
+  body {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: clip;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  /* Installed iPhones draw into the status-bar area. Keep every header control
+     below the notch instead of forcing a fixed 54px box over the system clock. */
+  header,
+  body[data-theme="light"] header {
+    min-height: calc(var(--dp-mobile-header-row) + var(--dp-safe-top)) !important;
+    height: auto !important;
+    padding: calc(6px + var(--dp-safe-top)) var(--dp-mobile-edge) 6px !important;
+  }
+
+  .dp-access-gate {
+    align-items: center;
+    padding:
+      calc(14px + var(--dp-safe-top))
+      var(--dp-mobile-edge)
+      calc(14px + var(--dp-safe-bottom));
+    overflow-y: auto;
+  }
+  .dp-access-card {
+    gap: 8px;
+    padding: 22px 18px;
+    border-radius: 16px;
+  }
+  .dp-access-logo { width: 190px; margin-bottom: 10px; }
+  .dp-access-card h1 { font-size: 26px; }
+  .dp-access-card p { margin-bottom: 8px; font-size: 13px; }
 
   /* Shared mobile rhythm */
   .main,
@@ -82,7 +120,11 @@
   }
   .dp-page-title {
     max-width: 70vw;
-    font-size: clamp(22px, 6.2vw, 27px) !important;
+    font-size: clamp(20px, 5.7vw, 24px) !important;
+    line-height: 1.08 !important;
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
   }
   .dp-intro-date {
     color: var(--muted) !important;
@@ -182,7 +224,7 @@
   #grid.table-mode .dash-trow {
     gap: 10px 7px !important;
     margin-bottom: 10px !important;
-    padding: 14px !important;
+    padding: 12px !important;
     border-radius: 14px !important;
     box-shadow: 0 8px 22px rgba(15,35,49,.06);
   }
@@ -192,6 +234,151 @@
     letter-spacing: .05em !important;
   }
   #grid.table-mode .tname { font-size: 19px !important; }
+
+  /* The squad list is for triage. Show five decision-making fields, then open
+     the athlete screen for body, nutrition, stress and session detail. */
+  #grid.table-mode .dash-trow td:nth-child(n+6):not(:last-child) {
+    display: none !important;
+  }
+  #grid.table-mode .dash-trow td:first-child {
+    position: relative;
+    padding-right: 88px !important;
+  }
+  #grid.table-mode .dash-trow td:first-child::after {
+    content: 'Open profile →';
+    position: absolute;
+    top: 2px;
+    right: 0;
+    color: var(--brand-text);
+    font-family: var(--font-ui);
+    font-size: 9px;
+    font-weight: 750;
+    letter-spacing: .01em;
+    text-transform: none;
+  }
+  #grid.table-mode .dash-trow td:last-child {
+    padding-top: 8px !important;
+    border-top: 1px solid var(--border);
+  }
+  #grid.table-mode .trow-expand {
+    display: none !important;
+  }
+
+  /* Dedicated athlete screen: no horizontal rails, compact 3-up metrics, and
+     a two-row sticky toolbar whose back action never leaves the viewport. */
+  #fp-overlay {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: clip;
+    overscroll-behavior: contain;
+  }
+  #fp-overlay .fp-topbar {
+    position: sticky !important;
+    top: 0;
+    z-index: 20;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 6px;
+    min-height: calc(56px + var(--dp-safe-top)) !important;
+    padding: calc(8px + var(--dp-safe-top)) 10px 8px !important;
+  }
+  #fp-overlay .fp-back {
+    min-width: 0;
+    min-height: 40px;
+    padding: 8px 10px;
+    overflow: hidden;
+    text-align: left;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  #fp-overlay .fp-nav {
+    display: grid !important;
+    grid-template-columns: auto auto auto;
+    align-items: center;
+    gap: 3px !important;
+  }
+  #fp-overlay .fp-nav-btn {
+    min-height: 40px;
+    padding: 7px 8px !important;
+    font-size: 9px;
+  }
+  #fp-overlay .fp-idx {
+    min-width: 26px !important;
+    font-size: 8px;
+    text-align: center;
+  }
+  #fp-overlay .fp-topbar > div:last-child {
+    display: none !important;
+  }
+  #fp-overlay .fp-body {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 10px 8px calc(24px + var(--dp-safe-bottom)) !important;
+    overflow-x: clip;
+  }
+  #fp-overlay .fpc-hero {
+    margin-bottom: 9px !important;
+    padding: 14px 12px !important;
+    border-radius: 14px !important;
+  }
+  #fp-overlay .fpc-name {
+    font-size: clamp(29px, 9.5vw, 38px) !important;
+    line-height: .96 !important;
+  }
+  #fp-overlay .fpc-hero-actions {
+    gap: 6px !important;
+  }
+  #fp-overlay .fpc-section {
+    margin-bottom: 9px !important;
+    padding: 13px 11px !important;
+    border-radius: 12px !important;
+  }
+  #fp-overlay .fpc-section-title {
+    margin-bottom: 11px !important;
+    padding-bottom: 9px !important;
+    font-size: 9px !important;
+  }
+  #fp-overlay .fpc-scores {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 6px !important;
+    margin-inline: -11px !important;
+    padding: 8px 11px !important;
+  }
+  #fp-overlay .fpc-score {
+    min-width: 0;
+    padding: 10px 4px !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 9px;
+    background: var(--surface2);
+  }
+  #fp-overlay .fpc-score-lbl {
+    margin-bottom: 5px;
+    font-size: 7px;
+  }
+  #fp-overlay .fpc-score-val {
+    font-size: 24px !important;
+  }
+  #fp-overlay .texp-week-switch,
+  #fp-overlay .dwn-controls,
+  #fp-overlay .week-jump-controls {
+    width: 100%;
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  #fp-overlay .texp-week-btn,
+  #fp-overlay .dwn-btn,
+  #fp-overlay .week-jump-btn {
+    min-width: 0;
+    padding-inline: 4px !important;
+    white-space: normal !important;
+  }
+  #fp-overlay img,
+  #fp-overlay svg,
+  #fp-overlay table {
+    max-width: 100%;
+  }
 
   /* Long chip rails stay swipeable without clipping the selected athlete. */
   .plan-ath-chips,
@@ -266,10 +453,12 @@
 }
 
 @media (max-width: 380px) {
-  .dp-page-title { max-width: 66vw; }
+  .dp-page-title { max-width: 64vw; }
   .cc-score { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
   .cc-score-card { min-height: 58px !important; }
   .cc-score-num { font-size: 21px !important; }
   .coach-actions-head { gap: 8px !important; }
   .coach-action-new { padding-inline: 8px !important; }
+  #fp-overlay .fp-back { font-size: 9px; padding-inline: 7px; }
+  #fp-overlay .fp-nav-btn { padding-inline: 6px !important; }
 }
