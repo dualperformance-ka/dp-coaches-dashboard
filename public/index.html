@@ -887,6 +887,32 @@ body[data-theme="pride"] .texp-name{background:linear-gradient(90deg,#FF8C00,#FF
 .fpc-section.collapsed .fpc-section-title::after{content:'▸'}
 .fpc-section.collapsed>*:not(.fpc-section-title){display:none!important}
 
+/* ── Full-page programme running volume ── */
+.fpv-title-summary{margin-left:auto;font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:0;text-transform:none;color:var(--dim);white-space:nowrap}
+.fpv-legend{display:flex;align-items:center;justify-content:flex-end;gap:12px;margin:-4px 0 12px;font-family:var(--mono);font-size:9px;color:var(--dim)}
+.fpv-legend span{display:inline-flex;align-items:center;gap:5px}
+.fpv-key{display:inline-block;width:9px;height:9px;border-radius:3px}
+.fpv-key.planned{background:var(--brand-bg);border:1px solid var(--brand-border)}
+.fpv-key.actual{background:var(--brand-dim)}
+.fpv-scroll{display:flex;gap:7px;overflow-x:auto;padding:2px 0 6px;scroll-behavior:smooth;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.fpv-scroll::-webkit-scrollbar{display:none}
+.fpv-week{appearance:none;flex:0 0 42px;display:flex;flex-direction:column;align-items:center;gap:6px;padding:5px 3px 7px;border:1px solid transparent;border-radius:11px;background:transparent;color:inherit;font:inherit;cursor:pointer;transition:background .15s,border-color .15s}
+.fpv-week:hover{background:var(--brand-bg);border-color:var(--brand-border)}
+.fpv-week:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+.fpv-week.is-current{background:var(--brand-bg);border-color:var(--brand-border)}
+.fpv-week[disabled]{cursor:default}
+.fpv-bar{position:relative;display:block;width:19px;height:78px;border-radius:6px;background:var(--surface2);overflow:hidden}
+.fpv-bar i,.fpv-bar b{position:absolute;left:0;right:0;bottom:0;display:block;border-radius:6px}
+.fpv-bar i{background:var(--brand-bg);border:1px solid var(--brand-border)}
+.fpv-bar b{background:var(--brand-dim);opacity:.96}
+.fpv-week.is-hit .fpv-bar b{background:var(--ok)}
+.fpv-week.is-future .fpv-bar i{opacity:.6}
+.fpv-km{font-family:var(--mono);font-size:10px;font-weight:700;line-height:1;color:var(--muted)}
+.fpv-wk{font-family:var(--mono);font-size:9px;line-height:1;color:var(--dim)}
+.fpv-week.is-current .fpv-km,.fpv-week.is-current .fpv-wk{color:var(--brand-dim)}
+.fpv-week.is-current .fpv-wk{font-weight:800}
+.fpv-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:10px;padding-top:11px;border-top:1px solid var(--border);font-family:var(--mono);font-size:10px;color:var(--dim)}
+
 .client-profile{background:linear-gradient(180deg,rgba(255,255,255,.02),transparent),var(--surface)}
 .client-profile-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:8px}
 .client-profile-stat{padding:9px 10px;border:1px solid var(--border);border-radius:7px;background:var(--surface2);min-width:0}
@@ -1398,6 +1424,10 @@ body[data-theme="light"] .wd-ext-row.pb .wd-ext-num strong,body[data-theme="ligh
   .fpc-photo-grid{grid-template-columns:1fr}
   .cc-ack-btn{padding:6px 11px;font-size:10px}
   .fpc-ack-btn{padding:7px 12px}
+  .fpv-title-summary{font-size:9px}
+  .fpv-week{flex-basis:36px}
+  .fpv-bar{width:17px;height:68px}
+  .fpv-foot{align-items:flex-start;flex-direction:column;gap:4px}
 
   /* ── Day-by-day timeline: stack instead of squeeze ── */
   .fpc-section{padding:16px 14px;border-radius:12px}
@@ -2932,6 +2962,145 @@ function _plannedKmForWeek(code, weekLabel) {
     sum += _sessionKm(r);
   });
   return Math.round(Math.max(sum, declared) * 10) / 10;
+}
+
+function _fmtProgrammeKm(n) {
+  const rounded = Math.round(Number(n) * 10) / 10;
+  return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
+}
+
+// Whole-block running volume for the athlete full-page view. A manual weekly
+// KM target is the coach's intent and wins; otherwise use the summed plan.
+// Logged KM comes from weekly check-ins, with live Strava values taking
+// precedence for this week and last week when connected.
+function _programmeVolumeData(a) {
+  if (!a) return null;
+  const weekFromLabel = label => {
+    const m = String(label || '').match(/\d+/);
+    return m ? parseInt(m[0], 10) : null;
+  };
+
+  let totalWeeks = Math.max(1, getProgWeeks(a.id) || DEFAULT_PROG_WEEKS);
+  (a.allPlan || []).forEach(r => {
+    const wk = weekFromLabel(r.Week || r.week_label);
+    if (wk != null) totalWeeks = Math.max(totalWeeks, wk);
+  });
+  Object.keys(a.targetByWeek || {}).forEach(label => {
+    const wk = weekFromLabel(label);
+    if (wk != null) totalWeeks = Math.max(totalWeeks, wk);
+  });
+  if (typeof a.weekNum === 'number') totalWeeks = Math.max(totalWeeks, a.weekNum);
+  totalWeeks = Math.min(52, totalWeeks);
+
+  const actualByWeek = {};
+  (a.weeklies || []).forEach(w => {
+    const km = parseFloat(w?.['Weekly Run KM']);
+    if (isNaN(km) || km < 0) return;
+    let wk = weekFromLabel(w?.Week || w?.['Week Label'] || w?.['Programme Week']);
+    const weekEnd = w?.['Week Ending'];
+    if (typeof a.weekNum === 'number' && a.expectedWeekEnd && weekEnd) {
+      const weeksBehind = Math.round(
+        (new Date(a.expectedWeekEnd) - new Date(String(weekEnd).slice(0, 10))) / (7 * 86400000)
+      );
+      wk = a.weekNum - weeksBehind;
+    }
+    if (wk != null && wk >= 1 && wk <= totalWeeks) actualByWeek[wk] = km;
+  });
+
+  const strava = (typeof _stravaKmCache !== 'undefined') ? _stravaKmCache[a.id] : null;
+  if (strava && typeof a.weekNum === 'number') {
+    if (strava.weeklyKm != null) actualByWeek[a.weekNum] = Number(strava.weeklyKm);
+    if (strava.lastWeekKm != null && a.weekNum > 1) actualByWeek[a.weekNum - 1] = Number(strava.lastWeekKm);
+  }
+
+  const weeks = [];
+  for (let week = 1; week <= totalWeeks; week++) {
+    const label = `Week ${week}`;
+    const manual = a.targetByWeek?.[label]?.['Weekly KM Target'];
+    const manualKm = manual == null || manual === '' ? NaN : parseFloat(manual);
+    const autoKm = _plannedKmForWeek(a.id, label);
+    const planned = !isNaN(manualKm) && manualKm > 0 ? manualKm : (autoKm > 0 ? autoKm : null);
+    const actual = actualByWeek[week] != null && !isNaN(actualByWeek[week])
+      ? Math.round(actualByWeek[week] * 10) / 10
+      : null;
+    weeks.push({
+      week,
+      planned: planned != null ? Math.round(planned * 10) / 10 : null,
+      actual,
+      isCurrent: week === a.weekNum,
+      isPast: typeof a.weekNum === 'number' && week < a.weekNum,
+      isFuture: typeof a.weekNum === 'number' && week > a.weekNum,
+    });
+  }
+
+  const withPlan = weeks.filter(w => w.planned != null && w.planned > 0);
+  if (!withPlan.length) return null;
+  const peak = withPlan.reduce((best, week) => week.planned > best.planned ? week : best);
+  const totalPlanned = Math.round(withPlan.reduce((sum, week) => sum + week.planned, 0) * 10) / 10;
+  const max = Math.max(1, ...weeks.flatMap(w => [w.planned || 0, w.actual || 0]));
+  return { weeks, peak, totalPlanned, max };
+}
+
+function _programmeVolumeBody(a, data) {
+  const bars = data.weeks.map(w => {
+    const plannedHeight = w.planned ? Math.max(7, Math.round(w.planned / data.max * 100)) : 0;
+    const actualHeight = w.actual != null && w.actual > 0
+      ? Math.max(5, Math.round(Math.min(w.actual, data.max) / data.max * 100))
+      : 0;
+    const classes = [
+      'fpv-week',
+      w.isCurrent ? 'is-current' : '',
+      w.isPast ? 'is-past' : '',
+      w.isFuture ? 'is-future' : '',
+      w.actual != null && w.planned && w.actual >= w.planned ? 'is-hit' : '',
+    ].filter(Boolean).join(' ');
+    const aria = [
+      `Week ${w.week}`,
+      w.planned ? `${_fmtProgrammeKm(w.planned)} km planned` : 'no running volume planned',
+      w.actual != null ? `${_fmtProgrammeKm(w.actual)} km run` : 'no logged volume',
+      w.isCurrent ? 'current week' : '',
+    ].filter(Boolean).join(', ');
+    return `<button type="button" class="${classes}" onclick="fpJumpToProgrammeWeek(${w.week})" aria-label="${esc(aria)}" ${typeof a.weekNum === 'number' ? '' : 'disabled'}>
+      <span class="fpv-bar">${plannedHeight ? `<i style="height:${plannedHeight}%"></i>` : ''}${actualHeight ? `<b style="height:${actualHeight}%"></b>` : ''}</span>
+      <span class="fpv-km">${w.planned ? _fmtProgrammeKm(w.planned) : ''}</span>
+      <span class="fpv-wk">W${w.week}</span>
+    </button>`;
+  }).join('');
+
+  return `<div class="fpv-legend" aria-hidden="true">
+      <span><i class="fpv-key planned"></i>planned</span>
+      <span><i class="fpv-key actual"></i>run</span>
+    </div>
+    <div class="fpv-scroll">${bars}</div>
+    <div class="fpv-foot">
+      <span>Peak · Week ${data.peak.week} at ${_fmtProgrammeKm(data.peak.planned)} km</span>
+      <span>${_fmtProgrammeKm(data.totalPlanned)} km planned across the block</span>
+    </div>`;
+}
+
+function buildProgrammeVolume(a) {
+  const data = _programmeVolumeData(a);
+  if (!data) return '';
+  return `<div class="fpc-section fpv-card" data-programme-volume="${esc(a.id)}">
+    <div class="fpc-section-title">
+      <span>Volume by week</span>
+      <span class="fpv-title-summary">Peak W${data.peak.week} · ${_fmtProgrammeKm(data.peak.planned)} km</span>
+    </div>
+    <div class="fpv-content">${_programmeVolumeBody(a, data)}</div>
+  </div>`;
+}
+
+function _positionCurrentProgrammeWeek(root = document) {
+  const scroller = root.querySelector?.('.fpv-scroll');
+  const current = scroller?.querySelector('.fpv-week.is-current');
+  if (!scroller || !current) return;
+  const inlineBehavior = scroller.style.scrollBehavior;
+  scroller.style.scrollBehavior = 'auto';
+  scroller.scrollLeft = Math.max(
+    0,
+    current.offsetLeft - scroller.clientWidth / 2 + current.offsetWidth / 2
+  );
+  scroller.style.scrollBehavior = inlineBehavior;
 }
 
 // Caption shown under the merged KM Target cell. Surfaces the auto-summed plan
@@ -6971,6 +7140,7 @@ function getSelectedWeekContext(a, weekOffset = 0) {
 }
 
 function buildWeekJump(a, ctx) {
+  const programmeEnd = Math.max(getProgWeeks(a.id), typeof a.weekNum === 'number' ? a.weekNum : 0);
   return `<div class="week-jump">
     <div>
       <div class="week-jump-title">Review Week</div>
@@ -6979,7 +7149,7 @@ function buildWeekJump(a, ctx) {
     </div>
     <div class="week-jump-controls">
       <button class="week-jump-btn secondary" onclick="fpWeekNav(-1)">← Previous Week</button>
-      <button class="week-jump-btn secondary" onclick="fpWeekNav(1)" ${ctx.weekOffset >= 4 ? 'disabled' : ''}>Next Week →</button>
+      <button class="week-jump-btn secondary" onclick="fpWeekNav(1)" ${ctx.selectedWeekNum !== null && ctx.selectedWeekNum >= programmeEnd ? 'disabled' : ''}>Next Week →</button>
       <button class="week-jump-btn" onclick="fpWeekReset()" ${ctx.weekOffset === 0 ? 'disabled' : ''}>Current Week</button>
     </div>
   </div>`;
@@ -6990,6 +7160,7 @@ function buildFPCard(a, weekOffset = 0) {
   const w = ctx.weekly || (weekOffset === 0 ? a.weekly : null);
   const hW = !!w?.Name;
   const fps = a.flags.map(f => `<span class="fp ${f.t}">${esc(f.l)}</span>`).join('');
+  const programmeVolumeHtml = buildProgrammeVolume(a);
 
   // Meta text (same logic as buildCard)
   let metaText;
@@ -7727,6 +7898,7 @@ function buildFPCard(a, weekOffset = 0) {
     ${fpActionHtml}
     ${clientProfileHtml}
     ${wipHtml}
+    ${programmeVolumeHtml}
     ${scoresHtml}
     ${trainingHtml}
     ${weekDetailHtml}
@@ -8861,7 +9033,19 @@ function fpPlanWeek(id) {
 }
 
 function fpWeekNav(dir) {
-  _fpWeekOffset = Math.max(-52, Math.min(4, _fpWeekOffset + dir));
+  const id = _fpOrder[_fpIdx];
+  const a = _allAthletes.find(x => x.id === id) || _coaches.find(x => x.id === id);
+  const currentWeek = typeof a?.weekNum === 'number' ? a.weekNum : 0;
+  const programmeEnd = Math.max(getProgWeeks(id), currentWeek);
+  _fpWeekOffset = Math.max(-currentWeek, Math.min(programmeEnd - currentWeek, _fpWeekOffset + dir));
+  _drawFP();
+}
+
+function fpJumpToProgrammeWeek(week) {
+  const id = _fpOrder[_fpIdx];
+  const a = _allAthletes.find(x => x.id === id) || _coaches.find(x => x.id === id);
+  if (!a || typeof a.weekNum !== 'number') return;
+  _fpWeekOffset = week - a.weekNum;
   _drawFP();
 }
 
@@ -8903,6 +9087,7 @@ function initCollapsibleSections() {
     'strava',
     'week in progress',
     '📍',
+    'volume by week',
     'action required',
     '⚠',
     'watch list',
@@ -8937,6 +9122,7 @@ function _drawFP() {
   document.getElementById('fp-body').innerHTML = buildFPCard(a, _fpWeekOffset);
   document.getElementById('fp-overlay').scrollTop = 0;
   initCollapsibleSections();
+  requestAnimationFrame(() => _positionCurrentProgrammeWeek(document.getElementById('fp-body')));
   loadProgressPhotos(a, _fpWeekOffset);
   loadStravaData(a);
 
@@ -8979,6 +9165,19 @@ const _stravaKmCache = {}; // athleteId → weeklyKm (number)
 
 function applyStravaKm(athleteId, weeklyKm, lastWeekKm) {
   _stravaKmCache[athleteId] = { weeklyKm, lastWeekKm };
+
+  // Refresh the programme strip in-place so current/previous actual bars update
+  // without redrawing the whole athlete view or disturbing scroll/collapse state.
+  const volumeCard = document.querySelector(`[data-programme-volume="${CSS.escape(athleteId)}"]`);
+  const volumeAthlete = _allAthletes.find(x => x.id === athleteId) || _coaches.find(x => x.id === athleteId);
+  if (volumeCard && volumeAthlete) {
+    const volumeData = _programmeVolumeData(volumeAthlete);
+    const volumeContent = volumeCard.querySelector('.fpv-content');
+    if (volumeData && volumeContent) {
+      volumeContent.innerHTML = _programmeVolumeBody(volumeAthlete, volumeData);
+      _positionCurrentProgrammeWeek(volumeCard);
+    }
+  }
 
   // Live-update the Command Center squad km total as Strava data arrives
   const ccKm = document.getElementById('cc-squad-km');
