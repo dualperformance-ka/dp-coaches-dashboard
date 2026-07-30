@@ -2775,6 +2775,22 @@ function splitForTitle(title, code) {
     .filter(s => t.indexOf(s.name.toLowerCase()) >= 0)
     .sort((a, b) => b.name.length - a.name.length)[0] || null;
 }
+const FEMALE_TEMPLATE_SPLITS = new Set(['Glute A', 'Glute B', 'Upper A', 'Upper B']);
+function splitAudienceLabel(split) {
+  if (!split?.athlete_code) return '';
+  // These four templates began as JOJO-specific programming. Keep the routing
+  // key intact so JOJO's existing plan still resolves correctly, but present
+  // the reusable programme family—not the athlete's access code—to coaches.
+  if (split.athlete_code === 'JOJO' && FEMALE_TEMPLATE_SPLITS.has(split.name)) return 'Female';
+  return split.athlete_code;
+}
+function _splitNormaliseExerciseName(name) {
+  return String(name || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+}
+function _splitLooksUnilateral(name) {
+  return /(?:\bsingle (?:leg|arm)\b|\bone arm\b|\bunilateral\b|\bsplit squat\b|\blunges?\b|\bstep (?:up|down)\b|\bkickbacks?\b|\bcopenhagen plank\b|\bdumbbell row\b|\bcable (?:hip abduction|adduction|lateral raise)\b|\bbanded lateral walk\b)/i
+    .test(_splitNormaliseExerciseName(name));
+}
 
 // ── Planning tab ──────────────────────────────────────────────────────────────
 const PLAN_TYPE_COLORS = {
@@ -3331,7 +3347,10 @@ function openPlanSession(id, dateISO) {
   const spSel = document.getElementById('ps-split');
   const splits = splitsForAthlete(_planAthlete);
   spSel.innerHTML = '<option value="">— split —</option>' +
-    splits.map(s => `<option value="${s.id}">${esc(s.name)}${s.athlete_code ? ' · ' + esc(s.athlete_code) : ''} (${(s.exercises || []).length} ex)</option>`).join('');
+    splits.map(s => {
+      const audience = splitAudienceLabel(s);
+      return `<option value="${s.id}">${esc(s.name)}${audience ? ' · ' + esc(audience) : ''} (${(s.exercises || []).length} ex)</option>`;
+    }).join('');
   const matched = row ? splitForTitle(row.title, _planAthlete) : null;
   spSel.value = matched ? matched.id : '';
 
@@ -3631,9 +3650,10 @@ function renderPlanLibrary() {
     <div class="plan-lib-grid" style="margin-bottom:22px">` +
     _splitsCache.map(s => {
       const exs = s.exercises || [];
+      const audience = splitAudienceLabel(s);
       const preview = exs.slice(0, 3).map(e => e.exercise).filter(Boolean).map(esc).join(' · ');
       return `<div class="plan-lib-card" onclick="openSplitEditor('${s.id}')">
-        <div class="plan-lib-name">${esc(s.name)}${s.athlete_code ? `<span class="plan-lib-tag">${esc(s.athlete_code)}</span>` : ''}</div>
+        <div class="plan-lib-name">${esc(s.name)}${audience ? `<span class="plan-lib-tag">${esc(audience)}</span>` : ''}</div>
         <div class="plan-lib-meta">${exs.length} exercises</div>
         ${preview ? `<div class="plan-lib-meta">${preview}${exs.length > 3 ? ' …' : ''}</div>` : ''}
       </div>`;
@@ -3678,6 +3698,9 @@ function addSplitExRow(ex) {
   ex = ex || {};
   const row = document.createElement('div');
   row.className = 'pw-ex-row';
+  row.dataset.originalExercise = ex.exercise || '';
+  row.dataset.repMode = ex.repMode || '';
+  row.dataset.leftRightExercises = JSON.stringify(ex.leftRightExercises || []);
   row.innerHTML = `<div class="pw-ex-grid">
     <input class="po-input" data-f="exercise" placeholder="Exercise name" value="${esc(ex.exercise || '')}">
     <input class="po-input" data-f="warmupSets" placeholder="0" value="${esc(ex.warmupSets || '')}">
@@ -3695,8 +3718,19 @@ function _collectSplitExercises() {
     const g = f => (row.querySelector(`[data-f="${f}"]`)?.value || '').trim();
     const wu = g('warmupSets') || '0', wk = g('workingSets') || '3';
     const rr = g('repRange') || '8-12';
-    return {
-      exercise: g('exercise'),
+    const exercise = g('exercise');
+    const alts = g('alts') ? g('alts').split(',').map(s => s.trim()).filter(Boolean) : [];
+    let existingLeftRight = [];
+    try { existingLeftRight = JSON.parse(row.dataset.leftRightExercises || '[]'); } catch {}
+    const existingNames = new Set(existingLeftRight.map(_splitNormaliseExerciseName));
+    const originalPrimary = _splitNormaliseExerciseName(row.dataset.originalExercise);
+    const primaryWasTagged = row.dataset.repMode === 'left_right' && originalPrimary === _splitNormaliseExerciseName(exercise);
+    const leftRightExercises = [exercise, ...alts].filter(name =>
+      _splitLooksUnilateral(name) || existingNames.has(_splitNormaliseExerciseName(name))
+    );
+    if (primaryWasTagged && !leftRightExercises.includes(exercise)) leftRightExercises.unshift(exercise);
+    const result = {
+      exercise,
       sets: String((parseInt(wu, 10) || 0) + (parseInt(wk, 10) || 0)),
       reps: (rr.match(/\d+/) || ['8'])[0],
       repRange: rr,
@@ -3704,8 +3738,13 @@ function _collectSplitExercises() {
       workingSets: wk,
       rest: g('rest') || '90s',
       notes: g('notes'),
-      alts: g('alts') ? g('alts').split(',').map(s => s.trim()).filter(Boolean) : [],
+      alts,
     };
+    if (leftRightExercises.length) result.leftRightExercises = leftRightExercises;
+    if (leftRightExercises.some(name => _splitNormaliseExerciseName(name) === _splitNormaliseExerciseName(exercise))) {
+      result.repMode = 'left_right';
+    }
+    return result;
   }).filter(e => e.exercise);
 }
 async function saveSplit() {
