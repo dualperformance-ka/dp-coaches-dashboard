@@ -107,34 +107,60 @@ async function fetchActivityZones(accessToken, id) {
 
 // ── Weekly stats helper ───────────────────────────────────────────────────────
 
-function weeklyStats(activities) {
-  // Use local date string (YYYY-MM-DD) from start_date_local to avoid UTC offset issues
-  const now = new Date();
-  const day = now.getUTCDay();
-  const daysFromMonday = (day + 6) % 7;
-  const mondayUTC = new Date(now);
-  mondayUTC.setUTCDate(now.getUTCDate() - daysFromMonday);
-  mondayUTC.setUTCHours(0, 0, 0, 0);
-  const mondayStr = mondayUTC.toISOString().slice(0, 10); // "YYYY-MM-DD"
+function dateStringInTimeZone(date, timeZone) {
+  const parts = new Intl.DateTimeFormat('en-AU', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date);
+  const value = type => parts.find(part => part.type === type)?.value;
+  return `${value('year')}-${value('month')}-${value('day')}`;
+}
 
-  let weeklyKm = 0, weeklyRuns = 0;
+export function weeklyStats(
+  activities,
+  now = new Date(),
+  timeZone = process.env.DASHBOARD_TIME_ZONE || 'Australia/Adelaide'
+) {
+  // Anchor the reporting week to the dashboard's local Monday. Vercel runs in
+  // UTC, which is still Sunday during the first hours of Monday in Adelaide.
+  const todayStr = dateStringInTimeZone(now, timeZone);
+  const todayUTC = new Date(`${todayStr}T00:00:00Z`);
+  const day = todayUTC.getUTCDay();
+  const daysFromMonday = (day + 6) % 7;
+  const mondayUTC = new Date(todayUTC);
+  mondayUTC.setUTCDate(todayUTC.getUTCDate() - daysFromMonday);
+  const mondayStr = mondayUTC.toISOString().slice(0, 10); // "YYYY-MM-DD"
+  const previousMondayUTC = new Date(mondayUTC);
+  previousMondayUTC.setUTCDate(mondayUTC.getUTCDate() - 7);
+  const previousMondayStr = previousMondayUTC.toISOString().slice(0, 10);
+
+  let weeklyKm = 0, weeklyRuns = 0, lastWeekKm = 0, lastWeekRuns = 0;
   for (const a of activities) {
     const localDate = (a.start_date_local || a.start_date || '').slice(0, 10);
-    if (localDate >= mondayStr &&
-        (a.type === 'Run' || a.sport_type === 'Run')) {
+    const isRun = a.type === 'Run' || a.sport_type === 'Run';
+    if (!isRun) continue;
+
+    if (localDate >= mondayStr) {
       weeklyKm   += (a.distance || 0) / 1000;
       weeklyRuns += 1;
+    } else if (localDate >= previousMondayStr && localDate < mondayStr) {
+      lastWeekKm   += (a.distance || 0) / 1000;
+      lastWeekRuns += 1;
     }
   }
 
   const lastRun = activities.find(a => a.type === 'Run' || a.sport_type === 'Run');
   const daysSince = lastRun
-    ? Math.floor((Date.now() - new Date(lastRun.start_date)) / 86400000)
+    ? Math.floor((now.getTime() - new Date(lastRun.start_date)) / 86400000)
     : null;
 
   return {
     weeklyKm:        Math.round(weeklyKm * 10) / 10,
     weeklyRuns,
+    lastWeekKm:      Math.round(lastWeekKm * 10) / 10,
+    lastWeekRuns,
     daysSinceLastRun: daysSince,
   };
 }
