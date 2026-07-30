@@ -20,6 +20,11 @@ test('returns current and previous Monday-to-Sunday run totals', () => {
   assert.equal(stats.weeklyRuns, 1);
   assert.equal(stats.lastWeekKm, 48.1);
   assert.equal(stats.lastWeekRuns, 4);
+  assert.deepEqual(stats.weeklyHistory, [
+    { weekStart: '2026-07-13', weekEnd: '2026-07-19', km: 9, runs: 1 },
+    { weekStart: '2026-07-20', weekEnd: '2026-07-26', km: 48.1, runs: 4 },
+    { weekStart: '2026-07-27', weekEnd: '2026-08-02', km: 19.7, runs: 1 },
+  ]);
 });
 
 test('uses the activity local date at week boundaries', () => {
@@ -52,4 +57,26 @@ test('starts a new week on Adelaide Monday even while the server is on UTC Sunda
 
   assert.equal(stats.weeklyKm, 8);
   assert.equal(stats.lastWeekKm, 0);
+});
+
+test('keeps weekly aggregates beyond a 12-week block', () => {
+  const stats = weeklyStats([
+    {
+      type: 'Run',
+      start_date: '2026-03-30T20:30:00Z',
+      start_date_local: '2026-03-31T07:00:00Z',
+      distance: 18000,
+    },
+    {
+      type: 'Run',
+      start_date: '2026-07-29T20:30:00Z',
+      start_date_local: '2026-07-30T06:00:00Z',
+      distance: 10000,
+    },
+  ], new Date('2026-07-31T00:00:00Z'));
+
+  assert.deepEqual(stats.weeklyHistory, [
+    { weekStart: '2026-03-30', weekEnd: '2026-04-05', km: 18, runs: 1 },
+    { weekStart: '2026-07-27', weekEnd: '2026-08-02', km: 10, runs: 1 },
+  ]);
 });

@@ -1,5 +1,6 @@
 /**
- * GET /api/strava?athlete={athleteCode}  (or ?code={athleteCode})
+ * GET /api/strava?athlete={athleteCode}&history_start=YYYY-MM-DD
+ * (or use ?code={athleteCode})
  *
  * Coaches dashboard endpoint — reads Strava tokens from Supabase,
  * refreshes if expired, returns recent activities + weekly summary stats.
@@ -77,12 +78,29 @@ async function doRefreshToken(refreshToken) {
   return res.json();
 }
 
-async function fetchActivities(accessToken, perPage = 20) {
-  const res = await fetch(`${STRAVA_API}/athlete/activities?per_page=${perPage}`, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
-  if (!res.ok) throw new Error(`Strava activities failed: ${res.status}`);
-  return res.json();
+async function fetchActivities(accessToken, { afterEpoch = null, perPage = 200 } = {}) {
+  const activities = [];
+  let page = 1;
+
+  // When a programme start is supplied, keep paging until Strava has returned
+  // every activity in that date range. Without one, retain the legacy one-page
+  // behaviour so older callers cannot accidentally request an athlete's entire
+  // lifetime history.
+  while (true) {
+    const params = new URLSearchParams({ per_page: String(perPage), page: String(page) });
+    if (afterEpoch != null) params.set('after', String(afterEpoch));
+    const res = await fetch(`${STRAVA_API}/athlete/activities?${params}`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    if (!res.ok) throw new Error(`Strava activities failed: ${res.status}`);
+    const batch = await res.json();
+    if (!Array.isArray(batch)) throw new Error('Strava activities returned an invalid response');
+    activities.push(...batch);
+    if (afterEpoch == null || batch.length < perPage) break;
+    page += 1;
+  }
+
+  return activities;
 }
 
 async function fetchActivityDetail(accessToken, id) {
@@ -137,16 +155,31 @@ export function weeklyStats(
   const previousMondayStr = previousMondayUTC.toISOString().slice(0, 10);
 
   let weeklyKm = 0, weeklyRuns = 0, lastWeekKm = 0, lastWeekRuns = 0;
+  const historyByWeekEnd = new Map();
   for (const a of activities) {
     const localDate = (a.start_date_local || a.start_date || '').slice(0, 10);
     const isRun = a.type === 'Run' || a.sport_type === 'Run';
-    if (!isRun) continue;
+    if (!isRun || !/^\d{4}-\d{2}-\d{2}$/.test(localDate)) continue;
+
+    const activityDateUTC = new Date(`${localDate}T00:00:00Z`);
+    const activityDaysFromMonday = (activityDateUTC.getUTCDay() + 6) % 7;
+    const activityMondayUTC = new Date(activityDateUTC);
+    activityMondayUTC.setUTCDate(activityDateUTC.getUTCDate() - activityDaysFromMonday);
+    const activitySundayUTC = new Date(activityMondayUTC);
+    activitySundayUTC.setUTCDate(activityMondayUTC.getUTCDate() + 6);
+    const weekStart = activityMondayUTC.toISOString().slice(0, 10);
+    const weekEnd = activitySundayUTC.toISOString().slice(0, 10);
+    const distanceKm = (a.distance || 0) / 1000;
+    const history = historyByWeekEnd.get(weekEnd) || { weekStart, weekEnd, km: 0, runs: 0 };
+    history.km += distanceKm;
+    history.runs += 1;
+    historyByWeekEnd.set(weekEnd, history);
 
     if (localDate >= mondayStr) {
-      weeklyKm   += (a.distance || 0) / 1000;
+      weeklyKm   += distanceKm;
       weeklyRuns += 1;
     } else if (localDate >= previousMondayStr && localDate < mondayStr) {
-      lastWeekKm   += (a.distance || 0) / 1000;
+      lastWeekKm   += distanceKm;
       lastWeekRuns += 1;
     }
   }
@@ -161,6 +194,9 @@ export function weeklyStats(
     weeklyRuns,
     lastWeekKm:      Math.round(lastWeekKm * 10) / 10,
     lastWeekRuns,
+    weeklyHistory:   [...historyByWeekEnd.values()]
+      .map(week => ({ ...week, km: Math.round(week.km * 10) / 10 }))
+      .sort((a, b) => a.weekEnd.localeCompare(b.weekEnd)),
     daysSinceLastRun: daysSince,
   };
 }
@@ -199,7 +235,22 @@ export default async function handler(req, res) {
       await updateTokens(athleteCode, access_token, refreshed.expires_at, tokens);
     }
 
-    const activities = await fetchActivities(access_token, 30);
+    const historyStart = String(req.query.history_start || '').trim();
+    let afterEpoch = null;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(historyStart)) {
+      const startMs = Date.parse(`${historyStart}T00:00:00Z`);
+      if (Number.isFinite(startMs)) {
+        // Include a one-day timezone buffer. Weekly aggregation uses each
+        // activity's start_date_local, so anything before Week 1 is discarded
+        // naturally by the dashboard's programme-week mapping.
+        afterEpoch = Math.floor((startMs - 86400000) / 1000);
+      }
+    }
+
+    // Fetch and aggregate every activity since this athlete's Week 1. The date
+    // range grows with their programme, so Week 18+ is not truncated by a
+    // fixed week or activity limit.
+    const activities = await fetchActivities(access_token, { afterEpoch, perPage: 200 });
     const stats      = weeklyStats(activities);
 
     // Enrich every activity (all sport types) from the last 14 days, capped at 8

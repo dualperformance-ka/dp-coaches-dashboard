@@ -15,6 +15,9 @@
     },
     "api/analyse.js": {
       "maxDuration": 45
+    },
+    "api/strava.js": {
+      "maxDuration": 30
     }
   },
   "headers": [

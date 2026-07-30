@@ -2973,8 +2973,8 @@ function _fmtProgrammeKm(n) {
 
 // Whole-block running volume for the athlete full-page view. A manual weekly
 // KM target is the coach's intent and wins; otherwise use the summed plan.
-// Logged KM comes from weekly check-ins, with live Strava values taking
-// precedence for this week and last week when connected.
+// Logged KM comes from weekly check-ins, with available Strava weekly history
+// taking precedence when connected.
 function _programmeVolumeData(a) {
   if (!a) return null;
   const weekFromLabel = label => {
@@ -2992,7 +2992,6 @@ function _programmeVolumeData(a) {
     if (wk != null) totalWeeks = Math.max(totalWeeks, wk);
   });
   if (typeof a.weekNum === 'number') totalWeeks = Math.max(totalWeeks, a.weekNum);
-  totalWeeks = Math.min(52, totalWeeks);
 
   const actualByWeek = {};
   (a.weeklies || []).forEach(w => {
@@ -3010,9 +3009,14 @@ function _programmeVolumeData(a) {
   });
 
   const strava = (typeof _stravaKmCache !== 'undefined') ? _stravaKmCache[a.id] : null;
-  if (strava && typeof a.weekNum === 'number') {
-    if (strava.weeklyKm != null) actualByWeek[a.weekNum] = Number(strava.weeklyKm);
-    if (strava.lastWeekKm != null && a.weekNum > 1) actualByWeek[a.weekNum - 1] = Number(strava.lastWeekKm);
+  if (strava && typeof a.weekNum === 'number' && a.expectedWeekEnd) {
+    Object.entries(_stravaKmByWeekEnd(strava, a.expectedWeekEnd)).forEach(([weekEnd, km]) => {
+      const weeksBehind = Math.round(
+        (new Date(a.expectedWeekEnd) - new Date(weekEnd)) / (7 * 86400000)
+      );
+      const wk = a.weekNum - weeksBehind;
+      if (wk >= 1 && wk <= totalWeeks) actualByWeek[wk] = km;
+    });
   }
 
   const weeks = [];
@@ -9146,6 +9150,16 @@ function _drawFP() {
 }
 
 // ── Strava prefetch ───────────────────────────────────────────────────────────
+function _stravaApiUrl(a) {
+  const params = new URLSearchParams({ athlete: a.id });
+  if (typeof a.weekNum === 'number' && a.weekNum >= 1) {
+    const programmeStart = new Date(currentWeekStart);
+    programmeStart.setDate(programmeStart.getDate() - (a.weekNum - 1) * 7);
+    params.set('history_start', localDateStr(programmeStart));
+  }
+  return `/api/strava?${params}`;
+}
+
 async function prefetchStravaKm(athletes) {
   // Fetch in small batches so we don't hammer the API all at once
   const BATCH = 3;
@@ -9153,14 +9167,19 @@ async function prefetchStravaKm(athletes) {
     const batch = athletes.slice(i, i + BATCH);
     await Promise.allSettled(batch.map(async a => {
       try {
-        const res = await fetch(`/api/strava?athlete=${encodeURIComponent(a.id)}`);
+        const res = await fetch(_stravaApiUrl(a));
         if (!res.ok) return;
         const data = await res.json();
         if (data.connected) {
           const stravaTag = document.querySelector(`[data-strava-tag="${a.id}"]`);
           if (stravaTag) stravaTag.innerHTML = `<span class="fp strava-linked-badge">🟠 Strava</span>`;
           if (data.stats?.weeklyKm != null) {
-            applyStravaKm(a.id, data.stats.weeklyKm, data.stats.lastWeekKm ?? null);
+            applyStravaKm(
+              a.id,
+              data.stats.weeklyKm,
+              data.stats.lastWeekKm ?? null,
+              data.stats.weeklyHistory || []
+            );
           }
         }
       } catch (_) { /* silent */ }
@@ -9169,12 +9188,31 @@ async function prefetchStravaKm(athletes) {
 }
 
 // ── Strava km cache + live updater ───────────────────────────────────────────
-const _stravaKmCache = {}; // athleteId → weeklyKm (number)
+const _stravaKmCache = {}; // athleteId → current/previous/history weekly km
 
-function applyStravaKm(athleteId, weeklyKm, lastWeekKm) {
-  _stravaKmCache[athleteId] = { weeklyKm, lastWeekKm };
+function _stravaKmByWeekEnd(strava, currentWeekEnd) {
+  const totals = {};
+  (strava?.weeklyHistory || []).forEach(week => {
+    const weekEnd = String(week?.weekEnd || '').slice(0, 10);
+    const km = Number(week?.km);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(weekEnd) && Number.isFinite(km)) totals[weekEnd] = km;
+  });
 
-  // Refresh the programme strip in-place so current/previous actual bars update
+  // Keep compatibility with cached/API responses created before weeklyHistory.
+  if (currentWeekEnd && strava?.weeklyKm != null) {
+    totals[currentWeekEnd] = Number(strava.weeklyKm);
+  }
+  if (currentWeekEnd && strava?.lastWeekKm != null) {
+    const previousWeekEnd = new Date(new Date(currentWeekEnd) - 7 * 86400000).toISOString().slice(0, 10);
+    totals[previousWeekEnd] = Number(strava.lastWeekKm);
+  }
+  return totals;
+}
+
+function applyStravaKm(athleteId, weeklyKm, lastWeekKm, weeklyHistory = []) {
+  _stravaKmCache[athleteId] = { weeklyKm, lastWeekKm, weeklyHistory };
+
+  // Refresh the programme strip in-place so historical/current actual bars update
   // without redrawing the whole athlete view or disturbing scroll/collapse state.
   const volumeCard = document.querySelector(`[data-programme-volume="${CSS.escape(athleteId)}"]`);
   const volumeAthlete = _allAthletes.find(x => x.id === athleteId) || _coaches.find(x => x.id === athleteId);
@@ -9247,7 +9285,7 @@ async function loadStravaData(a) {
   if (!target) return;
 
   try {
-    const res = await fetch(`/api/strava?athlete=${encodeURIComponent(a.id)}`);
+    const res = await fetch(_stravaApiUrl(a));
     if (!res.ok) {
       const e = await res.json().catch(() => ({}));
       throw new Error(e.error || `HTTP ${res.status}`);
@@ -9265,7 +9303,9 @@ async function loadStravaData(a) {
     const s = data.stats || {};
 
     // Push Strava km into training section + squad card bar
-    if (s.weeklyKm != null) applyStravaKm(a.id, s.weeklyKm, s.lastWeekKm ?? null);
+    if (s.weeklyKm != null) {
+      applyStravaKm(a.id, s.weeklyKm, s.lastWeekKm ?? null, s.weeklyHistory || []);
+    }
 
     const _loadChange = (s.lastWeekKm != null && s.lastWeekKm > 0)
       ? (() => {
@@ -9730,7 +9770,7 @@ function _drawWH() {
 
 // ── Compact weekly-mileage sparkline for the athlete card "Body & Mileage" ────
 // Mirrors the weight sparkline: amber bars = completed weekly KM (check-in, or
-// Strava on the latest week), dashed line = planned target. Click → full history
+// Strava where available), dashed line = planned target. Click → full history
 // overlay (where the large Weekly Mileage chart lives). Returns '' if no data.
 function buildMileageMini(a) {
   const WK_MS = 7 * 86400000;
@@ -9755,15 +9795,16 @@ function buildMileageMini(a) {
 
   const skm = (typeof _stravaKmCache !== 'undefined') ? _stravaKmCache[a.id] : null;
   if (skm && curEnd) {
-    if (skm.weeklyKm != null && !pts.some(p => p.date === curEnd)) {
-      pts.push({ date: curEnd, completed: null, planned: plannedFor(curEnd), strava: null });
-      pts.sort((x, y) => x.date.localeCompare(y.date));
-    }
-    if (skm.weeklyKm != null) pts.forEach(p => { if (p.date === curEnd) p.strava = +skm.weeklyKm; });
-    if (skm.lastWeekKm != null) {
-      const prev = new Date(new Date(curEnd) - WK_MS).toISOString().slice(0, 10);
-      pts.forEach(p => { if (p.date === prev) p.strava = +skm.lastWeekKm; });
-    }
+    const stravaByDate = _stravaKmByWeekEnd(skm, curEnd);
+    Object.entries(stravaByDate).forEach(([date, km]) => {
+      let point = pts.find(p => p.date === date);
+      if (!point) {
+        point = { date, completed: null, planned: plannedFor(date), strava: null };
+        pts.push(point);
+      }
+      point.strava = km;
+    });
+    pts.sort((x, y) => x.date.localeCompare(y.date));
   }
   pts = pts.slice(-10);
   if (!pts.some(p => p.completed != null || p.strava != null || p.planned != null)) return '';
@@ -9882,20 +9923,17 @@ function buildMileageTrend(a) {
     return { date: we, completed: isNaN(c) ? null : c, planned: plannedFor(we), strava: null };
   });
 
-  // Strava overlay: current week = weeklyKm, previous week = lastWeekKm.
+  // Strava overlay: use every available weekly aggregate.
   const skm = (typeof _stravaKmCache !== 'undefined') ? _stravaKmCache[a.id] : null;
-  const stravaByDate = {};
+  let stravaByDate = {};
   if (skm && curEnd) {
-    if (skm.weeklyKm != null) stravaByDate[curEnd] = +skm.weeklyKm;
-    if (skm.lastWeekKm != null) {
-      const prev = new Date(new Date(curEnd) - WK_MS).toISOString().slice(0, 10);
-      stravaByDate[prev] = +skm.lastWeekKm;
-    }
-    // Surface the current week even if no check-in row exists yet.
-    if (skm.weeklyKm != null && !pts.some(p => p.date === curEnd)) {
-      pts.push({ date: curEnd, completed: null, planned: plannedFor(curEnd), strava: null });
-      pts.sort((x, y) => x.date.localeCompare(y.date));
-    }
+    stravaByDate = _stravaKmByWeekEnd(skm, curEnd);
+    Object.keys(stravaByDate).forEach(date => {
+      if (!pts.some(p => p.date === date)) {
+        pts.push({ date, completed: null, planned: plannedFor(date), strava: null });
+      }
+    });
+    pts.sort((x, y) => x.date.localeCompare(y.date));
   }
   pts.forEach(p => { if (stravaByDate[p.date] != null) p.strava = stravaByDate[p.date]; });
 
