@@ -894,13 +894,12 @@ body[data-theme="pride"] .texp-name{background:linear-gradient(90deg,#FF8C00,#FF
 .fpv-key{display:inline-block;width:9px;height:9px;border-radius:3px}
 .fpv-key.planned{background:var(--brand-bg);border:1px solid var(--brand-border)}
 .fpv-key.actual{background:var(--brand-dim)}
-.fpv-scroll{display:flex;gap:7px;overflow-x:auto;padding:24px 3px 9px;scroll-behavior:smooth;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.fpv-scroll{display:flex;gap:7px;overflow-x:auto;padding:2px 0 6px;scroll-behavior:smooth;-webkit-overflow-scrolling:touch;scrollbar-width:none}
 .fpv-scroll::-webkit-scrollbar{display:none}
-.fpv-week{appearance:none;position:relative;flex:0 0 42px;display:flex;flex-direction:column;align-items:center;gap:6px;padding:5px 3px 7px;border:1px solid transparent;border-radius:11px;background:transparent;color:inherit;font:inherit;cursor:pointer;transition:background .15s,border-color .15s,box-shadow .15s}
+.fpv-week{appearance:none;position:relative;flex:0 0 42px;display:flex;flex-direction:column;align-items:center;gap:6px;padding:5px 3px 7px;border:1px solid transparent;border-radius:11px;background:transparent;color:inherit;font:inherit;cursor:pointer;transition:background .15s,border-color .15s}
 .fpv-week:hover{background:var(--brand-bg);border-color:var(--brand-border)}
 .fpv-week:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
-.fpv-week.is-current{background:linear-gradient(180deg,rgba(121,195,232,.2),var(--brand-bg));border:2px solid var(--brand);box-shadow:0 0 0 3px var(--brand-bg),0 7px 18px rgba(2,132,199,.16)}
-.fpv-week.is-current::before{content:'NOW';position:absolute;top:-22px;left:50%;transform:translateX(-50%);padding:2px 7px;border-radius:999px;background:#0369a1;color:#fff;font-family:var(--mono);font-size:7px;font-weight:900;line-height:1.35;letter-spacing:.1em}
+.fpv-week.is-current{background:var(--brand-bg);border-color:var(--brand-border)}
 .fpv-week[disabled]{cursor:default}
 .fpv-bar{position:relative;display:block;width:19px;height:78px;border-radius:6px;background:var(--surface2);overflow:hidden}
 .fpv-bar i,.fpv-bar b{position:absolute;left:0;right:0;bottom:0;display:block;border-radius:6px}
@@ -908,9 +907,11 @@ body[data-theme="pride"] .texp-name{background:linear-gradient(90deg,#FF8C00,#FF
 .fpv-bar b{background:var(--brand-dim);opacity:.96}
 .fpv-week.is-hit .fpv-bar b{background:var(--ok)}
 .fpv-week.is-future .fpv-bar i{opacity:.6}
-.fpv-km{font-family:var(--mono);font-size:10px;font-weight:700;line-height:1;color:var(--muted)}
+.fpv-km{display:flex;align-items:center;justify-content:center;gap:2px;font-family:var(--mono);font-size:8px;line-height:1;color:var(--dim);white-space:nowrap}
+.fpv-km-actual{font-weight:800;color:var(--brand-dim)}
+.fpv-km-programmed{font-weight:700;color:var(--muted)}
 .fpv-wk{font-family:var(--mono);font-size:9px;line-height:1;color:var(--dim)}
-.fpv-week.is-current .fpv-km,.fpv-week.is-current .fpv-wk{color:var(--str)}
+.fpv-week.is-current .fpv-km-actual,.fpv-week.is-current .fpv-km-programmed,.fpv-week.is-current .fpv-wk{color:var(--brand-dim)}
 .fpv-week.is-current .fpv-wk{font-weight:800}
 .fpv-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:10px;padding-top:11px;border-top:1px solid var(--border);font-family:var(--mono);font-size:10px;color:var(--dim)}
 
@@ -3057,35 +3058,41 @@ function _programmeVolumeBody(a, data) {
     ].filter(Boolean).join(' ');
     const aria = [
       `Week ${w.week}`,
-      w.planned ? `${_fmtProgrammeKm(w.planned)} km planned` : 'no running volume planned',
-      w.actual != null ? `${_fmtProgrammeKm(w.actual)} km run` : 'no logged volume',
+      w.actual != null ? `${_fmtProgrammeKm(w.actual)} km actual` : 'no actual volume logged',
+      w.planned ? `${_fmtProgrammeKm(w.planned)} km programmed` : 'no running volume programmed',
       w.isCurrent ? 'current week' : '',
     ].filter(Boolean).join(', ');
+    const actualLabel = w.actual != null ? _fmtProgrammeKm(w.actual) : '—';
+    const programmedLabel = w.planned ? _fmtProgrammeKm(w.planned) : '—';
     return `<button type="button" class="${classes}" onclick="fpJumpToProgrammeWeek(${w.week})" aria-label="${esc(aria)}" ${w.isCurrent ? 'aria-current="week"' : ''} ${typeof a.weekNum === 'number' ? '' : 'disabled'}>
       <span class="fpv-bar">${plannedHeight ? `<i style="height:${plannedHeight}%"></i>` : ''}${actualHeight ? `<b style="height:${actualHeight}%"></b>` : ''}</span>
-      <span class="fpv-km">${w.planned ? _fmtProgrammeKm(w.planned) : ''}</span>
+      <span class="fpv-km"><strong class="fpv-km-actual">${actualLabel}</strong><span>/</span><span class="fpv-km-programmed">${programmedLabel}</span></span>
       <span class="fpv-wk">W${w.week}</span>
     </button>`;
   }).join('');
 
   return `<div class="fpv-legend" aria-hidden="true">
-      <span><i class="fpv-key planned"></i>planned</span>
-      <span><i class="fpv-key actual"></i>run</span>
+      <span><i class="fpv-key actual"></i>actual</span>
+      <span><i class="fpv-key planned"></i>programmed</span>
     </div>
     <div class="fpv-scroll">${bars}</div>
     <div class="fpv-foot">
       <span>Peak · Week ${data.peak.week} at ${_fmtProgrammeKm(data.peak.planned)} km</span>
-      <span>${_fmtProgrammeKm(data.totalPlanned)} km planned across the block</span>
+      <span>${_fmtProgrammeKm(data.totalPlanned)} km programmed across the block</span>
     </div>`;
 }
 
 function buildProgrammeVolume(a) {
   const data = _programmeVolumeData(a);
   if (!data) return '';
+  const current = data.weeks.find(w => w.isCurrent);
+  const currentSummary = current
+    ? `Current W${current.week} · ${current.actual != null ? _fmtProgrammeKm(current.actual) : '—'} / ${current.planned ? _fmtProgrammeKm(current.planned) : '—'} km`
+    : `Peak W${data.peak.week} · ${_fmtProgrammeKm(data.peak.planned)} km`;
   return `<div class="fpc-section fpv-card" data-programme-volume="${esc(a.id)}">
     <div class="fpc-section-title">
       <span>Volume by week</span>
-      <span class="fpv-title-summary">Peak W${data.peak.week} · ${_fmtProgrammeKm(data.peak.planned)} km</span>
+      <span class="fpv-title-summary" title="Current week · actual / programmed">${currentSummary}</span>
     </div>
     <div class="fpv-content">${_programmeVolumeBody(a, data)}</div>
   </div>`;
@@ -9176,6 +9183,11 @@ function applyStravaKm(athleteId, weeklyKm, lastWeekKm) {
     const volumeContent = volumeCard.querySelector('.fpv-content');
     if (volumeData && volumeContent) {
       volumeContent.innerHTML = _programmeVolumeBody(volumeAthlete, volumeData);
+      const current = volumeData.weeks.find(w => w.isCurrent);
+      const summary = volumeCard.querySelector('.fpv-title-summary');
+      if (current && summary) {
+        summary.textContent = `Current W${current.week} · ${current.actual != null ? _fmtProgrammeKm(current.actual) : '—'} / ${current.planned ? _fmtProgrammeKm(current.planned) : '—'} km`;
+      }
       _positionCurrentProgrammeWeek(volumeCard);
     }
   }
