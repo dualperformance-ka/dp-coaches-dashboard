@@ -894,12 +894,13 @@ body[data-theme="pride"] .texp-name{background:linear-gradient(90deg,#FF8C00,#FF
 .fpv-key{display:inline-block;width:9px;height:9px;border-radius:3px}
 .fpv-key.planned{background:var(--brand-bg);border:1px solid var(--brand-border)}
 .fpv-key.actual{background:var(--brand-dim)}
-.fpv-scroll{display:flex;gap:7px;overflow-x:auto;padding:2px 0 6px;scroll-behavior:smooth;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.fpv-scroll{display:flex;gap:7px;overflow-x:auto;padding:24px 3px 9px;scroll-behavior:smooth;-webkit-overflow-scrolling:touch;scrollbar-width:none}
 .fpv-scroll::-webkit-scrollbar{display:none}
-.fpv-week{appearance:none;flex:0 0 42px;display:flex;flex-direction:column;align-items:center;gap:6px;padding:5px 3px 7px;border:1px solid transparent;border-radius:11px;background:transparent;color:inherit;font:inherit;cursor:pointer;transition:background .15s,border-color .15s}
+.fpv-week{appearance:none;position:relative;flex:0 0 42px;display:flex;flex-direction:column;align-items:center;gap:6px;padding:5px 3px 7px;border:1px solid transparent;border-radius:11px;background:transparent;color:inherit;font:inherit;cursor:pointer;transition:background .15s,border-color .15s,box-shadow .15s}
 .fpv-week:hover{background:var(--brand-bg);border-color:var(--brand-border)}
 .fpv-week:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
-.fpv-week.is-current{background:var(--brand-bg);border-color:var(--brand-border)}
+.fpv-week.is-current{background:linear-gradient(180deg,rgba(121,195,232,.2),var(--brand-bg));border:2px solid var(--brand);box-shadow:0 0 0 3px var(--brand-bg),0 7px 18px rgba(2,132,199,.16)}
+.fpv-week.is-current::before{content:'NOW';position:absolute;top:-22px;left:50%;transform:translateX(-50%);padding:2px 7px;border-radius:999px;background:#0369a1;color:#fff;font-family:var(--mono);font-size:7px;font-weight:900;line-height:1.35;letter-spacing:.1em}
 .fpv-week[disabled]{cursor:default}
 .fpv-bar{position:relative;display:block;width:19px;height:78px;border-radius:6px;background:var(--surface2);overflow:hidden}
 .fpv-bar i,.fpv-bar b{position:absolute;left:0;right:0;bottom:0;display:block;border-radius:6px}
@@ -909,7 +910,7 @@ body[data-theme="pride"] .texp-name{background:linear-gradient(90deg,#FF8C00,#FF
 .fpv-week.is-future .fpv-bar i{opacity:.6}
 .fpv-km{font-family:var(--mono);font-size:10px;font-weight:700;line-height:1;color:var(--muted)}
 .fpv-wk{font-family:var(--mono);font-size:9px;line-height:1;color:var(--dim)}
-.fpv-week.is-current .fpv-km,.fpv-week.is-current .fpv-wk{color:var(--brand-dim)}
+.fpv-week.is-current .fpv-km,.fpv-week.is-current .fpv-wk{color:var(--str)}
 .fpv-week.is-current .fpv-wk{font-weight:800}
 .fpv-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:10px;padding-top:11px;border-top:1px solid var(--border);font-family:var(--mono);font-size:10px;color:var(--dim)}
 
@@ -3060,7 +3061,7 @@ function _programmeVolumeBody(a, data) {
       w.actual != null ? `${_fmtProgrammeKm(w.actual)} km run` : 'no logged volume',
       w.isCurrent ? 'current week' : '',
     ].filter(Boolean).join(', ');
-    return `<button type="button" class="${classes}" onclick="fpJumpToProgrammeWeek(${w.week})" aria-label="${esc(aria)}" ${typeof a.weekNum === 'number' ? '' : 'disabled'}>
+    return `<button type="button" class="${classes}" onclick="fpJumpToProgrammeWeek(${w.week})" aria-label="${esc(aria)}" ${w.isCurrent ? 'aria-current="week"' : ''} ${typeof a.weekNum === 'number' ? '' : 'disabled'}>
       <span class="fpv-bar">${plannedHeight ? `<i style="height:${plannedHeight}%"></i>` : ''}${actualHeight ? `<b style="height:${actualHeight}%"></b>` : ''}</span>
       <span class="fpv-km">${w.planned ? _fmtProgrammeKm(w.planned) : ''}</span>
       <span class="fpv-wk">W${w.week}</span>
