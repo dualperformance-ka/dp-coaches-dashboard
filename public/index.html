@@ -2775,14 +2775,8 @@ function splitForTitle(title, code) {
     .filter(s => t.indexOf(s.name.toLowerCase()) >= 0)
     .sort((a, b) => b.name.length - a.name.length)[0] || null;
 }
-const FEMALE_TEMPLATE_SPLITS = new Set(['Glute A', 'Glute B', 'Upper A', 'Upper B']);
 function splitAudienceLabel(split) {
-  if (!split?.athlete_code) return '';
-  // These four templates began as JOJO-specific programming. Keep the routing
-  // key intact so JOJO's existing plan still resolves correctly, but present
-  // the reusable programme family—not the athlete's access code—to coaches.
-  if (split.athlete_code === 'JOJO' && FEMALE_TEMPLATE_SPLITS.has(split.name)) return 'Female';
-  return split.athlete_code;
+  return split?.athlete_code || '';
 }
 function _splitNormaliseExerciseName(name) {
   return String(name || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
