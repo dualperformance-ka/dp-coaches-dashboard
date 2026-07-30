@@ -62,13 +62,12 @@ async function handleRecipients(req, res) {
 
 // ── POST: forward the send to the portal (which holds the VAPID keys) ────────
 async function handleSend(req, res) {
-  // Auth to the portal: the shared Supabase service key (identical on both
-  // projects already) — no separate NOTIFY_SECRET to keep in sync.
-  const secret = String(
-    process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NOTIFY_SECRET || ''
-  ).trim();
+  // Auth to the portal with the dedicated shared notification secret.
+  // Do not use the Supabase service-role key here: the portal intentionally
+  // validates NOTIFY_SECRET and should never receive a database credential.
+  const secret = String(process.env.NOTIFY_SECRET || '').trim();
   if (!secret) {
-    return res.status(500).json({ ok: false, error: 'SUPABASE_SERVICE_KEY is not configured on the dashboard' });
+    return res.status(500).json({ ok: false, error: 'NOTIFY_SECRET is not configured on the dashboard' });
   }
 
   const code = String(req.body?.code || '').trim().toUpperCase();
@@ -98,7 +97,7 @@ async function handleSend(req, res) {
   if (response.status === 401) {
     return res.status(502).json({
       ok: false,
-      error: 'Portal rejected the shared secret — the SUPABASE_SERVICE_KEY on the dashboard and portal Vercel projects should be identical (redeploy after any env change)',
+      error: 'Portal rejected NOTIFY_SECRET — confirm the dashboard and portal production values match, then redeploy after any environment change',
     });
   }
   return res.status(response.status).json(data);
