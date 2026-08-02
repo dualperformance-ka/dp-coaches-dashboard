@@ -77,7 +77,7 @@ async function selectAthleteSettings() {
     throw new Error('SUPABASE_URL or SUPABASE_SERVICE_KEY is not configured');
   }
 
-  const keys = 'programme_weeks,start_date_override,programme_restart';
+  const keys = 'programme_weeks,start_date_override,programme_restart,call_notes,ack_alert,ticked,logs';
   const url = `${baseUrl}/rest/v1/athlete_data?select=athlete_code,key,value&key=in.(${keys})`;
   const response = await fetch(url, {
     headers: { apikey: key, Authorization: `Bearer ${key}` },
@@ -299,21 +299,6 @@ function mapGoal(row) {
 // change and no duplicate DB writes — synthesized rows exist only in the
 // response and only when the structured feed is missing that session entirely.
 
-// Fetch just the `logs` rows from athlete_data (small table, one row/athlete).
-async function selectLogsBlobs() {
-  const baseUrl = cleanBaseUrl(process.env.SUPABASE_URL);
-  const key = process.env.SUPABASE_SERVICE_KEY;
-  if (!baseUrl || !key) throw new Error('SUPABASE_URL or SUPABASE_SERVICE_KEY is not configured');
-
-  const url = `${baseUrl}/rest/v1/athlete_data?select=athlete_code,value&key=eq.logs`;
-  const response = await fetch(url, {
-    headers: { apikey: key, Authorization: `Bearer ${key}` },
-  });
-  const text = await response.text();
-  if (!response.ok) throw new Error(`Supabase ${response.status} for athlete_data`);
-  try { return text ? JSON.parse(text) : []; } catch { throw new Error('Invalid Supabase response for athlete_data'); }
-}
-
 function strengthSetsHaveData(sets) {
   return Array.isArray(sets) && sets.some(s => s && (s.reps || s.weight || s.rpe || s.done));
 }
@@ -441,7 +426,7 @@ export default async function handler(req, res) {
   try { requireCoach(req); } catch (error) { return coachError(res, error); }
 
   try {
-    const [body, nutrition, sessions, weeklyRaw, goals, nutritionPlans, athleteSettings, logsRows, plannedRows, athletes] = await Promise.all([
+    const [body, nutrition, sessions, weeklyRaw, goals, nutritionPlans, athleteSettings, sessionLibrary, workoutSplits, applicationDecisions, plannedRows, athletes] = await Promise.all([
       selectAll(TABLES.body, 'log_date'),
       selectAll(TABLES.nutrition, 'log_date'),
       selectAll(TABLES.sessions, 'session_date'),
@@ -449,10 +434,14 @@ export default async function handler(req, res) {
       selectAll(TABLES.goals, 'updated_at'),
       selectAll(TABLES.plans, 'athlete_code'),
       selectAthleteSettings(),
-      selectLogsBlobs().catch(() => []),
+      selectAll('session_library', 'name').catch(() => []),
+      selectAll('workout_splits', 'name').catch(() => []),
+      selectAll('application_decisions', 'decided_at').catch(() => []),
       selectAll('planned_sessions', 'planned_date').catch(() => []),
       selectAll('athletes').catch(() => []),
     ]);
+    const sessionState = athleteSettings.filter(row => row.key === 'ticked' || row.key === 'logs');
+    const logsRows = sessionState.filter(row => row.key === 'logs');
 
     const weeklyIntegrity = cleanWeeklyRows(weeklyRaw);
     const weekly = weeklyIntegrity.rows;
@@ -479,6 +468,9 @@ export default async function handler(req, res) {
         planning: plannedRows.length,
         nutritionPlans: nutritionPlans.length,
         athleteSettings: athleteSettings.length,
+        sessionLibrary: sessionLibrary.length,
+        workoutSplits: workoutSplits.length,
+        applicationDecisions: applicationDecisions.length,
       },
       integrity: {
         weeklyConflicts: weeklyIntegrity.conflicts,
@@ -493,6 +485,10 @@ export default async function handler(req, res) {
       planning: plannedRows,
       nutritionPlans,
       athleteSettings,
+      sessionState,
+      sessionLibrary: sessionLibrary.filter(row => row.archived !== true),
+      workoutSplits: workoutSplits.filter(row => row.archived !== true),
+      applicationDecisions,
     });
   } catch (error) {
     console.error('[coach-data]', error);
@@ -502,7 +498,7 @@ export default async function handler(req, res) {
       source: 'portal_supabase',
       generatedAt: new Date().toISOString(),
       error: error.message,
-      counts: { body: 0, nutrition: 0, sessions: 0, weekly: 0, goals: 0, planning: 0, nutritionPlans: 0, athleteSettings: 0 },
+      counts: { body: 0, nutrition: 0, sessions: 0, weekly: 0, goals: 0, planning: 0, nutritionPlans: 0, athleteSettings: 0, sessionLibrary: 0, workoutSplits: 0, applicationDecisions: 0 },
       body: [],
       nutrition: [],
       sessions: [],
@@ -511,6 +507,10 @@ export default async function handler(req, res) {
       planning: [],
       nutritionPlans: [],
       athleteSettings: [],
+      sessionState: [],
+      sessionLibrary: [],
+      workoutSplits: [],
+      applicationDecisions: [],
     });
   }
 }

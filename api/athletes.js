@@ -470,7 +470,9 @@ export async function deleteNutritionPlan(code, weekLabel, request = sb) {
   return { ok: true, rows: Array.isArray(rows) ? rows : [] };
 }
 
-const EDITABLE_SETTING_KEYS = new Set(['programme_weeks', 'start_date_override']);
+const EDITABLE_SETTING_KEYS = new Set([
+  'programme_weeks', 'start_date_override', 'call_notes', 'ack_alert',
+]);
 
 export async function upsertAthleteSetting(code, key, value, request = sb) {
   const athleteCode = normaliseCode(code);
@@ -502,6 +504,78 @@ export async function deleteAthleteSetting(code, key, request = sb) {
     `&key=eq.${encodeURIComponent(settingKey)}`,
     { method: 'DELETE', prefer: 'return=representation' }
   );
+  return { ok: true, rows: Array.isArray(rows) ? rows : [] };
+}
+
+const LIBRARY_CONFIG = {
+  session: {
+    table: 'session_library',
+    fields: new Set([
+      'name', 'session_type', 'intensity', 'distance', 'duration', 'target_pace',
+      'rpe', 'warm_up', 'cool_down', 'goal', 'description', 'archived', 'updated_at',
+    ]),
+  },
+  split: {
+    table: 'workout_splits',
+    fields: new Set(['name', 'athlete_code', 'exercises', 'archived', 'updated_at']),
+  },
+};
+
+export function cleanLibraryFields(kind, input = {}) {
+  const config = LIBRARY_CONFIG[String(kind || '').trim().toLowerCase()];
+  if (!config) throw new Error('Unsupported library type');
+  return Object.fromEntries(Object.entries(input).filter(([key]) => config.fields.has(key)));
+}
+
+export async function saveLibraryRecord(kind, id, input, request = sb) {
+  const libraryKind = String(kind || '').trim().toLowerCase();
+  const config = LIBRARY_CONFIG[libraryKind];
+  if (!config) throw new Error('Unsupported library type');
+  const fields = cleanLibraryFields(kind, input);
+  if (!String(fields.name || '').trim()) throw new Error('Library record needs a name');
+  if (libraryKind === 'split' && fields.athlete_code) fields.athlete_code = normaliseCode(fields.athlete_code);
+  const matchId = String(id || '').trim();
+  const rows = matchId
+    ? await request(`${config.table}?id=eq.${encodeURIComponent(matchId)}`, {
+        method: 'PATCH', prefer: 'return=representation', body: fields,
+      })
+    : await request(config.table, {
+        method: 'POST', prefer: 'return=representation', body: fields,
+      });
+  if (!Array.isArray(rows) || !rows.length) throw new Error('Library record was not saved');
+  return { ok: true, rows };
+}
+
+export async function archiveLibraryRecord(kind, id, request = sb) {
+  const config = LIBRARY_CONFIG[String(kind || '').trim().toLowerCase()];
+  const matchId = String(id || '').trim();
+  if (!config || !matchId) throw new Error('Library type and record ID are required');
+  const rows = await request(`${config.table}?id=eq.${encodeURIComponent(matchId)}`, {
+    method: 'PATCH',
+    prefer: 'return=representation',
+    body: { archived: true, updated_at: new Date().toISOString() },
+  });
+  if (!Array.isArray(rows) || !rows.length) throw new Error('Library record was not found');
+  return { ok: true, rows };
+}
+
+export async function upsertApplicationDecision(input, request = sb) {
+  const notionId = String(input?.notion_id || '').trim();
+  const decision = String(input?.decision || '').trim();
+  if (!notionId || !['accepted', 'rejected'].includes(decision)) {
+    throw new Error('Application decision is invalid');
+  }
+  const row = {
+    notion_id: notionId,
+    decision,
+    decided_by: normaliseCode(input?.decided_by || 'COACH'),
+    decided_at: input?.decided_at || new Date().toISOString(),
+  };
+  const rows = await request('application_decisions?on_conflict=notion_id', {
+    method: 'POST',
+    prefer: 'resolution=merge-duplicates,return=representation',
+    body: row,
+  });
   return { ok: true, rows: Array.isArray(rows) ? rows : [] };
 }
 
@@ -644,6 +718,20 @@ export default async function handler(req, res) {
 
     if (action === 'setting_delete') {
       return res.status(200).json(await deleteAthleteSetting(req.body?.code, req.body?.key));
+    }
+
+    if (action === 'library_save') {
+      return res.status(200).json(await saveLibraryRecord(
+        req.body?.kind, req.body?.id, req.body?.fields || {}
+      ));
+    }
+
+    if (action === 'library_archive') {
+      return res.status(200).json(await archiveLibraryRecord(req.body?.kind, req.body?.id));
+    }
+
+    if (action === 'application_decision') {
+      return res.status(200).json(await upsertApplicationDecision(req.body?.decision || {}));
     }
 
     if (action === 'recode') {

@@ -2611,7 +2611,6 @@ function refreshRosterDrivenUI() {
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>
 // ── Config ───────────────────────────────────────────────────────────────────
 const DB = {
@@ -2629,15 +2628,6 @@ const RUN_SESSION_TYPES = new Set([
   'Tempo','Speed','Long Run','Easy Effort','Run + Strength','Run','race',
   'Optional' // often run-optional
 ]);
-
-// ── Supabase (overrides) ──────────────────────────────────────────────────────
-const SB_URL  = 'https://rugdupplsswxmpoudhpv.supabase.co';
-const SB_KEY  = 'sb_publishable_KJU_GYqUOwthiLo5WQjfog_MLaVKw5R';
-let _sbClient = null;
-function getSB() {
-  if (!_sbClient) try { _sbClient = window.supabase.createClient(SB_URL, SB_KEY); } catch(e) {}
-  return _sbClient;
-}
 
 // ── Plan overrides (Supabase-backed, local cache) ─────────────────────────────
 let _ovCache = {};  // session id → { name, dist, pace, … } (built from planned_sessions)
@@ -2659,23 +2649,19 @@ function _logHasRealData(v) {
   });
 }
 
-async function loadSessionLogs() {
-  try {
-    const sb = getSB(); if (!sb) return;
-    const { data } = await sb.from('athlete_data').select('athlete_code,key,value').in('key', ['ticked', 'logs']);
-    _tickedMap = new Map();
-    _loggedMap = new Map();
-    (data || []).forEach(r => {
-      const val = r.value || {};
-      if (r.key === 'ticked') {
-        _tickedMap.set(r.athlete_code, new Set(Object.keys(val).filter(k => k !== '__savedAt')));
-      } else if (r.key === 'logs') {
-        _loggedMap.set(r.athlete_code, new Set(
-          Object.keys(val).filter(k => k !== '__savedAt' && _logHasRealData(val[k]))
-        ));
-      }
-    });
-  } catch(e) { console.warn('Session state load failed', e); }
+function useSessionStateRows(rows) {
+  _tickedMap = new Map();
+  _loggedMap = new Map();
+  (rows || []).forEach(r => {
+    const val = r.value || {};
+    if (r.key === 'ticked') {
+      _tickedMap.set(r.athlete_code, new Set(Object.keys(val).filter(k => k !== '__savedAt')));
+    } else if (r.key === 'logs') {
+      _loggedMap.set(r.athlete_code, new Set(
+        Object.keys(val).filter(k => k !== '__savedAt' && _logHasRealData(val[k]))
+      ));
+    }
+  });
 }
 // Athlete tapped the checkbox (no data required)
 function isSessionTicked(athleteCode, notionPageId) {
@@ -2778,16 +2764,9 @@ function planRowToNotionShape(r) {
   };
 }
 
-async function loadSessionLibrary() {
-  try {
-    const sb = getSB(); if (!sb) return;
-    const [lib, splits] = await Promise.all([
-      sb.from('session_library').select('*').eq('archived', false).order('name', { ascending: true }),
-      sb.from('workout_splits').select('*').eq('archived', false).order('name', { ascending: true }),
-    ]);
-    _libCache = lib.data || [];
-    _splitsCache = splits.data || [];
-  } catch(e) { console.warn('Session library load failed', e); }
+function useSessionLibraryRows(libraryRows, splitRows) {
+  _libCache = Array.isArray(libraryRows) ? libraryRows : [];
+  _splitsCache = Array.isArray(splitRows) ? splitRows : [];
 }
 
 // Splits visible for an athlete: globals, with athlete-specific variants overriding by name
@@ -3995,7 +3974,6 @@ function _collectSplitExercises() {
   }).filter(e => e.exercise);
 }
 async function saveSplit() {
-  const sb = getSB(); if (!sb) return;
   const name = document.getElementById('pw-name').value.trim();
   if (!name) { alert('Split needs a name.'); return; }
   const exercises = _collectSplitExercises();
@@ -4007,14 +3985,13 @@ async function saveSplit() {
     updated_at: new Date().toISOString(),
   };
   try {
+    const result = await maPost({ action: 'library_save', kind: 'split', id: _pwEditingId, fields: patch });
+    const data = result.rows?.[0];
+    if (!data) throw new Error('The saved split was not returned');
     if (_pwEditingId) {
-      const { data, error } = await sb.from('workout_splits').update(patch).eq('id', _pwEditingId).select().single();
-      if (error) throw error;
       const i = _splitsCache.findIndex(x => x.id === _pwEditingId);
       if (i >= 0) _splitsCache[i] = data;
     } else {
-      const { data, error } = await sb.from('workout_splits').insert(patch).select().single();
-      if (error) throw error;
       _splitsCache.push(data);
       _splitsCache.sort((a, b) => a.name.localeCompare(b.name));
     }
@@ -4025,9 +4002,8 @@ async function saveSplit() {
 async function archiveSplit() {
   if (!_pwEditingId) return;
   if (!confirm('Archive this split? Planned sessions keep their titles; the portal falls back to its built-in version if one exists.')) return;
-  const sb = getSB(); if (!sb) return;
-  const { error } = await sb.from('workout_splits').update({ archived: true, updated_at: new Date().toISOString() }).eq('id', _pwEditingId);
-  if (error) { alert('Archive failed: ' + error.message); return; }
+  try { await maPost({ action: 'library_archive', kind: 'split', id: _pwEditingId }); }
+  catch (error) { alert('Archive failed: ' + error.message); return; }
   _splitsCache = _splitsCache.filter(x => x.id !== _pwEditingId);
   closeSplitEditor();
   renderPlanLibrary();
@@ -4056,7 +4032,6 @@ function closeLibEditor() {
   _plEditingId = null;
 }
 async function saveLibSession() {
-  const sb = getSB(); if (!sb) return;
   const v = id => document.getElementById(id).value.trim();
   if (!v('pl-name')) { alert('Template needs a name.'); return; }
   const patch = {
@@ -4068,14 +4043,13 @@ async function saveLibSession() {
     updated_at: new Date().toISOString(),
   };
   try {
+    const result = await maPost({ action: 'library_save', kind: 'session', id: _plEditingId, fields: patch });
+    const data = result.rows?.[0];
+    if (!data) throw new Error('The saved template was not returned');
     if (_plEditingId) {
-      const { data, error } = await sb.from('session_library').update(patch).eq('id', _plEditingId).select().single();
-      if (error) throw error;
       const i = _libCache.findIndex(x => x.id === _plEditingId);
       if (i >= 0) _libCache[i] = data;
     } else {
-      const { data, error } = await sb.from('session_library').insert(patch).select().single();
-      if (error) throw error;
       _libCache.push(data);
       _libCache.sort((a, b) => a.name.localeCompare(b.name));
     }
@@ -4086,9 +4060,8 @@ async function saveLibSession() {
 async function archiveLibSession() {
   if (!_plEditingId) return;
   if (!confirm('Archive this template? It stays linked to past sessions but is hidden from pickers.')) return;
-  const sb = getSB(); if (!sb) return;
-  const { error } = await sb.from('session_library').update({ archived: true, updated_at: new Date().toISOString() }).eq('id', _plEditingId);
-  if (error) { alert('Archive failed: ' + error.message); return; }
+  try { await maPost({ action: 'library_archive', kind: 'session', id: _plEditingId }); }
+  catch (error) { alert('Archive failed: ' + error.message); return; }
   _libCache = _libCache.filter(x => x.id !== _plEditingId);
   closeLibEditor();
   renderPlanLibrary();
@@ -4697,64 +4670,6 @@ async function fetchDB(dbId, bust = false) {
   return all;
 }
 
-// ── Weekly check-ins: Supabase (primary) + Notion (legacy) merged ────────────
-// The athlete portal now writes the full weekly check-in payload to Supabase
-// (athlete_data, key "checkin_<year>_<week>"). Older check-ins live only in the
-// Notion weekly DB. We read both and merge so nothing is lost:
-//   • Supabase rows are mapped to the same field names the dashboard already
-//     expects (the keys buildCard/buildFPCard read, e.g. 'Run Feel /10').
-//   • Notion rows are kept as-is.
-//   • De-dupe is per athlete + Week Ending; Supabase wins when both exist.
-// Legacy Supabase rows that only stored a "done" flag (value === 1, no object)
-// are ignored — their real data is in Notion and surfaces from there.
-async function fetchWeeklyFromSupabase() {
-  const sb = getSB(); if (!sb) return [];
-  try {
-    const { data, error } = await sb
-      .from('athlete_data')
-      .select('athlete_code, key, value, updated_at')
-      .like('key', 'checkin_%');
-    if (error || !data) return [];
-    return data
-      .filter(r => r.value && typeof r.value === 'object')
-      .map(r => {
-        const v = r.value;
-        return {
-          'Name':                    v.name || r.athlete_code,
-          'Week Ending':             v.weekEnding || null,
-          'Run Completed':           v.runCompleted,
-          'Run Planned':             v.runPlanned,
-          'Weekly Run KM':           v.runKm,
-          'Run Feel /10':            v.runFeel,
-          'Runs Wins':               v.runWins,
-          'Run Niggles':             v.runNiggles,
-          'Lift Completed':          v.liftCompleted,
-          'Lift Planned':            v.liftPlanned,
-          'Lift Feel /10':           v.liftFeel,
-          'Lift Wins':               v.liftWins,
-          'Lifts Niggles':           v.liftNiggles,
-          'Sleep hrs':               v.sleep,
-          'Energy /10':              v.energy,
-          'Soreness /10':            v.soreness,
-          'Nutrition Adherence /10': v.nutrition,
-          'Fuelling':                v.fuelling,
-          'Social Event Upcoming':   v.socialEating,
-          'Stress':                  v.stress,
-          'Motivation':              v.motivation,
-          'Upcoming Impact':         v.upcomingImpact,
-          'Testimonial':             v.testimonial,
-          '_athleteCode':            r.athlete_code,
-          '_source':                 'supabase',
-          '_updatedAt':              r.updated_at,
-        };
-      });
-  } catch (e) {
-    console.warn('fetchWeeklyFromSupabase failed', e);
-    return [];
-  }
-}
-
-
 // ── Structured athlete portal Supabase source of truth ────────────────────────
 async function fetchCoachDataSB() {
   const empty = {
@@ -4767,6 +4682,10 @@ async function fetchCoachDataSB() {
       planning: [],
       nutritionPlans: [],
       athleteSettings: [],
+      sessionState: [],
+      sessionLibrary: [],
+      workoutSplits: [],
+      applicationDecisions: [],
       counts: {},
   };
 
@@ -4787,6 +4706,10 @@ async function fetchCoachDataSB() {
       planning: Array.isArray(data.planning) ? data.planning : [],
       nutritionPlans: Array.isArray(data.nutritionPlans) ? data.nutritionPlans : [],
       athleteSettings: Array.isArray(data.athleteSettings) ? data.athleteSettings : [],
+      sessionState: Array.isArray(data.sessionState) ? data.sessionState : [],
+      sessionLibrary: Array.isArray(data.sessionLibrary) ? data.sessionLibrary : [],
+      workoutSplits: Array.isArray(data.workoutSplits) ? data.workoutSplits : [],
+      applicationDecisions: Array.isArray(data.applicationDecisions) ? data.applicationDecisions : [],
       counts: data.counts || {},
       integrity: data.integrity || { weeklyConflicts: [], weeklySuppressed: 0 },
       generatedAt: data.generatedAt || null,
@@ -8726,15 +8649,13 @@ async function decideApplication(notionId, name, decision) {
   const card = document.getElementById(`notif-card-${notionId}`);
   if (card) card.style.opacity = '0.5';
 
-  const sb = getSB();
-  const { error } = await sb.from('application_decisions').upsert({
-    notion_id: notionId,
-    decision,
-    decided_by: coach,
-    decided_at: new Date().toISOString(),
-  }, { onConflict: 'notion_id' });
-
-  if (error) {
+  const decidedAt = new Date().toISOString();
+  try {
+    await maPost({
+      action: 'application_decision',
+      decision: { notion_id: notionId, decision, decided_by: coach, decided_at: decidedAt },
+    });
+  } catch (error) {
     if (card) card.style.opacity = '1';
     alert('Error saving decision: ' + error.message);
     return;
@@ -8742,7 +8663,7 @@ async function decideApplication(notionId, name, decision) {
 
   // Update local decisions cache so Pipeline reflects the change immediately
   _decisions = _decisions.filter(d => d.notion_id !== notionId);
-  _decisions.push({ notion_id: notionId, decision, decided_by: coach, decided_at: new Date().toISOString() });
+  _decisions.push({ notion_id: notionId, decision, decided_by: coach, decided_at: decidedAt });
 
   // Re-render both tabs from the updated cache
   renderNotifications(_allApplications, _decisions);
@@ -8817,21 +8738,13 @@ function saveNote(athleteId, value) {
   callNotes[athleteId] = value;
   try { localStorage.setItem('dp_call_notes', JSON.stringify(callNotes)); } catch {}
   // Sync to Supabase so notes follow you between devices (local copy is the fallback)
-  try {
-    const sb = getSB();
-    if (sb) sb.from('athlete_data').upsert(
-      { athlete_code: athleteId, key: 'call_notes', value: value, updated_at: new Date().toISOString() },
-      { onConflict: 'athlete_code,key' }
-    ).then(() => {}, () => {});
-  } catch {}
+  maPost({ action: 'setting_upsert', code: athleteId, key: 'call_notes', value }).catch(() => {});
 }
 
-async function loadCallNotes() {
-  try {
-    const sb = getSB(); if (!sb) return;
-    const { data } = await sb.from('athlete_data').select('athlete_code,value').eq('key', 'call_notes');
-    (data || []).forEach(r => { if (r.value) callNotes[r.athlete_code] = r.value; });
-  } catch {}
+function useCallNoteRows(rows) {
+  (rows || []).filter(r => r.key === 'call_notes').forEach(r => {
+    if (r.value) callNotes[r.athlete_code] = r.value;
+  });
 }
 
 // ── Alert acknowledgements ────────────────────────────────────────────────────
@@ -8856,15 +8769,13 @@ function _isAcked(a) {
   return !!(r && a.actions?.severity && r.sig === _ackSig(a));
 }
 
-async function loadAcks() {
-  try {
-    const sb = getSB(); if (!sb) return;
-    const { data } = await sb.from('athlete_data').select('athlete_code,value').eq('key', 'ack_alert');
-    (data || []).forEach(r => {
-      if (!r.value) return;
-      try { _acks[r.athlete_code] = JSON.parse(r.value); } catch {}
-    });
-  } catch {}
+function useAckRows(rows) {
+  _acks = {};
+  (rows || []).filter(r => r.key === 'ack_alert').forEach(r => {
+    if (!r.value) return;
+    if (typeof r.value === 'object') _acks[r.athlete_code] = r.value;
+    else try { _acks[r.athlete_code] = JSON.parse(r.value); } catch {}
+  });
 }
 
 function _ackRefresh() {
@@ -8883,13 +8794,7 @@ async function ackAlert(id) {
   _acks[id] = rec;
   a.acked = true;
   _ackRefresh();
-  try {
-    const sb = getSB();
-    if (sb) await sb.from('athlete_data').upsert(
-      { athlete_code: id, key: 'ack_alert', value: JSON.stringify(rec), updated_at: new Date().toISOString() },
-      { onConflict: 'athlete_code,key' }
-    );
-  } catch {}
+  try { await maPost({ action: 'setting_upsert', code: id, key: 'ack_alert', value: rec }); } catch {}
 }
 
 async function unackAlert(id) {
@@ -8897,13 +8802,7 @@ async function unackAlert(id) {
   const a = _allAthletes.find(x => x.id === id);
   if (a) a.acked = false;
   _ackRefresh();
-  try {
-    const sb = getSB();
-    if (sb) await sb.from('athlete_data').upsert(
-      { athlete_code: id, key: 'ack_alert', value: '', updated_at: new Date().toISOString() },
-      { onConflict: 'athlete_code,key' }
-    );
-  } catch {}
+  try { await maPost({ action: 'setting_upsert', code: id, key: 'ack_alert', value: '' }); } catch {}
 }
 
 // ── Main load ─────────────────────────────────────────────────────────────────
@@ -8914,17 +8813,18 @@ async function load({ bust = false } = {}) {
   document.getElementById('refresh-btn').disabled = true;
 
   try {
-    const [weeklyNotion, sessionsNotion, bodyNotion, nutritionNotion, athleteDb, applications, weeklySupa, coachDataSB, , libRows, decisionsRes] = await Promise.all([
+    const [weeklyNotion, sessionsNotion, bodyNotion, nutritionNotion, athleteDb, applications, coachDataSB] = await Promise.all([
       fetchDB(DB.weekly, bust), fetchDB(DB.sessions, bust), fetchDB(DB.body, bust),
       fetchDB(DB.nutrition, bust), fetchAthleteProfilesSB(), fetchDB(DB.applications, bust),
-      fetchWeeklyFromSupabase(), fetchCoachDataSB(),
-      loadSessionLogs(), loadSessionLibrary(),
-      getSB().from('application_decisions').select('notion_id,decision,decided_by,decided_at'),
-      loadCallNotes(), loadAcks(),
+      fetchCoachDataSB(),
       loadRoster(), // Supabase athletes roster — canonical athlete chip list
     ]);
 
     const planning = usePlanningRows(coachDataSB.planning);
+    useSessionStateRows(coachDataSB.sessionState);
+    useSessionLibraryRows(coachDataSB.sessionLibrary, coachDataSB.workoutSplits);
+    useCallNoteRows(coachDataSB.athleteSettings);
+    useAckRows(coachDataSB.athleteSettings);
     const targets = useNutritionPlanRows(
       coachDataSB.nutritionPlans,
       coachDataSB.athleteSettings,
@@ -8935,13 +8835,12 @@ async function load({ bust = false } = {}) {
     // with legacy Notion check-ins (older submissions). Supabase wins on
     // collision so the current source of truth always takes precedence.
     _weeklyMergeConflicts = [];
-    const weeklyLegacy = mergeWeekly(weeklySupa, weeklyNotion);
-    const weekly = mergeWeekly(coachDataSB.weekly, weeklyLegacy);
+    const weekly = mergeWeekly(coachDataSB.weekly, weeklyNotion);
     const sessions = mergeSessionsPortalFirst(coachDataSB.sessions, sessionsNotion);
     const body = mergeByAthleteDate(coachDataSB.body, bodyNotion);
     const nutrition = mergeByAthleteDate(coachDataSB.nutrition, nutritionNotion);
 
-    _decisions = decisionsRes?.data || [];
+    _decisions = coachDataSB.applicationDecisions;
 
     // Auto-fill weekly KM from the training plan where no manual target is set
     _fillTargetsKm(targets);
@@ -9266,15 +9165,39 @@ function _stravaApiUrl(a, { summaryOnly = false, selectedWeek = null } = {}) {
 }
 
 async function prefetchStravaKm(athletes) {
-  // Fetch in small batches so we don't hammer the API all at once
-  const BATCH = 3;
-  for (let i = 0; i < athletes.length; i += BATCH) {
-    const batch = athletes.slice(i, i + BATCH);
+  // Reuse recent summaries across refreshes. A coach opening the dashboard
+  // several times should not spend the shared Strava quota each time.
+  let saved = {};
+  try { saved = JSON.parse(localStorage.getItem('dp_strava_summaries') || '{}') || {}; } catch {}
+  const now = Date.now();
+  const pending = [];
+  athletes.forEach(a => {
+    const cached = saved[a.id];
+    if (cached && now - Number(cached.savedAt || 0) < 15 * 60 * 1000) {
+      if (cached.connected) {
+        const stravaTag = document.querySelector(`[data-strava-tag="${a.id}"]`);
+        if (stravaTag) stravaTag.innerHTML = `<span class="fp strava-linked-badge">🟠 Strava</span>`;
+        if (cached.stats?.weeklyKm != null) {
+          applyStravaKm(a.id, cached.stats.weeklyKm, cached.stats.lastWeekKm ?? null, cached.stats.weeklyHistory || []);
+        }
+      }
+    } else pending.push(a);
+  });
+
+  // Fetch in small, paced batches and stop immediately if Strava reports a
+  // shared rate limit. The dashboard keeps its logged/Notion km fallback.
+  const BATCH = 2;
+  let rateLimited = false;
+  for (let i = 0; i < pending.length && !rateLimited; i += BATCH) {
+    const batch = pending.slice(i, i + BATCH);
     await Promise.allSettled(batch.map(async a => {
       try {
         const res = await fetch(_stravaApiUrl(a, { summaryOnly: true }));
+        if (res.status === 429) { rateLimited = true; return; }
         if (!res.ok) return;
         const data = await res.json();
+        saved[a.id] = { savedAt: Date.now(), connected: data.connected === true, stats: data.stats || null };
+        try { localStorage.setItem('dp_strava_summaries', JSON.stringify(saved)); } catch {}
         if (data.connected) {
           const stravaTag = document.querySelector(`[data-strava-tag="${a.id}"]`);
           if (stravaTag) stravaTag.innerHTML = `<span class="fp strava-linked-badge">🟠 Strava</span>`;
@@ -9289,6 +9212,9 @@ async function prefetchStravaKm(athletes) {
         }
       } catch (_) { /* silent */ }
     }));
+    if (i + BATCH < pending.length && !rateLimited) {
+      await new Promise(resolve => setTimeout(resolve, 250));
+    }
   }
 }
 
@@ -9394,6 +9320,10 @@ async function loadStravaData(a) {
     const res = await fetch(_stravaApiUrl(a, { selectedWeek }));
     if (!res.ok) {
       const e = await res.json().catch(() => ({}));
+      if (res.status === 429) {
+        target.outerHTML = `<div class="strava-state">Strava rate limit reached — the rest of the athlete data is available. Retry Strava shortly.</div>`;
+        return;
+      }
       throw new Error(e.error || `HTTP ${res.status}`);
     }
     const data = await res.json();

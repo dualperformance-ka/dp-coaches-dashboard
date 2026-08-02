@@ -94,7 +94,12 @@ async function fetchActivities(accessToken, { afterEpoch = null, perPage = 200 }
     const res = await fetch(`${STRAVA_API}/athlete/activities?${params}`, {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
-    if (!res.ok) throw new Error(`Strava activities failed: ${res.status}`);
+    if (!res.ok) {
+      const error = new Error(`Strava activities failed: ${res.status}`);
+      error.status = res.status;
+      error.retryAfter = res.headers.get('retry-after') || null;
+      throw error;
+    }
     const batch = await res.json();
     if (!Array.isArray(batch)) throw new Error('Strava activities returned an invalid response');
     activities.push(...batch);
@@ -366,6 +371,10 @@ export default async function handler(req, res) {
     });
   } catch (err) {
     console.error('[strava-coach]', err);
+    if (err.status === 429) {
+      if (err.retryAfter) res.setHeader('Retry-After', err.retryAfter);
+      return res.status(429).json({ error: 'Strava rate limit reached. Try again shortly.' });
+    }
     return res.status(500).json({ error: err.message });
   }
 }

@@ -4,6 +4,8 @@ import assert from 'node:assert/strict';
 import {
   cleanPlannedSessionFields,
   cleanNutritionPlanFields,
+  cleanLibraryFields,
+  archiveLibraryRecord,
   deleteAthleteSetting,
   deleteNutritionPlan,
   deletePlannedSession,
@@ -13,8 +15,10 @@ import {
   programmeWeekForDate,
   restartProgramme,
   shiftIsoDate,
+  saveLibraryRecord,
   upsertAthleteSetting,
   upsertNutritionPlan,
+  upsertApplicationDecision,
   updatePlannedSession,
 } from '../api/athletes.js';
 
@@ -161,6 +165,8 @@ test('proxies only allowlisted programme settings', async () => {
   };
 
   await upsertAthleteSetting('alvin', 'programme_weeks', 16, request);
+  await upsertAthleteSetting('alvin', 'call_notes', 'Follow up Tuesday', request);
+  await upsertAthleteSetting('alvin', 'ack_alert', { sig: '1' }, request);
   await deleteAthleteSetting('alvin', 'start_date_override', request);
   await assert.rejects(
     upsertAthleteSetting('alvin', 'strava_tokens', 'blocked', request),
@@ -169,6 +175,51 @@ test('proxies only allowlisted programme settings', async () => {
 
   assert.equal(calls[0].path, 'athlete_data?on_conflict=athlete_code,key');
   assert.equal(calls[0].options.body.value, 16);
-  assert.match(calls[1].path, /key=eq\.start_date_override/);
-  assert.equal(calls.length, 2);
+  assert.equal(calls[1].options.body.key, 'call_notes');
+  assert.equal(calls[2].options.body.key, 'ack_alert');
+  assert.match(calls[3].path, /key=eq\.start_date_override/);
+  assert.equal(calls.length, 4);
+});
+
+test('proxies programming-library records with table-specific allowlists', async () => {
+  const calls = [];
+  const request = async (path, options = {}) => {
+    calls.push({ path, options });
+    return [{ id: 'record-one', ...(options.body || {}) }];
+  };
+
+  assert.deepEqual(
+    cleanLibraryFields('session', { name: 'Tempo', target_pace: '4:30', exercises: ['blocked'] }),
+    { name: 'Tempo', target_pace: '4:30' }
+  );
+  await saveLibraryRecord('split', null, {
+    name: 'Lower A', athlete_code: ' alvin ', exercises: [{ exercise: 'Squat' }], forbidden: true,
+  }, request);
+  await archiveLibraryRecord('session', 'record-one', request);
+
+  assert.equal(calls[0].path, 'workout_splits');
+  assert.equal(calls[0].options.body.athlete_code, 'ALVIN');
+  assert.equal(calls[0].options.body.forbidden, undefined);
+  assert.equal(calls[1].path, 'session_library?id=eq.record-one');
+  assert.equal(calls[1].options.body.archived, true);
+});
+
+test('proxies application decisions through the coach API', async () => {
+  const calls = [];
+  const request = async (path, options = {}) => {
+    calls.push({ path, options });
+    return [{ ...(options.body || {}) }];
+  };
+
+  await upsertApplicationDecision({
+    notion_id: 'notion-one', decision: 'accepted', decided_by: 'karl', decided_at: '2026-08-02T12:00:00Z',
+  }, request);
+  await assert.rejects(
+    upsertApplicationDecision({ notion_id: 'notion-two', decision: 'maybe' }, request),
+    /invalid/
+  );
+
+  assert.equal(calls[0].path, 'application_decisions?on_conflict=notion_id');
+  assert.equal(calls[0].options.body.decided_by, 'KARL');
+  assert.equal(calls.length, 1);
 });
