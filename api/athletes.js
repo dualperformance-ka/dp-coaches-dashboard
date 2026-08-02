@@ -379,6 +379,59 @@ export async function restartProgramme(code, effectiveDate, startWeek, request =
   };
 }
 
+const PLANNED_SESSION_FIELDS = new Set([
+  'athlete_code', 'title', 'session_type', 'planned_date', 'week_label', 'status',
+  'library_id', 'run_details', 'intensity', 'distance_km', 'target_pace',
+  'warm_up', 'intervals', 'working_pace', 'rest', 'cool_down', 'notes',
+  'updated_at', 'notion_page_id',
+]);
+
+export function cleanPlannedSessionFields(input = {}) {
+  return Object.fromEntries(
+    Object.entries(input).filter(([key]) => PLANNED_SESSION_FIELDS.has(key))
+  );
+}
+
+export async function insertPlannedSessions(input, request = sb) {
+  const source = Array.isArray(input) ? input : [input];
+  const rows = source.map(cleanPlannedSessionFields);
+  if (!rows.length || rows.some(row => !row.athlete_code || !row.planned_date)) {
+    throw new Error('Each planned session needs an athlete and planned date');
+  }
+
+  const created = await request('planned_sessions', {
+    method: 'POST',
+    prefer: 'return=representation',
+    body: Array.isArray(input) ? rows : rows[0],
+  });
+  return { ok: true, rows: Array.isArray(created) ? created : [] };
+}
+
+export async function updatePlannedSession(matchId, fields, request = sb) {
+  const id = String(matchId || '').trim();
+  if (!id) throw new Error('Planned session ID is required');
+  const patch = cleanPlannedSessionFields(fields);
+  if (!Object.keys(patch).length) throw new Error('No planned-session fields supplied');
+
+  const rows = await request(
+    `planned_sessions?or=(notion_page_id.eq.${encodeURIComponent(id)},id.eq.${encodeURIComponent(id)})`,
+    { method: 'PATCH', prefer: 'return=representation', body: patch }
+  );
+  if (!Array.isArray(rows) || !rows.length) throw new Error('Planned session not found');
+  return { ok: true, rows };
+}
+
+export async function deletePlannedSession(matchId, request = sb) {
+  const id = String(matchId || '').trim();
+  if (!id) throw new Error('Planned session ID is required');
+  const rows = await request(
+    `planned_sessions?or=(notion_page_id.eq.${encodeURIComponent(id)},id.eq.${encodeURIComponent(id)})`,
+    { method: 'DELETE', prefer: 'return=representation' }
+  );
+  if (!Array.isArray(rows) || !rows.length) throw new Error('Planned session not found');
+  return { ok: true, rows };
+}
+
 // Change an athlete's code (portal password) atomically across every table
 // that references it, via the rename_athlete_code() Postgres function.
 // The function suspends the coach-change triggers during the rename so
@@ -490,6 +543,18 @@ export default async function handler(req, res) {
         req.body.effective_date,
         req.body.start_week
       ));
+    }
+
+    if (action === 'plan_insert') {
+      return res.status(200).json(await insertPlannedSessions(req.body?.rows ?? req.body?.row));
+    }
+
+    if (action === 'plan_update') {
+      return res.status(200).json(await updatePlannedSession(req.body?.id, req.body?.fields || {}));
+    }
+
+    if (action === 'plan_delete') {
+      return res.status(200).json(await deletePlannedSession(req.body?.id));
     }
 
     if (action === 'recode') {

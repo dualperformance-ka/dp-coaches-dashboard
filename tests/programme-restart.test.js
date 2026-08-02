@@ -2,11 +2,15 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+  cleanPlannedSessionFields,
+  deletePlannedSession,
+  insertPlannedSessions,
   isIsoCalendarDate,
   programmeRestartDates,
   programmeWeekForDate,
   restartProgramme,
   shiftIsoDate,
+  updatePlannedSession,
 } from '../api/athletes.js';
 
 test('restarts Week 1 on the chosen Monday using the prior Monday as its anchor', () => {
@@ -88,4 +92,34 @@ test('writes restart metadata and relabels scheduled sessions through the protec
     sessionWrites.map(call => call.options.body.week_label),
     ['Week 1', 'Week 2']
   );
+});
+
+test('proxies planned-session writes with an allowlisted payload', async () => {
+  const calls = [];
+  const request = async (path, options = {}) => {
+    calls.push({ path, options });
+    if (options.method === 'DELETE') return [{ id: 'session-one' }];
+    return [{ id: 'session-one', ...(options.body || {}) }];
+  };
+
+  assert.deepEqual(
+    cleanPlannedSessionFields({ title: 'Easy run', planned_date: '2026-08-03', forbidden: 'drop me' }),
+    { title: 'Easy run', planned_date: '2026-08-03' }
+  );
+
+  await insertPlannedSessions({
+    athlete_code: 'ALEX',
+    planned_date: '2026-08-03',
+    title: 'Week 1 run',
+    forbidden: 'drop me',
+  }, request);
+  await updatePlannedSession('session-one', { title: 'Updated', id: 'cannot-change-id' }, request);
+  await deletePlannedSession('session-one', request);
+
+  assert.equal(calls[0].path, 'planned_sessions');
+  assert.equal(calls[0].options.method, 'POST');
+  assert.equal(calls[0].options.body.forbidden, undefined);
+  assert.match(calls[1].path, /^planned_sessions\?or=/);
+  assert.deepEqual(calls[1].options.body, { title: 'Updated' });
+  assert.equal(calls[2].options.method, 'DELETE');
 });

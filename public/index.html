@@ -2684,22 +2684,23 @@ function isSessionSubmitted(athleteCode, notionPageId) {
 }
 
 // Overrides now live ON the planned_sessions rows themselves (Supabase is the
-// planning source of truth). _ovCache is populated by fetchPlanningSB().
+// planning source of truth). _ovCache is populated by usePlanningRows().
 function getPlanOverride(id) { return _ovCache[id] || null; }
 
-// Match a planned_sessions row by either its migrated Notion page id or its own uuid
-function _psMatch(q, id) { return q.or(`notion_page_id.eq.${id},id.eq.${id}`); }
-
 async function setPlanOverride(id, data) {
-  const sb = getSB(); if (!sb) return;
   if (data === null) {
     delete _ovCache[id];
     try {
-      await _psMatch(sb.from('planned_sessions').update({
-        distance_km: null, target_pace: null, warm_up: null, intervals: null,
-        working_pace: null, rest: null, cool_down: null, notes: null,
-        updated_at: new Date().toISOString(),
-      }), id);
+      const result = await maPost({
+        action: 'plan_update', id,
+        fields: {
+          distance_km: null, target_pace: null, warm_up: null, intervals: null,
+          working_pace: null, rest: null, cool_down: null, notes: null,
+          updated_at: new Date().toISOString(),
+        },
+      });
+      const row = _planRowsSB.find(r => r.notion_page_id === id || r.id === id);
+      if (row && result.rows?.[0]) Object.assign(row, result.rows[0]);
     } catch(e) { console.warn('Override clear failed', e); }
   } else {
     _ovCache[id] = { ..._ovCache[id], ...data };
@@ -2716,30 +2717,21 @@ async function setPlanOverride(id, data) {
         updated_at:   new Date().toISOString(),
       };
       if (data.name) patch.title = data.name;
-      await _psMatch(sb.from('planned_sessions').update(patch), id);
+      const result = await maPost({ action: 'plan_update', id, fields: patch });
       const row = _planRowsSB.find(r => r.notion_page_id === id || r.id === id);
-      if (row) Object.assign(row, patch);
+      if (row) Object.assign(row, result.rows?.[0] || patch);
     } catch(e) { console.warn('Override save failed', e); }
   }
 }
 
 // ── Planning data (Supabase = source of truth) ────────────────────────────────
-// Fetches planned_sessions and adapts each row to the Notion-row shape the rest
-// of the dashboard already understands, so existing grids/compliance logic work
-// unchanged. Migrated rows keep their Notion page id as _id so completion ticks
-// and old links keep matching.
-async function fetchPlanningSB() {
-  const sb = getSB(); if (!sb) throw new Error('Supabase unavailable');
-  let all = [], from = 0;
-  for (;;) {
-    const { data, error } = await sb.from('planned_sessions').select('*')
-      .order('planned_date', { ascending: true, nullsFirst: false })
-      .range(from, from + 999);
-    if (error) throw new Error('planned_sessions: ' + error.message);
-    all = all.concat(data || []);
-    if (!data || data.length < 1000) break;
-    from += 1000;
-  }
+// planned_sessions is read by the protected /api/coach-data service-role bridge.
+// The browser role intentionally has no whole-squad table access. This adapter
+// keeps the existing planning/compliance UI shape unchanged.
+function usePlanningRows(rows) {
+  const all = Array.isArray(rows)
+    ? [...rows].sort((a, b) => String(a.planned_date || '').localeCompare(String(b.planned_date || '')))
+    : [];
   _planRowsSB = all;
 
   // Rebuild the override cache from row-level prescription fields
@@ -3501,7 +3493,6 @@ async function copyPlanWeek() {
   const rows = _planRowsForWeek(_planAthlete, ws);
   if (!rows.length) { alert('No sessions in this week to copy.'); return; }
   if (!confirm(`Copy ${rows.length} session${rows.length === 1 ? '' : 's'} for ${_planAthlete} into next week?`)) return;
-  const sb = getSB(); if (!sb) return;
   const clones = rows.map(r => {
     const d = new Date(r.planned_date + 'T00:00:00'); d.setDate(d.getDate() + 7);
     const wkNum = r.week_label && /\d+/.test(r.week_label) ? 'Week ' + (parseInt(r.week_label.match(/\d+/)[0], 10) + 1) : r.week_label;
@@ -3514,9 +3505,14 @@ async function copyPlanWeek() {
       cool_down: r.cool_down, notes: r.notes,
     };
   });
-  const { data, error } = await sb.from('planned_sessions').insert(clones).select();
-  if (error) { alert('Copy failed: ' + error.message); return; }
-  _planRowsSB = _planRowsSB.concat(data || []);
+  let result;
+  try {
+    result = await maPost({ action: 'plan_insert', rows: clones });
+  } catch (error) {
+    alert('Copy failed: ' + error.message);
+    return;
+  }
+  _planRowsSB = _planRowsSB.concat(result.rows || []);
   _planWeekOffset += 1;
   renderPlanGrid();
   updatePlanningBadge();
@@ -3779,8 +3775,7 @@ function renderPsExPreview() {
 }
 async function savePlanSession() {
   if (!_planAthlete && !_psEditingId) { alert('Pick an athlete first.'); return; }
-  const sb = getSB(); if (!sb) return;
-  if (_psMode === 'discovery') return saveDiscoverySession(sb);
+  if (_psMode === 'discovery') return saveDiscoverySession();
   const v = id => document.getElementById(id).value.trim();
   const dist = v('ps-dist');
   const patch = {
@@ -3805,14 +3800,16 @@ async function savePlanSession() {
   btn.disabled = true; btn.textContent = 'Saving…';
   try {
     if (_psEditingId) {
-      const { data, error } = await sb.from('planned_sessions').update(patch).eq('id', _psEditingId).select().single();
-      if (error) throw error;
+      const result = await maPost({ action: 'plan_update', id: _psEditingId, fields: patch });
+      const data = result.rows?.[0];
+      if (!data) throw new Error('The updated session was not returned');
       const i = _planRowsSB.findIndex(r => r.id === _psEditingId);
       if (i >= 0) _planRowsSB[i] = data;
     } else {
       patch.athlete_code = _planAthlete;
-      const { data, error } = await sb.from('planned_sessions').insert(patch).select().single();
-      if (error) throw error;
+      const result = await maPost({ action: 'plan_insert', row: patch });
+      const data = result.rows?.[0];
+      if (!data) throw new Error('The new session was not returned');
       _planRowsSB.push(data);
     }
     closePlanSession();
@@ -3829,7 +3826,7 @@ async function savePlanSession() {
 // card. New = one row per selected day of the discovery week (one action). Edit =
 // update the single row. session_type 'discovery'; instruction → run_details + notes
 // (portal prefers run_details). No run/gym fields are required or written.
-async function saveDiscoverySession(sb) {
+async function saveDiscoverySession() {
   const title = (document.getElementById('ps-name').value.trim()) || 'Train As You Normally Would';
   const instruction = document.getElementById('ps-disc-instruction').value.trim() || null;
   const status = document.getElementById('ps-status').value.trim() || 'Planned';
@@ -3849,8 +3846,9 @@ async function saveDiscoverySession(sb) {
         working_pace: null, rest: null, cool_down: null, library_id: null,
         updated_at: new Date().toISOString(),
       };
-      const { data, error } = await sb.from('planned_sessions').update(patch).eq('id', _psEditingId).select().single();
-      if (error) throw error;
+      const result = await maPost({ action: 'plan_update', id: _psEditingId, fields: patch });
+      const data = result.rows?.[0];
+      if (!data) throw new Error('The updated discovery session was not returned');
       const i = _planRowsSB.findIndex(r => r.id === _psEditingId);
       if (i >= 0) _planRowsSB[i] = data;
     } else {
@@ -3867,9 +3865,8 @@ async function saveDiscoverySession(sb) {
           updated_at: new Date().toISOString(),
         };
       });
-      const { data, error } = await sb.from('planned_sessions').insert(rows).select();
-      if (error) throw error;
-      _planRowsSB = _planRowsSB.concat(data || []);
+      const result = await maPost({ action: 'plan_insert', rows });
+      _planRowsSB = _planRowsSB.concat(result.rows || []);
     }
     closePlanSession();
     renderPlanGrid();
@@ -3883,9 +3880,12 @@ async function saveDiscoverySession(sb) {
 async function deletePlanSession() {
   if (!_psEditingId) return;
   if (!confirm('Delete this planned session?')) return;
-  const sb = getSB(); if (!sb) return;
-  const { error } = await sb.from('planned_sessions').delete().eq('id', _psEditingId);
-  if (error) { alert('Delete failed: ' + error.message); return; }
+  try {
+    await maPost({ action: 'plan_delete', id: _psEditingId });
+  } catch (error) {
+    alert('Delete failed: ' + error.message);
+    return;
+  }
   _planRowsSB = _planRowsSB.filter(r => r.id !== _psEditingId);
   closePlanSession();
   renderPlanGrid();
@@ -4778,10 +4778,11 @@ async function fetchCoachDataSB() {
     ok: false,
     body: [],
     nutrition: [],
-    sessions: [],
-    weekly: [],
-    goals: [],
-    counts: {},
+      sessions: [],
+      weekly: [],
+      goals: [],
+      planning: [],
+      counts: {},
   };
 
   try {
@@ -4798,6 +4799,7 @@ async function fetchCoachDataSB() {
       sessions: Array.isArray(data.sessions) ? data.sessions : [],
       weekly: Array.isArray(data.weekly) ? data.weekly : [],
       goals: Array.isArray(data.goals) ? data.goals : [],
+      planning: Array.isArray(data.planning) ? data.planning : [],
       counts: data.counts || {},
       integrity: data.integrity || { weeklyConflicts: [], weeklySuppressed: 0 },
       generatedAt: data.generatedAt || null,
@@ -8925,16 +8927,17 @@ async function load({ bust = false } = {}) {
   document.getElementById('refresh-btn').disabled = true;
 
   try {
-    const [weeklyNotion, sessionsNotion, bodyNotion, nutritionNotion, athleteDb, targets, planning, applications, weeklySupa, coachDataSB, , libRows, decisionsRes] = await Promise.all([
+    const [weeklyNotion, sessionsNotion, bodyNotion, nutritionNotion, athleteDb, targets, applications, weeklySupa, coachDataSB, , libRows, decisionsRes] = await Promise.all([
       fetchDB(DB.weekly, bust), fetchDB(DB.sessions, bust), fetchDB(DB.body, bust),
       fetchDB(DB.nutrition, bust), fetchAthleteProfilesSB(), fetchTargetsSB(),
-      fetchPlanningSB(), fetchDB(DB.applications, bust),
-      fetchWeeklyFromSupabase(), fetchCoachDataSB(),
+      fetchDB(DB.applications, bust), fetchWeeklyFromSupabase(), fetchCoachDataSB(),
       loadSessionLogs(), loadSessionLibrary(),
       getSB().from('application_decisions').select('notion_id,decision,decided_by,decided_at'),
       loadCallNotes(), loadAcks(),
       loadRoster(), // Supabase athletes roster — canonical athlete chip list
     ]);
+
+    const planning = usePlanningRows(coachDataSB.planning);
 
     // Weekly check-ins now come from Supabase (full payload, primary) merged
     // with legacy Notion check-ins (older submissions). Supabase wins on

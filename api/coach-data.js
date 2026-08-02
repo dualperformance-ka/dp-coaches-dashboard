@@ -456,6 +456,7 @@ export default async function handler(req, res) {
         sessionsReconciled: reconciled.rows.length,
         weekly: weekly.length,
         goals: goals.length,
+        planning: plannedRows.length,
       },
       integrity: {
         weeklyConflicts: weeklyIntegrity.conflicts,
@@ -467,6 +468,7 @@ export default async function handler(req, res) {
       sessions: sessionsOut,
       weekly: weekly.map(mapWeekly),
       goals: goals.map(mapGoal),
+      planning: plannedRows,
     });
   } catch (error) {
     console.error('[coach-data]', error);
