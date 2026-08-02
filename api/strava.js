@@ -1,5 +1,7 @@
 /**
  * GET /api/strava?athlete={athleteCode}&history_start=YYYY-MM-DD
+ *   &detail_start=YYYY-MM-DD&detail_end=YYYY-MM-DD
+ * Use summary=1 for squad-card aggregates without activity-detail requests.
  * (or use ?code={athleteCode})
  *
  * Coaches dashboard endpoint — reads Strava tokens from Supabase,
@@ -121,6 +123,80 @@ async function fetchActivityZones(accessToken, id) {
   const zones = await res.json();
   const hr = Array.isArray(zones) ? zones.find(z => z.type === 'heartrate') : null;
   return hr && Array.isArray(hr.distribution_buckets) ? hr.distribution_buckets : null;
+}
+
+export function activityLocalDate(activity) {
+  const value = String(activity?.start_date_local || activity?.start_date || '');
+  const date = value.slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : '';
+}
+
+export function activitiesInLocalDateRange(activities, startDate, endDate, limit = Infinity) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(startDate || '')) ||
+      !/^\d{4}-\d{2}-\d{2}$/.test(String(endDate || '')) ||
+      startDate > endDate) return [];
+  const matched = (activities || []).filter(activity => {
+      const date = activityLocalDate(activity);
+      return date && date >= startDate && date <= endDate;
+    });
+  return Number.isFinite(limit) ? matched.slice(0, Math.max(0, limit)) : matched;
+}
+
+export function mergeActivityDetail(activity, detail, hrZones = null) {
+  const base = { ...activity, hr_zones: hrZones || null };
+  if (!detail) return base;
+  return {
+    ...base,
+    description: detail.description || null,
+    start_date: detail.start_date || activity.start_date,
+    start_date_local: detail.start_date_local || activity.start_date_local,
+    timezone: detail.timezone || activity.timezone || null,
+    utc_offset: detail.utc_offset ?? activity.utc_offset ?? null,
+    moving_time: detail.moving_time ?? activity.moving_time ?? null,
+    elapsed_time: detail.elapsed_time ?? activity.elapsed_time ?? null,
+    distance: detail.distance ?? activity.distance ?? null,
+    total_elevation_gain: detail.total_elevation_gain ?? activity.total_elevation_gain ?? null,
+    elev_high: detail.elev_high ?? activity.elev_high ?? null,
+    elev_low: detail.elev_low ?? activity.elev_low ?? null,
+    average_speed: detail.average_speed ?? activity.average_speed ?? null,
+    max_speed: detail.max_speed ?? activity.max_speed ?? null,
+    average_grade_adjusted_speed: detail.average_grade_adjusted_speed ?? activity.average_grade_adjusted_speed ?? null,
+    average_heartrate: detail.average_heartrate ?? activity.average_heartrate ?? null,
+    max_heartrate: detail.max_heartrate ?? activity.max_heartrate ?? null,
+    average_cadence: detail.average_cadence ?? activity.average_cadence ?? null,
+    average_watts: detail.average_watts ?? activity.average_watts ?? null,
+    weighted_average_watts: detail.weighted_average_watts ?? activity.weighted_average_watts ?? null,
+    max_watts: detail.max_watts ?? activity.max_watts ?? null,
+    kilojoules: detail.kilojoules ?? activity.kilojoules ?? null,
+    device_watts: detail.device_watts ?? activity.device_watts ?? null,
+    average_temp: detail.average_temp ?? activity.average_temp ?? null,
+    calories: detail.calories ?? null,
+    suffer_score: detail.suffer_score ?? activity.suffer_score ?? null,
+    perceived_exertion: detail.perceived_exertion ?? null,
+    achievement_count: detail.achievement_count ?? activity.achievement_count ?? null,
+    pr_count: detail.pr_count ?? activity.pr_count ?? null,
+    kudos_count: detail.kudos_count ?? activity.kudos_count ?? null,
+    comment_count: detail.comment_count ?? activity.comment_count ?? null,
+    athlete_count: detail.athlete_count ?? activity.athlete_count ?? null,
+    photo_count: detail.photo_count ?? activity.photo_count ?? null,
+    total_photo_count: detail.total_photo_count ?? activity.total_photo_count ?? null,
+    trainer: detail.trainer ?? activity.trainer ?? null,
+    commute: detail.commute ?? activity.commute ?? null,
+    manual: detail.manual ?? activity.manual ?? null,
+    workout_type: detail.workout_type ?? activity.workout_type ?? null,
+    gear: detail.gear || null,
+    device_name: detail.device_name || null,
+    splits_metric: detail.splits_metric || [],
+    laps: detail.laps || [],
+    segment_effort_count: Array.isArray(detail.segment_efforts) ? detail.segment_efforts.length : null,
+    best_efforts: (detail.best_efforts || []).map(effort => ({
+      name: effort.name,
+      distance: effort.distance,
+      elapsed_time: effort.elapsed_time,
+      moving_time: effort.moving_time,
+      pr_rank: effort.pr_rank ?? null,
+    })),
+  };
 }
 
 // ── Weekly stats helper ───────────────────────────────────────────────────────
@@ -253,12 +329,20 @@ export default async function handler(req, res) {
     const activities = await fetchActivities(access_token, { afterEpoch, perPage: 200 });
     const stats      = weeklyStats(activities);
 
-    // Enrich every activity (all sport types) from the last 14 days, capped at 8
-    // to stay well inside Strava's rate limits (each costs 1 detail + 1 zones call).
+    // Squad-card prefetch only needs aggregate stats. Full-page requests send
+    // the selected Mon-Sun range, so that historical week's activities receive
+    // detail, laps, efforts and zones without enriching the entire programme.
+    const summaryOnly = String(req.query.summary || '') === '1';
+    const detailStart = String(req.query.detail_start || '').trim();
+    const detailEnd = String(req.query.detail_end || '').trim();
+    const hasDetailRange = /^\d{4}-\d{2}-\d{2}$/.test(detailStart) &&
+      /^\d{4}-\d{2}-\d{2}$/.test(detailEnd) && detailStart <= detailEnd;
     const cutoff = new Date(Date.now() - 14 * 86400000).toISOString().slice(0, 10);
-    const toEnrich = activities
-      .filter(a => (a.start_date_local || a.start_date || '').slice(0, 10) >= cutoff)
-      .slice(0, 8);
+    const toEnrich = summaryOnly
+      ? []
+      : hasDetailRange
+        ? activitiesInLocalDateRange(activities, detailStart, detailEnd, 20)
+        : activities.filter(a => activityLocalDate(a) >= cutoff).slice(0, 8);
     const details = await Promise.all(toEnrich.map(a => fetchActivityDetail(access_token, a.id)));
     const zoneResults = await Promise.all(toEnrich.map(a =>
       a.has_heartrate ? fetchActivityZones(access_token, a.id) : Promise.resolve(null)
@@ -267,39 +351,18 @@ export default async function handler(req, res) {
     details.forEach(d => { if (d) detailMap[d.id] = d; });
     toEnrich.forEach((a, i) => { if (zoneResults[i]) zonesMap[a.id] = zoneResults[i]; });
 
-    const enriched = activities.slice(0, 20).map(a => {
-      const d = detailMap[a.id];
-      const base = { ...a, hr_zones: zonesMap[a.id] || null };
-      if (!d) return base;
-      return {
-        ...base,
-        description:        d.description        || null,
-        splits_metric:      d.splits_metric       || [],
-        laps:               d.laps                || [],
-        perceived_exertion: d.perceived_exertion  ?? null,
-        average_cadence:    d.average_cadence     ?? null,
-        max_heartrate:      d.max_heartrate       ?? null,
-        calories:           d.calories            ?? null,
-        gear:               d.gear                || null,
-        workout_type:       d.workout_type        ?? null,
-        device_name:        d.device_name         || null,
-        athlete_count:      d.athlete_count       ?? null,
-        max_speed:          d.max_speed           ?? a.max_speed ?? null,
-        // Best efforts trimmed to what the dashboard needs (name, time, PR rank)
-        best_efforts: (d.best_efforts || []).map(be => ({
-          name:        be.name,
-          distance:    be.distance,
-          moving_time: be.moving_time,
-          pr_rank:     be.pr_rank ?? null,
-        })),
-      };
-    });
+    // Keep every summary activity since programme start for exact historical
+    // date alignment; selected-week activities are replaced with detailed data.
+    const enriched = activities.map(a =>
+      mergeActivityDetail(a, detailMap[a.id], zonesMap[a.id] || null)
+    );
 
     res.setHeader('Cache-Control', 's-maxage=600, stale-while-revalidate=120');
     return res.status(200).json({
       connected:  true,
       stats,
-      activities: enriched,
+      activities: summaryOnly ? [] : enriched,
+      detailRange: hasDetailRange ? { start: detailStart, end: detailEnd } : null,
     });
   } catch (err) {
     console.error('[strava-coach]', err);
