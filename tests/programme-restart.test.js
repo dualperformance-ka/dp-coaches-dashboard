@@ -3,6 +3,9 @@ import assert from 'node:assert/strict';
 
 import {
   cleanPlannedSessionFields,
+  cleanNutritionPlanFields,
+  deleteAthleteSetting,
+  deleteNutritionPlan,
   deletePlannedSession,
   insertPlannedSessions,
   isIsoCalendarDate,
@@ -10,6 +13,8 @@ import {
   programmeWeekForDate,
   restartProgramme,
   shiftIsoDate,
+  upsertAthleteSetting,
+  upsertNutritionPlan,
   updatePlannedSession,
 } from '../api/athletes.js';
 
@@ -122,4 +127,48 @@ test('proxies planned-session writes with an allowlisted payload', async () => {
   assert.match(calls[1].path, /^planned_sessions\?or=/);
   assert.deepEqual(calls[1].options.body, { title: 'Updated' });
   assert.equal(calls[2].options.method, 'DELETE');
+});
+
+test('proxies nutrition prescriptions without exposing browser table access', async () => {
+  const calls = [];
+  const request = async (path, options = {}) => {
+    calls.push({ path, options });
+    return [{ id: 'plan-one', ...(options.body || {}) }];
+  };
+
+  assert.deepEqual(
+    cleanNutritionPlanFields({ athlete_code: 'ALVIN', week_label: 'Week 1', calories: '2400', forbidden: 'drop me' }),
+    { athlete_code: 'ALVIN', week_label: 'Week 1', calories: '2400' }
+  );
+
+  await upsertNutritionPlan({
+    athlete_code: ' alvin ', week_label: 'Week 1', calories: '2400', forbidden: 'drop me',
+  }, request);
+  await deleteNutritionPlan('alvin', 'Week 1', request);
+
+  assert.equal(calls[0].path, 'nutrition_plans?on_conflict=athlete_code,week_label');
+  assert.equal(calls[0].options.body.athlete_code, 'ALVIN');
+  assert.equal(calls[0].options.body.forbidden, undefined);
+  assert.match(calls[1].path, /athlete_code=eq\.ALVIN&week_label=eq\.Week%201/);
+  assert.equal(calls[1].options.method, 'DELETE');
+});
+
+test('proxies only allowlisted programme settings', async () => {
+  const calls = [];
+  const request = async (path, options = {}) => {
+    calls.push({ path, options });
+    return [{ ...(options.body || {}) }];
+  };
+
+  await upsertAthleteSetting('alvin', 'programme_weeks', 16, request);
+  await deleteAthleteSetting('alvin', 'start_date_override', request);
+  await assert.rejects(
+    upsertAthleteSetting('alvin', 'strava_tokens', 'blocked', request),
+    /Unsupported athlete setting/
+  );
+
+  assert.equal(calls[0].path, 'athlete_data?on_conflict=athlete_code,key');
+  assert.equal(calls[0].options.body.value, 16);
+  assert.match(calls[1].path, /key=eq\.start_date_override/);
+  assert.equal(calls.length, 2);
 });

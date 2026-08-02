@@ -9,6 +9,7 @@ const TABLES = {
   sessions: 'training_session_logs',
   weekly: 'weekly_checkins',
   goals: 'athlete_goals',
+  plans: 'nutrition_plans',
 };
 
 const PAGE_SIZE = 1000;
@@ -67,6 +68,23 @@ async function selectAll(table, orderColumn) {
   }
 
   return rows;
+}
+
+async function selectAthleteSettings() {
+  const baseUrl = cleanBaseUrl(process.env.SUPABASE_URL);
+  const key = process.env.SUPABASE_SERVICE_KEY;
+  if (!baseUrl || !key) {
+    throw new Error('SUPABASE_URL or SUPABASE_SERVICE_KEY is not configured');
+  }
+
+  const keys = 'programme_weeks,start_date_override,programme_restart';
+  const url = `${baseUrl}/rest/v1/athlete_data?select=athlete_code,key,value&key=in.(${keys})`;
+  const response = await fetch(url, {
+    headers: { apikey: key, Authorization: `Bearer ${key}` },
+  });
+  const text = await response.text();
+  if (!response.ok) throw new Error(`Supabase ${response.status} for athlete settings`);
+  try { return text ? JSON.parse(text) : []; } catch { throw new Error('Invalid Supabase response for athlete settings'); }
 }
 
 function mapBody(row) {
@@ -423,12 +441,14 @@ export default async function handler(req, res) {
   try { requireCoach(req); } catch (error) { return coachError(res, error); }
 
   try {
-    const [body, nutrition, sessions, weeklyRaw, goals, logsRows, plannedRows, athletes] = await Promise.all([
+    const [body, nutrition, sessions, weeklyRaw, goals, nutritionPlans, athleteSettings, logsRows, plannedRows, athletes] = await Promise.all([
       selectAll(TABLES.body, 'log_date'),
       selectAll(TABLES.nutrition, 'log_date'),
       selectAll(TABLES.sessions, 'session_date'),
       selectAll(TABLES.weekly, 'week_ending'),
       selectAll(TABLES.goals, 'updated_at'),
+      selectAll(TABLES.plans, 'athlete_code'),
+      selectAthleteSettings(),
       selectLogsBlobs().catch(() => []),
       selectAll('planned_sessions', 'planned_date').catch(() => []),
       selectAll('athletes').catch(() => []),
@@ -457,6 +477,8 @@ export default async function handler(req, res) {
         weekly: weekly.length,
         goals: goals.length,
         planning: plannedRows.length,
+        nutritionPlans: nutritionPlans.length,
+        athleteSettings: athleteSettings.length,
       },
       integrity: {
         weeklyConflicts: weeklyIntegrity.conflicts,
@@ -469,6 +491,8 @@ export default async function handler(req, res) {
       weekly: weekly.map(mapWeekly),
       goals: goals.map(mapGoal),
       planning: plannedRows,
+      nutritionPlans,
+      athleteSettings,
     });
   } catch (error) {
     console.error('[coach-data]', error);
@@ -478,12 +502,15 @@ export default async function handler(req, res) {
       source: 'portal_supabase',
       generatedAt: new Date().toISOString(),
       error: error.message,
-      counts: { body: 0, nutrition: 0, sessions: 0, weekly: 0, goals: 0 },
+      counts: { body: 0, nutrition: 0, sessions: 0, weekly: 0, goals: 0, planning: 0, nutritionPlans: 0, athleteSettings: 0 },
       body: [],
       nutrition: [],
       sessions: [],
       weekly: [],
       goals: [],
+      planning: [],
+      nutritionPlans: [],
+      athleteSettings: [],
     });
   }
 }

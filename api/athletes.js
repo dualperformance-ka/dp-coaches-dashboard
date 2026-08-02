@@ -432,6 +432,79 @@ export async function deletePlannedSession(matchId, request = sb) {
   return { ok: true, rows };
 }
 
+const NUTRITION_PLAN_FIELDS = new Set([
+  'athlete_code', 'week_label', 'calories', 'protein', 'carbs', 'fats', 'fibre',
+  'weekly_km_target', 'notes', 'updated_at',
+]);
+
+export function cleanNutritionPlanFields(input = {}) {
+  return Object.fromEntries(
+    Object.entries(input).filter(([key]) => NUTRITION_PLAN_FIELDS.has(key))
+  );
+}
+
+export async function upsertNutritionPlan(input, request = sb) {
+  const row = cleanNutritionPlanFields(input);
+  row.athlete_code = normaliseCode(row.athlete_code);
+  row.week_label = String(row.week_label || '').trim();
+  if (!row.athlete_code || !row.week_label) {
+    throw new Error('Nutrition plan needs an athlete and week');
+  }
+  const rows = await request('nutrition_plans?on_conflict=athlete_code,week_label', {
+    method: 'POST',
+    prefer: 'resolution=merge-duplicates,return=representation',
+    body: row,
+  });
+  return { ok: true, rows: Array.isArray(rows) ? rows : [] };
+}
+
+export async function deleteNutritionPlan(code, weekLabel, request = sb) {
+  const athleteCode = normaliseCode(code);
+  const week = String(weekLabel || '').trim();
+  if (!athleteCode || !week) throw new Error('Nutrition plan athlete and week are required');
+  const rows = await request(
+    `nutrition_plans?athlete_code=eq.${encodeURIComponent(athleteCode)}` +
+    `&week_label=eq.${encodeURIComponent(week)}`,
+    { method: 'DELETE', prefer: 'return=representation' }
+  );
+  return { ok: true, rows: Array.isArray(rows) ? rows : [] };
+}
+
+const EDITABLE_SETTING_KEYS = new Set(['programme_weeks', 'start_date_override']);
+
+export async function upsertAthleteSetting(code, key, value, request = sb) {
+  const athleteCode = normaliseCode(code);
+  const settingKey = String(key || '').trim();
+  if (!athleteCode || !EDITABLE_SETTING_KEYS.has(settingKey)) {
+    throw new Error('Unsupported athlete setting');
+  }
+  const rows = await request('athlete_data?on_conflict=athlete_code,key', {
+    method: 'POST',
+    prefer: 'resolution=merge-duplicates,return=representation',
+    body: {
+      athlete_code: athleteCode,
+      key: settingKey,
+      value,
+      updated_at: new Date().toISOString(),
+    },
+  });
+  return { ok: true, rows: Array.isArray(rows) ? rows : [] };
+}
+
+export async function deleteAthleteSetting(code, key, request = sb) {
+  const athleteCode = normaliseCode(code);
+  const settingKey = String(key || '').trim();
+  if (!athleteCode || !EDITABLE_SETTING_KEYS.has(settingKey)) {
+    throw new Error('Unsupported athlete setting');
+  }
+  const rows = await request(
+    `athlete_data?athlete_code=eq.${encodeURIComponent(athleteCode)}` +
+    `&key=eq.${encodeURIComponent(settingKey)}`,
+    { method: 'DELETE', prefer: 'return=representation' }
+  );
+  return { ok: true, rows: Array.isArray(rows) ? rows : [] };
+}
+
 // Change an athlete's code (portal password) atomically across every table
 // that references it, via the rename_athlete_code() Postgres function.
 // The function suspends the coach-change triggers during the rename so
@@ -555,6 +628,22 @@ export default async function handler(req, res) {
 
     if (action === 'plan_delete') {
       return res.status(200).json(await deletePlannedSession(req.body?.id));
+    }
+
+    if (action === 'nutrition_upsert') {
+      return res.status(200).json(await upsertNutritionPlan(req.body?.row || {}));
+    }
+
+    if (action === 'nutrition_delete') {
+      return res.status(200).json(await deleteNutritionPlan(req.body?.code, req.body?.week_label));
+    }
+
+    if (action === 'setting_upsert') {
+      return res.status(200).json(await upsertAthleteSetting(req.body?.code, req.body?.key, req.body?.value));
+    }
+
+    if (action === 'setting_delete') {
+      return res.status(200).json(await deleteAthleteSetting(req.body?.code, req.body?.key));
     }
 
     if (action === 'recode') {
