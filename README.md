@@ -11,6 +11,19 @@ Private coaching workspace for squad monitoring, programming, nutrition, applica
 - Athlete and AI APIs return no data without the coach key.
 - Mobile navigation, PWA registration, keyboard focus states, and accessible action dialogs are enabled.
 - Duplicate weekly check-ins are surfaced as a data warning instead of being silently suppressed.
+- Coaches can restart any athlete's programme at Week 0 or Week 1 on a chosen
+  Monday without deleting check-ins, activities, photos, or earlier programming.
+
+## Restarting an athlete's programme
+
+Open **Nutrition**, select the athlete (coaches training as athletes are included),
+then choose **Restart programme**. Select the effective Monday and enter `1` for
+Week 1 or `0` for a new Discovery Week.
+
+The protected athletes API stores the new anchor and restart metadata in
+`athlete_data`. Sessions already planned from that Monday onward keep their dates
+and content but are renumbered to the new programme sequence. A future-dated
+restart keeps the previous programme anchor active until the selected Monday.
 
 ## Required Vercel environment
 

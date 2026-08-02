@@ -54,6 +54,49 @@ function normaliseCode(value) {
   return String(value || '').trim().toUpperCase();
 }
 
+export function isIsoCalendarDate(value) {
+  const text = String(value || '').trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(text)) return false;
+  const parsed = new Date(`${text}T00:00:00Z`);
+  return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === text;
+}
+
+export function shiftIsoDate(value, days) {
+  if (!isIsoCalendarDate(value)) throw new Error('A valid effective date is required');
+  const parsed = new Date(`${value}T00:00:00Z`);
+  parsed.setUTCDate(parsed.getUTCDate() + Number(days || 0));
+  return parsed.toISOString().slice(0, 10);
+}
+
+export function programmeRestartDates(effectiveDate, startWeek) {
+  if (!isIsoCalendarDate(effectiveDate)) throw new Error('A valid effective date is required');
+  const week = Number(startWeek);
+  if (week !== 0 && week !== 1) throw new Error('Programme must restart at Week 0 or Week 1');
+
+  const effective = new Date(`${effectiveDate}T00:00:00Z`);
+  if (effective.getUTCDay() !== 1) throw new Error('Programme restarts must begin on a Monday');
+
+  return {
+    effectiveDate,
+    startWeek: week,
+    // Existing week maths treats the first seven days after the anchor as
+    // Week 0. Move the anchor back seven days when Week 1 should start now.
+    anchorDate: shiftIsoDate(effectiveDate, week === 1 ? -7 : 0),
+    weekEndDate: shiftIsoDate(effectiveDate, 6),
+  };
+}
+
+export function programmeWeekForDate(effectiveDate, startWeek, programmeDate) {
+  const restart = programmeRestartDates(effectiveDate, startWeek);
+  if (!isIsoCalendarDate(programmeDate)) throw new Error('A valid programme date is required');
+  const elapsedDays = Math.floor(
+    (new Date(`${programmeDate}T00:00:00Z`) - new Date(`${restart.effectiveDate}T00:00:00Z`)) /
+    86400000
+  );
+  if (elapsedDays < 0) throw new Error('Programme date cannot be before the restart date');
+  return restart.startWeek + Math.floor(elapsedDays / 7);
+}
+
 function sanitiseCustomCode(value) {
   return normaliseCode(value).replace(/[^A-Z0-9]/g, '').slice(0, 24);
 }
@@ -257,6 +300,85 @@ async function updateAthlete(code, fields) {
   };
 }
 
+export async function restartProgramme(code, effectiveDate, startWeek, request = sb) {
+  const athleteCode = normaliseCode(code);
+  if (!athleteCode) throw new Error('Athlete code is required');
+
+  const dates = programmeRestartDates(effectiveDate, startWeek);
+  const settings = await request(
+    `athlete_data?athlete_code=eq.${encodeURIComponent(athleteCode)}` +
+    '&key=eq.start_date_override&select=value&limit=1'
+  );
+  const roster = await request(
+    `athletes?code=eq.${encodeURIComponent(athleteCode)}&select=start_date&limit=1`
+  );
+  const previousStartDate = settings?.[0]?.value || roster?.[0]?.start_date || null;
+  const restartedAt = new Date().toISOString();
+  const restart = {
+    effective_date: dates.effectiveDate,
+    start_week: dates.startWeek,
+    anchor_date: dates.anchorDate,
+    previous_start_date: previousStartDate,
+    restarted_at: restartedAt,
+  };
+
+  // Both rows use the existing athlete_data key/value store. The restart
+  // metadata lets the UI retain the old anchor until a scheduled reset begins.
+  await request('athlete_data?on_conflict=athlete_code,key', {
+    method: 'POST',
+    prefer: 'resolution=merge-duplicates,return=representation',
+    body: [
+      {
+        athlete_code: athleteCode,
+        key: 'start_date_override',
+        value: dates.anchorDate,
+        updated_at: restartedAt,
+      },
+      {
+        athlete_code: athleteCode,
+        key: 'programme_restart',
+        value: restart,
+        updated_at: restartedAt,
+      },
+    ],
+  });
+
+  // The athlete portal and dashboard prefer dated plan labels, so renumber all
+  // already-scheduled sessions from the restart onward. Their dates and session
+  // content stay unchanged; only Week 8/9/... becomes Week 1/2/... (or 0/1/...).
+  const plannedSessions = await request(
+    `planned_sessions?athlete_code=eq.${encodeURIComponent(athleteCode)}` +
+    `&planned_date=gte.${dates.effectiveDate}&select=id,planned_date`
+  );
+  const sessionsByLabel = new Map();
+  (plannedSessions || []).forEach(session => {
+    const week = programmeWeekForDate(dates.effectiveDate, dates.startWeek, session.planned_date);
+    const label = `Week ${week}`;
+    if (!sessionsByLabel.has(label)) sessionsByLabel.set(label, []);
+    sessionsByLabel.get(label).push(session.id);
+  });
+  for (const [weekLabel, ids] of sessionsByLabel) {
+    for (let offset = 0; offset < ids.length; offset += 100) {
+      const chunk = ids.slice(offset, offset + 100).map(encodeURIComponent).join(',');
+      await request(`planned_sessions?id=in.(${chunk})`, {
+        method: 'PATCH',
+        prefer: 'return=representation',
+        body: { week_label: weekLabel },
+      });
+    }
+  }
+
+  return {
+    ok: true,
+    athleteCode,
+    effectiveDate: dates.effectiveDate,
+    startWeek: dates.startWeek,
+    anchorDate: dates.anchorDate,
+    updatedSessions: Array.isArray(plannedSessions) ? plannedSessions.length : 0,
+    restart,
+  };
+}
+
 // Change an athlete's code (portal password) atomically across every table
 // that references it, via the rename_athlete_code() Postgres function.
 // The function suspends the coach-change triggers during the rename so
@@ -359,6 +481,15 @@ export default async function handler(req, res) {
     if (action === 'update') {
       if (!req.body?.code) return res.status(400).json({ ok: false, error: 'Athlete code is required' });
       return res.status(200).json(await updateAthlete(req.body.code, req.body.fields || {}));
+    }
+
+    if (action === 'reset_programme') {
+      if (!req.body?.code) return res.status(400).json({ ok: false, error: 'Athlete code is required' });
+      return res.status(200).json(await restartProgramme(
+        req.body.code,
+        req.body.effective_date,
+        req.body.start_week
+      ));
     }
 
     if (action === 'recode') {

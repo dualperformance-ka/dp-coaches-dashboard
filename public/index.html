@@ -2276,6 +2276,7 @@ function refreshRosterDrivenUI() {
       <div class="plan-toolbar-right">
         <span class="nut-prog">Start override <input class="nut-input wide" id="nut-start-override" type="date" onchange="saveStartDateOverride(this.value)"></span>
         <span class="nut-prog">Programme <input class="nut-input km" id="nut-prog-weeks" onchange="saveProgWeeks(this.value)"> wks</span>
+        <button class="plan-action-btn" id="nut-restart-btn" onclick="restartProgramme()" title="Restart this athlete at Week 0 or Week 1 on a chosen Monday">↻ Restart programme</button>
         <button class="plan-action-btn" onclick="addNutWeek()">+ Week</button>
       </div>
     </div>
@@ -2862,7 +2863,90 @@ let _nutAthlete = null;
 const DEFAULT_PROG_WEEKS = 12;
 let _progWeeks = {}; // athlete_code → weeks
 let _startDateOverrides = {}; // athlete_code → YYYY-MM-DD
+let _programmeRestarts = {}; // athlete_code → scheduled/latest restart metadata
 function getProgWeeks(code) { return _progWeeks[code] || DEFAULT_PROG_WEEKS; }
+
+function programmeRestartWeek(code, onDate = localDateStr(new Date())) {
+  const restart = _programmeRestarts[code];
+  const effective = String(restart?.effective_date || '');
+  const startWeek = Number(restart?.start_week);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(effective) || (startWeek !== 0 && startWeek !== 1)) return null;
+  if (onDate < effective) return null;
+  const [ey, em, ed] = effective.split('-').map(Number);
+  const [oy, om, od] = onDate.split('-').map(Number);
+  const elapsedDays = Math.floor((Date.UTC(oy, om - 1, od) - Date.UTC(ey, em - 1, ed)) / 86400000);
+  return startWeek + Math.floor(elapsedDays / 7);
+}
+
+function nextProgrammeMonday() {
+  const date = new Date();
+  date.setHours(12, 0, 0, 0);
+  const days = (8 - date.getDay()) % 7;
+  date.setDate(date.getDate() + days);
+  return localDateStr(date);
+}
+
+async function restartProgramme() {
+  if (!_nutAthlete) return;
+
+  const effectiveDate = window.prompt(
+    `Restart ${_nutAthlete}'s programme on which Monday?\n\nUse YYYY-MM-DD. Existing history will be kept.`,
+    nextProgrammeMonday()
+  );
+  if (effectiveDate === null) return;
+  const date = effectiveDate.trim();
+  const parsed = /^\d{4}-\d{2}-\d{2}$/.test(date) ? new Date(`${date}T12:00:00`) : null;
+  if (!parsed || Number.isNaN(parsed.getTime()) || localDateStr(parsed) !== date) {
+    alert('Enter a valid date in YYYY-MM-DD format.');
+    return;
+  }
+  if (parsed.getDay() !== 1) {
+    alert('Programme weeks run Monday to Sunday. Choose a Monday as the restart date.');
+    return;
+  }
+
+  const weekAnswer = window.prompt(
+    'Restart at Week 1, or enter 0 to include a new Discovery Week?',
+    '1'
+  );
+  if (weekAnswer === null) return;
+  const startWeek = Number(weekAnswer.trim());
+  if (startWeek !== 0 && startWeek !== 1) {
+    alert('Enter 0 for Discovery Week or 1 for Week 1.');
+    return;
+  }
+
+  const label = startWeek === 0 ? 'Discovery Week' : 'Week 1';
+  if (!confirm(
+    `Restart ${_nutAthlete} at ${label} from ${date}?\n\n` +
+    'Their check-ins, activity, photos and previous programme history will not be deleted. ' +
+    'Any sessions already planned from that Monday onward will be renumbered to the new programme weeks.'
+  )) return;
+
+  const button = document.getElementById('nut-restart-btn');
+  if (button) { button.disabled = true; button.textContent = 'Restarting…'; }
+  try {
+    const result = await maPost({
+      action: 'reset_programme',
+      code: _nutAthlete,
+      effective_date: date,
+      start_week: startWeek,
+    });
+    _startDateOverrides[_nutAthlete] = result.anchorDate;
+    _programmeRestarts[_nutAthlete] = result.restart;
+    await load({ bust: true });
+    alert(
+      `${_nutAthlete} will restart at ${label} on ${date}.\n` +
+      `${result.updatedSessions || 0} planned session${result.updatedSessions === 1 ? '' : 's'} relabelled.\n` +
+      'Existing history was kept.'
+    );
+  } catch (error) {
+    console.warn('programme restart failed', error);
+    alert(error.message || 'Programme restart could not be saved. Please try again.');
+  } finally {
+    if (button) { button.disabled = false; button.textContent = '↻ Restart programme'; }
+  }
+}
 
 async function saveStartDateOverride(value) {
   if (!_nutAthlete) return;
@@ -2918,15 +3002,18 @@ async function fetchTargetsSB() {
   } catch (e) { console.warn('nutrition_plans load failed', e); _nutPlans = []; }
   try {
     const { data: settings } = await sb.from('athlete_data').select('athlete_code,key,value')
-      .in('key', ['programme_weeks', 'start_date_override']);
+      .in('key', ['programme_weeks', 'start_date_override', 'programme_restart']);
     _progWeeks = {};
     _startDateOverrides = {};
+    _programmeRestarts = {};
     (settings || []).forEach(r => {
       if (r.key === 'programme_weeks') {
         const n = parseInt(r.value, 10);
         if (!isNaN(n) && n > 0) _progWeeks[r.athlete_code] = n;
       } else if (r.key === 'start_date_override' && /^\d{4}-\d{2}-\d{2}$/.test(String(r.value || ''))) {
         _startDateOverrides[r.athlete_code] = r.value;
+      } else if (r.key === 'programme_restart' && r.value && typeof r.value === 'object') {
+        _programmeRestarts[r.athlete_code] = r.value;
       }
     });
   } catch (e) { console.warn('athlete settings load failed', e); }
@@ -3155,6 +3242,8 @@ function _nutAthleteCodes() {
 function _nutWkNum(label) { if (isDiscoveryWeek(label)) return 0; const m = String(label || '').match(/(\d+)/); return m ? parseInt(m[1], 10) : -1; }
 
 function _nutCurrentWeekLabel(code) {
+  const restartedWeek = programmeRestartWeek(code);
+  if (restartedWeek !== null) return `Week ${restartedWeek}`;
   // NO_DISCOVERY athletes (JACOB, KHANG) skipped the Week 0 discovery week, so
   // their planned_sessions labels run a week behind their true programme week.
   // Anchor NOW to the start-date-derived week number, which already applies the
@@ -4916,15 +5005,29 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [
   });
 
   function calcWeekNum(id) {
-    if (COACHES.has(id)) return null;
+    const currentRestartWeek = programmeRestartWeek(id);
+    if (COACHES.has(id) && currentRestartWeek === null) return null;
 
     // Priority 1: effective Start Date (Supabase coach override, then roster profile)
-    const sd = startDates[id];
+    const restart = _programmeRestarts[id];
+    const today = localDateStr(new Date());
+    const restartIsActive = !!(
+      restart && /^\d{4}-\d{2}-\d{2}$/.test(String(restart.effective_date || '')) &&
+      restart.effective_date <= today
+    );
+    if (restartIsActive) return currentRestartWeek;
+    // A restart can be scheduled ahead of time. Until its effective Monday,
+    // keep calculating from the athlete's previous anchor.
+    const sd = restart && !restartIsActive
+      ? (restart.previous_start_date || athleteProfiles[id]?.['date:Start Date:start'] || athleteProfiles[id]?.['Start Date'])
+      : startDates[id];
     if (sd) {
       const diffDays = Math.floor((Date.now() - new Date(sd)) / 86400000);
       // NO_DISCOVERY athletes started directly on Week 1 (no discovery week).
       // Formula: floor(days/7) + 1  →  Day 0–6 = Week 1, Day 7–13 = Week 2 …
-      if (NO_DISCOVERY.has(id)) {
+      // A coach-triggered restart explicitly chooses Week 0 or Week 1, so its
+      // saved anchor replaces this legacy exception once the restart begins.
+      if (NO_DISCOVERY.has(id) && !restartIsActive) {
         return Math.max(1, Math.floor(diffDays / 7) + 1);
       }
       // All other athletes go through a Week 0 discovery week.
@@ -5165,7 +5268,7 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [
     // and stays authoritative for NO_DISCOVERY athletes whose plan labels lag their
     // true programme week. Mirrors the fix already applied to the Nutrition tab.
     let wkNum = calcWeekNum(a.id);
-    if (!NO_DISCOVERY.has(a.id)) {
+    if (!NO_DISCOVERY.has(a.id) && programmeRestartWeek(a.id) === null) {
       const planLbl = _planRowsForWeek(a.id, currentWeekStart).map(r => r.week_label).find(Boolean);
       if (planLbl) {
         const pn = _nutWkNum(planLbl); // isDiscoveryWeek → 0, else parsed int, else -1
