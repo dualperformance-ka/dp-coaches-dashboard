@@ -4891,6 +4891,12 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [
     if (!map[id]) map[id] = { id, weekly: null, body: [], nutrition: [], sessions: [] };
   }
 
+  // Coach cards are a fixed part of the dashboard, not a side effect of a
+  // recent check-in or daily log. Seed every configured coach before attaching
+  // data so a coach with only planned sessions (or no recent rows) still gets a
+  // card and their Supabase data can be matched onto it below.
+  COACHES.forEach(ens);
+
   const startDates = {};
   athleteDb.forEach(r => {
     const code = nid(r.Code || r.Athlete);
