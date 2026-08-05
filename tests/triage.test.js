@@ -34,12 +34,6 @@ test('triage ranks coach alerts and pain above gone-quiet athletes', () => {
       { athlete_code: 'EVE', log_date: '2026-08-05', pain: 1, coach_alert: false },
       { athlete_code: 'PAUSED', log_date: '2026-08-05', pain: 10, coach_alert: true },
     ],
-    lastActivityRows: [
-      { athlete_code: 'ALICE', last_body_log_date: '2026-08-04', last_session_log_at: null },
-      { athlete_code: 'BOB', last_body_log_date: '2026-07-25', last_session_log_at: '2026-07-24T00:00:00Z' },
-      { athlete_code: 'DANI', last_body_log_date: '2026-08-02', last_session_log_at: null },
-      { athlete_code: 'EVE', last_body_log_date: '2026-08-05', last_session_log_at: null },
-    ],
     trainingRows: [
       { athlete_code: 'ALICE', session_date: '2026-08-04', session_name: 'Easy Run' },
     ],
@@ -52,7 +46,7 @@ test('triage ranks coach alerts and pain above gone-quiet athletes', () => {
   assert.match(result.queue[0].signal, /Coach alert raised.*Tempo Run prescribed tomorrow/);
   assert.match(result.queue[1].signal, /Pain 7\/10.*after Easy Run/);
   assert.equal(result.queue[2].flag, 'gone_quiet');
-  assert.match(result.queue[2].signal, /11 days/);
+  assert.match(result.queue[2].signal, /at least 5 days/);
   assert.deepEqual(result.counts, { active: 4, flagged: 3, critical: 2, high: 1, clear: 1 });
 });
 
@@ -64,10 +58,12 @@ test('gone quiet requires both completion and body sources to be stale', () => {
       { code: 'SESSION', name: 'Recent session', active: true, archived_at: null },
       { code: 'BOUNDARY', name: 'Five days', active: true, archived_at: null },
     ],
-    lastActivityRows: [
-      { athlete_code: 'BODY', last_body_log_date: '2026-08-04', last_session_log_at: null },
-      { athlete_code: 'SESSION', last_body_log_date: null, last_session_log_at: '2026-08-04T00:30:00Z' },
-      { athlete_code: 'BOUNDARY', last_body_log_date: '2026-07-31', last_session_log_at: null },
+    bodyRows: [
+      { athlete_code: 'BODY', log_date: '2026-08-04' },
+      { athlete_code: 'BOUNDARY', log_date: '2026-07-31' },
+    ],
+    sessionRows: [
+      { athlete_code: 'SESSION', logged_at: '2026-08-04T00:30:00Z' },
     ],
   });
 
@@ -113,7 +109,6 @@ test('triage mode reads only the bounded coach snapshot sources', async () => {
     requested.push(value);
     let rows = [];
     if (value.includes('/athletes?')) rows = [{ code: 'ALICE', name: 'Alice', active: true, archived_at: null }];
-    if (value.includes('/coach_triage_last_activity?')) rows = [{ athlete_code: 'ALICE', last_body_log_date: null, last_session_log_at: null }];
     return new Response(JSON.stringify(rows), { status: 200, headers: { 'Content-Type': 'application/json' } });
   };
 
@@ -132,7 +127,50 @@ test('triage mode reads only the bounded coach snapshot sources', async () => {
     assert.equal(requested.length, 5);
     assert.equal(requested.some(url => url.includes('/weekly_checkins?')), false);
     assert.equal(requested.some(url => url.includes('/daily_nutrition_logs?')), false);
-    assert.equal(requested.some(url => url.includes('/coach_triage_last_activity?')), true);
+    assert.equal(requested.some(url => url.includes('/session_logs?')), true);
+    assert.equal(requested.some(url => url.includes('/coach_triage_last_activity?')), false);
+  } finally {
+    global.fetch = originalFetch;
+    Object.entries(originalEnv).forEach(([key, value]) => {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    });
+  }
+});
+
+test('triage keeps gone-quiet working before pain columns are migrated', async () => {
+  const originalFetch = global.fetch;
+  const originalEnv = {
+    SUPABASE_URL: process.env.SUPABASE_URL,
+    SUPABASE_SERVICE_KEY: process.env.SUPABASE_SERVICE_KEY,
+    DASHBOARD_ACCESS_KEY: process.env.DASHBOARD_ACCESS_KEY,
+  };
+  process.env.SUPABASE_URL = 'https://example.supabase.co';
+  process.env.SUPABASE_SERVICE_KEY = 'service-key';
+  process.env.DASHBOARD_ACCESS_KEY = 'dashboard-key';
+
+  global.fetch = async url => {
+    const value = String(url);
+    if (value.includes('/athletes?')) {
+      return new Response(JSON.stringify([{ code: 'ALICE', name: 'Alice', active: true, archived_at: null }]), { status: 200 });
+    }
+    if (value.includes('/daily_body_logs?') && value.includes('pain')) {
+      return new Response(JSON.stringify({ message: "column daily_body_logs.pain does not exist" }), { status: 400 });
+    }
+    return new Response('[]', { status: 200 });
+  };
+
+  try {
+    const req = {
+      method: 'GET',
+      query: { mode: 'triage' },
+      headers: { 'x-dashboard-key': 'dashboard-key' },
+    };
+    const res = responseRecorder();
+    await handler(req, res);
+    assert.equal(res.statusCode, 200);
+    assert.equal(res.body.ok, true);
+    assert.equal(res.body.queue[0].flag, 'gone_quiet');
   } finally {
     global.fetch = originalFetch;
     Object.entries(originalEnv).forEach(([key, value]) => {
@@ -148,4 +186,5 @@ test('Today is the default coach screen and defers the Strava-heavy roster load'
   assert.match(source, /id="tab-athletes-content" style="display:none"/);
   assert.match(source, /if \(!document\.getElementById\('tab-triage-btn'\)\?\.classList\.contains\('active'\)\) load\(\);/);
   assert.match(source, /Only paired signals that lead to a coaching action\./);
+  assert.doesNotMatch(source, /<header class="triage-hero">/);
 });

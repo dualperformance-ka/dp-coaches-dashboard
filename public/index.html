@@ -1904,7 +1904,7 @@ body[data-theme="light"] .theme-btn.active{background:rgba(255,255,255,.22);colo
 <link rel="stylesheet" href="/dashboard-theme-system.css">
 <link rel="stylesheet" href="/dashboard-desktop.css">
 <link rel="stylesheet" href="/dashboard-mobile-polish.css">
-<link rel="stylesheet" href="/triage.css">
+<link rel="stylesheet" href="/triage.css?v=21">
 <div class="ma-backdrop" id="ma-backdrop" role="dialog" aria-modal="true" aria-label="Manage athletes" onclick="if(event.target===this)closeManageAthletes()">
   <div class="ma-card">
     <div class="ma-head">
@@ -2229,14 +2229,14 @@ function refreshRosterDrivenUI() {
 <!-- TODAY TRIAGE TAB -->
 <main id="tab-triage-content" class="triage-page">
   <section class="triage-shell" aria-labelledby="triage-title">
-    <header class="triage-hero">
+    <div class="triage-hero">
       <div>
         <div class="triage-eyebrow">Coach triage · Today</div>
         <h1 id="triage-title">Who needs me today?</h1>
         <p>Only paired signals that lead to a coaching action.</p>
       </div>
       <div class="triage-date" id="triage-date" aria-label="Dashboard date"></div>
-    </header>
+    </div>
 
     <div id="triage-loading" class="triage-state" role="status">
       <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
@@ -10471,7 +10471,7 @@ document.getElementById('gen-btn').addEventListener('click', generateAI);
 <script src="/dashboard-redesign.js" defer></script>
 <script src="/coaching-actions.js" defer></script>
 <script src="/dashboard-mobilenav.js" defer></script>
-<script src="/triage.js" defer></script>
+<script src="/triage.js?v=21" defer></script>
 <script src="/app.js" defer></script>
 </body>
 </html>

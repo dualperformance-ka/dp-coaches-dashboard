@@ -95,7 +95,8 @@
       const response = await fetch('/api/coach-data?mode=triage', { cache: 'no-store' });
       const data = await response.json().catch(() => ({}));
       if (!response.ok || data.ok !== true) {
-        throw new Error(data.error || `Triage request failed (${response.status})`);
+        console.warn('[triage] request failed', { status: response.status, error: data.error || null });
+        throw new Error('Today could not load. Retry, or open Overview while the connection recovers.');
       }
       render(data);
       setState('ready');

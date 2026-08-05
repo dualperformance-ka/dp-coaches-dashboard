@@ -45,28 +45,3 @@ create index if not exists session_logs_athlete_logged_idx
 -- No anon/authenticated grants are added here.
 grant select on table public.daily_body_logs to service_role;
 grant select on table public.session_logs to service_role;
-
--- One bounded roster snapshot avoids loading full body/session history or
--- issuing two queries per athlete. security_invoker keeps the underlying RLS
--- contract intact; only the server-side service role can select the view.
-create or replace view public.coach_triage_last_activity
-with (security_invoker = true)
-as
-select
-  a.code as athlete_code,
-  (
-    select max(d.log_date)
-    from public.daily_body_logs d
-    where d.athlete_code = a.code
-  ) as last_body_log_date,
-  (
-    select max(s.logged_at)
-    from public.session_logs s
-    where s.athlete_code = a.code
-  ) as last_session_log_at
-from public.athletes a
-where a.active is true
-  and a.archived_at is null;
-
-revoke all on table public.coach_triage_last_activity from public, anon, authenticated;
-grant select on table public.coach_triage_last_activity to service_role;

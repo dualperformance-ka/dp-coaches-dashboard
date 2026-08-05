@@ -535,7 +535,7 @@ function painSignalCopy(signal, completed, planned, today, quietDays) {
   if (quietDays !== false) {
     sentence += quietDays === null
       ? '; there is also no body or completed-session activity on record'
-      : `; there has also been no body or completed-session activity for ${quietDays} days`;
+      : `; there has also been no body or completed-session activity for at least ${quietDays} days`;
   }
   return `${sentence}.`;
 }
@@ -543,7 +543,7 @@ function painSignalCopy(signal, completed, planned, today, quietDays) {
 export function buildTriageQueue({
   athletes = [],
   bodyRows = [],
-  lastActivityRows = [],
+  sessionRows = [],
   trainingRows = [],
   plannedRows = [],
   now = new Date(),
@@ -552,6 +552,8 @@ export function buildTriageQueue({
   const nowDate = now instanceof Date ? now : new Date(now);
   const today = isoDateInTimeZone(nowDate, timeZone);
   const painStart = shiftDate(today, -(PAIN_WINDOW_DAYS - 1));
+  const quietBodyCutoff = shiftDate(today, -QUIET_AFTER_DAYS);
+  const quietSessionCutoff = nowDate.getTime() - QUIET_AFTER_DAYS * 86400000;
 
   const active = (athletes || [])
     .filter(row => row && row.active === true && row.archived_at == null)
@@ -559,8 +561,16 @@ export function buildTriageQueue({
     .filter(row => row.code);
   const activeCodes = new Set(active.map(row => row.code));
   const body = (bodyRows || []).filter(row => activeCodes.has(normaliseCode(row.athlete_code)));
-  const activityByAthlete = new Map(
-    (lastActivityRows || []).map(row => [normaliseCode(row.athlete_code), row])
+  const sessions = (sessionRows || []).filter(row => activeCodes.has(normaliseCode(row.athlete_code)));
+  const bodyRecentlyActive = new Set(
+    body
+      .filter(row => String(row.log_date || '') > quietBodyCutoff)
+      .map(row => normaliseCode(row.athlete_code))
+  );
+  const sessionRecentlyActive = new Set(
+    sessions
+      .filter(row => Date.parse(row.logged_at || '') > quietSessionCutoff)
+      .map(row => normaliseCode(row.athlete_code))
   );
 
   const painByAthlete = new Map();
@@ -577,19 +587,8 @@ export function buildTriageQueue({
   const queue = [];
   for (const athlete of active) {
     const code = athlete.code;
-    const activity = activityByAthlete.get(code) || {};
-    const bodyDate = String(activity.last_body_log_date || '').slice(0, 10);
-    const bodyAgeDays = /^\d{4}-\d{2}-\d{2}$/.test(bodyDate)
-      ? dayDistance(bodyDate, today)
-      : null;
-    const sessionActivityAt = Date.parse(activity.last_session_log_at || '');
-    const sessionAgeDays = Number.isFinite(sessionActivityAt)
-      ? Math.floor((nowDate.getTime() - sessionActivityAt) / 86400000)
-      : null;
-    const goneQuiet = (bodyAgeDays === null || bodyAgeDays >= QUIET_AFTER_DAYS) &&
-      (sessionAgeDays === null || sessionAgeDays >= QUIET_AFTER_DAYS);
-    const ages = [bodyAgeDays, sessionAgeDays].filter(value => value !== null);
-    const quietDays = ages.length ? Math.max(0, Math.min(...ages)) : null;
+    const goneQuiet = !bodyRecentlyActive.has(code) && !sessionRecentlyActive.has(code);
+    const quietDays = goneQuiet ? QUIET_AFTER_DAYS : false;
     const painSignal = (painByAthlete.get(code) || []).sort(painCandidateSort)[0] || null;
     if (!painSignal && !goneQuiet) continue;
 
@@ -603,7 +602,7 @@ export function buildTriageQueue({
     const coachAlert = painSignal?.coach_alert === true;
     const priority = painSignal
       ? 10000 + (coachAlert ? 1000 : 0) + (painScore || 0) * 10
-      : 5000 + Math.min(quietDays ?? 365, 365);
+      : 5000;
 
     queue.push({
       athleteCode: code,
@@ -613,9 +612,7 @@ export function buildTriageQueue({
       priority,
       signal: painSignal
         ? painSignalCopy(painSignal, completed, planned, today, goneQuiet ? quietDays : false)
-        : quietDays === null
-          ? 'No completed session and no body log has ever been recorded.'
-          : `No completed session and no body log for ${quietDays} days.`,
+        : `No completed session and no body log for at least ${QUIET_AFTER_DAYS} days.`,
       action: {
         type: 'message',
         label: painSignal ? 'Message athlete' : 'Check in',
@@ -638,6 +635,7 @@ export function buildTriageQueue({
         } : null,
         goneQuiet: goneQuiet ? {
           days: quietDays,
+          atLeast: true,
           noDailyBodyLogs: true,
           noSessionLogs: true,
         } : null,
@@ -668,28 +666,50 @@ export function buildTriageQueue({
   };
 }
 
+function isMissingTriageColumn(error) {
+  const message = String(error?.message || error || '');
+  return /pain|coach_alert/i.test(message) && /column|schema cache|does not exist|could not find/i.test(message);
+}
+
+async function selectTriageBodyRows(painStart) {
+  const query = {
+    log_date: `gte.${painStart}`,
+    order: 'log_date.desc,submitted_at.desc',
+  };
+  try {
+    return await selectRows('daily_body_logs', {
+      ...query,
+      select: 'athlete_code,log_date,pain,coach_alert,submitted_at',
+    });
+  } catch (error) {
+    if (!isMissingTriageColumn(error)) throw error;
+    console.warn('[coach-data:triage] pain columns unavailable; continuing with gone-quiet only');
+    return selectRows('daily_body_logs', {
+      ...query,
+      select: 'athlete_code,log_date,submitted_at',
+    });
+  }
+}
+
 async function loadTriage() {
   const now = new Date();
   const today = isoDateInTimeZone(now);
   const painStart = shiftDate(today, -(PAIN_WINDOW_DAYS - 1));
   const contextStart = shiftDate(painStart, -2);
   const planEnd = shiftDate(today, 7);
+  const quietSessionCutoff = new Date(now.getTime() - QUIET_AFTER_DAYS * 86400000).toISOString();
 
-  const [athletes, bodyRows, lastActivityRows, trainingRows, plannedRows] = await Promise.all([
+  const [athletes, bodyRows, sessionRows, trainingRows, plannedRows] = await Promise.all([
     selectRows('athletes', {
       select: 'code,name,active,archived_at',
       active: 'eq.true',
       archived_at: 'is.null',
       order: 'name.asc',
     }),
-    selectRows('daily_body_logs', {
-      select: 'athlete_code,log_date,pain,coach_alert,submitted_at',
-      log_date: `gte.${painStart}`,
-      order: 'log_date.desc,submitted_at.desc',
-    }),
-    selectRows('coach_triage_last_activity', {
-      select: 'athlete_code,last_body_log_date,last_session_log_at',
-      order: 'athlete_code.asc',
+    selectTriageBodyRows(painStart),
+    selectRows('session_logs', {
+      select: 'athlete_code,logged_at',
+      logged_at: `gt.${quietSessionCutoff}`,
     }),
     selectRows('training_session_logs', {
       select: 'athlete_code,session_date,session_name,session_category',
@@ -699,11 +719,12 @@ async function loadTriage() {
     selectRows('planned_sessions', {
       select: 'athlete_code,planned_date,title,session_type,status',
       planned_date: `gte.${today}`,
+      and: `(planned_date.lte.${planEnd})`,
       order: 'planned_date.asc',
     }).catch(() => []),
   ]);
 
-  return buildTriageQueue({ athletes, bodyRows, lastActivityRows, trainingRows, plannedRows, now });
+  return buildTriageQueue({ athletes, bodyRows, sessionRows, trainingRows, plannedRows, now });
 }
 
 export default async function handler(req, res) {

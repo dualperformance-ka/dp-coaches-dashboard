@@ -56,8 +56,10 @@ roster dashboard or prefetch Strava data.
 
 Manual deployment order:
 
-1. Apply `supabase/migrations/20260805011628_coach_triage_signals.sql` in Supabase.
-2. Deploy the dashboard without adding another Vercel function.
+1. Deploy the dashboard without adding another Vercel function. Gone-quiet uses
+   the existing five-day body/session windows and does not depend on a new view.
+2. Apply `supabase/migrations/20260805011628_coach_triage_signals.sql` in
+   Supabase to enable pain and explicit coach-alert signals.
 3. Confirm an unauthenticated triage request returns `401`, then unlock the
    dashboard and confirm Today shows the active roster clear count.
 4. Populate `daily_body_logs.pain` (0–10) or `coach_alert` through the approved

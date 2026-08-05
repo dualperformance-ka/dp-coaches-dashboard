@@ -12,7 +12,7 @@
       would risk showing stale or cross-coach data offline)
    ============================================================ */
 
-const VERSION = 'dp-coaches-v20-today-triage';
+const VERSION = 'dp-coaches-v21-triage-fallback';
 const SHELL_CACHE = `${VERSION}-shell`;
 const STATIC_CACHE = `${VERSION}-static`;
 const FONT_CACHE = `${VERSION}-fonts`;
@@ -33,8 +33,8 @@ const SHELL_ASSETS = [
   '/dashboard-desktop.css',
   '/dashboard-mobile-polish.css',
   '/dashboard-mobilenav.js',
-  '/triage.css',
-  '/triage.js',
+  '/triage.css?v=21',
+  '/triage.js?v=21',
   '/manifest.webmanifest',
   '/dp-mark-blue.png',
   '/dp-mark-light.png',
