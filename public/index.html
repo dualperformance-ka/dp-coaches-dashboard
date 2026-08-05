@@ -2685,11 +2685,13 @@ function useSessionStateRows(rows) {
   _tickedMap = new Map();
   _loggedMap = new Map();
   (rows || []).forEach(r => {
+    const code = nid(r.athlete_code);
+    if (!code) return;
     const val = r.value || {};
     if (r.key === 'ticked') {
-      _tickedMap.set(r.athlete_code, new Set(Object.keys(val).filter(k => k !== '__savedAt')));
+      _tickedMap.set(code, new Set(Object.keys(val).filter(k => k !== '__savedAt')));
     } else if (r.key === 'logs') {
-      _loggedMap.set(r.athlete_code, new Set(
+      _loggedMap.set(code, new Set(
         Object.keys(val).filter(k => k !== '__savedAt' && _logHasRealData(val[k]))
       ));
     }
@@ -2697,11 +2699,11 @@ function useSessionStateRows(rows) {
 }
 // Athlete tapped the checkbox (no data required)
 function isSessionTicked(athleteCode, notionPageId) {
-  return _tickedMap.get(athleteCode)?.has(notionPageId) ?? false;
+  return _tickedMap.get(nid(athleteCode))?.has(notionPageId) ?? false;
 }
 // Athlete actually submitted a log with data — this is what drives "Done"
 function isSessionSubmitted(athleteCode, notionPageId) {
-  return _loggedMap.get(athleteCode)?.has(notionPageId) ?? false;
+  return _loggedMap.get(nid(athleteCode))?.has(notionPageId) ?? false;
 }
 
 // Overrides now live ON the planned_sessions rows themselves (Supabase is the
@@ -4251,8 +4253,44 @@ function getPlanningAthleteId(r) {
   return raw;
 }
 
-// Name aliases — maps any variant to the canonical athlete ID used everywhere
-const ALIASES = { 'JACOB TUAZON': 'JACOB', 'BRYAN GOH': 'BRYAN' };
+// Name aliases — maps any exact, unambiguous roster/profile name to the
+// canonical athlete code used by every data source. Legacy Notion rows often
+// contain a full name ("THOMAS TRINH") while Supabase rows contain the portal
+// code ("THOMAS"). Without this boundary the same person becomes two cards and
+// the older copy can be incorrectly labelled as missing a check-in.
+const STATIC_ALIASES = { 'JACOB TUAZON': 'JACOB', 'BRYAN GOH': 'BRYAN' };
+const ALIASES = { ...STATIC_ALIASES };
+const _rosterAliasKeys = new Set();
+
+function installRosterAliases(roster = [], profiles = []) {
+  _rosterAliasKeys.forEach(key => delete ALIASES[key]);
+  _rosterAliasKeys.clear();
+
+  const owners = new Map();
+  const add = (codeValue, aliasValue) => {
+    const code = String(codeValue || '').trim().toUpperCase();
+    const alias = String(aliasValue || '').trim().toUpperCase();
+    if (!code || !alias) return;
+    if (!owners.has(alias)) owners.set(alias, new Set());
+    owners.get(alias).add(code);
+  };
+
+  (roster || []).forEach(row => {
+    add(row.code, row.code);
+    add(row.code, row.name);
+  });
+  (profiles || []).forEach(row => {
+    const code = row.Code || row.Athlete;
+    add(code, code);
+    add(code, row.Name);
+  });
+
+  owners.forEach((codes, alias) => {
+    if (codes.size !== 1 || Object.prototype.hasOwnProperty.call(STATIC_ALIASES, alias)) return;
+    ALIASES[alias] = [...codes][0];
+    _rosterAliasKeys.add(alias);
+  });
+}
 
 // Coaches are filtered OUT of the athletes grid and shown on the Coaches tab
 const COACHES = new Set(['KARL', 'ALEX', 'JOJO']);
@@ -4397,6 +4435,41 @@ function daysAgo(dateStr) {
   if (!dateStr) return null;
   const diff = Math.floor((Date.now() - new Date(dateStr)) / 86400000);
   return diff;
+}
+
+function shiftIsoDay(dateStr, days) {
+  const date = new Date(`${String(dateStr || '').slice(0, 10)}T12:00:00Z`);
+  if (isNaN(date)) return '';
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+// Weekly check-ins describe the week that just finished. They are due on
+// Sunday, with Monday retained as a grace day. This compares calendar weeks,
+// not an imprecise rolling "8 days ago" threshold, and it exempts athletes who
+// had not started by the week being assessed.
+function weeklyCheckinStatus(latestWeekEnding, todayStr, comingSunday, startDate = '') {
+  const today = String(todayStr || '').slice(0, 10);
+  const expected = String(comingSunday || '').slice(0, 10);
+  const latest = String(latestWeekEnding || '').slice(0, 10);
+  const weekday = new Date(`${today}T12:00:00Z`).getUTCDay();
+  const graceDays = weekday === 1 ? 14 : 7;
+  const requiredWeekEnd = shiftIsoDay(expected, -graceDays);
+  const checkinDue = !startDate || String(startDate).slice(0, 10) <= requiredWeekEnd;
+  const distance = (left, right) => Math.abs(
+    (Date.parse(`${left}T12:00:00Z`) - Date.parse(`${right}T12:00:00Z`)) / 86400000
+  );
+  const hasCurrentCheckin = !!latest && distance(latest, expected) <= 3;
+  const hasLastWeekCheckin = !!latest && !hasCurrentCheckin && distance(latest, requiredWeekEnd) <= 3;
+
+  return {
+    checkinDue,
+    requiredWeekEnd,
+    hasCurrentCheckin,
+    hasLastWeekCheckin,
+    hasRecent: hasCurrentCheckin || hasLastWeekCheckin,
+    isStale: checkinDue && !hasCurrentCheckin && !hasLastWeekCheckin,
+  };
 }
 
 // ── Parse a single Exercise Log line into best set (max load) ────────────────
@@ -4627,7 +4700,7 @@ function buildActionList(a) {
   }
 
   // Compliance shortfall (current week)
-  if (a.compliance !== null) {
+  if (a.compliance !== null && a.complianceActionable) {
     if (a.compliance < 50) {
       critical.push(`This week compliance ${a.compliance}%`);
     } else if (a.compliance < 70) {
@@ -4908,7 +4981,7 @@ function mergeWeekly(supaRows, notionRows) {
 }
 
 // ── Build ─────────────────────────────────────────────────────────────────────
-function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [], planning = [], applications = []) {
+function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [], planning = [], applications = [], roster = []) {
   const c90 = dago(90), c7 = dago(7);
   const map = {};
   const masterIds = new Set();
@@ -4917,6 +4990,11 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [
   const sessionCounts = {};
   const planCounts = {};
   const athleteProfiles = {};
+  const rosterByCode = new Map();
+  (roster || []).forEach(row => {
+    const code = nid(row.code);
+    if (code) rosterByCode.set(code, row);
+  });
 
   function ens(id) {
     if (!id || id.length < 2) return;
@@ -5226,29 +5304,16 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [
       }
     }
     const expectedWeekEnd = currentWeekEnd; // global, computed once at load time
-
-    const wkEnd = w?.['Week Ending'] || '';
-    const wkEndDate = wkEnd ? new Date(wkEnd) : null;
-
-    // Submitted for the CURRENT week (within ±3 days of coming Sunday)
-    const hasCurrentCheckin = !!wkEndDate && (() => {
-      const diff = Math.abs(wkEndDate - new Date(expectedWeekEnd)) / 86400000;
-      return diff <= 3;
-    })();
-
-    // Submitted for LAST week — within 8 days but doesn't match current week.
-    // e.g. athlete submitted Sunday May 3, today is Monday May 4 — show their data,
-    // just note it's last week's. Don't alarm the coaches.
-    const daysSinceSubmission = wkEndDate
-      ? Math.floor((Date.now() - wkEndDate) / 86400000)
-      : 999;
-    const hasLastWeekCheckin = !hasCurrentCheckin && daysSinceSubmission <= 8;
-
-    // Stale = genuinely missing — no submission for more than 8 days
-    const isStale = !hasCurrentCheckin && !hasLastWeekCheckin;
-
-    // hasRecent used for summary bar "Checked In" count
-    const hasRecent = hasCurrentCheckin || hasLastWeekCheckin;
+    const checkin = weeklyCheckinStatus(
+      w?.['Week Ending'] || '',
+      _todayStr,
+      expectedWeekEnd,
+      startDates[a.id] || ''
+    );
+    const {
+      checkinDue, requiredWeekEnd,
+      hasCurrentCheckin, hasLastWeekCheckin, hasRecent, isStale,
+    } = checkin;
 
     // Prescribed macro target for the current week (from targets DB)
     const weekLabel = wkNum !== null ? `Week ${wkNum}` : null;
@@ -5268,23 +5333,38 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [
     // Current-week compliance: sessions due today or earlier vs completed
     const dueSoFar = thisWeekPlan.filter(r => {
       const d = r['date:Planned Date:start'] || r['Planned Date'] || '';
-      return d && d <= _todayStr;
+      const id = r._id || r.id || '';
+      const status = (r['Status '] || r['Status'] || '').trim().toLowerCase();
+      const done = isSessionSubmitted(a.id, id) || status === 'completed';
+      const terminal = done || status === 'missed';
+      const excused = status === 'sick' || status === 'cancelled' || status === 'canceled';
+      return !excused && d && (d < _todayStr || terminal);
     });
-    const completedDue = dueSoFar.filter(r => (r['Status '] || r['Status'] || '').trim() === 'Completed').length;
-    const missedDue = dueSoFar.filter(r => (r['Status '] || r['Status'] || '').trim() === 'Missed').length;
-    const compliance = (completedDue + missedDue) > 0
-      ? Math.round((completedDue / (completedDue + missedDue)) * 100) : null;
+    const completedDue = dueSoFar.filter(r => {
+      const id = r._id || r.id || '';
+      const status = (r['Status '] || r['Status'] || '').trim().toLowerCase();
+      return isSessionSubmitted(a.id, id) || status === 'completed';
+    }).length;
+    const compliance = dueSoFar.length > 0
+      ? Math.round((completedDue / dueSoFar.length) * 100) : null;
+    const weekElapsed = (Date.now() - currentWeekStart.getTime()) / (7 * 86400000);
+    const complianceActionable = weekElapsed >= 0.5;
 
     // Schedule compliance from planning (last 28 days — historical reference)
     const c28 = dago(28);
     const pastPlan = athletePlan.filter(r => {
       const d = r['date:Planned Date:start'] || r['Planned Date'] || '';
-      return d && new Date(d) >= c28 && new Date(d) < currentWeekStart;
+      const status = (r['Status '] || r['Status'] || '').trim().toLowerCase();
+      const excused = status === 'sick' || status === 'cancelled' || status === 'canceled';
+      return !excused && d && new Date(d) >= c28 && new Date(d) < currentWeekStart;
     });
-    const planCompleted = pastPlan.filter(r => (r['Status '] || r['Status'] || '').trim() === 'Completed').length;
-    const planMissed = pastPlan.filter(r => (r['Status '] || r['Status'] || '').trim() === 'Missed').length;
-    const scheduleCompliance = (planCompleted + planMissed) > 0
-      ? Math.round((planCompleted / (planCompleted + planMissed)) * 100) : null;
+    const planCompleted = pastPlan.filter(r => {
+      const id = r._id || r.id || '';
+      const status = (r['Status '] || r['Status'] || '').trim().toLowerCase();
+      return isSessionSubmitted(a.id, id) || status === 'completed';
+    }).length;
+    const scheduleCompliance = pastPlan.length > 0
+      ? Math.round((planCompleted / pastPlan.length) * 100) : null;
 
     // Recovery score from weekly check-in
     const recoveryScore = calcRecoveryScore(w);
@@ -5355,7 +5435,8 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [
       prevRunS, prevStrS,
       flags, alertScore,
       hasRecent, hasCurrentCheckin, hasLastWeekCheckin, isStale,
-      expectedWeekEnd, compliance,
+      checkinDue, requiredWeekEnd,
+      expectedWeekEnd, compliance, complianceActionable,
       weekNum: wkNum,
       target,
       targetByWeek: targetMap[a.id] || {},
@@ -5370,6 +5451,7 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [
       checkinStreak,
       compliance4w,
       profile: athleteProfiles[a.id] || null,
+      displayName: rosterByCode.get(a.id)?.name || athleteProfiles[a.id]?.Name || a.id,
       effectiveStartDate: startDates[a.id] || null,
       isCoach: COACHES.has(a.id),
     };
@@ -5380,7 +5462,10 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [
   all.forEach(a => { a.actions = buildActionList(a); a.acked = _isAcked(a); });
 
   const coaches  = all.filter(a => a.isCoach);
-  const athletes = all.filter(a => !a.isCoach).sort((a, b) => (b.lastActivityMs || 0) - (a.lastActivityMs || 0));
+  const athletes = all
+    .filter(a => !a.isCoach)
+    .filter(a => !rosterByCode.size || (rosterByCode.has(a.id) && rosterByCode.get(a.id)?.active !== false))
+    .sort((a, b) => (b.lastActivityMs || 0) - (a.lastActivityMs || 0));
   const syncAudit = buildSyncAudit({
     masterIds, startDates, wl, targetMap, bodyCounts, nutritionCounts,
     sessionCounts, planCounts, calcWeekNum,
@@ -5506,6 +5591,10 @@ function render({ athletes, coaches, applications = [], dataHealth = null, syncA
 // Summary bar removed — its stats (PRs 7d, Squad KM, Avg Comp) now live in the
 // Command Center hero score cards; the duplicated Act/Watch/Checked-in cards are gone.
 
+function athleteLabel(a) {
+  return a?.displayName || a?.id || 'Athlete';
+}
+
 function renderCommandCenter(ath, apps = [], health = null) {
   const el = document.getElementById('command-center');
   if (!el) return;
@@ -5513,9 +5602,10 @@ function renderCommandCenter(ath, apps = [], health = null) {
   const red = ath.filter(a => a.actions?.severity === 'red' && !a.acked);
   const amber = ath.filter(a => a.actions?.severity === 'amber' && !a.acked);
   const ackedN = ath.filter(a => a.acked).length;
-  const missing = ath.filter(a => a.isStale || (!a.weekly && !a.body.length));
-  const checkedIn = ath.filter(a => a.hasCurrentCheckin || a.hasRecent).length;
-  const coverage = ath.length ? Math.round((checkedIn / ath.length) * 100) : 0;
+  const dueCheckins = ath.filter(a => a.checkinDue);
+  const missing = dueCheckins.filter(a => a.isStale);
+  const checkedIn = dueCheckins.filter(a => a.hasRecent).length;
+  const coverage = dueCheckins.length ? Math.round((checkedIn / dueCheckins.length) * 100) : 100;
   const avgRecoveryVals = ath.map(a => a.recoveryScore).filter(v => v !== null && !isNaN(v));
   const avgRecovery = avgRecoveryVals.length
     ? (avgRecoveryVals.reduce((s, v) => s + v, 0) / avgRecoveryVals.length).toFixed(1)
@@ -5526,7 +5616,7 @@ function renderCommandCenter(ath, apps = [], health = null) {
     const sev = a.actions?.severity === 'red' ? 'red' : 'amber';
     return `<button class="cc-athlete" type="button" onclick="showFP('${esc(a.id)}')">
       <div>
-        <div class="cc-athlete-name">${esc(a.id)}</div>
+        <div class="cc-athlete-name">${esc(athleteLabel(a))}</div>
         <div class="cc-athlete-reason">${esc(reason)}</div>
       </div>
       <span style="display:flex;align-items:center;gap:5px">
@@ -5540,10 +5630,10 @@ function renderCommandCenter(ath, apps = [], health = null) {
     const last = a.weekly?.['Week Ending'] ? `Last ${fmtDate(a.weekly['Week Ending'])}` : 'No check-in data';
     return `<button class="cc-athlete" type="button" onclick="showFP('${esc(a.id)}')">
       <div>
-        <div class="cc-athlete-name">${esc(a.id)}</div>
+        <div class="cc-athlete-name">${esc(athleteLabel(a))}</div>
         <div class="cc-athlete-reason">${esc(last)}</div>
       </div>
-      <span class="cc-chip red">Missing</span>
+      <span class="cc-chip red">Overdue</span>
     </button>`;
   }).join('');
 
@@ -5587,8 +5677,8 @@ function renderCommandCenter(ath, apps = [], health = null) {
           ${priorityRows || `<div class="cc-empty">No priority athletes right now</div>`}
         </div>
         <div class="cc-list">
-          <div class="cc-list-title">Missing / Stale <span class="cc-list-count" onclick="ccScoreDetail('checkins')" style="cursor:pointer" title="Show all">${missing.length}</span></div>
-          ${missingRows || `<div class="cc-empty">Everyone has recent data</div>`}
+          <div class="cc-list-title">Overdue Check-ins <span class="cc-list-count" onclick="ccScoreDetail('checkins')" style="cursor:pointer" title="Show all">${missing.length}</span></div>
+          ${missingRows || `<div class="cc-empty">All due check-ins are covered</div>`}
         </div>
       </div>
     </section>
@@ -5632,16 +5722,16 @@ let _ccDetailKind = null;
 
 function _ccDetailContent(kind) {
   const ath = _allAthletes;
-  const row = (id, sub, chip = '') =>
-    `<button class="cc-athlete" type="button" onclick="ccCloseDetail();showFP('${esc(id)}')">
-      <div><div class="cc-athlete-name">${esc(id)}</div><div class="cc-athlete-reason">${esc(sub)}</div></div>${chip}
+  const row = (a, sub, chip = '') =>
+    `<button class="cc-athlete" type="button" onclick="ccCloseDetail();showFP('${esc(a.id)}')">
+      <div><div class="cc-athlete-name">${esc(athleteLabel(a))}</div><div class="cc-athlete-reason">${esc(sub)}</div></div>${chip}
     </button>`;
   const empty = msg => `<div class="cc-empty">${msg}</div>`;
   const ackRow = a => {
     const rec = _acks[a.id] || {};
     const meta = `Acknowledged${rec.at ? ' · ' + fmtDate(rec.at.slice(0, 10)) : ''}${rec.by && rec.by !== 'coach' ? ' by ' + rec.by : ''}`;
     return `<button class="cc-athlete acked" type="button" onclick="ccCloseDetail();showFP('${esc(a.id)}')">
-      <div><div class="cc-athlete-name">${esc(a.id)}</div><div class="cc-athlete-reason">${esc(meta)}</div></div>
+      <div><div class="cc-athlete-name">${esc(athleteLabel(a))}</div><div class="cc-athlete-reason">${esc(meta)}</div></div>
       <span class="cc-ack-btn" onclick="event.stopPropagation();unackAlert('${esc(a.id)}')" title="Restore alert">↩ Restore</span>
     </button>`;
   };
@@ -5650,7 +5740,7 @@ function _ccDetailContent(kind) {
     const list = ath.filter(a => a.actions?.severity === 'red' && !a.acked);
     const acked = ath.filter(a => a.actions?.severity === 'red' && a.acked);
     return { title: `Action Required (${list.length})`, html: (list.length || acked.length)
-      ? list.map(a => row(a.id, (a.actions.critical || [])[0] || 'Review this athlete', '<span class="cc-chip red">Act</span>')).join('') + acked.map(ackRow).join('')
+      ? list.map(a => row(a, (a.actions.critical || [])[0] || 'Review this athlete', '<span class="cc-chip red">Act</span>')).join('') + acked.map(ackRow).join('')
       : empty('No red-flag athletes right now') };
   }
   if (kind === 'priority') {
@@ -5658,8 +5748,8 @@ function _ccDetailContent(kind) {
     const ambers = ath.filter(a => a.actions?.severity === 'amber' && !a.acked);
     const acked = ath.filter(a => a.acked);
     return { title: `Highest Priority (${reds.length + ambers.length})`, html: (reds.length + ambers.length + acked.length)
-      ? reds.map(a => row(a.id, (a.actions.critical || [])[0] || 'Review this athlete', '<span class="cc-chip red">Act</span>')).join('')
-        + ambers.map(a => row(a.id, (a.actions.watch || [])[0] || 'Review this athlete', '<span class="cc-chip amber">Watch</span>')).join('')
+      ? reds.map(a => row(a, (a.actions.critical || [])[0] || 'Review this athlete', '<span class="cc-chip red">Act</span>')).join('')
+        + ambers.map(a => row(a, (a.actions.watch || [])[0] || 'Review this athlete', '<span class="cc-chip amber">Watch</span>')).join('')
         + acked.map(ackRow).join('')
       : empty('No priority athletes right now') };
   }
@@ -5667,26 +5757,29 @@ function _ccDetailContent(kind) {
     const list = ath.filter(a => a.actions?.severity === 'amber' && !a.acked);
     const acked = ath.filter(a => a.actions?.severity === 'amber' && a.acked);
     return { title: `Watch List (${list.length})`, html: (list.length || acked.length)
-      ? list.map(a => row(a.id, (a.actions.watch || [])[0] || 'Review this athlete', '<span class="cc-chip amber">Watch</span>')).join('') + acked.map(ackRow).join('')
+      ? list.map(a => row(a, (a.actions.watch || [])[0] || 'Review this athlete', '<span class="cc-chip amber">Watch</span>')).join('') + acked.map(ackRow).join('')
       : empty('Nobody on the watch list') };
   }
   if (kind === 'checkins') {
-    const missing = ath.filter(a => !(a.hasCurrentCheckin || a.hasRecent));
-    const done = ath.filter(a => a.hasCurrentCheckin || a.hasRecent);
-    return { title: `Check-ins — ${done.length}/${ath.length} in`, html:
-      missing.map(a => row(a.id, a.weekly?.['Week Ending'] ? `Last check-in ${fmtDate(a.weekly['Week Ending'])}` : 'No check-in data', '<span class="cc-chip red">Missing</span>')).join('')
-      + done.map(a => row(a.id, a.weekly?.['Week Ending'] ? `Checked in · ${fmtDate(a.weekly['Week Ending'])}` : 'Recent daily data', '<span class="cc-chip green">✓</span>')).join('')
+    const due = ath.filter(a => a.checkinDue);
+    const missing = due.filter(a => a.isStale);
+    const done = due.filter(a => a.hasRecent);
+    const notDue = ath.filter(a => !a.checkinDue);
+    return { title: `Check-ins — ${done.length}/${due.length} due covered`, html:
+      missing.map(a => row(a, a.weekly?.['Week Ending'] ? `Last check-in ${fmtDate(a.weekly['Week Ending'])}` : 'No check-in data', '<span class="cc-chip red">Overdue</span>')).join('')
+      + done.map(a => row(a, a.weekly?.['Week Ending'] ? `Covered · ${fmtDate(a.weekly['Week Ending'])}` : 'Covered', '<span class="cc-chip green">✓</span>')).join('')
+      + notDue.map(a => row(a, 'First weekly check-in is not due yet', '<span class="cc-chip">Not due</span>')).join('')
       || empty('No athletes') };
   }
   if (kind === 'prs') {
     const c7 = dago(7);
     const prRows = [];
     ath.forEach(a => (a.prs?.recent || []).forEach(pr => {
-      if (new Date(pr.date) >= c7) prRows.push({ id: a.id, pr });
+      if (new Date(pr.date) >= c7) prRows.push({ a, id: a.id, pr });
     }));
     prRows.sort((x, y) => (y.pr.date || '').localeCompare(x.pr.date || ''));
     return { title: `PRs — last 7 days (${prRows.length})`, html: prRows.length
-      ? prRows.map(r => row(r.id, `${r.pr.exercise} — ${r.pr.weight}kg × ${r.pr.reps} · ${fmtDate(r.pr.date)}`, '<span class="cc-chip green">PR</span>')).join('')
+      ? prRows.map(r => row(r.a, `${r.pr.exercise} — ${r.pr.weight}kg × ${r.pr.reps} · ${fmtDate(r.pr.date)}`, '<span class="cc-chip green">PR</span>')).join('')
       : empty('No PRs in the last 7 days') };
   }
   if (kind === 'km') {
@@ -5695,7 +5788,7 @@ function _ccDetailContent(kind) {
       ? list.map(x => {
           const t = parseFloat(x.a.target?.['Weekly KM Target']) || 0;
           const kmStr = Number.isInteger(x.km) ? x.km : x.km.toFixed(1);
-          return row(x.a.id, `${kmStr} km this week${t ? ` · target ${t} km` : ''}`);
+          return row(x.a, `${kmStr} km this week${t ? ` · target ${t} km` : ''}`);
         }).join('')
       : empty('No running logged this week') };
   }
@@ -5704,7 +5797,7 @@ function _ccDetailContent(kind) {
     return { title: 'Compliance by athlete (worst first)', html: list.length
       ? list.map(a => {
           const cls = a.compliance >= 80 ? 'green' : a.compliance >= 60 ? 'amber' : 'red';
-          return row(a.id, `${a.compliance}% of due sessions completed`, `<span class="cc-chip ${cls}">${a.compliance}%</span>`);
+          return row(a, `${a.compliance}% of due sessions completed`, `<span class="cc-chip ${cls}">${a.compliance}%</span>`);
         }).join('')
       : empty('No compliance data yet — no due planned sessions') };
   }
@@ -5753,9 +5846,9 @@ function buildCoachActions(ath, apps) {
     const txt = `${a.weekly?.['Run Niggles'] || ''} ${a.weekly?.['Lifts Niggles'] || ''}`;
     return isBad(txt) && /pain|injur|strain|physio|tear|niggle/i.test(txt);
   });
-  const stale = ath.filter(a => a.isStale);
+  const stale = ath.filter(a => a.checkinDue && a.isStale);
   const lowFuel = ath.filter(a => (a.actions?.critical || []).some(t => /calorie|under-fuelling/i.test(t)));
-  const lowCompliance = ath.filter(a => a.compliance !== null && a.compliance < 70);
+  const lowCompliance = ath.filter(a => a.complianceActionable && a.compliance !== null && a.compliance < 70);
   const newApps = apps.filter(r => !String(r['Current Status'] || '').toLowerCase().includes('reject'));
 
   const pushAth = (type, list, textFn, meta) => {
@@ -5764,16 +5857,19 @@ function buildCoachActions(ath, apps) {
 
   pushAth('act', red, a => {
     const reason = (a.actions?.critical || a.actions?.watch || [])[0] || 'Review this athlete';
-    return `${a.id}: ${reason}`;
+    return `${athleteLabel(a)}: ${reason}`;
   }, 'Contact today');
-  pushAth('injury', injury.filter(a => !red.includes(a)), a => `${a.id}: review niggle note before next run/lift adjustment.`, 'Programming check');
-  pushAth('fuel', lowFuel.filter(a => !red.includes(a)), a => `${a.id}: check fuelling before increasing load.`, 'Nutrition');
-  pushAth('compliance', lowCompliance.filter(a => !red.includes(a) && !lowFuel.includes(a)), a => `${a.id}: audit missed sessions and blockers.`, 'Adherence');
+  pushAth('injury', injury.filter(a => !red.includes(a)), a => `${athleteLabel(a)}: review niggle note before next run/lift adjustment.`, 'Programming check');
+  pushAth('fuel', lowFuel.filter(a => !red.includes(a)), a => `${athleteLabel(a)}: check fuelling before increasing load.`, 'Nutrition');
+  pushAth('compliance', lowCompliance.filter(a => !red.includes(a) && !lowFuel.includes(a)), a => `${athleteLabel(a)}: audit missed sessions and blockers.`, 'Adherence');
 
-  if (stale.length) actions.push({
+  // Do not repeat the same overdue check-in once it is already one of the red
+  // athlete actions above. The side panel should add information, not echo it.
+  const staleNotAlreadyShown = stale.filter(a => !red.slice(0, 2).includes(a));
+  if (staleNotAlreadyShown.length) actions.push({
     type: 'stale',
-    athlete: stale[0].id,
-    text: `${stale[0].id}: chase missing check-in${stale.length > 1 ? `, plus ${stale.length - 1} more` : ''}.`,
+    athlete: staleNotAlreadyShown[0].id,
+    text: `${athleteLabel(staleNotAlreadyShown[0])}: chase overdue check-in${staleNotAlreadyShown.length > 1 ? `, plus ${staleNotAlreadyShown.length - 1} more` : ''}.`,
     meta: 'Data capture',
   });
   if (newApps.length) actions.push({
@@ -8861,13 +8957,16 @@ async function load({ bust = false } = {}) {
   document.getElementById('refresh-btn').disabled = true;
 
   try {
-    const [weeklyNotion, sessionsNotion, bodyNotion, nutritionNotion, athleteDb, applications, coachDataSB] = await Promise.all([
+    const [weeklyNotion, sessionsNotion, bodyNotion, nutritionNotion, athleteDb, applications, coachDataSB, roster] = await Promise.all([
       fetchDB(DB.weekly, bust), fetchDB(DB.sessions, bust), fetchDB(DB.body, bust),
       fetchDB(DB.nutrition, bust), fetchAthleteProfilesSB(), fetchDB(DB.applications, bust),
       fetchCoachDataSB(),
       loadRoster(), // Supabase athletes roster — canonical athlete chip list
     ]);
 
+    // Install exact roster-name aliases before merging any legacy Notion rows.
+    // This makes the Supabase athlete code the identity boundary everywhere.
+    installRosterAliases(roster, athleteDb);
     const planning = usePlanningRows(coachDataSB.planning);
     useSessionStateRows(coachDataSB.sessionState);
     useSessionLibraryRows(coachDataSB.sessionLibrary, coachDataSB.workoutSplits);
@@ -8893,7 +8992,7 @@ async function load({ bust = false } = {}) {
     // Auto-fill weekly KM from the training plan where no manual target is set
     _fillTargetsKm(targets);
 
-    const { athletes, coaches, syncAudit } = buildAll(weekly, sessions, body, nutrition, athleteDb, targets, planning, applications);
+    const { athletes, coaches, syncAudit } = buildAll(weekly, sessions, body, nutrition, athleteDb, targets, planning, applications, roster);
     const dataHealth = {
       weekly: weekly.length,
       sessions: sessions.length,
