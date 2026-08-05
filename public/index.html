@@ -1904,6 +1904,7 @@ body[data-theme="light"] .theme-btn.active{background:rgba(255,255,255,.22);colo
 <link rel="stylesheet" href="/dashboard-theme-system.css">
 <link rel="stylesheet" href="/dashboard-desktop.css">
 <link rel="stylesheet" href="/dashboard-mobile-polish.css">
+<link rel="stylesheet" href="/triage.css">
 <div class="ma-backdrop" id="ma-backdrop" role="dialog" aria-modal="true" aria-label="Manage athletes" onclick="if(event.target===this)closeManageAthletes()">
   <div class="ma-card">
     <div class="ma-head">
@@ -2162,7 +2163,10 @@ function refreshRosterDrivenUI() {
 </script>
 
 <div class="tab-bar" role="tablist" aria-label="Dashboard sections">
-  <button class="tab active" id="tab-athletes-btn" onclick="switchTab('athletes')">
+  <button class="tab active" id="tab-triage-btn" onclick="switchTab('triage')">
+    Today <span class="tab-badge" id="tab-triage-count">—</span>
+  </button>
+  <button class="tab" id="tab-athletes-btn" onclick="switchTab('athletes')">
     Athletes <span class="tab-badge" id="tab-ath-count">—</span>
   </button>
   <button class="tab" id="tab-planning-btn" onclick="switchTab('planning')">
@@ -2189,7 +2193,7 @@ function refreshRosterDrivenUI() {
 </div>
 
 <!-- Filter bar (athletes only) -->
-<div class="filter-bar" id="filter-bar">
+<div class="filter-bar" id="filter-bar" style="display:none">
   <input type="text" class="search-input" id="search-input" placeholder="Search athlete…" oninput="applyFilters()">
   <div class="filter-divider"></div>
   <span class="filter-label">Status:</span>
@@ -2222,8 +2226,36 @@ function refreshRosterDrivenUI() {
   </div>
 </div>
 
+<!-- TODAY TRIAGE TAB -->
+<main id="tab-triage-content" class="triage-page">
+  <section class="triage-shell" aria-labelledby="triage-title">
+    <header class="triage-hero">
+      <div>
+        <div class="triage-eyebrow">Coach triage · Today</div>
+        <h1 id="triage-title">Who needs me today?</h1>
+        <p>Only paired signals that lead to a coaching action.</p>
+      </div>
+      <div class="triage-date" id="triage-date" aria-label="Dashboard date"></div>
+    </header>
+
+    <div id="triage-loading" class="triage-state" role="status">
+      <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+      <span>Ranking today’s signals…</span>
+    </div>
+    <div id="triage-error" class="triage-state triage-state-error" role="alert" hidden>
+      <span id="triage-error-message">Triage data is unavailable.</span>
+      <button type="button" class="triage-retry" data-triage-retry>Retry</button>
+    </div>
+    <div id="triage-content" hidden aria-live="polite">
+      <div class="triage-summary" id="triage-summary"></div>
+      <ol class="triage-queue" id="triage-queue" aria-label="Athletes needing attention"></ol>
+      <div class="triage-clear" id="triage-clear"></div>
+    </div>
+  </section>
+</main>
+
 <!-- ATHLETES TAB -->
-<div id="tab-athletes-content">
+<div id="tab-athletes-content" style="display:none">
   <div class="main">
     <div id="loading" class="state-box">
       <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
@@ -5420,6 +5452,8 @@ let _allApplications = [];
 let _decisions = [];
 let _dataHealth = null;
 let _syncAudit = [];
+let _fullDashboardLoaded = false;
+let _fullDashboardLoading = false;
 let _statusFilter = localStorage.getItem('dp_dash_status') || 'all';
 let _tableSort = null;          // { key, dir } — set by clicking a table header; overrides dropdown sort in table view
 let _expandedRows = new Set();  // safeIds of expanded table rows (survives re-renders)
@@ -5464,7 +5498,8 @@ function render({ athletes, coaches, applications = [], dataHealth = null, syncA
   renderCoaches(coaches);
   renderSyncAudit(syncAudit);
 
-  document.getElementById('gen-btn').style.display = 'block';
+  document.getElementById('gen-btn').style.display =
+    document.getElementById('tab-athletes-btn')?.classList.contains('active') ? 'block' : 'none';
   document.getElementById('squad-brief').classList.remove('visible');
 }
 
@@ -8679,7 +8714,7 @@ async function decideApplication(notionId, name, decision) {
 // ── Tab switching ─────────────────────────────────────────────────────────────
 function switchTab(tab) {
   const idMap = { applications: 'apps', notifications: 'notif', nutrition: 'nut' };
-  const tabs = ['athletes','planning','nutrition','coaches','sync','applications','notifications','send'];
+  const tabs = ['triage','athletes','planning','nutrition','coaches','sync','applications','notifications','send'];
   tabs.forEach(t => {
     const key = idMap[t] || t;
     const btn     = document.getElementById(`tab-${key}-btn`);
@@ -8707,6 +8742,11 @@ function switchTab(tab) {
   } catch (err) {
     console.warn('[tabs] content render failed for ' + tab, err);
   }
+
+  const needsFullData = new Set([
+    'athletes', 'planning', 'nutrition', 'coaches', 'sync', 'applications', 'notifications',
+  ]).has(tab);
+  if (needsFullData && !_fullDashboardLoaded && !_fullDashboardLoading) load();
 
 }
 
@@ -8813,6 +8853,8 @@ async function unackAlert(id) {
 
 // ── Main load ─────────────────────────────────────────────────────────────────
 async function load({ bust = false } = {}) {
+  if (_fullDashboardLoading) return;
+  _fullDashboardLoading = true;
   document.getElementById('loading').style.display = 'block';
   document.getElementById('content').style.display = 'none';
   document.getElementById('err').style.display = 'none';
@@ -8877,6 +8919,7 @@ async function load({ bust = false } = {}) {
       loadedAt: new Date(),
     };
     render({ athletes, coaches, applications, dataHealth, syncAudit });
+    _fullDashboardLoaded = true;
     renderNotifications(applications, _decisions);
     renderApplications(applications, _decisions);
     updatePlanningBadge();
@@ -8898,6 +8941,7 @@ async function load({ bust = false } = {}) {
     document.getElementById('err').style.display = 'block';
     document.getElementById('err-msg').textContent = 'Error: ' + e.message;
   } finally {
+    _fullDashboardLoading = false;
     document.getElementById('refresh-btn').disabled = false;
   }
 }
@@ -10386,9 +10430,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
   document.querySelectorAll('[id^="tab-"][id$="-content"]').forEach(panel => panel.setAttribute('role', 'tabpanel'));
   await window.DP_COACH_AUTH?.ready;
-  load();
+  if (!document.getElementById('tab-triage-btn')?.classList.contains('active')) load();
 });
-document.getElementById('refresh-btn').addEventListener('click', () => load({ bust: true }));
+document.getElementById('refresh-btn').addEventListener('click', () => {
+  window.loadTriage?.();
+  if (!document.getElementById('tab-triage-btn')?.classList.contains('active')) {
+    load({ bust: true });
+  }
+});
 document.getElementById('gen-btn').addEventListener('click', generateAI);
 
 // Coach selector — persists across sessions, shows "Coach: KARL" once chosen
@@ -10422,6 +10471,7 @@ document.getElementById('gen-btn').addEventListener('click', generateAI);
 <script src="/dashboard-redesign.js" defer></script>
 <script src="/coaching-actions.js" defer></script>
 <script src="/dashboard-mobilenav.js" defer></script>
+<script src="/triage.js" defer></script>
 <script src="/app.js" defer></script>
 </body>
 </html>

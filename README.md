@@ -47,6 +47,27 @@ The dashboard surface is now gated, but the shared Supabase project still contai
 
 The Hobby plan allows 12 Serverless Functions per deployment. This repository currently has 11 files in `api/`, leaving one slot free. Keep shared helpers in `server/`, not `api/`, and extend an existing endpoint with an explicit mode before adding another function. `/api/actions?mode=session` intentionally shares the actions function, and `/api/data` is the only Notion/Supabase data proxy.
 
+## Today triage rollout
+
+The default coach screen is a server-ranked queue from
+`GET /api/coach-data?mode=triage`. It currently ships the first two non-Strava
+signals: pain/coach alert and gone quiet. Opening Today does not load the full
+roster dashboard or prefetch Strava data.
+
+Manual deployment order:
+
+1. Apply `supabase/migrations/20260805011628_coach_triage_signals.sql` in Supabase.
+2. Deploy the dashboard without adding another Vercel function.
+3. Confirm an unauthenticated triage request returns `401`, then unlock the
+   dashboard and confirm Today shows the active roster clear count.
+4. Populate `daily_body_logs.pain` (0–10) or `coach_alert` through the approved
+   athlete ingest source before expecting pain rows. Soreness is not treated as
+   pain.
+
+The Strava divergence and over-pacing rows are intentionally not included. They
+must wait for the approved `strava_activities` summary cache and lazy permanent
+lap-detail cache.
+
 ## Local checks
 
 ```bash

@@ -14,6 +14,9 @@ const TABLES = {
 
 const PAGE_SIZE = 1000;
 const MAX_PAGES = 20;
+const TRIAGE_TIMEZONE = 'Australia/Adelaide';
+const PAIN_WINDOW_DAYS = 7;
+const QUIET_AFTER_DAYS = 5;
 
 function cleanBaseUrl(value) {
   return String(value || '').replace(/\/+$/, '');
@@ -68,6 +71,37 @@ async function selectAll(table, orderColumn) {
   }
 
   return rows;
+}
+
+async function selectRows(table, params = {}) {
+  const baseUrl = cleanBaseUrl(process.env.SUPABASE_URL);
+  const key = process.env.SUPABASE_SERVICE_KEY;
+  if (!baseUrl || !key) {
+    throw new Error('SUPABASE_URL or SUPABASE_SERVICE_KEY is not configured');
+  }
+
+  const query = new URLSearchParams();
+  for (const [name, value] of Object.entries(params)) {
+    if (value !== undefined && value !== null && value !== '') {
+      query.set(name, String(value));
+    }
+  }
+
+  const response = await fetch(`${baseUrl}/rest/v1/${table}?${query}`, {
+    headers: {
+      apikey: key,
+      Authorization: `Bearer ${key}`,
+      Accept: 'application/json',
+    },
+  });
+  const body = await response.text();
+  let data;
+  try { data = body ? JSON.parse(body) : []; }
+  catch { throw new Error(`Invalid Supabase response for ${table}`); }
+  if (!response.ok) {
+    throw new Error(data?.message || data?.error || `Supabase returned ${response.status} for ${table}`);
+  }
+  return Array.isArray(data) ? data : [];
 }
 
 async function selectAthleteSettings() {
@@ -414,6 +448,264 @@ function reconcileMissingSessions({ logsRows, plannedRows, athletes, structuredR
   return { rows, recovered };
 }
 
+function isoDateInTimeZone(value, timeZone = TRIAGE_TIMEZONE) {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) throw new Error('A valid triage timestamp is required');
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date);
+  const get = type => parts.find(part => part.type === type)?.value;
+  return `${get('year')}-${get('month')}-${get('day')}`;
+}
+
+function shiftDate(dateText, days) {
+  const date = new Date(`${dateText}T00:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+function dayDistance(fromDate, toDate) {
+  return Math.round(
+    (Date.parse(`${toDate}T00:00:00Z`) - Date.parse(`${fromDate}T00:00:00Z`)) / 86400000
+  );
+}
+
+function whenCopy(dateText, today) {
+  const days = dayDistance(dateText, today);
+  if (days === 0) return 'today';
+  if (days === 1) return 'yesterday';
+  if (days > 1) return `${days} days ago`;
+  if (days === -1) return 'tomorrow';
+  return `in ${Math.abs(days)} days`;
+}
+
+function numberOrNull(value) {
+  if (value === null || value === undefined || value === '') return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function painCandidateSort(left, right) {
+  const alertDelta = Number(Boolean(right.coach_alert)) - Number(Boolean(left.coach_alert));
+  if (alertDelta) return alertDelta;
+  const painDelta = Number(right.pain || 0) - Number(left.pain || 0);
+  if (painDelta) return painDelta;
+  return String(right.submitted_at || right.log_date || '').localeCompare(
+    String(left.submitted_at || left.log_date || '')
+  );
+}
+
+function latestCompletedContext(rows, athleteCode, signalDate) {
+  return (rows || [])
+    .filter(row => normaliseCode(row.athlete_code) === athleteCode)
+    .filter(row => row.session_date && row.session_date <= signalDate)
+    .filter(row => dayDistance(row.session_date, signalDate) >= 0 && dayDistance(row.session_date, signalDate) <= 2)
+    .sort((a, b) => String(b.session_date).localeCompare(String(a.session_date)))[0] || null;
+}
+
+function nextPlannedContext(rows, athleteCode, signalDate) {
+  return (rows || [])
+    .filter(row => normaliseCode(row.athlete_code) === athleteCode)
+    .filter(row => row.planned_date && row.planned_date >= signalDate)
+    .filter(row => !/^(done|completed?|complete|skipped|missed)$/i.test(String(row.status || '').trim()))
+    .sort((a, b) => String(a.planned_date).localeCompare(String(b.planned_date)))[0] || null;
+}
+
+function painSignalCopy(signal, completed, planned, today, quietDays) {
+  const pain = numberOrNull(signal.pain);
+  const hasPain = pain !== null;
+  const timing = whenCopy(String(signal.log_date), today);
+  let sentence;
+
+  if (signal.coach_alert && hasPain) sentence = `Coach alert with pain ${pain}/10 reported ${timing}`;
+  else if (signal.coach_alert) sentence = `Coach alert raised ${timing}`;
+  else sentence = `Pain ${pain}/10 reported ${timing}`;
+
+  if (completed) {
+    const session = completed.session_name || completed.session_category || 'a completed session';
+    sentence += ` after ${session}`;
+  } else if (planned) {
+    const session = planned.title || planned.session_type || 'a planned session';
+    sentence += ` with ${session} prescribed ${whenCopy(String(planned.planned_date), today)}`;
+  }
+
+  if (quietDays !== false) {
+    sentence += quietDays === null
+      ? '; there is also no body or completed-session activity on record'
+      : `; there has also been no body or completed-session activity for ${quietDays} days`;
+  }
+  return `${sentence}.`;
+}
+
+export function buildTriageQueue({
+  athletes = [],
+  bodyRows = [],
+  lastActivityRows = [],
+  trainingRows = [],
+  plannedRows = [],
+  now = new Date(),
+  timeZone = TRIAGE_TIMEZONE,
+} = {}) {
+  const nowDate = now instanceof Date ? now : new Date(now);
+  const today = isoDateInTimeZone(nowDate, timeZone);
+  const painStart = shiftDate(today, -(PAIN_WINDOW_DAYS - 1));
+
+  const active = (athletes || [])
+    .filter(row => row && row.active === true && row.archived_at == null)
+    .map(row => ({ ...row, code: normaliseCode(row.code) }))
+    .filter(row => row.code);
+  const activeCodes = new Set(active.map(row => row.code));
+  const body = (bodyRows || []).filter(row => activeCodes.has(normaliseCode(row.athlete_code)));
+  const activityByAthlete = new Map(
+    (lastActivityRows || []).map(row => [normaliseCode(row.athlete_code), row])
+  );
+
+  const painByAthlete = new Map();
+  for (const row of body) {
+    const code = normaliseCode(row.athlete_code);
+    const pain = numberOrNull(row.pain);
+    const qualifies = row.coach_alert === true || (pain !== null && pain >= 5);
+    if (!qualifies || String(row.log_date || '') < painStart || String(row.log_date || '') > today) continue;
+    const candidates = painByAthlete.get(code) || [];
+    candidates.push(row);
+    painByAthlete.set(code, candidates);
+  }
+
+  const queue = [];
+  for (const athlete of active) {
+    const code = athlete.code;
+    const activity = activityByAthlete.get(code) || {};
+    const bodyDate = String(activity.last_body_log_date || '').slice(0, 10);
+    const bodyAgeDays = /^\d{4}-\d{2}-\d{2}$/.test(bodyDate)
+      ? dayDistance(bodyDate, today)
+      : null;
+    const sessionActivityAt = Date.parse(activity.last_session_log_at || '');
+    const sessionAgeDays = Number.isFinite(sessionActivityAt)
+      ? Math.floor((nowDate.getTime() - sessionActivityAt) / 86400000)
+      : null;
+    const goneQuiet = (bodyAgeDays === null || bodyAgeDays >= QUIET_AFTER_DAYS) &&
+      (sessionAgeDays === null || sessionAgeDays >= QUIET_AFTER_DAYS);
+    const ages = [bodyAgeDays, sessionAgeDays].filter(value => value !== null);
+    const quietDays = ages.length ? Math.max(0, Math.min(...ages)) : null;
+    const painSignal = (painByAthlete.get(code) || []).sort(painCandidateSort)[0] || null;
+    if (!painSignal && !goneQuiet) continue;
+
+    const painScore = painSignal ? numberOrNull(painSignal.pain) : null;
+    const completed = painSignal
+      ? latestCompletedContext(trainingRows, code, String(painSignal.log_date))
+      : null;
+    const planned = painSignal && !completed
+      ? nextPlannedContext(plannedRows, code, String(painSignal.log_date))
+      : null;
+    const coachAlert = painSignal?.coach_alert === true;
+    const priority = painSignal
+      ? 10000 + (coachAlert ? 1000 : 0) + (painScore || 0) * 10
+      : 5000 + Math.min(quietDays ?? 365, 365);
+
+    queue.push({
+      athleteCode: code,
+      athleteName: athlete.name || code,
+      flag: painSignal ? 'pain' : 'gone_quiet',
+      severity: painSignal ? 'critical' : 'high',
+      priority,
+      signal: painSignal
+        ? painSignalCopy(painSignal, completed, planned, today, goneQuiet ? quietDays : false)
+        : quietDays === null
+          ? 'No completed session and no body log has ever been recorded.'
+          : `No completed session and no body log for ${quietDays} days.`,
+      action: {
+        type: 'message',
+        label: painSignal ? 'Message athlete' : 'Check in',
+        athleteCode: code,
+      },
+      evidence: {
+        pain: painSignal ? {
+          date: painSignal.log_date,
+          score: painScore,
+          coachAlert,
+        } : null,
+        trainingContext: completed ? {
+          source: 'training_session_logs',
+          date: completed.session_date,
+          label: completed.session_name || completed.session_category || null,
+        } : planned ? {
+          source: 'planned_sessions',
+          date: planned.planned_date,
+          label: planned.title || planned.session_type || null,
+        } : null,
+        goneQuiet: goneQuiet ? {
+          days: quietDays,
+          noDailyBodyLogs: true,
+          noSessionLogs: true,
+        } : null,
+      },
+    });
+  }
+
+  queue.sort((left, right) =>
+    right.priority - left.priority ||
+    String(right.evidence.pain?.date || '').localeCompare(String(left.evidence.pain?.date || '')) ||
+    left.athleteName.localeCompare(right.athleteName)
+  );
+
+  return {
+    ok: true,
+    source: 'portal_supabase',
+    generatedAt: nowDate.toISOString(),
+    timeZone,
+    thresholds: { pain: 5, painWindowDays: PAIN_WINDOW_DAYS, quietDays: QUIET_AFTER_DAYS },
+    counts: {
+      active: active.length,
+      flagged: queue.length,
+      critical: queue.filter(row => row.severity === 'critical').length,
+      high: queue.filter(row => row.severity === 'high').length,
+      clear: Math.max(0, active.length - queue.length),
+    },
+    queue,
+  };
+}
+
+async function loadTriage() {
+  const now = new Date();
+  const today = isoDateInTimeZone(now);
+  const painStart = shiftDate(today, -(PAIN_WINDOW_DAYS - 1));
+  const contextStart = shiftDate(painStart, -2);
+  const planEnd = shiftDate(today, 7);
+
+  const [athletes, bodyRows, lastActivityRows, trainingRows, plannedRows] = await Promise.all([
+    selectRows('athletes', {
+      select: 'code,name,active,archived_at',
+      active: 'eq.true',
+      archived_at: 'is.null',
+      order: 'name.asc',
+    }),
+    selectRows('daily_body_logs', {
+      select: 'athlete_code,log_date,pain,coach_alert,submitted_at',
+      log_date: `gte.${painStart}`,
+      order: 'log_date.desc,submitted_at.desc',
+    }),
+    selectRows('coach_triage_last_activity', {
+      select: 'athlete_code,last_body_log_date,last_session_log_at',
+      order: 'athlete_code.asc',
+    }),
+    selectRows('training_session_logs', {
+      select: 'athlete_code,session_date,session_name,session_category',
+      session_date: `gte.${contextStart}`,
+      order: 'session_date.desc',
+    }),
+    selectRows('planned_sessions', {
+      select: 'athlete_code,planned_date,title,session_type,status',
+      planned_date: `gte.${today}`,
+      order: 'planned_date.asc',
+    }).catch(() => []),
+  ]);
+
+  return buildTriageQueue({ athletes, bodyRows, lastActivityRows, trainingRows, plannedRows, now });
+}
+
 export default async function handler(req, res) {
   setCoachCors(req, res, 'GET, OPTIONS');
 
@@ -426,6 +718,14 @@ export default async function handler(req, res) {
   try { requireCoach(req); } catch (error) { return coachError(res, error); }
 
   try {
+    const mode = String(req.query?.mode || '').trim().toLowerCase();
+    if (mode === 'triage') {
+      return res.status(200).json(await loadTriage());
+    }
+    if (mode && mode !== 'full') {
+      return res.status(400).json({ ok: false, error: `Unknown coach-data mode: ${mode}` });
+    }
+
     const [body, nutrition, sessions, weeklyRaw, goals, nutritionPlans, athleteSettings, sessionLibrary, workoutSplits, applicationDecisions, plannedRows, athletes] = await Promise.all([
       selectAll(TABLES.body, 'log_date'),
       selectAll(TABLES.nutrition, 'log_date'),

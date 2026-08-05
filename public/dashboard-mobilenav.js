@@ -11,12 +11,13 @@
   // Primary destinations shown in the bar. Everything else lives in More.
   // key = the arg passed to switchTab(); label = short thumb-friendly name.
   var PRIMARY = [
-    { key: 'athletes',  label: 'Squad',  icon: 'squad'  },
+    { key: 'triage',    label: 'Today',  icon: 'today'  },
     { key: 'planning',  label: 'Plan',   icon: 'plan'   },
     { key: 'nutrition', label: 'Fuel',   icon: 'fuel'   },
     { key: 'send',      label: 'Notify', icon: 'send'   }
   ];
   var MORE = [
+    { key: 'athletes',      label: 'Squad',    icon: 'squad'    },
     { key: 'applications',  label: 'Pipeline', icon: 'pipeline' },
     { key: 'notifications', label: 'New',      icon: 'bell'     },
     { key: 'coaches',       label: 'Coaches',  icon: 'coaches'  },
@@ -26,6 +27,7 @@
 
   // Maps a tab key to its existing top-bar badge id (for live count mirror).
   var BADGE_SRC = {
+    triage:       'tab-triage-count',
     athletes:     'tab-ath-count',
     planning:     'tab-planning-count',
     nutrition:    'tab-nut-count',
@@ -35,6 +37,7 @@
   };
 
   var ICONS = {
+    today:   '<path d="M12 3 3.5 19h17L12 3Z"/><path d="M12 9v4M12 16.5h.01"/>',
     squad:   '<path d="M9 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/><path d="M17 11a3 3 0 1 0 0-6"/><path d="M3 20c0-3 2.7-5 6-5s6 2 6 5"/><path d="M17 15c2.5.4 4 2.2 4 5"/>',
     plan:    '<rect x="3" y="4.5" width="18" height="16" rx="2"/><path d="M3 9h18M8 3v3M16 3v3"/><path d="M7.5 13h3M7.5 16.5h6"/>',
     fuel:    '<path d="M7 3v8M4 3v4a3 3 0 0 0 3 3M10 3v4a3 3 0 0 1-3 3M7 11v10"/><path d="M17 3c-1.6 0-3 2-3 5s1.4 4 3 4v9"/>',
@@ -300,10 +303,9 @@
 
     // Reflect whichever tab is active on load.
     var current = document.querySelector('.tab.active');
-    var map = { athletes: 'athletes' };
-    var onload = current && current.id ? current.id.replace('tab-', '').replace('-btn', '') : 'athletes';
-    var keyFix = { ath: 'athletes', planning: 'planning', nut: 'nutrition', coaches: 'coaches', sync: 'sync', apps: 'applications', notif: 'notifications', send: 'send' };
-    setActive(keyFix[onload] || 'athletes');
+    var onload = current && current.id ? current.id.replace('tab-', '').replace('-btn', '') : 'triage';
+    var keyFix = { triage: 'triage', ath: 'athletes', athletes: 'athletes', planning: 'planning', nut: 'nutrition', coaches: 'coaches', sync: 'sync', apps: 'applications', notif: 'notifications', send: 'send' };
+    setActive(keyFix[onload] || 'triage');
 
     // switchTab is defined in a later inline script; wait for it.
     var tries = 0;
