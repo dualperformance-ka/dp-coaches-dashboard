@@ -3,10 +3,12 @@
 
 @media (max-width: 720px) {
   :root {
-    --dp-mobile-edge: 10px;
-    --dp-mobile-nav-h: 72px;
-    --dp-mobile-header-row: 54px;
+    --dp-mobile-edge: 12px;
+    --dp-mobile-nav-h: 68px;
+    --dp-mobile-header-row: 52px;
   }
+
+  *, *::before, *::after { box-sizing: border-box; }
 
   html {
     width: 100%;
@@ -20,7 +22,27 @@
     max-width: 100%;
     overflow-x: clip;
     -webkit-text-size-adjust: 100%;
+    background:
+      radial-gradient(circle at 100% 0, rgba(121,195,232,.075), transparent 24rem),
+      var(--bg);
   }
+
+  main,
+  [id^="tab-"][id$="-content"],
+  .triage-shell,
+  .main,
+  .plan-section,
+  .coaches-section,
+  .sync-section,
+  .apps-section,
+  .notif-section,
+  .sched-section {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  input, select, textarea, button, table, img, svg { max-width: 100%; }
 
   /* Installed iPhones draw into the status-bar area. Keep every header control
      below the notch instead of forcing a fixed 54px box over the system clock. */
@@ -29,6 +51,31 @@
     min-height: calc(var(--dp-mobile-header-row) + var(--dp-safe-top)) !important;
     height: auto !important;
     padding: calc(6px + var(--dp-safe-top)) var(--dp-mobile-edge) 6px !important;
+    border-bottom-color: rgba(146,210,237,.12) !important;
+    box-shadow: 0 8px 24px rgba(0,0,0,.18) !important;
+  }
+  header .logo-mark-sm {
+    width: 27px !important;
+    height: 27px !important;
+  }
+  header .h-right { gap: 4px !important; }
+  header .coach-select {
+    max-width: 94px !important;
+    min-height: 32px !important;
+    height: 32px !important;
+    padding-inline: 9px 22px !important;
+    border-color: rgba(255,255,255,.11) !important;
+    background-color: rgba(255,255,255,.045) !important;
+  }
+  header #manage-athletes-btn,
+  header #refresh-btn,
+  header .dp-theme-switch {
+    width: 32px !important;
+    height: 32px !important;
+    min-height: 32px !important;
+    flex-basis: 32px !important;
+    border-color: rgba(255,255,255,.11) !important;
+    background: rgba(255,255,255,.045) !important;
   }
 
   .dp-access-gate {
@@ -43,6 +90,8 @@
     gap: 8px;
     padding: 22px 18px;
     border-radius: 16px;
+    max-height: calc(100dvh - var(--dp-safe-top) - var(--dp-safe-bottom) - 28px);
+    overflow-y: auto;
   }
   .dp-access-logo { width: 190px; margin-bottom: 10px; }
   .dp-access-card h1 { font-size: 26px; }
@@ -75,17 +124,127 @@
   }
 
   .dp-mobile-section-head {
-    margin: 14px var(--dp-mobile-edge) 0 !important;
-    padding: 0 0 7px !important;
+    margin: 16px 0 0 !important;
+    padding: 0 var(--dp-mobile-edge) 7px !important;
   }
   .dp-mobile-section-head h1 {
-    font-size: clamp(23px, 7vw, 28px) !important;
-    line-height: .98 !important;
+    font-size: clamp(22px, 6.4vw, 26px) !important;
+    line-height: 1 !important;
   }
   .dp-mobile-section-head p {
     color: var(--muted) !important;
     font-size: 12px !important;
+    line-height: 1.4 !important;
   }
+
+  /* The Today screen is the mobile typography reference: Geist for readable
+     interface copy and headings, with Geist Mono reserved for dates, metrics
+     and small metadata. Legacy tabs previously mixed condensed, mono and UI
+     treatments for equivalent controls, which made each destination feel like
+     a different product. */
+  #tab-athletes-content,
+  #tab-planning-content,
+  #tab-nut-content,
+  #tab-coaches-content,
+  #tab-sync-content,
+  #tab-apps-content,
+  #tab-notif-content,
+  #tab-send-content {
+    font-family: var(--font-ui) !important;
+  }
+
+  .dp-mobile-section-head h1,
+  .coach-actions-head h2,
+  .coach-action-dialog-head h2,
+  .plan-card-title,
+  .plan-lib-name,
+  .nut-wk,
+  .coach-name,
+  .sync-name,
+  .app-name,
+  .fpc-name,
+  .week-jump-main {
+    font-family: var(--font-ui) !important;
+    font-weight: 800 !important;
+    letter-spacing: -.04em !important;
+    text-transform: none !important;
+  }
+
+  .plan-chip,
+  .nut-athlete-tab,
+  .plan-action-btn,
+  .plan-add-btn,
+  .nut-save,
+  .nut-del,
+  .app-accept-btn,
+  .app-reject-btn,
+  .notif-mark-seen,
+  .cn-send-btn,
+  .coach-action-new,
+  .coach-action-filters button,
+  .coach-action-complete,
+  .dp-mobile-filter-toggle,
+  .sf,
+  .fp-back,
+  .fp-nav-btn,
+  .fpc-act-btn,
+  .week-jump-btn {
+    font-family: var(--font-ui) !important;
+    font-weight: 650 !important;
+    letter-spacing: 0 !important;
+    text-transform: none !important;
+  }
+
+  .dp-mobile-section-kicker,
+  .plan-week-meta,
+  .nut-meta,
+  .plan-day-head,
+  .app-meta,
+  .app-field-lbl,
+  .sync-table tbody td::before,
+  .nut-table .nut-row td::before,
+  .sum-num,
+  .cc-score-num,
+  .fpc-score-val,
+  .sync-score-num,
+  .fp-idx {
+    font-family: var(--font-data) !important;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Today should feel like a mobile command screen, not a desktop hero squeezed
+     into a phone. */
+  .triage-page {
+    min-height: calc(100dvh - var(--dp-mobile-header-row)) !important;
+    padding-bottom: calc(var(--dp-mobile-nav-h) + 18px + var(--dp-safe-bottom)) !important;
+  }
+  .triage-shell {
+    padding: 20px var(--dp-mobile-edge) 24px !important;
+  }
+  .triage-hero { margin-bottom: 16px !important; }
+  .triage-eyebrow { margin-bottom: 6px !important; font-size: 8px !important; }
+  .triage-hero h1 {
+    max-width: 330px;
+    font-size: clamp(30px, 8.5vw, 36px) !important;
+    line-height: 1 !important;
+    letter-spacing: -.04em !important;
+  }
+  .triage-hero p {
+    margin-top: 8px !important;
+    font-size: 12px !important;
+    line-height: 1.45 !important;
+  }
+  .triage-date {
+    margin-top: 10px !important;
+    padding: 6px 9px !important;
+    font-size: 8px !important;
+  }
+  .triage-state { min-height: 180px !important; border-radius: 14px !important; }
+  .triage-summary { gap: 6px !important; margin-bottom: 10px !important; }
+  .triage-stat { min-height: 72px !important; padding: 11px 8px !important; }
+  .triage-stat-value { font-size: 21px !important; }
+  .triage-stat-label { margin-top: 6px !important; font-size: 8px !important; line-height: 1.25; }
+  .triage-row { border-radius: 14px !important; }
 
   /* Overview filter: one quiet row until the coach asks for more. */
   #filter-bar,
@@ -241,6 +400,39 @@
     border-radius: 14px !important;
     box-shadow: 0 8px 22px rgba(15,35,49,.06);
   }
+
+  /* Contain the dense editing and data surfaces. Purposeful chip rails may
+     scroll; cards, forms and rows may not push the page wider than the phone. */
+  .plan-toolbar,
+  .plan-grid,
+  .plan-day,
+  .plan-card,
+  .nut-table-wrap,
+  .nut-row,
+  .sync-intro,
+  .sync-table-wrap,
+  .sync-table tbody tr,
+  .apps-grid,
+  .app-card,
+  .coaches-grid,
+  .coach-card,
+  .cn-composer,
+  .cn-row,
+  .coach-actions,
+  .coach-action-row {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+  .plan-card-title,
+  .app-name,
+  .app-field-val,
+  .coach-action-title,
+  .coach-action-meta,
+  .sync-muted,
+  .cn-composer label {
+    overflow-wrap: anywhere;
+  }
   #grid.table-mode .dash-trow td:not(:first-child)::before {
     color: var(--muted) !important;
     font-family: var(--font-ui) !important;
@@ -350,8 +542,8 @@
     border-radius: 14px !important;
   }
   #fp-overlay .fpc-name {
-    font-size: clamp(29px, 9.5vw, 38px) !important;
-    line-height: .96 !important;
+    font-size: clamp(28px, 8.6vw, 34px) !important;
+    line-height: 1 !important;
   }
   #fp-overlay .fpc-hero-actions {
     gap: 6px !important;
@@ -458,16 +650,24 @@
   /* Bottom navigation is a true app bar with 48px touch targets. */
   .dp-mobilenav {
     min-height: var(--dp-mobile-nav-h) !important;
-    padding: 7px 6px calc(7px + var(--dp-safe-bottom)) !important;
-    gap: 3px !important;
+    padding: 5px 8px calc(5px + var(--dp-safe-bottom)) !important;
+    gap: 2px !important;
+    border-top-color: rgba(146,210,237,.14) !important;
+    box-shadow: 0 -12px 34px rgba(0,0,0,.32) !important;
   }
   .dp-mnav-item {
-    min-height: 50px;
-    padding: 5px 2px 4px !important;
-    border-radius: 14px !important;
+    min-height: 48px;
+    padding: 4px 2px 3px !important;
+    border-radius: 12px !important;
   }
-  .dp-mnav-item.active { background: rgba(121,195,232,.10) !important; }
-  .dp-mnav-item.active .dp-mnav-ic::before { display: none; }
+  .dp-mnav-item.active { background: transparent !important; }
+  .dp-mnav-ic { width: 25px !important; height: 25px !important; }
+  .dp-mnav-ic svg { width: 21px !important; height: 21px !important; }
+  .dp-mnav-item.active .dp-mnav-ic::before {
+    display: block !important;
+    inset: -4px -11px !important;
+    background: rgba(121,195,232,.13) !important;
+  }
   .dp-mnav-lbl {
     font-family: var(--font-ui) !important;
     font-size: 9px !important;
@@ -475,10 +675,17 @@
     letter-spacing: .01em !important;
   }
   .dp-sheet-cell {
-    min-height: 84px;
+    min-height: 76px;
+    padding: 11px 5px !important;
     font-family: var(--font-ui) !important;
     font-weight: 700;
   }
+  .dp-sheet {
+    padding: 7px var(--dp-mobile-edge) calc(14px + var(--dp-safe-bottom)) !important;
+    border-radius: 22px 22px 0 0 !important;
+  }
+  .dp-sheet-title { margin-bottom: 10px !important; }
+  .dp-sheet-grid { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; gap: 7px !important; }
 
   /* Never let an app-update notice cover the fixed navigation. */
   body > .dp-app-toast[role="status"] {
@@ -498,6 +705,8 @@
 }
 
 @media (max-width: 380px) {
+  :root { --dp-mobile-edge: 10px; }
+  header .coach-select { max-width: 78px !important; }
   .dp-page-title { max-width: 64vw; }
   .cc-score { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
   .cc-score-card { min-height: 58px !important; }
@@ -506,4 +715,7 @@
   .coach-action-new { padding-inline: 8px !important; }
   #fp-overlay .fp-back { font-size: 9px; padding-inline: 7px; }
   #fp-overlay .fp-nav-btn { padding-inline: 6px !important; }
+  .triage-hero h1 { font-size: 29px !important; }
+  .triage-summary { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+  .dp-mnav-lbl { font-size: 8.5px !important; }
 }

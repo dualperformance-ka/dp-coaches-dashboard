@@ -12,12 +12,12 @@
   // key = the arg passed to switchTab(); label = short thumb-friendly name.
   var PRIMARY = [
     { key: 'triage',    label: 'Today',  icon: 'today'  },
+    { key: 'athletes',  label: 'Squad',  icon: 'squad'  },
     { key: 'planning',  label: 'Plan',   icon: 'plan'   },
-    { key: 'nutrition', label: 'Fuel',   icon: 'fuel'   },
-    { key: 'send',      label: 'Notify', icon: 'send'   }
+    { key: 'nutrition', label: 'Fuel',   icon: 'fuel'   }
   ];
   var MORE = [
-    { key: 'athletes',      label: 'Squad',    icon: 'squad'    },
+    { key: 'send',          label: 'Notify',   icon: 'send'     },
     { key: 'applications',  label: 'Pipeline', icon: 'pipeline' },
     { key: 'notifications', label: 'New',      icon: 'bell'     },
     { key: 'coaches',       label: 'Coaches',  icon: 'coaches'  },
@@ -163,7 +163,10 @@
     sheet.setAttribute('aria-hidden', 'true');
     document.querySelector('.dp-sheet-backdrop').classList.remove('open');
     var mb = document.querySelector('.dp-mnav-item[data-nav-key="more"]');
-    if (mb) mb.setAttribute('aria-expanded', 'false');
+    if (mb) {
+      mb.setAttribute('aria-expanded', 'false');
+      if (!mb.hasAttribute('aria-current')) mb.classList.remove('active');
+    }
   }
 
   /* ---- active-state sync ---- */
