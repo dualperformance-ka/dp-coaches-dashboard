@@ -48,10 +48,16 @@ export default async function handler(req, res) {
 
   const { athlete, week } = req.query;
   const athleteSlug = cleanSegment(athlete);
-  const weekNum = parseInt(week, 10);
+  const weekText = String(week ?? '').trim();
+  const weekNum = /^\d+$/.test(weekText) ? Number(weekText) : NaN;
 
   if (!athleteSlug) {
     res.status(400).json({ error: 'Missing ?athlete= query parameter' });
+    return;
+  }
+
+  if (!Number.isSafeInteger(weekNum) || weekNum < 0) {
+    res.status(400).json({ error: 'A non-negative integer ?week= query parameter is required' });
     return;
   }
 
@@ -61,10 +67,10 @@ export default async function handler(req, res) {
     return;
   }
 
-  // Use path-based prefix — works with public_id folder structure (no asset_folder needed)
-  const prefix = weekNum >= 0
-    ? `dp_progress/${athleteSlug}/week${weekNum}`
-    : `dp_progress/${athleteSlug}`;
+  // Cloudinary's `prefix` matches raw public_id text, not a folder boundary.
+  // Keep the trailing slash so `week1` cannot also return week10, week11, etc.
+  const folder = `dp_progress/${athleteSlug}/week${weekNum}`;
+  const prefix = `${folder}/`;
 
   const auth = Buffer.from(`${apiKey}:${apiSecret}`).toString('base64');
   const qs = new URLSearchParams({
@@ -84,19 +90,23 @@ export default async function handler(req, res) {
       throw new Error(data.error?.message || `Cloudinary API ${response.status}`);
     }
 
-    const photos = (data.resources || []).map(asset => ({
-      publicId: asset.public_id,
-      type: inferPhotoType(asset.public_id),
-      url: asset.secure_url,
-      thumbUrl: asset.secure_url?.replace('/upload/', '/upload/f_auto,q_auto,c_fill,g_auto,w_420,h_560/'),
-      width: asset.width,
-      height: asset.height,
-      createdAt: asset.created_at,
-      format: asset.format,
-    }));
+    const photos = (data.resources || [])
+      // Defence in depth in case the upstream prefix response ever includes a
+      // neighbouring folder. Only assets inside the exact requested week pass.
+      .filter(asset => String(asset.public_id || '').startsWith(prefix))
+      .map(asset => ({
+        publicId: asset.public_id,
+        type: inferPhotoType(asset.public_id),
+        url: asset.secure_url,
+        thumbUrl: asset.secure_url?.replace('/upload/', '/upload/f_auto,q_auto,c_fill,g_auto,w_420,h_560/'),
+        width: asset.width,
+        height: asset.height,
+        createdAt: asset.created_at,
+        format: asset.format,
+      }));
 
     res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=300');
-    res.status(200).json({ athlete: athleteSlug, week: weekNum, folder: prefix, photos });
+    res.status(200).json({ athlete: athleteSlug, week: weekNum, folder, photos });
   } catch (e) {
     console.error('[progress-photos]', e.message);
     res.status(500).json({ error: e.message });
