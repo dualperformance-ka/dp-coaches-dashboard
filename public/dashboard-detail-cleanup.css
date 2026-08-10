@@ -181,23 +181,22 @@
    the prescription behind a disclosure. Roughly a third of the previous height.
    ============================================ */
 
+/* Planned work is an outline; completed work is filled. Do not give these a
+   background — .wd-session directly below them is filled, and the contrast is
+   what tells a coach at a glance which is which. */
 #fp-overlay .wd-plan {
-  border: 1px solid var(--border);
+  border: 1px dashed var(--border-mid);
   border-left-width: 4px;
   border-radius: 10px;
+  background: transparent;
 }
 
-#fp-overlay .wd-plan.run {
-  background: var(--amber-bg);
-  border-color: var(--amber-border);
-  border-left-color: var(--run);
-}
+#fp-overlay .wd-plan.run { border-left-color: var(--run); }
+#fp-overlay .wd-plan.str { border-left-color: var(--str); }
 
-#fp-overlay .wd-plan.str {
-  background: rgba(110, 168, 254, .10);
-  border-color: rgba(110, 168, 254, .28);
-  border-left-color: var(--str);
-}
+/* Opening a planned row fills it faintly, so an expanded prescription still reads
+   as one object without competing with completed sessions. */
+#fp-overlay details.wd-plan[open] { background: var(--surface2); }
 
 #fp-overlay .wd-plan-line {
   gap: 10px;
@@ -206,10 +205,13 @@
 }
 
 #fp-overlay .wd-plan-cat {
-  min-width: 46px;
+  min-width: 82px;
   font-size: 9px;
   letter-spacing: .12em;
 }
+
+/* "Completed run" / "Completed lift" needs to sit on one line beside the name. */
+#fp-overlay .wd-sess-cat { white-space: nowrap; }
 
 #fp-overlay .wd-plan-name { font-size: 13px; }
 #fp-overlay .wd-plan-chip { font-size: 10px; }
@@ -235,10 +237,13 @@
     flex-basis: 100%;
     margin-left: 0;
     justify-content: flex-start;
-    padding-left: 42px;
+    padding-left: 74px;
   }
 
-  #fp-overlay .wd-plan-chips { padding-left: 46px; }
+  #fp-overlay .wd-plan-chips { padding-left: 82px; }
+
+  /* The legend would push the collapse chevron off a narrow header. */
+  .wd-legend { display: none; }
   .wd-plan-ex { flex-wrap: wrap; row-gap: 0; }
 }
 

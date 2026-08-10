@@ -1307,14 +1307,16 @@ body[data-theme="light"] .plan-chip.coach::before{color:#92400e}
 .wd-splits-scroll::-webkit-scrollbar-thumb{background:var(--border-mid);border-radius:2px}
 .wd-splits-scroll .strava-splits{margin-top:0}
 .wd-splits-scroll .strava-splits th{position:sticky;top:0;z-index:1;background:var(--surface2)}
-/* Planned sessions: reference rows, deliberately much tighter than logged work */
-.wd-plan{border-radius:7px;background:var(--surface2);border-left:3px solid var(--border-mid);overflow:hidden}
-.wd-plan.run{background:var(--amber-bg);border-left-color:var(--run)}
-.wd-plan.str{background:rgba(96,165,250,.08);border-left-color:var(--str)}
+/* Planned sessions: reference rows, deliberately much tighter than logged work.
+   Planned is drawn as an outline — dashed edge, no fill. Completed work is filled
+   and solid. That contrast is the primary signal; the label is the confirmation. */
+.wd-plan{border-radius:7px;background:transparent;border:1px dashed var(--border-mid);border-left-width:3px;overflow:hidden}
+.wd-plan.run{border-left-color:var(--run)}
+.wd-plan.str{border-left-color:var(--str)}
 .wd-plan-line{display:flex;align-items:center;gap:8px;padding:5px 9px;min-height:26px;cursor:default;list-style:none}
 details.wd-plan .wd-plan-line{cursor:pointer}
 .wd-plan-line::-webkit-details-marker{display:none}
-.wd-plan-cat{font-family:var(--mono);font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--dim);flex:0 0 auto;min-width:42px}
+.wd-plan-cat{font-family:var(--mono);font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--dim);flex:0 0 auto;min-width:74px;white-space:nowrap}
 .wd-plan.run .wd-plan-cat{color:var(--run)}
 .wd-plan.str .wd-plan-cat{color:var(--str)}
 .wd-plan-name{font-family:var(--cond);font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.02em;color:var(--text);line-height:1.2;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -1330,6 +1332,12 @@ details.wd-plan[open] .wd-plan-chev{transform:rotate(180deg)}
 .wd-plan-ex{display:flex;justify-content:space-between;gap:10px;font-family:var(--mono);font-size:9px;color:var(--muted);line-height:1.5}
 .wd-plan-ex span:first-child{text-transform:capitalize;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .wd-plan-ex span:last-child{flex:0 0 auto;color:var(--dim)}
+/* States the planned/completed convention once, at the top of the timeline */
+.wd-legend{display:flex;align-items:center;gap:12px;margin-left:auto;margin-right:10px}
+.wd-legend-key{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
+.wd-legend-key::before{content:'';width:12px;height:12px;border-radius:3px;flex:0 0 auto}
+.wd-legend-key.plan::before{border:1px dashed var(--border-mid);border-left:3px solid var(--dim);background:transparent}
+.wd-legend-key.done::before{border:1px solid var(--border);border-left:3px solid var(--run);background:var(--surface2)}
 .wd-session{border-radius:8px;padding:10px 12px}
 .wd-session.run{background:var(--amber-bg);border-left:3px solid var(--run)}
 .wd-session.str{background:rgba(96,165,250,.08);border-left:3px solid var(--str)}
@@ -7661,14 +7669,14 @@ function buildFPCard(a, weekOffset = 0) {
             const dRawName = s.Session || (s.Name || '').split('—').slice(1, -1).join('—').trim() || '';
             const dNote = (s['Exercise Log'] || s.exerciseLog || s.Notes || s.notes || '').trim();
             return `<div class="wd-session other discovery">
-              <div class="wd-sess-cat">Discovery</div>
+              <div class="wd-sess-cat">Completed discovery</div>
               ${dRawName ? `<div class="wd-sess-name">${esc(dRawName)}</div>` : ''}
               ${dNote ? `<div class="wd-sess-notes">${esc(dNote)}</div>`
                       : '<div class="wd-sess-notes" style="opacity:.5">No note logged</div>'}
             </div>`;
           }
           const cls = isRun ? 'run' : isStr ? 'str' : 'other';
-          const catLabel = isRun ? 'Run' : isStr ? 'Lift' : esc(s._cat || '');
+          const catLabel = 'Completed ' + (isRun ? 'run' : isStr ? 'lift' : (esc(s._cat || 'session').toLowerCase()));
           const rawName = s.Session || (s.Name || '').split('—').slice(1, -1).join('—').trim() || '';
           const exLog = s['Exercise Log'] || s.exerciseLog || s['Exercises'] || '';
           const notes = s.Notes || s.notes || '';
@@ -7707,8 +7715,11 @@ function buildFPCard(a, weekOffset = 0) {
           const sessionName = override?.name || r.Session || sessionType || 'Session';
           const runDetails = String(r['Run Details'] || '').trim();
           const intensity = String(r.Intensity || '').trim();
-          const catLabel = isRun ? 'Run' : sessionType === 'discovery' ? 'Discovery'
-            : sessionType ? 'Lift' : 'Session';
+          // Planned and completed work sit in the same day column, so the label
+          // always states which it is. Colour and the dashed outline carry the same
+          // distinction for anyone scanning rather than reading.
+          const catLabel = 'Planned ' + (isRun ? 'run' : sessionType === 'discovery' ? 'discovery'
+            : sessionType ? 'lift' : 'session');
 
           // Matched split gives planned lifts their exercise list.
           const split = isRun ? null : splitForTitle(sessionName, a.id);
@@ -7843,7 +7854,9 @@ function buildFPCard(a, weekOffset = 0) {
 
       const detailTitle = ctx.weekOffset > 0 ? 'Upcoming Week' : ctx.weekOffset < 0 ? 'Selected Week' : 'This Week';
       weekDetailHtml = `<div class="fpc-section">
-        <div class="fpc-section-title">${detailTitle} — Day by Day · ${weekStartStr} → ${ctx.weekEndStr}</div>
+        <div class="fpc-section-title">${detailTitle} — Day by Day · ${weekStartStr} → ${ctx.weekEndStr}
+          <span class="wd-legend"><span class="wd-legend-key plan">Planned</span><span class="wd-legend-key done">Completed</span></span>
+        </div>
         <div class="wd-timeline">${dayRows.join('')}</div>
       </div>`;
     }
