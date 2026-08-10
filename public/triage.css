@@ -9,7 +9,7 @@
 }
 
 .triage-page > .dp-page-intro,
-.today-operations {
+.today-workspace {
   width: min(1440px, calc(100% - 40px));
   margin-inline: auto;
 }
@@ -19,9 +19,20 @@
   margin-bottom: 26px;
 }
 
-.today-operations {
-  padding-bottom: 26px;
+.today-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(340px, 390px);
+  grid-template-areas:
+    "priorities triage"
+    "actions triage";
+  align-items: start;
+  gap: 18px 20px;
+  padding-bottom: 80px;
 }
+
+.today-operations { grid-area: priorities; min-width: 0; }
+.today-actions { grid-area: actions; min-width: 0; }
+.today-actions .coach-actions { margin: 0; }
 
 .today-dashboard-state {
   min-height: 76px;
@@ -40,10 +51,67 @@
 .today-dashboard-state.is-error { color: var(--alert); }
 
 .triage-shell {
-  width: min(1040px, calc(100% - 40px));
-  margin: 0 auto;
-  padding: 38px 0 80px;
-  border-top: 1px solid var(--border);
+  grid-area: triage;
+  width: auto;
+  max-height: calc(100vh - 138px);
+  margin: 0;
+  padding: 18px;
+  overflow-y: auto;
+  position: sticky;
+  top: 118px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--surface);
+  box-shadow: var(--shadow-soft);
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-mid) transparent;
+}
+
+.triage-shell::-webkit-scrollbar { width: 5px; }
+.triage-shell::-webkit-scrollbar-thumb { background: var(--border-mid); border-radius: 999px; }
+
+.today-workspace .triage-hero { display: block; margin-bottom: 16px; }
+.today-workspace .triage-hero h1 { font-size: clamp(27px, 2.4vw, 34px); letter-spacing: -.04em !important; }
+.today-workspace .triage-hero p { margin-top: 8px; font-size: 12px; line-height: 1.45; }
+.today-workspace .triage-date { display: inline-flex; margin-top: 11px; padding: 6px 9px; font-size: 8px; }
+.today-workspace .triage-summary { gap: 7px; margin-bottom: 10px; }
+.today-workspace .triage-stat { min-height: 72px; padding: 12px 10px; border-radius: 11px; box-shadow: none; }
+.today-workspace .triage-stat-value { font-size: 22px; }
+.today-workspace .triage-stat-label { margin-top: 6px; font-size: 9px; }
+.today-workspace .triage-state { min-height: 132px; border-radius: 12px; box-shadow: none; }
+.today-workspace .triage-queue { gap: 8px; }
+.today-workspace .triage-row {
+  grid-template-columns: 5px minmax(0, 1fr);
+  gap: 0 12px;
+  min-height: 0;
+  padding: 13px 12px 13px 0;
+  border-radius: 12px;
+  box-shadow: none;
+}
+.today-workspace .triage-row::before { grid-row: 1 / 4; width: 5px; margin: -14px 0; }
+.today-workspace .triage-athlete,
+.today-workspace .triage-signal,
+.today-workspace .triage-action { grid-column: 2; }
+.today-workspace .triage-athlete-name { font-size: 15px; }
+.today-workspace .triage-signal { margin-top: 9px; font-size: 12px; line-height: 1.45; }
+.today-workspace .triage-action { width: 100%; min-width: 0; min-height: 38px; margin-top: 10px; }
+.today-workspace .triage-clear { margin-top: 10px; padding: 12px; font-size: 11px; }
+.today-workspace .triage-clear.is-all-clear { min-height: 108px; font-size: 18px; }
+
+@media (max-width:1280px) and (min-width:1061px) {
+  .today-workspace { grid-template-columns: minmax(0, 1fr) 340px; }
+  .today-operations .command-center { grid-template-columns: 1fr; }
+}
+
+@media (max-width:1060px) {
+  .today-workspace {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "priorities"
+      "triage"
+      "actions";
+  }
+  .triage-shell { max-height: none; position: static; overflow: visible; }
 }
 
 .triage-hero {
@@ -283,10 +351,10 @@ body[data-theme="light"] .triage-page {
 @media (max-width: 720px) {
   .triage-page { min-height: calc(100vh - 110px); padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px)); }
   .triage-page > .dp-page-intro,
-  .today-operations { width: calc(100% - 24px); }
+  .today-workspace { width: calc(100% - 24px); }
   .triage-page > .dp-page-intro { padding-top: 24px; margin-bottom: 16px; }
-  .today-operations { padding-bottom: 18px; }
-  .triage-shell { width: calc(100% - 24px); padding: 28px 0 34px; }
+  .today-workspace { gap: 14px; padding-bottom: 34px; }
+  .triage-shell { padding: 15px; }
   .triage-hero { display: block; margin-bottom: 20px; }
   .triage-hero h1 { font-size: clamp(34px, 11vw, 48px); }
   .triage-hero p { max-width: 320px; font-size: 13px; }

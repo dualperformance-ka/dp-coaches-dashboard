@@ -7,6 +7,9 @@
   let filter = 'open';
   let editingId = null;
   let restoreFocus = null;
+  const pendingIds = new Set();
+  let lastError = '';
+  let refreshPromise = null;
 
   const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const today = () => new Date().toISOString().slice(0, 10);
@@ -34,12 +37,21 @@
     return `Due ${action.due_at}`;
   }
 
+  function actorLabel(action) {
+    if (action.status === 'done' && action.completed_by) {
+      const completed = action.completed_at ? new Date(action.completed_at).toLocaleString('en-AU', { dateStyle: 'medium', timeStyle: 'short' }) : '';
+      return `Completed by ${action.completed_by}${completed ? ` · ${completed}` : ''}`;
+    }
+    return `${action.owner || 'Unassigned'} · ${dueLabel(action)} · ${action.status.replace('_', ' ')}`;
+  }
+
   function render() {
     const root = document.getElementById('coaching-actions');
     if (!root) return;
     const open = actions.filter(a => !['done', 'cancelled'].includes(a.status));
     const overdue = open.filter(a => a.due_at && a.due_at < today());
     const mine = open.filter(a => String(a.owner || '').toLowerCase() === currentCoach().toLowerCase());
+    const completed = actions.filter(a => a.status === 'done');
     const rows = visibleActions();
     const conflicts = health?.portalSupabase?.integrity?.weeklyConflicts || [];
 
@@ -54,19 +66,21 @@
           <button type="button" class="coach-action-new" onclick="DP_ACTIONS.open()">+ New action</button>
         </div>
         ${conflicts.length ? `<div class="coach-data-warning" role="status"><strong>Data review:</strong> ${conflicts.length} cross-athlete duplicate check-in${conflicts.length === 1 ? '' : 's'} suppressed. Review this on the Sync tab.</div>` : ''}
+        ${lastError ? `<div class="coach-action-load-error" role="alert">${esc(lastError)}</div>` : ''}
         <div class="coach-action-filters" role="tablist" aria-label="Action filters">
-          ${[['open', `Open ${open.length}`], ['mine', `Mine ${mine.length}`], ['overdue', `Overdue ${overdue.length}`], ['done', 'Completed']].map(([key, label]) => `<button type="button" role="tab" aria-selected="${filter === key}" class="${filter === key ? 'active' : ''}" onclick="DP_ACTIONS.filter('${key}')">${label}</button>`).join('')}
+          ${[['open', `Open ${open.length}`], ['mine', `Mine ${mine.length}`], ['overdue', `Overdue ${overdue.length}`], ['done', `Completed ${completed.length}`]].map(([key, label]) => `<button type="button" role="tab" aria-selected="${filter === key}" class="${filter === key ? 'active' : ''}" onclick="DP_ACTIONS.filter('${key}')">${label}</button>`).join('')}
         </div>
+        ${filter === 'done' ? `<div class="coach-action-history-note">Completed actions are kept here for both coaches, including who completed them and when.</div>` : ''}
         <div class="coach-action-list">
           ${rows.length ? rows.map(action => `
             <article class="coach-action-row priority-${esc(action.priority)} ${action.due_at && action.due_at < today() && action.status !== 'done' ? 'is-overdue' : ''}">
               <button type="button" class="coach-action-main" onclick="DP_ACTIONS.open('', '', '', '${esc(action.id)}')">
                 <span class="coach-action-athlete">${esc(action.athlete_code)}</span>
                 <span class="coach-action-title">${esc(action.title)}</span>
-                <span class="coach-action-meta">${esc(action.owner || 'Unassigned')} · ${esc(dueLabel(action))} · ${esc(action.status.replace('_', ' '))}</span>
+                <span class="coach-action-meta">${esc(actorLabel(action))}</span>
               </button>
-              ${action.status === 'done' ? `<button type="button" class="coach-action-complete" onclick="DP_ACTIONS.setStatus('${esc(action.id)}','open')">Reopen</button>` : `<button type="button" class="coach-action-complete" onclick="DP_ACTIONS.setStatus('${esc(action.id)}','done')">✓ Done</button>`}
-            </article>`).join('') : `<div class="coach-action-empty">No actions in this view. Keep it that way—or capture the next coaching commitment.</div>`}
+              ${action.status === 'done' ? `<button type="button" class="coach-action-complete" onclick="DP_ACTIONS.setStatus('${esc(action.id)}','open')" ${pendingIds.has(action.id) ? 'disabled' : ''}>${pendingIds.has(action.id) ? 'Saving…' : 'Reopen'}</button>` : `<button type="button" class="coach-action-complete" onclick="DP_ACTIONS.setStatus('${esc(action.id)}','done')" ${pendingIds.has(action.id) ? 'disabled' : ''}>${pendingIds.has(action.id) ? 'Saving…' : '✓ Done'}</button>`}
+            </article>`).join('') : `<div class="coach-action-empty">${filter === 'done' ? 'No completed actions yet. When a coach clicks Done, the action will be stored here.' : 'No actions in this view. Keep it that way—or capture the next coaching commitment.'}</div>`}
         </div>
       </section>`;
   }
@@ -161,26 +175,49 @@
   }
 
   async function setStatus(id, status) {
+    if (pendingIds.has(id)) return;
     const action = actions.find(item => item.id === id);
-    if (status === 'done' && action && !action.outcome) {
-      open('', '', '', id);
-      document.getElementById('ca-status').value = 'done';
-      document.getElementById('ca-outcome').focus();
-      return;
+    if (!action) return;
+    pendingIds.add(id);
+    lastError = '';
+    render();
+    try {
+      const payload = await request('/api/actions', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, status, outcome: action.outcome || '' }),
+      });
+      actions = actions.map(item => item.id === id ? payload.action : item);
+      window.DP_WORKFLOW_NOTICE?.(
+        status === 'done'
+          ? `${action.athlete_code} completed by ${payload.action.completed_by || currentCoach()} · moved to Completed`
+          : `${action.athlete_code} action reopened by ${payload.action.updated_by || currentCoach()}`
+      );
+    } catch (error) {
+      lastError = `Could not update ${action.athlete_code}: ${error.message}`;
+      window.DP_WORKFLOW_NOTICE?.(lastError, 'error');
+    } finally {
+      pendingIds.delete(id);
+      render();
     }
-    await request('/api/actions', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, status, outcome: action?.outcome || '' }) });
-    await refresh();
   }
 
   async function refresh() {
-    try {
-      const payload = await request('/api/actions?status=all', { cache: 'no-store' });
-      actions = payload.actions || [];
-      render();
-    } catch (e) {
-      const root = document.getElementById('coaching-actions');
-      if (root) root.innerHTML = `<div class="coach-action-load-error">Coaching actions unavailable: ${esc(e.message)}</div>`;
-    }
+    if (refreshPromise) return refreshPromise;
+    refreshPromise = (async () => {
+      try {
+        const payload = await request('/api/actions?status=all', { cache: 'no-store' });
+        actions = payload.actions || [];
+        lastError = '';
+        render();
+      } catch (e) {
+        const root = document.getElementById('coaching-actions');
+        if (root && !actions.length) root.innerHTML = `<div class="coach-action-load-error">Coaching actions unavailable: ${esc(e.message)}</div>`;
+      } finally {
+        refreshPromise = null;
+      }
+    })();
+    return refreshPromise;
   }
 
   function setContext(nextAthletes, nextHealth) {
@@ -194,6 +231,9 @@
   window.DP_ACTIONS = { open, close, filter: setFilter, setStatus, refresh, setContext };
   document.addEventListener('DOMContentLoaded', async () => {
     await window.DP_COACH_AUTH?.ready;
-    refresh();
+    await refresh();
+    setInterval(refresh, 12000);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
+    window.addEventListener('focus', refresh);
   });
 })();

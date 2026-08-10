@@ -54,7 +54,7 @@
 
   function addPageIntro() {
     const content = qs("#tab-triage-content");
-    const anchor = qs(".today-operations", content);
+    const anchor = qs(".today-workspace", content);
 
     if (!content || !anchor || qs(".dp-page-intro")) return;
 

@@ -112,7 +112,7 @@ test('current compliance counts submitted portal logs and overdue pending plans'
   assert.equal(context.result.athletes[0].compliance, 50);
 });
 
-test('weekly status respects the due week, Monday grace, and a new athlete start date', () => {
+test('weekly status keeps a completed Sunday covered through the new week', () => {
   const helperStart = dashboardSource.indexOf('function shiftIsoDay(');
   const helperEnd = dashboardSource.indexOf('// ── Parse a single Exercise Log', helperStart);
   const helperSource = dashboardSource.slice(helperStart, helperEnd);
@@ -121,15 +121,19 @@ test('weekly status respects the due week, Monday grace, and a new athlete start
   vm.runInNewContext(
     `${helperSource}\nresult = [` +
       `weeklyCheckinStatus('2026-08-02', '2026-08-05', '2026-08-09', '2026-01-01'),` +
+      `weeklyCheckinStatus('2026-08-09', '2026-08-10', '2026-08-16', '2026-01-01'),` +
       `weeklyCheckinStatus('2026-08-02', '2026-08-10', '2026-08-16', '2026-01-01'),` +
+      `weeklyCheckinStatus('2026-07-26', '2026-08-10', '2026-08-16', '2026-01-01'),` +
       `weeklyCheckinStatus('', '2026-08-05', '2026-08-09', '2026-08-03')` +
     `];`,
     context
   );
 
   assert.equal(context.result[0].isStale, false, 'previous Sunday covers Wednesday');
-  assert.equal(context.result[1].isStale, false, 'Monday remains a grace day');
-  assert.equal(context.result[2].checkinDue, false, 'new starter is not overdue before a first due week');
+  assert.equal(context.result[1].isStale, false, 'Sunday submission covers the new Monday');
+  assert.equal(context.result[2].isStale, true, 'a missed completed week is overdue on Monday');
+  assert.equal(context.result[3].isStale, true, 'a check-in two completed weeks old remains overdue');
+  assert.equal(context.result[4].checkinDue, false, 'new starter is not overdue before a first due week');
 });
 
 test('Jojo remains a configured coach', () => {

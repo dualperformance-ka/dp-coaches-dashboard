@@ -327,7 +327,7 @@ test('Today is the default coach screen and owns the operational dashboard', () 
   assert.ok(todayStart >= 0 && athletesStart > todayStart);
   assert.ok(commandCenter > todayStart && commandCenter < athletesStart);
   assert.ok(coachingActions > todayStart && coachingActions < athletesStart);
-  assert.match(source, /await window\.DP_COACH_AUTH\?\.ready;\s*load\(\);/);
+  assert.match(source, /await window\.DP_COACH_AUTH\?\.ready;\s*await load\(\);\s*startSharedResolutionSync\(\);/);
   assert.match(source, /Paired signals that need a coaching decision\./);
   assert.doesNotMatch(source, /<header class="triage-hero">/);
 });

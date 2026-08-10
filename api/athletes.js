@@ -471,8 +471,50 @@ export async function deleteNutritionPlan(code, weekLabel, request = sb) {
 }
 
 const EDITABLE_SETTING_KEYS = new Set([
-  'programme_weeks', 'start_date_override', 'call_notes', 'ack_alert',
+  'programme_weeks', 'start_date_override', 'call_notes',
 ]);
+
+export function buildAlertAcknowledgement(signature, coach, now = new Date()) {
+  const sig = String(signature || '').trim().slice(0, 80);
+  const by = String(coach || '').trim().toUpperCase().slice(0, 80);
+  if (!sig) throw new Error('Alert signature is required');
+  if (!by) throw new Error('Coach identity is required');
+  return { sig, at: now.toISOString(), by };
+}
+
+export async function listAlertAcknowledgements(request = sb) {
+  const rows = await request(
+    'athlete_data?key=eq.ack_alert&select=athlete_code,key,value,updated_at&order=updated_at.desc'
+  );
+  return Array.isArray(rows) ? rows : [];
+}
+
+export async function acknowledgeAlert(code, signature, coach, request = sb, now = new Date()) {
+  const athleteCode = normaliseCode(code);
+  if (!athleteCode) throw new Error('Athlete code is required');
+  const acknowledgement = buildAlertAcknowledgement(signature, coach, now);
+  const rows = await request('athlete_data?on_conflict=athlete_code,key', {
+    method: 'POST',
+    prefer: 'resolution=merge-duplicates,return=representation',
+    body: {
+      athlete_code: athleteCode,
+      key: 'ack_alert',
+      value: JSON.stringify(acknowledgement),
+      updated_at: acknowledgement.at,
+    },
+  });
+  return { ok: true, acknowledgement, rows: Array.isArray(rows) ? rows : [] };
+}
+
+export async function restoreAlert(code, request = sb) {
+  const athleteCode = normaliseCode(code);
+  if (!athleteCode) throw new Error('Athlete code is required');
+  const rows = await request(
+    `athlete_data?athlete_code=eq.${encodeURIComponent(athleteCode)}&key=eq.ack_alert`,
+    { method: 'DELETE', prefer: 'return=representation' }
+  );
+  return { ok: true, athleteCode, rows: Array.isArray(rows) ? rows : [] };
+}
 
 export async function upsertAthleteSetting(code, key, value, request = sb) {
   const athleteCode = normaliseCode(code);
@@ -646,9 +688,14 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   try {
-    requireCoach(req);
+    const { coach } = requireCoach(req);
     if (req.method === 'GET') {
       const action = String(req.query.action || 'roster').trim().toLowerCase();
+
+      if (action === 'acknowledgements') {
+        const acknowledgements = await listAlertAcknowledgements();
+        return res.status(200).json({ ok: true, acknowledgements });
+      }
 
       if (action === 'profiles') {
         const [athletes, goals] = await Promise.all([
@@ -670,6 +717,18 @@ export default async function handler(req, res) {
     }
 
     const action = String(req.body?.action || '').trim().toLowerCase();
+
+    if (action === 'alert_acknowledge') {
+      return res.status(200).json(await acknowledgeAlert(
+        req.body?.code,
+        req.body?.signature,
+        coach
+      ));
+    }
+
+    if (action === 'alert_restore') {
+      return res.status(200).json(await restoreAlert(req.body?.code));
+    }
 
     if (action === 'add') {
       if (!String(req.body?.name || '').trim()) {

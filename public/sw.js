@@ -12,7 +12,7 @@
       would risk showing stale or cross-coach data offline)
    ============================================================ */
 
-const VERSION = 'dp-coaches-v24-exercise-swaps';
+const VERSION = 'dp-coaches-v26-inline-ticks';
 const SHELL_CACHE = `${VERSION}-shell`;
 const STATIC_CACHE = `${VERSION}-static`;
 const FONT_CACHE = `${VERSION}-fonts`;
@@ -23,12 +23,12 @@ const SHELL_ASSETS = [
   '/index.html',
   '/app.js',
   '/coach-auth.js',
-  '/coaching-actions.js',
+  '/coaching-actions.js?v=3',
   '/dashboard-redesign.js',
   '/dashboard-redesign.css',
   '/dashboard-detail-cleanup.css',
   '/dashboard-mobile.css',
-  '/dashboard-comprehensive.css',
+  '/dashboard-comprehensive.css?v=2',
   '/dashboard-theme-system.css',
   '/dashboard-desktop.css',
   '/dashboard-mobile-polish.css',

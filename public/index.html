@@ -375,11 +375,15 @@ body[data-theme="pride"] .dash-week-nav{border:2px solid transparent;border-imag
 .cc-detail-close:hover{color:var(--text)}
 .cc-ack-btn{font-family:var(--mono);font-size:9px;border:1px solid var(--border-mid);border-radius:20px;padding:3px 8px;color:var(--dim);cursor:pointer;background:transparent;white-space:nowrap}
 .cc-ack-btn:hover{color:var(--ok);border-color:var(--ok)}
+.cc-ack-btn:disabled,.fpc-ack-btn:disabled{cursor:wait;opacity:.45}
 .cc-acked-note{font-family:var(--mono);font-size:8px;color:var(--dim);cursor:pointer;text-transform:uppercase;letter-spacing:.05em;border:1px dashed var(--border-mid);border-radius:20px;padding:2px 7px}
 .cc-athlete.acked{opacity:.55}
 .tack{font-family:var(--mono);font-size:8px;color:var(--dim);border:1px dashed var(--border-mid);border-radius:3px;padding:1px 4px;margin-left:4px;text-transform:uppercase;letter-spacing:.05em}
 .fpc-ack-btn{font-family:var(--mono);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;background:transparent;border:1px solid currentColor;border-radius:5px;padding:4px 10px;color:inherit;cursor:pointer;opacity:.8;white-space:nowrap}
 .fpc-ack-btn:hover{opacity:1}
+.workflow-toast{position:fixed;right:20px;bottom:20px;z-index:10050;max-width:min(420px,calc(100vw - 32px));padding:11px 14px;border:1px solid rgba(34,197,94,.35);border-radius:9px;background:#f0fdf4;color:#166534;font-family:var(--mono);font-size:10px;font-weight:700;line-height:1.45;box-shadow:0 14px 36px rgba(15,23,42,.18);transition:opacity .2s,transform .2s}
+.workflow-toast.is-error{border-color:rgba(220,38,38,.35);background:#fef2f2;color:#991b1b}
+.workflow-toast.is-leaving{opacity:0;transform:translateY(8px)}
 .cc-score-num{font-size:18px;font-weight:900;line-height:1}
 .cc-score-num.red{color:#fca5a5}.cc-score-num.amber{color:#fcd34d}.cc-score-num.green{color:#86efac}
 .cc-score-lbl{font-family:var(--mono);font-size:7px;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:.1em;margin-top:3px}
@@ -390,6 +394,9 @@ body[data-theme="pride"] .dash-week-nav{border:2px solid transparent;border-imag
 .cc-list-count{font-size:9px;color:var(--muted);background:var(--surface2);border-radius:20px;padding:2px 7px}
 .cc-athlete{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;padding:5px 0;border-bottom:1px solid var(--border)}
 .cc-athlete[type="button"]{background:transparent;border:0;border-bottom:1px solid var(--border);width:100%;text-align:left;cursor:pointer;font:inherit}
+.cc-athlete-open{appearance:none;background:transparent;border:0;color:inherit;font:inherit;text-align:left;min-width:0;padding:0;cursor:pointer;width:100%}
+.cc-athlete-open:focus-visible{outline:2px solid var(--brand);outline-offset:3px;border-radius:4px}
+.cc-athlete-actions{display:flex;align-items:center;gap:5px;justify-self:end}
 .cc-athlete:last-child{border-bottom:none}
 .cc-athlete-name{font-family:var(--cond);font-size:14px;font-weight:900;line-height:1;text-transform:uppercase;letter-spacing:.05em;color:var(--text)}
 .cc-athlete-reason{font-size:10px;color:var(--muted);line-height:1.3;margin-top:1px}
@@ -1685,7 +1692,7 @@ body[data-theme="light"] .strava-weekly-strip{background:#fff}
 <link rel="stylesheet" href="/dashboard-redesign.css">
 <link rel="stylesheet" href="/dashboard-detail-cleanup.css">
 <link rel="stylesheet" href="/dashboard-mobile.css">
-<link rel="stylesheet" href="/dashboard-comprehensive.css">
+<link rel="stylesheet" href="/dashboard-comprehensive.css?v=2">
 <script src="/coach-auth.js"></script>
 </head>
 <body>
@@ -1962,7 +1969,7 @@ body[data-theme="light"] .theme-btn.active{background:rgba(255,255,255,.22);colo
 <link rel="stylesheet" href="/dashboard-theme-system.css?v=20260810-2">
 <link rel="stylesheet" href="/dashboard-desktop.css">
 <link rel="stylesheet" href="/dashboard-mobile-polish.css">
-<link rel="stylesheet" href="/triage.css?v=22">
+<link rel="stylesheet" href="/triage.css?v=23">
 <div class="ma-backdrop" id="ma-backdrop" role="dialog" aria-modal="true" aria-label="Manage athletes" onclick="if(event.target===this)closeManageAthletes()">
   <div class="ma-card">
     <div class="ma-head">
@@ -2286,36 +2293,40 @@ function refreshRosterDrivenUI() {
 
 <!-- TODAY TRIAGE TAB -->
 <main id="tab-triage-content" class="triage-page">
-  <section class="today-operations" aria-label="Today coaching operations">
-    <div id="today-dashboard-loading" class="today-dashboard-state" role="status">Loading weekly priorities…</div>
-    <div id="today-dashboard-error" class="today-dashboard-state is-error" role="alert" hidden></div>
-    <div id="command-center"></div>
-    <div id="coaching-actions"></div>
-  </section>
-  <section class="triage-shell" aria-labelledby="triage-title">
-    <div class="triage-hero">
-      <div>
-        <div class="triage-eyebrow">Decision queue · Today</div>
-        <h1 id="triage-title">Live triage signals</h1>
-        <p>Paired signals that need a coaching decision.</p>
+  <div class="today-workspace">
+    <section class="today-operations" aria-label="Today coaching priorities">
+      <div id="today-dashboard-loading" class="today-dashboard-state" role="status">Loading weekly priorities…</div>
+      <div id="today-dashboard-error" class="today-dashboard-state is-error" role="alert" hidden></div>
+      <div id="command-center"></div>
+    </section>
+    <section class="triage-shell" aria-labelledby="triage-title">
+      <div class="triage-hero">
+        <div>
+          <div class="triage-eyebrow">Decision queue · Today</div>
+          <h1 id="triage-title">Live triage signals</h1>
+          <p>Paired signals that need a coaching decision.</p>
+        </div>
+        <div class="triage-date" id="triage-date" aria-label="Dashboard date"></div>
       </div>
-      <div class="triage-date" id="triage-date" aria-label="Dashboard date"></div>
-    </div>
 
-    <div id="triage-loading" class="triage-state" role="status">
-      <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
-      <span>Ranking today’s signals…</span>
-    </div>
-    <div id="triage-error" class="triage-state triage-state-error" role="alert" hidden>
-      <span id="triage-error-message">Triage data is unavailable.</span>
-      <button type="button" class="triage-retry" data-triage-retry>Retry</button>
-    </div>
-    <div id="triage-content" hidden aria-live="polite">
-      <div class="triage-summary" id="triage-summary"></div>
-      <ol class="triage-queue" id="triage-queue" aria-label="Athletes needing attention"></ol>
-      <div class="triage-clear" id="triage-clear"></div>
-    </div>
-  </section>
+      <div id="triage-loading" class="triage-state" role="status">
+        <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+        <span>Ranking today’s signals…</span>
+      </div>
+      <div id="triage-error" class="triage-state triage-state-error" role="alert" hidden>
+        <span id="triage-error-message">Triage data is unavailable.</span>
+        <button type="button" class="triage-retry" data-triage-retry>Retry</button>
+      </div>
+      <div id="triage-content" hidden aria-live="polite">
+        <div class="triage-summary" id="triage-summary"></div>
+        <ol class="triage-queue" id="triage-queue" aria-label="Athletes needing attention"></ol>
+        <div class="triage-clear" id="triage-clear"></div>
+      </div>
+    </section>
+    <section class="today-actions" aria-label="Coaching actions">
+      <div id="coaching-actions"></div>
+    </section>
+  </div>
 </main>
 
 <!-- ATHLETES TAB -->
@@ -2730,6 +2741,7 @@ let _libCache     = []; // session_library rows
 let _splitsCache  = []; // workout_splits rows (strength)
 let _tickedMap = new Map(); // athleteCode → Set<sessionId>  (athlete tapped the tick box)
 let _loggedMap = new Map(); // athleteCode → Set<sessionId>  (athlete submitted a log with real data)
+let _exPicksMap = new Map(); // athleteCode → Map<performedLower, programmedName>  (current swaps)
 
 // A log entry counts as "submitted" only if it actually holds data — not an
 // empty run form or a gym session with no sets recorded.
@@ -2746,6 +2758,7 @@ function _logHasRealData(v) {
 function useSessionStateRows(rows) {
   _tickedMap = new Map();
   _loggedMap = new Map();
+  _exPicksMap = new Map();
   (rows || []).forEach(r => {
     const code = nid(r.athlete_code);
     if (!code) return;
@@ -2756,8 +2769,63 @@ function useSessionStateRows(rows) {
       _loggedMap.set(code, new Set(
         Object.keys(val).filter(k => k !== '__savedAt' && _logHasRealData(val[k]))
       ));
+    } else if (r.key === 'ex_picks') {
+      // programmed → performed. Inverted here because the log line carries the
+      // performed name, and that is the key the renderer looks a swap up by.
+      // Identity picks ("Pec Dec" → "Pec Dec") are not swaps and are dropped.
+      const inverted = new Map();
+      Object.entries(val).forEach(([programmed, performed]) => {
+        if (programmed === '__savedAt') return;
+        const p = String(programmed || '').trim();
+        const done = String(performed || '').trim();
+        if (!p || !done) return;
+        if (p.toLowerCase() === done.toLowerCase()) return;
+        inverted.set(done.toLowerCase(), p);
+      });
+      if (inverted.size) _exPicksMap.set(code, inverted);
     }
   });
+}
+// The programmed slot an athlete's current pick map says this exercise filled,
+// or null when they are not substituting it.
+function programmedSlotFor(athleteCode, performedName) {
+  const picks = _exPicksMap.get(nid(athleteCode));
+  if (!picks) return null;
+  return picks.get(String(performedName || '').toLowerCase().trim()) || null;
+}
+
+function _exNameFromLogLine(line) {
+  const at = String(line || '').indexOf(': Set ');
+  return at === -1 ? '' : String(line).substring(0, at).trim();
+}
+
+// Fallback swap resolution for sessions written by a portal build that does not
+// yet send programmed_exercise. Without it every substituted lift flags its slot
+// "Not done" AND lands at the bottom as an unplanned extra, so a session
+// completed in full reads as half skipped.
+//
+// ex_picks is current state, not per-session history — it says what the athlete
+// substitutes TODAY. So it is only trusted where it cannot contradict what was
+// actually logged: the row-level columns always win, and a slot that appears in
+// the log under its own name is never reassigned to something else.
+function applyExPickSwaps(session, athleteCode) {
+  const lines = (session && session._exercises) || [];
+  if (!lines.length || !_exPicksMap.get(nid(athleteCode))) return session;
+  if (!session._swaps) session._swaps = {};
+  const loggedNames = new Set(
+    lines.map(_exNameFromLogLine).filter(Boolean).map(n => n.toLowerCase())
+  );
+  lines.forEach(line => {
+    const performed = _exNameFromLogLine(line);
+    if (!performed) return;
+    const key = performed.toLowerCase();
+    if (session._swaps[key]) return;                        // row-level data wins
+    const programmed = programmedSlotFor(athleteCode, performed);
+    if (!programmed) return;
+    if (loggedNames.has(programmed.toLowerCase())) return;  // slot filled on its own
+    session._swaps[key] = { performed, programmed, muscleGroup: '', _source: 'ex_picks' };
+  });
+  return session;
 }
 // Athlete tapped the checkbox (no data required)
 function isSessionTicked(athleteCode, notionPageId) {
@@ -4506,17 +4574,15 @@ function shiftIsoDay(dateStr, days) {
   return date.toISOString().slice(0, 10);
 }
 
-// Weekly check-ins describe the week that just finished. They are due on
-// Sunday, with Monday retained as a grace day. This compares calendar weeks,
-// not an imprecise rolling "8 days ago" threshold, and it exempts athletes who
-// had not started by the week being assessed.
+// Weekly check-ins describe the week that just finished. The current Mon–Sun
+// week is not due while it is still in progress, so the most recent completed
+// Sunday is the required week ending. This prevents a Sunday submission from
+// becoming overdue when the dashboard rolls into a new week on Monday.
 function weeklyCheckinStatus(latestWeekEnding, todayStr, comingSunday, startDate = '') {
   const today = String(todayStr || '').slice(0, 10);
   const expected = String(comingSunday || '').slice(0, 10);
   const latest = String(latestWeekEnding || '').slice(0, 10);
-  const weekday = new Date(`${today}T12:00:00Z`).getUTCDay();
-  const graceDays = weekday === 1 ? 14 : 7;
-  const requiredWeekEnd = shiftIsoDay(expected, -graceDays);
+  const requiredWeekEnd = shiftIsoDay(expected, -7);
   const checkinDue = !startDate || String(startDate).slice(0, 10) <= requiredWeekEnd;
   const distance = (left, right) => Math.abs(
     (Date.parse(`${left}T12:00:00Z`) - Date.parse(`${right}T12:00:00Z`)) / 86400000
@@ -5254,6 +5320,7 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [
     if (!id || !map[id]) return;
     // Build a combined Exercise Log from all accumulated lines
     s['Exercise Log'] = s._exercises.join('\n');
+    if (s._isStr) applyExPickSwaps(s, id);
     map[id].sessions.push(s);
   });
 
@@ -5686,16 +5753,16 @@ function renderCommandCenter(ath, apps = [], health = null) {
   const priorityRows = [...red, ...amber].slice(0, 6).map(a => {
     const reason = [...(a.actions?.critical || []), ...(a.actions?.watch || [])][0] || 'Review this athlete';
     const sev = a.actions?.severity === 'red' ? 'red' : 'amber';
-    return `<button class="cc-athlete" type="button" onclick="showFP('${esc(a.id)}')">
-      <div>
+    return `<div class="cc-athlete">
+      <button class="cc-athlete-open" type="button" onclick="showFP('${esc(a.id)}')">
         <div class="cc-athlete-name">${esc(athleteLabel(a))}</div>
         <div class="cc-athlete-reason">${esc(reason)}</div>
-      </div>
-      <span style="display:flex;align-items:center;gap:5px">
+      </button>
+      <div class="cc-athlete-actions">
         <span class="cc-chip ${sev}">${sev === 'red' ? 'Act' : 'Watch'}</span>
-        <span class="cc-ack-btn" onclick="event.stopPropagation();ackAlert('${esc(a.id)}')" title="Acknowledge — clear from priorities until something changes">✓</span>
-      </span>
-    </button>`;
+        <button class="cc-ack-btn" type="button" onclick="ackAlert('${esc(a.id)}')" title="Acknowledge for Karl and Alex until something changes" ${_ackPending.has(a.id) ? 'disabled' : ''}>${_ackPending.has(a.id) ? '…' : '✓'}</button>
+      </div>
+    </div>`;
   }).join('');
 
   const missingRows = missing.slice(0, 5).map(a => {
@@ -5802,10 +5869,10 @@ function _ccDetailContent(kind) {
   const ackRow = a => {
     const rec = _acks[a.id] || {};
     const meta = `Acknowledged${rec.at ? ' · ' + fmtDate(rec.at.slice(0, 10)) : ''}${rec.by && rec.by !== 'coach' ? ' by ' + rec.by : ''}`;
-    return `<button class="cc-athlete acked" type="button" onclick="ccCloseDetail();showFP('${esc(a.id)}')">
-      <div><div class="cc-athlete-name">${esc(athleteLabel(a))}</div><div class="cc-athlete-reason">${esc(meta)}</div></div>
-      <span class="cc-ack-btn" onclick="event.stopPropagation();unackAlert('${esc(a.id)}')" title="Restore alert">↩ Restore</span>
-    </button>`;
+    return `<div class="cc-athlete acked">
+      <button class="cc-athlete-open" type="button" onclick="ccCloseDetail();showFP('${esc(a.id)}')"><div class="cc-athlete-name">${esc(athleteLabel(a))}</div><div class="cc-athlete-reason">${esc(meta)}</div></button>
+      <button class="cc-ack-btn" type="button" onclick="unackAlert('${esc(a.id)}')" title="Restore alert for all coaches" ${_ackPending.has(a.id) ? 'disabled' : ''}>${_ackPending.has(a.id) ? 'Saving…' : '↩ Restore'}</button>
+    </div>`;
   };
 
   if (kind === 'act') {
@@ -7962,10 +8029,14 @@ function buildFPCard(a, weekOffset = 0) {
   if (a.actions && a.actions.severity) {
     const allActions = [...a.actions.critical, ...a.actions.watch];
     if (allActions.length) {
+      const ackRecord = _acks[a.id] || {};
+      const ackLabel = a.acked
+        ? ` · Acknowledged${ackRecord.by ? ` by ${esc(ackRecord.by)}` : ''}${ackRecord.at ? ` on ${fmtDate(ackRecord.at.slice(0, 10))}` : ''}`
+        : '';
       fpActionHtml = `<div class="fpc-section" style="padding:18px 24px;background:${a.actions.severity === 'red' ? '#fef2f2' : '#fffbeb'};border-color:${a.actions.severity === 'red' ? 'rgba(220,38,38,.25)' : 'rgba(217,119,6,.25)'};${a.acked ? 'opacity:.65' : ''}">
         <div class="fpc-section-title" style="color:${a.actions.severity === 'red' ? '#991b1b' : '#92400e'};margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
-          <span>${a.actions.severity === 'red' ? '⚠ Action Required' : '⚠ Watch List'}${a.acked ? ' · Acknowledged' : ''}</span>
-          <button class="fpc-ack-btn" onclick="${a.acked ? 'unackAlert' : 'ackAlert'}('${esc(a.id)}')">${a.acked ? '↩ Restore' : '✓ Acknowledge'}</button>
+          <span>${a.actions.severity === 'red' ? '⚠ Action Required' : '⚠ Watch List'}${ackLabel}</span>
+          <button class="fpc-ack-btn" onclick="${a.acked ? 'unackAlert' : 'ackAlert'}('${esc(a.id)}')" ${_ackPending.has(a.id) ? 'disabled' : ''}>${_ackPending.has(a.id) ? 'Saving…' : a.acked ? '↩ Restore' : '✓ Acknowledge'}</button>
         </div>
         ${a.actions.critical.length ? `<div style="margin-bottom:${a.actions.watch.length ? '10px' : '0'}">
           ${a.actions.critical.map(t => `<div style="font-family:var(--mono);font-size:11px;color:#991b1b;padding:4px 0;display:flex;align-items:flex-start;gap:8px">
@@ -9049,6 +9120,27 @@ function useCallNoteRows(rows) {
 // The ack stores a signature of the current action list — if anything about the
 // athlete's situation changes, the signature stops matching and the alert returns.
 let _acks = {}; // athlete_code → { sig, at, by }
+const _ackPending = new Set();
+let _ackSyncTimer = null;
+let _ackSyncBusy = false;
+
+function workflowNotice(message, tone = 'ok') {
+  let toast = document.getElementById('workflow-toast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'workflow-toast';
+    toast.className = 'workflow-toast';
+    toast.setAttribute('role', 'status');
+    toast.setAttribute('aria-live', 'polite');
+    document.body.appendChild(toast);
+  }
+  toast.classList.remove('is-leaving');
+  toast.classList.toggle('is-error', tone === 'error');
+  toast.textContent = message;
+  clearTimeout(workflowNotice._timer);
+  workflowNotice._timer = setTimeout(() => toast.classList.add('is-leaving'), 3500);
+}
+window.DP_WORKFLOW_NOTICE = workflowNotice;
 
 function _ackSig(a) {
   // Normalise rolling day counters ("No check-in for 12d" → "Nd") so an ack
@@ -9075,6 +9167,13 @@ function useAckRows(rows) {
   });
 }
 
+function applyAckState(rows) {
+  const before = JSON.stringify(_acks);
+  useAckRows(rows);
+  _allAthletes.forEach(a => { a.acked = _isAcked(a); });
+  return before !== JSON.stringify(_acks);
+}
+
 function _ackRefresh() {
   ccCloseDetail(); // any open detail panel/popup is stale after an ack change
   renderCommandCenter(_allAthletes, _allApplications, _dataHealth);
@@ -9085,21 +9184,62 @@ function _ackRefresh() {
 
 async function ackAlert(id) {
   const a = _allAthletes.find(x => x.id === id);
-  if (!a || !a.actions?.severity) return;
-  const by = document.querySelector('.coach-select')?.value || 'coach';
-  const rec = { sig: _ackSig(a), at: new Date().toISOString(), by };
-  _acks[id] = rec;
-  a.acked = true;
+  if (!a || !a.actions?.severity || _ackPending.has(id)) return;
+  _ackPending.add(id);
   _ackRefresh();
-  try { await maPost({ action: 'setting_upsert', code: id, key: 'ack_alert', value: rec }); } catch {}
+  try {
+    const result = await maPost({ action: 'alert_acknowledge', code: id, signature: _ackSig(a) });
+    _acks[id] = result.acknowledgement;
+    a.acked = _isAcked(a);
+    workflowNotice(`${athleteLabel(a)} acknowledged by ${result.acknowledgement.by}`);
+  } catch (error) {
+    workflowNotice(`Could not acknowledge ${athleteLabel(a)}: ${error.message}`, 'error');
+  } finally {
+    _ackPending.delete(id);
+    _ackRefresh();
+  }
 }
 
 async function unackAlert(id) {
-  delete _acks[id];
   const a = _allAthletes.find(x => x.id === id);
-  if (a) a.acked = false;
+  if (_ackPending.has(id)) return;
+  _ackPending.add(id);
   _ackRefresh();
-  try { await maPost({ action: 'setting_upsert', code: id, key: 'ack_alert', value: '' }); } catch {}
+  try {
+    await maPost({ action: 'alert_restore', code: id });
+    delete _acks[id];
+    if (a) a.acked = false;
+    workflowNotice(`${athleteLabel(a)} restored for Karl and Alex`);
+  } catch (error) {
+    workflowNotice(`Could not restore ${athleteLabel(a)}: ${error.message}`, 'error');
+  } finally {
+    _ackPending.delete(id);
+    _ackRefresh();
+  }
+}
+
+async function refreshSharedAcknowledgements() {
+  if (_ackSyncBusy || !_fullDashboardLoaded) return;
+  _ackSyncBusy = true;
+  try {
+    const response = await fetch(`${ROSTER_API}?action=acknowledgements`, { cache: 'no-store' });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok || payload.ok === false) throw new Error(payload.error || `HTTP ${response.status}`);
+    if (applyAckState(payload.acknowledgements || [])) _ackRefresh();
+  } catch (error) {
+    console.warn('[shared acknowledgements]', error);
+  } finally {
+    _ackSyncBusy = false;
+  }
+}
+
+function startSharedResolutionSync() {
+  if (_ackSyncTimer) return;
+  _ackSyncTimer = setInterval(refreshSharedAcknowledgements, 12000);
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) refreshSharedAcknowledgements();
+  });
+  window.addEventListener('focus', refreshSharedAcknowledgements);
 }
 
 // ── Main load ─────────────────────────────────────────────────────────────────
@@ -10738,7 +10878,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
   document.querySelectorAll('[id^="tab-"][id$="-content"]').forEach(panel => panel.setAttribute('role', 'tabpanel'));
   await window.DP_COACH_AUTH?.ready;
-  load();
+  await load();
+  startSharedResolutionSync();
 });
 document.getElementById('refresh-btn').addEventListener('click', () => {
   window.loadTriage?.();
@@ -10774,8 +10915,8 @@ document.getElementById('gen-btn').addEventListener('click', generateAI);
   });
 })();
 </script>
-<script src="/dashboard-redesign.js?v=20260810-2" defer></script>
-<script src="/coaching-actions.js" defer></script>
+<script src="/dashboard-redesign.js?v=20260810-3" defer></script>
+<script src="/coaching-actions.js?v=3" defer></script>
 <script src="/dashboard-mobilenav.js" defer></script>
 <script src="/triage.js?v=21" defer></script>
 <script src="/app.js" defer></script>

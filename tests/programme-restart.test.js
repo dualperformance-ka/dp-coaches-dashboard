@@ -6,6 +6,8 @@ import {
   cleanNutritionPlanFields,
   cleanLibraryFields,
   archiveLibraryRecord,
+  acknowledgeAlert,
+  buildAlertAcknowledgement,
   deleteAthleteSetting,
   deleteNutritionPlan,
   deletePlannedSession,
@@ -14,6 +16,7 @@ import {
   programmeRestartDates,
   programmeWeekForDate,
   restartProgramme,
+  restoreAlert,
   shiftIsoDate,
   saveLibraryRecord,
   upsertAthleteSetting,
@@ -166,7 +169,10 @@ test('proxies only allowlisted programme settings', async () => {
 
   await upsertAthleteSetting('alvin', 'programme_weeks', 16, request);
   await upsertAthleteSetting('alvin', 'call_notes', 'Follow up Tuesday', request);
-  await upsertAthleteSetting('alvin', 'ack_alert', { sig: '1' }, request);
+  await assert.rejects(
+    upsertAthleteSetting('alvin', 'ack_alert', { sig: '1' }, request),
+    /Unsupported athlete setting/
+  );
   await deleteAthleteSetting('alvin', 'start_date_override', request);
   await assert.rejects(
     upsertAthleteSetting('alvin', 'strava_tokens', 'blocked', request),
@@ -176,9 +182,33 @@ test('proxies only allowlisted programme settings', async () => {
   assert.equal(calls[0].path, 'athlete_data?on_conflict=athlete_code,key');
   assert.equal(calls[0].options.body.value, 16);
   assert.equal(calls[1].options.body.key, 'call_notes');
-  assert.equal(calls[2].options.body.key, 'ack_alert');
-  assert.match(calls[3].path, /key=eq\.start_date_override/);
-  assert.equal(calls.length, 4);
+  assert.match(calls[2].path, /key=eq\.start_date_override/);
+  assert.equal(calls.length, 3);
+});
+
+test('alert acknowledgements are stamped by the authenticated coach and shared in Supabase', async () => {
+  const calls = [];
+  const request = async (path, options = {}) => {
+    calls.push({ path, options });
+    return [{ ...(options.body || {}) }];
+  };
+  const now = new Date('2026-08-10T06:45:00.000Z');
+
+  assert.deepEqual(buildAlertAcknowledgement('-123', 'Karl', now), {
+    sig: '-123',
+    at: '2026-08-10T06:45:00.000Z',
+    by: 'KARL',
+  });
+
+  const saved = await acknowledgeAlert(' alvin ', '-123', 'Karl', request, now);
+  assert.equal(saved.acknowledgement.by, 'KARL');
+  assert.equal(calls[0].path, 'athlete_data?on_conflict=athlete_code,key');
+  assert.equal(calls[0].options.body.athlete_code, 'ALVIN');
+  assert.deepEqual(JSON.parse(calls[0].options.body.value), saved.acknowledgement);
+
+  await restoreAlert('alvin', request);
+  assert.match(calls[1].path, /athlete_code=eq\.ALVIN&key=eq\.ack_alert/);
+  assert.equal(calls[1].options.method, 'DELETE');
 });
 
 test('proxies programming-library records with table-specific allowlists', async () => {

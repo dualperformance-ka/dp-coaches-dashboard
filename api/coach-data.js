@@ -127,7 +127,11 @@ async function selectAthleteSettings() {
     throw new Error('SUPABASE_URL or SUPABASE_SERVICE_KEY is not configured');
   }
 
-  const keys = 'programme_weeks,start_date_override,programme_restart,call_notes,ack_alert,ticked,logs';
+  // ex_picks is the athlete's current exercise substitution map (programmed →
+  // performed). It is the fallback that lets the dashboard resolve a swap back
+  // to the slot it filled while training_session_logs.programmed_exercise is
+  // still arriving null from older portal builds.
+  const keys = 'programme_weeks,start_date_override,programme_restart,call_notes,ack_alert,ticked,logs,ex_picks';
   const url = `${baseUrl}/rest/v1/athlete_data?select=athlete_code,key,value&key=in.(${keys})`;
   const response = await fetch(url, {
     headers: { apikey: key, Authorization: `Bearer ${key}` },
@@ -902,7 +906,9 @@ export default async function handler(req, res) {
       selectAll('planned_sessions', 'planned_date').catch(() => []),
       selectAll('athletes').catch(() => []),
     ]);
-    const sessionState = athleteSettings.filter(row => row.key === 'ticked' || row.key === 'logs');
+    const sessionState = athleteSettings.filter(
+      row => row.key === 'ticked' || row.key === 'logs' || row.key === 'ex_picks'
+    );
     const logsRows = sessionState.filter(row => row.key === 'logs');
 
     const weeklyIntegrity = cleanWeeklyRows(weeklyRaw);

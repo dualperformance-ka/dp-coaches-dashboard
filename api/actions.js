@@ -50,15 +50,16 @@ async function sb(path, { method = 'GET', body, prefer } = {}) {
   return data;
 }
 
-function createPayload(input, coach) {
+export function createPayload(input, coach, now = new Date()) {
   const title = text(input.title, 180);
   if (!title) throw Object.assign(new Error('Action title is required'), { status: 400 });
-  return {
+  const status = enumValue(input.status, STATUSES, 'open');
+  const payload = {
     athlete_code: code(input.athlete_code),
     title,
     category: text(input.category, 60) || 'coaching',
     priority: enumValue(input.priority, PRIORITIES, 'normal'),
-    status: enumValue(input.status, STATUSES, 'open'),
+    status,
     owner: text(input.owner, 80) || coach,
     due_at: date(input.due_at),
     source: text(input.source, 60) || 'manual',
@@ -66,11 +67,17 @@ function createPayload(input, coach) {
     notes: text(input.notes, 4000) || null,
     outcome: text(input.outcome, 4000) || null,
     created_by: coach,
+    updated_by: coach,
   };
+  if (status === 'done') {
+    payload.completed_at = now.toISOString();
+    payload.completed_by = coach;
+  }
+  return payload;
 }
 
-function updatePayload(input) {
-  const out = { updated_at: new Date().toISOString() };
+export function updatePayload(input, coach, now = new Date()) {
+  const out = { updated_at: now.toISOString(), updated_by: coach };
   if ('title' in input) {
     out.title = text(input.title, 180);
     if (!out.title) throw Object.assign(new Error('Action title is required'), { status: 400 });
@@ -83,8 +90,14 @@ function updatePayload(input) {
   if ('due_at' in input) out.due_at = date(input.due_at);
   if ('notes' in input) out.notes = text(input.notes, 4000) || null;
   if ('outcome' in input) out.outcome = text(input.outcome, 4000) || null;
-  if (out.status === 'done') out.completed_at = new Date().toISOString();
-  if (out.status && out.status !== 'done') out.completed_at = null;
+  if (out.status === 'done') {
+    out.completed_at = now.toISOString();
+    out.completed_by = coach;
+  }
+  if (out.status && out.status !== 'done') {
+    out.completed_at = null;
+    out.completed_by = null;
+  }
   return out;
 }
 
@@ -111,9 +124,6 @@ export default async function handler(req, res) {
 
     if (req.method === 'POST') {
       const payload = createPayload(req.body || {}, coach);
-      if (payload.status === 'done' && !payload.outcome) {
-        return res.status(400).json({ ok: false, error: 'Add an outcome before completing an action' });
-      }
       const rows = await sb('coach_actions', {
         method: 'POST', body: payload, prefer: 'return=representation',
       });
@@ -125,10 +135,7 @@ export default async function handler(req, res) {
       if (!/^[0-9a-f-]{36}$/i.test(id)) {
         return res.status(400).json({ ok: false, error: 'Valid action id is required' });
       }
-      const updates = updatePayload(req.body || {});
-      if (updates.status === 'done' && !updates.outcome) {
-        return res.status(400).json({ ok: false, error: 'Add an outcome before completing an action' });
-      }
+      const updates = updatePayload(req.body || {}, coach);
       const rows = await sb(`coach_actions?id=eq.${encodeURIComponent(id)}`, {
         method: 'PATCH', body: updates, prefer: 'return=representation',
       });

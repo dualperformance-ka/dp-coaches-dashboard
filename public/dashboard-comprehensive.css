@@ -44,6 +44,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .coach-action-meta{font:9px var(--mono);color:var(--muted);text-transform:capitalize}
 .coach-action-complete{margin-right:12px;border:1px solid rgba(74,222,128,.25);border-radius:6px;background:rgba(74,222,128,.07);color:var(--ok);font:700 9px var(--mono);padding:6px 9px;cursor:pointer;white-space:nowrap}
 .coach-action-empty,.coach-action-load-error{padding:18px;color:var(--dim);font-size:12px;text-align:center;border:1px solid var(--border);border-radius:10px;margin-bottom:12px}
+.coach-action-history-note{margin:0 18px 12px;padding:9px 11px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--muted);font-size:11px}
 
 .coach-action-backdrop{position:fixed;inset:0;z-index:1800;display:grid;place-items:center;padding:20px;background:rgba(5,7,8,.78);backdrop-filter:blur(7px)}
 .coach-action-backdrop[hidden]{display:none}
