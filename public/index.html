@@ -1662,15 +1662,25 @@ body[data-theme="light"] .strava-weekly-strip{background:#fff}
 .daily-ledger-note{font-size:11px;color:var(--muted);line-height:1.45;margin-top:8px;border-left:2px solid var(--border-mid);padding-left:8px}
 .daily-ledger-empty{font-family:var(--mono);font-size:10px;color:var(--dim);font-style:italic}
 @media(max-width:720px){.daily-ledger-row{grid-template-columns:1fr}.daily-ledger-date{padding-top:0}}
-.week-jump{display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:10px 14px;margin-bottom:14px}
+.week-jump{display:flex;align-items:center;justify-content:space-between;gap:14px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:10px 14px;margin-bottom:14px;position:sticky;top:58px;z-index:9;box-shadow:0 8px 24px rgba(0,0,0,.16)}
+.week-jump.is-current{border-color:rgba(74,222,128,.34)}
+.week-jump.is-reviewing{border-color:var(--brand-border)}
+.week-jump-identity{display:flex;align-items:center;gap:14px;min-width:0}
+.week-jump-athlete{font-family:var(--cond);font-size:22px;font-weight:900;color:var(--text);text-transform:uppercase;letter-spacing:.05em;line-height:1;max-width:210px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.week-jump-divider{width:1px;height:36px;background:var(--border-mid);flex:0 0 auto}
+.week-jump-context{min-width:0}
 .week-jump-title{font-family:var(--mono);font-size:9px;font-weight:800;color:var(--dim);text-transform:uppercase;letter-spacing:.12em}
-.week-jump-main{font-family:var(--cond);font-size:22px;font-weight:900;text-transform:uppercase;letter-spacing:.05em;line-height:1;margin-top:2px}
+.week-jump-main-row{display:flex;align-items:center;gap:8px;margin-top:2px;min-width:0}
+.week-jump-main{font-family:var(--cond);font-size:22px;font-weight:900;text-transform:uppercase;letter-spacing:.05em;line-height:1}
+.week-jump-status{font-family:var(--mono);font-size:8px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;border-radius:999px;padding:4px 8px;white-space:nowrap}
+.week-jump-status.current{color:var(--green-text);background:var(--green-bg);border:1px solid var(--green-border)}
+.week-jump-status.reference{color:var(--brand-text);background:var(--brand-bg);border:1px solid var(--brand-border)}
 .week-jump-sub{font-family:var(--mono);font-size:9px;color:var(--dim);margin-top:3px}
 .week-jump-controls{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end}
 .week-jump-btn{background:#0a0a0a;border:1px solid #0a0a0a;color:#fff;font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.08em;border-radius:6px;padding:7px 10px;cursor:pointer}
 .week-jump-btn.secondary{background:transparent;color:var(--muted);border-color:var(--border-mid)}
 .week-jump-btn:disabled{opacity:.35;cursor:not-allowed}
-@media(max-width:720px){.week-jump{align-items:flex-start;flex-direction:column}.week-jump-controls{justify-content:flex-start}}
+@media(max-width:720px){.week-jump{top:54px;align-items:stretch;flex-direction:column;gap:9px;padding:9px 11px}.week-jump-identity{gap:9px}.week-jump-athlete{font-size:18px;max-width:120px}.week-jump-divider{height:32px}.week-jump-main{font-size:18px}.week-jump-sub{display:none}.week-jump-controls{justify-content:stretch;flex-wrap:nowrap}.week-jump-btn{flex:1;padding:7px 5px;font-size:8px}}
 </style>
 <link rel="stylesheet" href="/dashboard-redesign.css">
 <link rel="stylesheet" href="/dashboard-detail-cleanup.css">
@@ -7374,11 +7384,23 @@ function getSelectedWeekContext(a, weekOffset = 0) {
 
 function buildWeekJump(a, ctx) {
   const programmeEnd = Math.max(getProgWeeks(a.id), typeof a.weekNum === 'number' ? a.weekNum : 0);
-  return `<div class="week-jump">
-    <div>
-      <div class="week-jump-title">Review Week</div>
-      <div class="week-jump-main">${ctx.weekLabel || 'Selected Week'}</div>
-      <div class="week-jump-sub">${fmtDate(ctx.weekStartStr)} → ${fmtDate(ctx.weekEndStr)}${ctx.weekOffset === 0 ? ' · current' : ''}</div>
+  const isCurrentWeek = ctx.weekOffset === 0;
+  const selectedWeekLabel = ctx.selectedWeekNum === 0 ? 'Discovery Week' : (ctx.weekLabel || 'Selected Week');
+  const currentWeekLabel = a.weekNum === 0
+    ? 'Discovery Week'
+    : (typeof a.weekNum === 'number' ? `Week ${a.weekNum}` : 'Current week');
+  return `<div class="week-jump ${isCurrentWeek ? 'is-current' : 'is-reviewing'}">
+    <div class="week-jump-identity">
+      <div class="week-jump-athlete">${esc(a.id)}</div>
+      <div class="week-jump-divider" aria-hidden="true"></div>
+      <div class="week-jump-context">
+        <div class="week-jump-title">${isCurrentWeek ? 'Current programme week' : 'Reviewing programme week'}</div>
+        <div class="week-jump-main-row">
+          <div class="week-jump-main">${esc(selectedWeekLabel)}</div>
+          <span class="week-jump-status ${isCurrentWeek ? 'current' : 'reference'}">${isCurrentWeek ? 'Current week' : `Current: ${esc(currentWeekLabel)}`}</span>
+        </div>
+        <div class="week-jump-sub">${fmtDate(ctx.weekStartStr)} → ${fmtDate(ctx.weekEndStr)}</div>
+      </div>
     </div>
     <div class="week-jump-controls">
       <button class="week-jump-btn secondary" onclick="fpWeekNav(-1)">← Previous Week</button>
