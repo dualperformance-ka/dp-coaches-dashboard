@@ -1307,6 +1307,29 @@ body[data-theme="light"] .plan-chip.coach::before{color:#92400e}
 .wd-splits-scroll::-webkit-scrollbar-thumb{background:var(--border-mid);border-radius:2px}
 .wd-splits-scroll .strava-splits{margin-top:0}
 .wd-splits-scroll .strava-splits th{position:sticky;top:0;z-index:1;background:var(--surface2)}
+/* Planned sessions: reference rows, deliberately much tighter than logged work */
+.wd-plan{border-radius:7px;background:var(--surface2);border-left:3px solid var(--border-mid);overflow:hidden}
+.wd-plan.run{background:var(--amber-bg);border-left-color:var(--run)}
+.wd-plan.str{background:rgba(96,165,250,.08);border-left-color:var(--str)}
+.wd-plan-line{display:flex;align-items:center;gap:8px;padding:5px 9px;min-height:26px;cursor:default;list-style:none}
+details.wd-plan .wd-plan-line{cursor:pointer}
+.wd-plan-line::-webkit-details-marker{display:none}
+.wd-plan-cat{font-family:var(--mono);font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--dim);flex:0 0 auto;min-width:42px}
+.wd-plan.run .wd-plan-cat{color:var(--run)}
+.wd-plan.str .wd-plan-cat{color:var(--str)}
+.wd-plan-name{font-family:var(--cond);font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.02em;color:var(--text);line-height:1.2;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wd-plan-chips{display:flex;flex-wrap:wrap;gap:4px;margin-left:auto;justify-content:flex-end;flex:0 1 auto}
+.wd-plan-chip{font-family:var(--mono);font-size:9px;color:var(--muted);white-space:nowrap}
+.wd-plan-chip+.wd-plan-chip::before{content:'·';margin-right:4px;color:var(--dim)}
+.wd-plan-chev{font-size:8px;color:var(--dim);flex:0 0 auto;transition:transform .18s}
+details.wd-plan[open] .wd-plan-chev{transform:rotate(180deg)}
+.wd-plan-more{padding:0 9px 8px 9px;display:flex;flex-direction:column;gap:5px}
+.wd-plan-struct{font-family:var(--mono);font-size:9px;color:var(--muted);line-height:1.5}
+.wd-plan-note{font-size:10px;color:var(--muted);font-style:italic;line-height:1.45}
+.wd-plan-exlist{display:flex;flex-direction:column;gap:1px}
+.wd-plan-ex{display:flex;justify-content:space-between;gap:10px;font-family:var(--mono);font-size:9px;color:var(--muted);line-height:1.5}
+.wd-plan-ex span:first-child{text-transform:capitalize;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wd-plan-ex span:last-child{flex:0 0 auto;color:var(--dim)}
 .wd-session{border-radius:8px;padding:10px 12px}
 .wd-session.run{background:var(--amber-bg);border-left:3px solid var(--run)}
 .wd-session.str{background:rgba(96,165,250,.08);border-left:3px solid var(--str)}
@@ -7669,22 +7692,74 @@ function buildFPCard(a, weekOffset = 0) {
 
         // Coach-assigned sessions make upcoming weeks useful before the athlete
         // has logged anything. Keep them visually distinct from completed logs.
+        // Planned sessions are reference material, not a log — one dense line each,
+        // with the prescription detail behind a disclosure so a full week stays
+        // scannable. Everything here already existed on the row; the previous card
+        // layout only ever rendered distance and pace.
         const planHtml = dayPlan.map(r => {
           const sessionType = r['Session Type'] || r['SessionType'] || '';
           const isRun = RUN_SESSION_TYPES.has(sessionType);
           const cls = isRun ? 'run' : sessionType ? 'str' : 'other';
           const rowId = r._id || r.id || '';
-          const override = isRun && rowId ? getPlanOverride(rowId) : null;
+          // Overrides carry the structured prescription for every session type, not
+          // just runs — restricting this to runs is why planned lifts showed nothing.
+          const override = rowId ? getPlanOverride(rowId) : null;
           const sessionName = override?.name || r.Session || sessionType || 'Session';
-          const detail = [
-            override?.dist ? `${override.dist} km` : '',
+          const runDetails = String(r['Run Details'] || '').trim();
+          const intensity = String(r.Intensity || '').trim();
+          const catLabel = isRun ? 'Run' : sessionType === 'discovery' ? 'Discovery'
+            : sessionType ? 'Lift' : 'Session';
+
+          // Matched split gives planned lifts their exercise list.
+          const split = isRun ? null : splitForTitle(sessionName, a.id);
+          const splitExs = split?.exercises || [];
+
+          // target_pace is free text that usually already contains the RPE and the
+          // range (e.g. "RPE 8 - 5:20-5:35/km"), so it stays a single chip.
+          const chips = [
+            override?.dist ? `${override.dist}km` : '',
             override?.pace || '',
-          ].filter(Boolean).join(' · ');
-          return `<div class="wd-session ${cls}" style="opacity:.82">
-            <div class="wd-sess-cat">Planned ${isRun ? 'Run' : sessionType ? 'Lift' : 'Session'}</div>
-            <div class="wd-sess-name">${esc(sessionName)}</div>
-            ${detail ? `<div class="wd-sess-notes">${esc(detail)}</div>` : ''}
-          </div>`;
+            intensity,
+            splitExs.length ? `${splitExs.length} exercises` : '',
+          ].filter(Boolean);
+          if (!chips.length && runDetails) chips.push(runDetails);
+
+          const structure = [
+            override?.warmup ? `${override.warmup} warmup` : '',
+            override?.intervals
+              ? (override.workpace ? `${override.intervals} @ ${override.workpace}` : override.intervals)
+              : (override?.workpace || ''),
+            override?.rest ? `${override.rest} rest` : '',
+            override?.cooldown ? `${override.cooldown} cooldown` : '',
+          ].filter(Boolean).join(' / ');
+
+          const exerciseList = splitExs.map(e => {
+            const wu = e.warmupSets && e.warmupSets !== '0' ? `${e.warmupSets} wu + ` : '';
+            const sets = e.workingSets || e.sets || '';
+            const reps = e.repRange || '';
+            const load = [sets ? `${wu}${sets} sets` : '', reps].filter(Boolean).join(' · ');
+            return `<div class="wd-plan-ex"><span>${esc(e.exercise || '')}</span><span>${esc(load)}</span></div>`;
+          }).join('');
+
+          const showDetails = runDetails && chips[0] !== runDetails;
+          const more = [
+            structure ? `<div class="wd-plan-struct">${esc(structure)}</div>` : '',
+            showDetails ? `<div class="wd-plan-note">${esc(runDetails)}</div>` : '',
+            override?.notes ? `<div class="wd-plan-note">${esc(override.notes)}</div>` : '',
+            exerciseList ? `<div class="wd-plan-exlist">${exerciseList}</div>` : '',
+          ].filter(Boolean).join('');
+
+          const line = `<span class="wd-plan-cat">${esc(catLabel)}</span>
+            <span class="wd-plan-name">${esc(sessionName)}</span>
+            <span class="wd-plan-chips">${chips.map(c => `<span class="wd-plan-chip">${esc(c)}</span>`).join('')}</span>`;
+
+          if (!more) {
+            return `<div class="wd-plan ${cls}"><div class="wd-plan-line">${line}</div></div>`;
+          }
+          return `<details class="wd-plan ${cls}">
+            <summary class="wd-plan-line">${line}<span class="wd-plan-chev">▾</span></summary>
+            <div class="wd-plan-more">${more}</div>
+          </details>`;
         }).join('');
 
         // Body metrics (Weight, Sleep, Energy, Stress, Soreness, Steps + notes)

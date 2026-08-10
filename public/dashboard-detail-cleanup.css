@@ -175,6 +175,74 @@
 }
 
 /* ============================================
+   PLANNED SESSIONS — compact reference rows
+   The overlay pads logged sessions generously because they carry sets, reps and
+   athlete notes. Planned work is just "what's on", so it gets a single line with
+   the prescription behind a disclosure. Roughly a third of the previous height.
+   ============================================ */
+
+#fp-overlay .wd-plan {
+  border: 1px solid var(--border);
+  border-left-width: 4px;
+  border-radius: 10px;
+}
+
+#fp-overlay .wd-plan.run {
+  background: var(--amber-bg);
+  border-color: var(--amber-border);
+  border-left-color: var(--run);
+}
+
+#fp-overlay .wd-plan.str {
+  background: rgba(110, 168, 254, .10);
+  border-color: rgba(110, 168, 254, .28);
+  border-left-color: var(--str);
+}
+
+#fp-overlay .wd-plan-line {
+  gap: 10px;
+  min-height: 32px;
+  padding: 6px 12px;
+}
+
+#fp-overlay .wd-plan-cat {
+  min-width: 46px;
+  font-size: 9px;
+  letter-spacing: .12em;
+}
+
+#fp-overlay .wd-plan-name { font-size: 13px; }
+#fp-overlay .wd-plan-chip { font-size: 10px; }
+#fp-overlay .wd-plan-more { padding: 0 12px 10px; }
+#fp-overlay .wd-plan-struct,
+#fp-overlay .wd-plan-ex { font-size: 10px; }
+#fp-overlay .wd-plan-note { font-size: 11px; }
+
+/* A planned day is reference material, so its rows sit tighter than logged ones. */
+#fp-overlay .wd-day-content > .wd-plan + .wd-plan { margin-top: -4px; }
+
+@media (max-width: 720px) {
+  /* Chips drop under the name instead of crushing it on a narrow screen. */
+  #fp-overlay .wd-plan-line,
+  .wd-plan-line {
+    flex-wrap: wrap;
+    row-gap: 3px;
+  }
+
+  .wd-plan-name { flex: 1 1 auto; white-space: normal; }
+
+  .wd-plan-chips {
+    flex-basis: 100%;
+    margin-left: 0;
+    justify-content: flex-start;
+    padding-left: 42px;
+  }
+
+  #fp-overlay .wd-plan-chips { padding-left: 46px; }
+  .wd-plan-ex { flex-wrap: wrap; row-gap: 0; }
+}
+
+/* ============================================
    PREMIUM TYPE POLISH — Geist Mono / Geist Sans
    ============================================ */
 
