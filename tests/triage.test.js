@@ -316,11 +316,18 @@ test('the worst compliance drift still ranks below gone quiet', () => {
   assert.equal(result.queue[1].evidence.compliance.completed, 0);
 });
 
-test('Today is the default coach screen and defers the Strava-heavy roster load', () => {
+test('Today is the default coach screen and owns the operational dashboard', () => {
   const source = readFileSync(new URL('../public/index.html', import.meta.url), 'utf8');
   assert.match(source, /class="tab active" id="tab-triage-btn"/);
   assert.match(source, /id="tab-athletes-content" style="display:none"/);
-  assert.match(source, /if \(!document\.getElementById\('tab-triage-btn'\)\?\.classList\.contains\('active'\)\) load\(\);/);
-  assert.match(source, /Only paired signals that lead to a coaching action\./);
+  const todayStart = source.indexOf('id="tab-triage-content"');
+  const athletesStart = source.indexOf('id="tab-athletes-content"');
+  const commandCenter = source.indexOf('id="command-center"');
+  const coachingActions = source.indexOf('id="coaching-actions"');
+  assert.ok(todayStart >= 0 && athletesStart > todayStart);
+  assert.ok(commandCenter > todayStart && commandCenter < athletesStart);
+  assert.ok(coachingActions > todayStart && coachingActions < athletesStart);
+  assert.match(source, /await window\.DP_COACH_AUTH\?\.ready;\s*load\(\);/);
+  assert.match(source, /Paired signals that need a coaching decision\./);
   assert.doesNotMatch(source, /<header class="triage-hero">/);
 });

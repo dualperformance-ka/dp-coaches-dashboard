@@ -53,8 +53,8 @@
   }
 
   function addPageIntro() {
-    const content = qs("#content");
-    const anchor = qs("#dash-week-nav");
+    const content = qs("#tab-triage-content");
+    const anchor = qs(".today-operations", content);
 
     if (!content || !anchor || qs(".dp-page-intro")) return;
 
@@ -62,7 +62,7 @@
     intro.className = "dp-page-intro";
     intro.innerHTML = `
       <div>
-        <div class="dp-eyebrow">Coach overview</div>
+        <div class="dp-eyebrow">Coach today</div>
 
         <h1 class="dp-page-title">
           <span id="dp-intro-greeting">${timeGreeting()}</span>,
@@ -70,8 +70,8 @@
         </h1>
 
         <p class="dp-page-subtitle">
-          Start with the athletes who need a decision, then review squad
-          adherence and recent activity.
+          Start with this week's priorities and coaching actions, then review
+          the live triage signals.
         </p>
       </div>
 

@@ -1962,7 +1962,7 @@ body[data-theme="light"] .theme-btn.active{background:rgba(255,255,255,.22);colo
 <link rel="stylesheet" href="/dashboard-theme-system.css?v=20260810-2">
 <link rel="stylesheet" href="/dashboard-desktop.css">
 <link rel="stylesheet" href="/dashboard-mobile-polish.css">
-<link rel="stylesheet" href="/triage.css?v=21">
+<link rel="stylesheet" href="/triage.css?v=22">
 <div class="ma-backdrop" id="ma-backdrop" role="dialog" aria-modal="true" aria-label="Manage athletes" onclick="if(event.target===this)closeManageAthletes()">
   <div class="ma-card">
     <div class="ma-head">
@@ -2286,12 +2286,18 @@ function refreshRosterDrivenUI() {
 
 <!-- TODAY TRIAGE TAB -->
 <main id="tab-triage-content" class="triage-page">
+  <section class="today-operations" aria-label="Today coaching operations">
+    <div id="today-dashboard-loading" class="today-dashboard-state" role="status">Loading weekly priorities…</div>
+    <div id="today-dashboard-error" class="today-dashboard-state is-error" role="alert" hidden></div>
+    <div id="command-center"></div>
+    <div id="coaching-actions"></div>
+  </section>
   <section class="triage-shell" aria-labelledby="triage-title">
     <div class="triage-hero">
       <div>
-        <div class="triage-eyebrow">Coach triage · Today</div>
-        <h1 id="triage-title">Who needs me today?</h1>
-        <p>Only paired signals that lead to a coaching action.</p>
+        <div class="triage-eyebrow">Decision queue · Today</div>
+        <h1 id="triage-title">Live triage signals</h1>
+        <p>Paired signals that need a coaching decision.</p>
       </div>
       <div class="triage-date" id="triage-date" aria-label="Dashboard date"></div>
     </div>
@@ -2325,8 +2331,6 @@ function refreshRosterDrivenUI() {
     </div>
     <div id="content" style="display:none">
       <div id="dash-week-nav" style="display:none"></div>
-      <div id="command-center"></div>
-      <div id="coaching-actions"></div>
       <div class="squad-brief" id="squad-brief">
         <div class="sb-title">⬡ Squad Brief — AI Coaching Summary</div>
         <div class="sb-text" id="squad-brief-text"></div>
@@ -8991,7 +8995,7 @@ function switchTab(tab) {
   }
 
   const needsFullData = new Set([
-    'athletes', 'planning', 'nutrition', 'coaches', 'sync', 'applications', 'notifications',
+    'triage', 'athletes', 'planning', 'nutrition', 'coaches', 'sync', 'applications', 'notifications',
   ]).has(tab);
   if (needsFullData && !_fullDashboardLoaded && !_fullDashboardLoading) load();
 
@@ -9102,6 +9106,10 @@ async function unackAlert(id) {
 async function load({ bust = false } = {}) {
   if (_fullDashboardLoading) return;
   _fullDashboardLoading = true;
+  const todayLoading = document.getElementById('today-dashboard-loading');
+  const todayError = document.getElementById('today-dashboard-error');
+  if (todayLoading) todayLoading.hidden = false;
+  if (todayError) { todayError.hidden = true; todayError.textContent = ''; }
   document.getElementById('loading').style.display = 'block';
   document.getElementById('content').style.display = 'none';
   document.getElementById('err').style.display = 'none';
@@ -9180,6 +9188,7 @@ async function load({ bust = false } = {}) {
 
     document.getElementById('loading').style.display = 'none';
     document.getElementById('content').style.display = 'block';
+    if (todayLoading) todayLoading.hidden = true;
     document.getElementById('updated').textContent =
       'Updated ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
@@ -9190,6 +9199,11 @@ async function load({ bust = false } = {}) {
     document.getElementById('loading').style.display = 'none';
     document.getElementById('err').style.display = 'block';
     document.getElementById('err-msg').textContent = 'Error: ' + e.message;
+    if (todayLoading) todayLoading.hidden = true;
+    if (todayError) {
+      todayError.hidden = false;
+      todayError.textContent = 'Weekly priorities could not load: ' + e.message;
+    }
   } finally {
     _fullDashboardLoading = false;
     document.getElementById('refresh-btn').disabled = false;
@@ -10724,13 +10738,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
   document.querySelectorAll('[id^="tab-"][id$="-content"]').forEach(panel => panel.setAttribute('role', 'tabpanel'));
   await window.DP_COACH_AUTH?.ready;
-  if (!document.getElementById('tab-triage-btn')?.classList.contains('active')) load();
+  load();
 });
 document.getElementById('refresh-btn').addEventListener('click', () => {
   window.loadTriage?.();
-  if (!document.getElementById('tab-triage-btn')?.classList.contains('active')) {
-    load({ bust: true });
-  }
+  load({ bust: true });
 });
 document.getElementById('gen-btn').addEventListener('click', generateAI);
 
@@ -10762,7 +10774,7 @@ document.getElementById('gen-btn').addEventListener('click', generateAI);
   });
 })();
 </script>
-<script src="/dashboard-redesign.js" defer></script>
+<script src="/dashboard-redesign.js?v=20260810-2" defer></script>
 <script src="/coaching-actions.js" defer></script>
 <script src="/dashboard-mobilenav.js" defer></script>
 <script src="/triage.js?v=21" defer></script>
