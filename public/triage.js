@@ -1,6 +1,23 @@
 (function () {
   'use strict';
 
+  // Every flag the server can emit, including the two Strava rows that are not
+  // built yet. A missing entry used to fall through to 'Gone quiet', which would
+  // mislabel any new row the moment it shipped.
+  var FLAG_LABELS = {
+    pain: 'Pain / alert',
+    gone_quiet: 'Gone quiet',
+    compliance_drift: 'Compliance drift',
+    load_divergence: 'Load vs recovery',
+    pace_mismatch: 'Easy-day pace',
+  };
+
+  var SEVERITY_CLASS = {
+    critical: 'is-critical',
+    high: '',
+    medium: 'is-medium',
+  };
+
   function escapeHtml(value) {
     return String(value ?? '')
       .replace(/&/g, '&amp;')
@@ -53,16 +70,17 @@
 
     if (list) {
       list.innerHTML = queue.map(row => {
-        const critical = row.severity === 'critical';
-        const label = row.flag === 'pain' ? 'Pain / alert' : 'Gone quiet';
-        return `<li class="triage-row${critical ? ' is-critical' : ''}">
+        const tone = SEVERITY_CLASS[row.severity] || '';
+        const label = FLAG_LABELS[row.flag] || 'Needs review';
+        const action = row.action || {};
+        return `<li class="triage-row${tone ? ` ${tone}` : ''}">
           <div class="triage-athlete">
             <div class="triage-athlete-name">${escapeHtml(row.athleteName || row.athleteCode)}</div>
-            <div class="triage-flag">${label}</div>
+            <div class="triage-flag">${escapeHtml(label)}</div>
           </div>
           <p class="triage-signal">${escapeHtml(row.signal)}</p>
-          <button type="button" class="triage-action" data-triage-code="${escapeHtml(row.action?.athleteCode || row.athleteCode)}">
-            ${escapeHtml(row.action?.label || 'Check in')}
+          <button type="button" class="triage-action" data-triage-code="${escapeHtml(action.athleteCode || row.athleteCode)}" data-triage-action="${escapeHtml(action.type || 'message')}">
+            ${escapeHtml(action.label || 'Check in')}
           </button>
         </li>`;
       }).join('');
@@ -119,13 +137,28 @@
     document.getElementById('cn-msg-body')?.focus();
   }
 
+  // Compliance drift asks the coach to review the week's plan, not to send a
+  // message, so the action routes to Planning with the athlete already selected.
+  async function openReview(code) {
+    if (!code || typeof window.switchTab !== 'function') return;
+    window.switchTab('planning');
+    if (typeof window.setPlanAthlete === 'function') {
+      try { await window.setPlanAthlete(code); } catch (error) { console.warn('[triage] setPlanAthlete', error); }
+    }
+  }
+
+  function runAction(type, code) {
+    if (type === 'review') return openReview(code);
+    return openMessage(code);
+  }
+
   window.loadTriage = loadTriage;
 
   document.addEventListener('DOMContentLoaded', async function () {
     document.querySelector('[data-triage-retry]')?.addEventListener('click', loadTriage);
     document.getElementById('triage-queue')?.addEventListener('click', event => {
       const button = event.target.closest('[data-triage-code]');
-      if (button) openMessage(button.dataset.triageCode);
+      if (button) runAction(button.dataset.triageAction, button.dataset.triageCode);
     });
     await window.DP_COACH_AUTH?.ready;
     loadTriage();

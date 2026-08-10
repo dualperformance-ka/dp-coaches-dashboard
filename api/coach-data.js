@@ -18,6 +18,22 @@ const TRIAGE_TIMEZONE = 'Australia/Adelaide';
 const PAIN_WINDOW_DAYS = 7;
 const QUIET_AFTER_DAYS = 5;
 
+// Compliance drift (triage row 4). The week is Monday-anchored in
+// TRIAGE_TIMEZONE, matching the Monday week starts already used by
+// api/strava.js. Half of seven days is 3.5, so the row is only eligible from
+// day 4 (Thursday) onward — a 0-of-4 Tuesday is not yet information.
+const COMPLIANCE_MIN_RATIO = 0.6;
+const COMPLIANCE_MIN_DAY_INDEX = 4;
+
+// planned_sessions.status is free text: nothing in this repo constrains it, and
+// the table itself belongs to the athlete portal. Only an explicit completion
+// counts here. Note that the unrelated regex in nextPlannedContext deliberately
+// also matches skipped/missed because it is looking for the next *upcoming*
+// session; reusing it to count completions would be wrong.
+const COMPLIANCE_DONE_STATUS = /^(done|complete|completed)$/i;
+
+const ELAPSED_DAY_WORDS = ['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven'];
+
 function cleanBaseUrl(value) {
   return String(value || '').replace(/\/+$/, '');
 }
@@ -498,6 +514,69 @@ function painCandidateSort(left, right) {
   );
 }
 
+function mondayOnOrBefore(dateText) {
+  const date = new Date(`${dateText}T00:00:00Z`);
+  const weekday = date.getUTCDay();
+  return shiftDate(dateText, -(weekday === 0 ? 6 : weekday - 1));
+}
+
+// Distinct completed sessions, keyed on (date, name). Strength logs write one
+// row per exercise — see reconSessionShape — so counting raw rows would turn a
+// single five-exercise session into five completions and mask real drift.
+function loggedSessionKeysByDate(trainingRows, athleteCode, weekStart, today) {
+  const byDate = new Map();
+  for (const row of trainingRows || []) {
+    if (normaliseCode(row.athlete_code) !== athleteCode) continue;
+    const date = String(row.session_date || '');
+    if (!date || date < weekStart || date > today) continue;
+    const keys = byDate.get(date) || new Set();
+    keys.add(normaliseText(row.session_name || row.session_category || ''));
+    byDate.set(date, keys);
+  }
+  return byDate;
+}
+
+// Hybrid completion: an explicit done status counts, otherwise a distinct log on
+// that date counts. Logged sessions are consumed per date so one log can never
+// satisfy two prescriptions. Both halves fail toward "completed", so the queue
+// under-reports drift rather than crying wolf — the right bias for a screen
+// whose credibility depends on every row being real.
+function complianceSignal({ plannedRows, trainingRows, athleteCode, weekStart, today }) {
+  const planned = (plannedRows || []).filter(row =>
+    normaliseCode(row.athlete_code) === athleteCode &&
+    row.planned_date &&
+    String(row.planned_date) >= weekStart &&
+    String(row.planned_date) <= today
+  );
+  // No prescription is a programming gap, not athlete drift. Flagging it would
+  // put the whole roster in the queue and divide by zero doing it.
+  if (!planned.length) return null;
+
+  const loggedByDate = loggedSessionKeysByDate(trainingRows, athleteCode, weekStart, today);
+  const plannedByDate = new Map();
+  for (const row of planned) {
+    const date = String(row.planned_date);
+    plannedByDate.set(date, (plannedByDate.get(date) || []).concat(row));
+  }
+
+  let completed = 0;
+  for (const [date, rows] of plannedByDate) {
+    const explicit = rows.filter(row => COMPLIANCE_DONE_STATUS.test(String(row.status || '').trim())).length;
+    const remaining = rows.length - explicit;
+    const loggedHere = loggedByDate.get(date)?.size || 0;
+    completed += explicit + Math.min(remaining, Math.max(0, loggedHere - explicit));
+  }
+
+  const ratio = completed / planned.length;
+  if (ratio >= COMPLIANCE_MIN_RATIO) return null;
+  return { planned: planned.length, completed, ratio };
+}
+
+function complianceSignalCopy(compliance, dayIndex) {
+  const elapsed = ELAPSED_DAY_WORDS[dayIndex] || String(dayIndex);
+  return `Completed ${compliance.completed} of ${compliance.planned} sessions planned so far this week, with ${elapsed} days elapsed.`;
+}
+
 function latestCompletedContext(rows, athleteCode, signalDate) {
   return (rows || [])
     .filter(row => normaliseCode(row.athlete_code) === athleteCode)
@@ -551,6 +630,9 @@ export function buildTriageQueue({
 } = {}) {
   const nowDate = now instanceof Date ? now : new Date(now);
   const today = isoDateInTimeZone(nowDate, timeZone);
+  const weekStart = mondayOnOrBefore(today);
+  const dayIndex = dayDistance(weekStart, today) + 1;
+  const weekHalfElapsed = dayIndex >= COMPLIANCE_MIN_DAY_INDEX;
   const painStart = shiftDate(today, -(PAIN_WINDOW_DAYS - 1));
   const quietBodyCutoff = shiftDate(today, -QUIET_AFTER_DAYS);
   const quietSessionCutoff = nowDate.getTime() - QUIET_AFTER_DAYS * 86400000;
@@ -590,7 +672,16 @@ export function buildTriageQueue({
     const goneQuiet = !bodyRecentlyActive.has(code) && !sessionRecentlyActive.has(code);
     const quietDays = goneQuiet ? QUIET_AFTER_DAYS : false;
     const painSignal = (painByAthlete.get(code) || []).sort(painCandidateSort)[0] || null;
-    if (!painSignal && !goneQuiet) continue;
+
+    // Compliance drift is only interesting for an athlete who is logging and
+    // still isn't completing the work. Someone gone quiet has 0% compliance by
+    // definition, so emitting both would list the same person twice and make
+    // counts.flagged lie.
+    const compliance = (!painSignal && !goneQuiet && weekHalfElapsed)
+      ? complianceSignal({ plannedRows, trainingRows, athleteCode: code, weekStart, today })
+      : null;
+
+    if (!painSignal && !goneQuiet && !compliance) continue;
 
     const painScore = painSignal ? numberOrNull(painSignal.pain) : null;
     const completed = painSignal
@@ -600,24 +691,44 @@ export function buildTriageQueue({
       ? nextPlannedContext(plannedRows, code, String(painSignal.log_date))
       : null;
     const coachAlert = painSignal?.coach_alert === true;
-    const priority = painSignal
-      ? 10000 + (coachAlert ? 1000 : 0) + (painScore || 0) * 10
-      : 5000;
+
+    // Priority bands, highest first: pain 10000, load divergence 7000 (row 2,
+    // not built), gone quiet 5000, compliance drift 3000, pace mismatch 1000
+    // (row 5, not built). Pain and gone-quiet keep their original values so the
+    // shipped rows and their tests do not move. The compliance shortfall term is
+    // capped by the band width, so a drift row can never outrank a quiet one.
+    let priority;
+    if (painSignal) priority = 10000 + (coachAlert ? 1000 : 0) + (painScore || 0) * 10;
+    else if (goneQuiet) priority = 5000;
+    else priority = 3000 + Math.round((COMPLIANCE_MIN_RATIO - compliance.ratio) * 1000);
+
+    let flag = 'compliance_drift';
+    if (painSignal) flag = 'pain';
+    else if (goneQuiet) flag = 'gone_quiet';
+
+    let severity = 'medium';
+    if (painSignal) severity = 'critical';
+    else if (goneQuiet) severity = 'high';
+
+    let signal;
+    if (painSignal) signal = painSignalCopy(painSignal, completed, planned, today, goneQuiet ? quietDays : false);
+    else if (goneQuiet) signal = `No completed session and no body log for at least ${QUIET_AFTER_DAYS} days.`;
+    else signal = complianceSignalCopy(compliance, dayIndex);
 
     queue.push({
       athleteCode: code,
       athleteName: athlete.name || code,
-      flag: painSignal ? 'pain' : 'gone_quiet',
-      severity: painSignal ? 'critical' : 'high',
+      flag,
+      severity,
       priority,
-      signal: painSignal
-        ? painSignalCopy(painSignal, completed, planned, today, goneQuiet ? quietDays : false)
-        : `No completed session and no body log for at least ${QUIET_AFTER_DAYS} days.`,
-      action: {
-        type: 'message',
-        label: painSignal ? 'Message athlete' : 'Check in',
-        athleteCode: code,
-      },
+      signal,
+      action: compliance
+        ? { type: 'review', label: 'Review', athleteCode: code }
+        : {
+          type: 'message',
+          label: painSignal ? 'Message athlete' : 'Check in',
+          athleteCode: code,
+        },
       evidence: {
         pain: painSignal ? {
           date: painSignal.log_date,
@@ -639,6 +750,15 @@ export function buildTriageQueue({
           noDailyBodyLogs: true,
           noSessionLogs: true,
         } : null,
+        compliance: compliance ? {
+          weekStart,
+          dayIndex,
+          planned: compliance.planned,
+          completed: compliance.completed,
+          ratio: Math.round(compliance.ratio * 100) / 100,
+          threshold: COMPLIANCE_MIN_RATIO,
+          sources: ['planned_sessions', 'training_session_logs'],
+        } : null,
       },
     });
   }
@@ -654,12 +774,20 @@ export function buildTriageQueue({
     source: 'portal_supabase',
     generatedAt: nowDate.toISOString(),
     timeZone,
-    thresholds: { pain: 5, painWindowDays: PAIN_WINDOW_DAYS, quietDays: QUIET_AFTER_DAYS },
+    thresholds: {
+      pain: 5,
+      painWindowDays: PAIN_WINDOW_DAYS,
+      quietDays: QUIET_AFTER_DAYS,
+      complianceRatio: COMPLIANCE_MIN_RATIO,
+      complianceFromDayIndex: COMPLIANCE_MIN_DAY_INDEX,
+    },
+    week: { start: weekStart, dayIndex, halfElapsed: weekHalfElapsed },
     counts: {
       active: active.length,
       flagged: queue.length,
       critical: queue.filter(row => row.severity === 'critical').length,
       high: queue.filter(row => row.severity === 'high').length,
+      medium: queue.filter(row => row.severity === 'medium').length,
       clear: Math.max(0, active.length - queue.length),
     },
     queue,
@@ -697,6 +825,10 @@ async function loadTriage() {
   const painStart = shiftDate(today, -(PAIN_WINDOW_DAYS - 1));
   const contextStart = shiftDate(painStart, -2);
   const planEnd = shiftDate(today, 7);
+  // Compliance drift needs the whole current week, so the planned-session window
+  // reaches back to Monday instead of starting at today. The training-log window
+  // (contextStart, 9 days back) already covers Monday, so it is unchanged.
+  const planStart = mondayOnOrBefore(today);
   const quietSessionCutoff = new Date(now.getTime() - QUIET_AFTER_DAYS * 86400000).toISOString();
 
   const [athletes, bodyRows, sessionRows, trainingRows, plannedRows] = await Promise.all([
@@ -718,7 +850,7 @@ async function loadTriage() {
     }),
     selectRows('planned_sessions', {
       select: 'athlete_code,planned_date,title,session_type,status',
-      planned_date: `gte.${today}`,
+      planned_date: `gte.${planStart}`,
       and: `(planned_date.lte.${planEnd})`,
       order: 'planned_date.asc',
     }).catch(() => []),

@@ -9953,10 +9953,6 @@ async function loadComparePhoto(athleteId, weekNum) {
   try {
     const url = `/api/progress-photos?athlete=${encodeURIComponent(athleteId)}&week=${encodeURIComponent(weekNum)}`;
     const res = await fetch(url);
-    if (!res.ok) {
-      const e = await res.json().catch(() => ({}));
-      throw new Error(e.error || `HTTP ${res.status}`);
-    }
     const data = await res.json();
     const photos = data.photos || [];
     if (!photos.length) {

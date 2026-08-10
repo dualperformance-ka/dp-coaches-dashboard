@@ -159,6 +159,11 @@
 
 .triage-row.is-critical::before { background: var(--alert); }
 
+/* Compliance drift sits below gone-quiet. Amber is already the default bar, so
+   medium gets a lighter wash of it — distinct at a glance without competing
+   with the rows that need a same-day decision. */
+.triage-row.is-medium::before { background: color-mix(in srgb, var(--warn) 52%, var(--surface)); }
+
 .triage-athlete-name {
   color: var(--text);
   font-size: 18px;
@@ -186,6 +191,12 @@
   color: var(--alert);
   border-color: color-mix(in srgb, var(--alert) 30%, transparent);
   background: color-mix(in srgb, var(--alert) 8%, transparent);
+}
+
+.triage-row.is-medium .triage-flag {
+  color: var(--warn);
+  border-color: color-mix(in srgb, var(--warn) 30%, transparent);
+  background: color-mix(in srgb, var(--warn) 8%, transparent);
 }
 
 .triage-signal {

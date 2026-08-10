@@ -50,9 +50,9 @@ The Hobby plan allows 12 Serverless Functions per deployment. This repository cu
 ## Today triage rollout
 
 The default coach screen is a server-ranked queue from
-`GET /api/coach-data?mode=triage`. It currently ships the first two non-Strava
-signals: pain/coach alert and gone quiet. Opening Today does not load the full
-roster dashboard or prefetch Strava data.
+`GET /api/coach-data?mode=triage`. It currently ships the three non-Strava
+signals: pain/coach alert, gone quiet, and compliance drift. Opening Today does
+not load the full roster dashboard or prefetch Strava data.
 
 Manual deployment order:
 
@@ -69,6 +69,30 @@ Manual deployment order:
 The Strava divergence and over-pacing rows are intentionally not included. They
 must wait for the approved `strava_activities` summary cache and lazy permanent
 lap-detail cache.
+
+### Compliance drift (row 4)
+
+Needs no migration and no new function. It reads `planned_sessions` and
+`training_session_logs`, both of which the triage snapshot already fetched; the
+planned-session window simply reaches back to Monday instead of starting at
+today. Design and rationale: `docs/triage-row-4-compliance-drift.md`.
+
+Behaviour worth knowing before you read the queue:
+
+- Monday-anchored week in `Australia/Adelaide`. The row is only eligible from
+  **Thursday** onward, so expect no drift rows Monday to Wednesday.
+- Fires below 60% of sessions planned **up to today** — not of the whole week.
+- A session counts as completed if `planned_sessions.status` is
+  `done`/`complete`/`completed`, **or** a distinct `training_session_logs` entry
+  exists on that date. Both halves fail toward "completed", so the queue
+  under-reports drift rather than producing rows you'd disagree with.
+- Suppressed for anyone already flagged with pain or gone quiet — they would
+  otherwise appear twice and inflate `counts.flagged`.
+- Athletes with nothing prescribed never appear. That is a programming gap, not
+  athlete drift.
+
+If drift rows fire on athletes you would not have called, the 0.60 threshold is
+`COMPLIANCE_MIN_RATIO` in `api/coach-data.js`.
 
 ## Local checks
 
