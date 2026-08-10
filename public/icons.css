@@ -1,0 +1,68 @@
+/* DP icon system v3 — "solid accent" sprite
+   Most icons are filled shapes and ignore stroke-width entirely. The stroke
+   values below drive the utility marks only (chevrons, arrows, check, refresh,
+   logout, search, pulse), which are pure gesture and have no mass to fill.
+   Icons with mixed fill+stroke carry their own stroke-width attributes in the
+   sprite so their proportions stay locked no matter what size they render at.
+
+   fill stays `none` here on purpose: every solid shape in the sprite declares
+   fill="currentColor" itself, so the utility marks stay open outlines. */
+
+.icon{
+  width:1em;height:1em;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.85;
+  stroke-linecap:round;stroke-linejoin:round;
+  vertical-align:-0.14em;flex-shrink:0;
+  overflow:visible;
+  shape-rendering:geometricPrecision;
+  transition:color .18s ease,opacity .18s ease,transform .18s ease;
+}
+
+/* Optical stroke scale — utility marks need more weight as they get smaller */
+.icon-xs{width:12px;height:12px;stroke-width:2.35}
+.icon-sm{width:14px;height:14px;stroke-width:2.2}
+.icon-md{width:18px;height:18px;stroke-width:2}
+.icon-lg{width:24px;height:24px;stroke-width:1.8}
+.icon-xl{width:32px;height:32px;stroke-width:1.65}
+
+.icon-run{color:var(--run)}
+.icon-muted{color:var(--muted)}
+.icon-dim{color:var(--dim)}
+.icon-ok{color:var(--ok)}
+.icon-pb{color:var(--pb)}
+.icon-warn{color:#f0b85b}
+
+/* Contextual placements — each sets size AND matching optical stroke */
+.nudge-strip-icon .icon{width:20px;height:20px;stroke-width:1.95;color:var(--run)}
+.nudge-strip-arr .icon{width:15px;height:15px;stroke-width:2.15;color:var(--dim)}
+.hb-icon .icon{width:24px;height:24px;stroke-width:1.8;color:var(--run)}
+.ci-step-title .icon{width:17px;height:17px;stroke-width:2.05;color:var(--run);margin-right:6px;vertical-align:-0.16em}
+.quicklog-btn .icon{width:16px;height:16px;stroke-width:2.1;color:var(--run);margin-right:7px}
+.warr .icon{width:15px;height:15px;stroke-width:2.15;color:var(--muted)}
+.hicon .icon{width:14px;height:14px;stroke-width:2.2}
+.hp .icon{width:13px;height:13px;stroke-width:2.3;vertical-align:-0.18em}
+.ex-stat .icon,.pb-badge .icon{width:12px;height:12px;stroke-width:2.35}
+.saved-label .icon{width:12px;height:12px;stroke-width:2.4;color:var(--ok);margin-right:5px;vertical-align:-0.16em}
+
+/* Emoji replacements — icons dropped into existing text/badge slots */
+.exc-tip-i .icon{width:14px;height:14px;stroke-width:2.2}
+.exc-rk .icon{width:11px;height:11px;stroke-width:2.5}
+.ns-hd .icon{width:13px;height:13px;stroke-width:2.3;color:var(--run);margin-right:6px;vertical-align:-0.16em}
+.ns-ic .icon{width:11px;height:11px;stroke-width:2.7}
+.submit-status-icon .icon{width:12px;height:12px;stroke-width:2.35}
+.dpsc-i .icon{width:14px;height:14px;stroke-width:2.2}
+.dpsc-tick .icon{width:11px;height:11px;stroke-width:2.5}
+.mobile-week-key .icon{width:9px;height:9px}
+.mobile-week-status .icon{width:12px;height:12px;stroke-width:2.8}
+.wg-done .icon{width:10px;height:10px;stroke-width:2.7}
+.ov-node-ic .icon{width:12px;height:12px;stroke-width:2.35}
+.slbl-tick .icon{width:10px;height:10px;stroke-width:2.5;vertical-align:-0.1em}
+.dpsc-set-head .icon{width:10px;height:10px;stroke-width:2.5;vertical-align:-0.1em}
+.dpsc-rung .icon,.exc-rung .icon{width:11px;height:11px;stroke-width:2.5;vertical-align:-0.12em}
+.strava-btn .icon,.btn-ic .icon{width:12px;height:12px;stroke-width:2.35;margin-right:5px;vertical-align:-0.14em}
+
+@media (prefers-reduced-motion:reduce){
+  .icon{transition:none}
+}

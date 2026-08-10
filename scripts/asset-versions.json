@@ -1,0 +1,66 @@
+{
+  "styles.css": {
+    "version": 104,
+    "sha": "47cd37cf2fd0"
+  },
+  "desktop.css": {
+    "version": 4,
+    "sha": "72ebde066d7d"
+  },
+  "icons.css": {
+    "version": 3,
+    "sha": "d145afd663d9"
+  },
+  "login.js": {
+    "version": 47,
+    "sha": "c8d6e79467a0"
+  },
+  "js/01-core.js": {
+    "version": 99,
+    "sha": "78d73ff3d637"
+  },
+  "js/02-login-goals.js": {
+    "version": 95,
+    "sha": "60d29978abfe"
+  },
+  "js/03-nav-nudges.js": {
+    "version": 93,
+    "sha": "2cbc97084590"
+  },
+  "js/04-checkin.js": {
+    "version": 86,
+    "sha": "ad48be4c009b"
+  },
+  "js/05-handbook.js": {
+    "version": 82,
+    "sha": "70252f0852de"
+  },
+  "js/06-nutrition.js": {
+    "version": 86,
+    "sha": "c035a0a1960a"
+  },
+  "js/07-progress.js": {
+    "version": 86,
+    "sha": "b4fe068e7abd"
+  },
+  "js/strava-match.js": {
+    "version": 4,
+    "sha": "8a51ef4a0416"
+  },
+  "js/08-training.js": {
+    "version": 108,
+    "sha": "e2d7d8c1b0e6"
+  },
+  "js/09-logging.js": {
+    "version": 102,
+    "sha": "bbaf7c92d369"
+  },
+  "accessibility.js": {
+    "version": 1,
+    "sha": "3e9bf44307a4"
+  },
+  "js/10-boot.js": {
+    "version": 92,
+    "sha": "d350f4d2502d"
+  }
+}

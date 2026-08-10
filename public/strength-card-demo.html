@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>DP Strength Card - Progressive Overload preview</title>
+<style>
+  :root { color-scheme: dark; }
+  body { margin:0; background:#0a111c; color:#e8edf4;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
+  .wrap { max-width:430px; margin:0 auto; padding:22px 16px 60px; }
+  h1 { font-size:17px; font-weight:600; margin:0 0 2px; }
+  .sub { font-size:12px; color:#6f7f96; margin:0 0 22px; line-height:1.5; }
+  .case { font-size:11px; letter-spacing:.06em; text-transform:uppercase;
+    color:#8595ab; margin:22px 2px 8px; }
+  .case b { color:#b9a6ee; }
+  .note { font-size:11px; color:#5f6f86; margin:26px 2px 0; line-height:1.6; }
+  code { font-family:ui-monospace,Menlo,monospace; color:#7bedb4; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Progressive overload preview</h1>
+  <p class="sub">Live output of <code>progressive-overload.js</code> rendered by
+  <code>dp-strength-card.js</code>. Tap any card to expand the ladder, PB and set
+  inputs. Each block below feeds the engine a different history so you can see
+  every state and increment rule.</p>
+  <div id="mount"></div>
+  <p class="note">Increments used here: barbell <code>+2.5kg</code>,
+  dumbbell <code>+2kg</code>, machine <code>+2.5kg</code>,
+  accessory <code>+1kg</code>, bodyweight adds reps. A stall over 3 sessions
+  triggers a 10% back-off. Serve this folder (for example
+  <code>npx serve public</code>) so the ES module imports load.</p>
+</div>
+
+<script type="module">
+import { renderExerciseCard, injectStrengthCardStyles } from './dp-strength-card.js';
+
+injectStrengthCardStyles();
+
+const S = (date, ...sets) => ({ date, sets });
+
+// Each case: a label, the prescription, and the history fed to the engine.
+const cases = [
+  {
+    label: 'First time (no history)',
+    prescription: { exercise: 'Back Squat', workingSets: 3, repRange: '8-12' },
+    sessions: [],
+    pbKg: null
+  },
+  {
+    label: 'Hold (barbell, not all sets at top)',
+    prescription: { exercise: 'Back Squat', workingSets: 3, repRange: '8-12' },
+    sessions: [ S('2026-07-10', {weightKg:100,reps:10}, {weightKg:100,reps:9}, {weightKg:100,reps:8}) ],
+    pbKg: 105
+  },
+  {
+    label: 'Progress load (barbell, maxed reps, +2.5kg)',
+    prescription: { exercise: 'Back Squat', workingSets: 3, repRange: '8-12' },
+    sessions: [ S('2026-07-10', {weightKg:100,reps:12}, {weightKg:100,reps:12}, {weightKg:100,reps:12}) ],
+    pbKg: 100
+  },
+  {
+    label: 'Progress load (dumbbell, +2kg per hand)',
+    prescription: { exercise: 'Dumbbell Bench Press', workingSets: 3, repRange: '8-10' },
+    sessions: [ S('2026-07-10', {weightKg:30,reps:10}, {weightKg:30,reps:10}, {weightKg:30,reps:10}) ],
+    pbKg: 30
+  },
+  {
+    label: 'Progress load (accessory, +1kg)',
+    prescription: { exercise: 'Lateral Raise', workingSets: 3, repRange: '12-15' },
+    sessions: [ S('2026-07-10', {weightKg:8,reps:15}, {weightKg:8,reps:15}, {weightKg:8,reps:15}) ],
+    pbKg: 8
+  },
+  {
+    label: 'Bodyweight (add reps beyond the range)',
+    prescription: { exercise: 'Pull Up', workingSets: 3, repRange: '6-10' },
+    sessions: [ S('2026-07-10', {reps:10}, {reps:10}, {reps:10}) ],
+    pbKg: null
+  },
+  {
+    label: 'Unilateral (weaker side holds progression)',
+    prescription: { exercise: 'Single Leg RDL', workingSets: 3, repRange: '10-12' },
+    sessions: [ S('2026-07-10', {weightKg:20,repsLeft:11,repsRight:12}, {weightKg:20,repsLeft:12,repsRight:12}, {weightKg:20,repsLeft:12,repsRight:12}) ],
+    pbKg: 22.5
+  },
+  {
+    label: 'Stalled (3 sessions stuck, 10% deload)',
+    prescription: { exercise: 'Bench Press', workingSets: 3, repRange: '5-8' },
+    sessions: [
+      S('2026-06-26', {weightKg:80,reps:6}, {weightKg:80,reps:6}, {weightKg:80,reps:5}),
+      S('2026-07-03', {weightKg:80,reps:6}, {weightKg:80,reps:5}, {weightKg:80,reps:5}),
+      S('2026-07-10', {weightKg:80,reps:6}, {weightKg:80,reps:5}, {weightKg:80,reps:5})
+    ],
+    pbKg: 82.5
+  }
+];
+
+const mount = document.getElementById('mount');
+mount.innerHTML = cases.map(function (c, i) {
+  const card = renderExerciseCard(c.prescription, c.sessions, {
+    id: 'demo' + i,
+    open: i === 2,        // open the "progress load" card by default
+    pbKg: c.pbKg
+  });
+  return '<div class="case"><b>' + (i + 1) + '.</b> ' + c.label + '</div>' + card;
+}).join('');
+
+// Tap-to-expand + set ticking (mirrors mountSession, scoped to this demo).
+mount.addEventListener('click', function (e) {
+  const tick = e.target.closest('.dpsc-tick');
+  if (tick) { e.stopPropagation(); tick.classList.toggle('on'); return; }
+  const row = e.target.closest('[data-toggle]');
+  if (row) { row.closest('.dpsc-ex').classList.toggle('open'); }
+});
+</script>
+</body>
+</html>

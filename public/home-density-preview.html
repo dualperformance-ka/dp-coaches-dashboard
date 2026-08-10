@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en" class="">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Home density pass — preview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600;700;800&family=Barlow+Condensed:wght@700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="styles.css"/>
+<link rel="stylesheet" href="desktop.css"/>
+<style>
+  /* Preview chrome only — not part of the portal. */
+  body{margin:0;background:#05080a;font-family:'Barlow',sans-serif}
+  .pv-wrap{display:flex;flex-wrap:wrap;gap:28px;padding:28px;justify-content:center}
+  .pv-col{width:390px}
+  .pv-cap{color:rgba(247,250,252,.6);font-size:12px;letter-spacing:.06em;text-transform:uppercase;
+          font-family:'DM Mono',monospace;margin:0 0 10px 2px}
+  .pv-phone{width:390px;height:844px;overflow:hidden;border-radius:34px;border:1px solid rgba(255,255,255,.14);
+            background:#05080a;position:relative}
+  .pv-scale{transform:scale(1);transform-origin:top left}
+  .pv-note{color:rgba(247,250,252,.45);font-size:12px;line-height:1.6;margin:10px 2px 0;max-width:390px}
+  .pv-fill{position:absolute;left:0;right:0;bottom:0;top:0;display:flex;flex-direction:column}
+  .pv-body{flex:1;overflow:hidden}
+</style>
+</head>
+<body class="mobile-portal-home">
+
+<div class="pv-wrap">
+
+  <div class="pv-col">
+    <p class="pv-cap">390 × 844 · iPhone 14</p>
+    <div class="pv-phone">
+      <div class="pv-fill">
+        <div class="pv-body">
+
+          <div class="top-shell">
+            <div class="hero hero-shell">
+              <div class="hero-main">
+                <div class="hi">Training Portal</div>
+                <div class="hero-name-row">
+                  <div class="hn">Karl Sexon</div>
+                  <div class="hero-week">
+                    <div class="hero-week-label">Week</div>
+                    <div class="hero-week-num">3</div>
+                  </div>
+                </div>
+                <div class="hero-support">Today centers on Easy Run. Open the brief and execute cleanly.</div>
+                <div class="hero-bottom">
+                  <div class="hpills">
+                    <a href="#" class="hp">Strava</a>
+                    <button class="readiness-chip" type="button">
+                      <span class="hero-readiness-ring" style="--value:0"><span class="hero-stat-value">—</span></span>
+                      <span class="readiness-chip-text">
+                        <span class="readiness-chip-label">Readiness</span>
+                        <span class="hero-stat-note">Log body check</span>
+                      </span>
+                    </button>
+                  </div>
+                  <div class="hero-metric-grid">
+                    <button class="metric-cell metric-cell-action" type="button">
+                      <span class="metric-head"><span class="metric-label">Sessions</span><span class="metric-val">1<small>/8</small></span></span>
+                      <span class="metric-track"><span style="width:13%"></span></span>
+                      <span class="metric-note">Underway</span>
+                    </button>
+                    <div class="metric-cell">
+                      <span class="metric-head"><span class="metric-label">Distance</span><span class="metric-val">8<small>/42 km</small></span></span>
+                      <span class="metric-track"><span style="width:19%"></span></span>
+                      <span class="metric-note">Strava</span>
+                    </div>
+                    <div class="metric-cell">
+                      <span class="metric-head"><span class="metric-label">Strength</span><span class="metric-val">0<small>/1</small></span></span>
+                      <span class="metric-track"><span style="width:2%"></span></span>
+                      <span class="metric-note">Planned this week</span>
+                    </div>
+                    <button class="metric-cell metric-cell-action" type="button">
+                      <span class="metric-head"><span class="metric-label">Personal bests</span><span class="metric-val">32</span></span>
+                      <span class="metric-track metric-track-empty"></span>
+                      <span class="metric-note">Open all PBs<span class="metric-week">Wk 3</span></span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="top-shell-priority week-card">
+              <div class="nudge-strip">
+                <div class="nudge-strip-inner">
+                  <span class="nudge-strip-icon"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 11h18"/></svg></span>
+                  <div class="nudge-strip-text"><div class="nudge-strip-title">Book your weekly coaching call</div></div>
+                  <span class="nudge-strip-arr">›</span>
+                </div>
+              </div>
+              <div class="nudge-strip" id="checkinNudge">
+                <div class="nudge-strip-inner">
+                  <span class="nudge-strip-icon"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 3h6v3H9z"/></svg></span>
+                  <div class="nudge-strip-text"><div class="nudge-strip-title">Time for your weekly check-in</div></div>
+                  <span class="nudge-strip-arr">›</span>
+                </div>
+              </div>
+              <div class="nudge-strip">
+                <div class="nudge-strip-inner">
+                  <span class="nudge-strip-icon"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 8h3l2-2h6l2 2h3v11H4z"/><circle cx="12" cy="13" r="3.2"/></svg></span>
+                  <div class="nudge-strip-text"><div class="nudge-strip-title">Upload your progress photos</div></div>
+                  <span class="nudge-strip-arr">›</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div style="padding:8px 14px 0">
+            <div class="today-mobile-heading" style="display:flex"><span>Today</span><small>Mon 27 Jul</small></div>
+            <div style="padding:12px;border:1px solid rgba(255,255,255,.09);border-radius:18px;background:rgba(255,255,255,.03)">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+                <div>
+                  <div style="font-family:'Barlow Condensed';font-size:22px;font-weight:800;color:#f7fafc;line-height:1">EASY RUN</div>
+                  <div style="font-family:'DM Mono';font-size:10px;color:rgba(247,250,252,.42);margin-top:4px">8 km · Z1–2 · RPE 2–3</div>
+                </div>
+                <button style="background:#92d2ed;border:0;color:#071015;font-family:'Barlow';font-weight:800;font-size:12px;padding:10px 16px;border-radius:10px">Start</button>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-top:11px;padding-top:11px;border-top:1px solid rgba(255,255,255,.08)">
+                <div style="font-size:13.5px;font-weight:600;color:#f7fafc">Upper A</div>
+                <span style="color:rgba(247,250,252,.42)">›</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="quicklog-strip" id="quicklogStrip" style="display:grid!important;position:static;grid-template-columns:1fr 1fr;margin:10px;padding:6px;gap:6px;border:1px solid rgba(255,255,255,.16);border-radius:14px;background:rgba(10,13,16,.94);bottom:auto;left:auto;right:auto;width:auto">
+          <button class="quicklog-btn ql-body is-next" type="button"><span>Body</span></button>
+          <button class="quicklog-btn ql-nut" type="button"><span>Nutrition</span></button>
+        </div>
+
+        <nav class="mobile-nav" aria-label="Primary" style="position:static">
+          <button class="mobile-nav-item active" type="button"><span>Home</span></button>
+          <button class="mobile-nav-item" type="button"><span>Training</span></button>
+          <button class="mobile-nav-item" type="button"><span>Check-in</span></button>
+          <button class="mobile-nav-item" type="button"><span>Progress</span></button>
+          <button class="mobile-nav-item" type="button"><span>More</span></button>
+        </nav>
+      </div>
+    </div>
+    <p class="pv-note">Static preview with sample values. Open the real portal for live data — this file only exists to eyeball spacing and the dock states.</p>
+  </div>
+
+</div>
+</body>
+</html>

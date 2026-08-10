@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>PB Colour Split — Preview</title>
+<style>
+  :root{
+    --bg:#05080a;--surface:#0e1317;--surface2:#101c24;--surface3:#152430;
+    --border:rgba(255,255,255,.09);--border-mid:rgba(255,255,255,.16);
+    --text:#f4fbff;--muted:rgba(244,251,255,.72);--dim:rgba(244,251,255,.44);
+    --pb:#a78bfa;--pb-bg:rgba(167,139,250,.14);--pb-border:rgba(167,139,250,.34);
+    --vpb:#2dd4bf;--vpb-bg:rgba(45,212,191,.16);--vpb-border:rgba(45,212,191,.40);
+    --ok:#22c55e;
+    --mono:ui-monospace,SFMono-Regular,Menlo,monospace;
+    --display:'Barlow Condensed','Segoe UI',system-ui,sans-serif;
+    --body:'Segoe UI',system-ui,-apple-system,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:#000;color:var(--text);font-family:var(--body);padding:22px 12px 50px}
+  .wrap{max-width:430px;margin:0 auto}
+  .lede{color:var(--dim);font-size:13px;line-height:1.55;margin:0 0 20px;text-align:center}
+  .lede b{color:var(--muted)}
+  .scen{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:15px 15px 17px;margin-bottom:16px}
+  .scen-tag{font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;margin-bottom:3px}
+  .scen-tag.w{color:var(--pb)} .scen-tag.v{color:var(--vpb)}
+  .scen-sub{font-size:12px;color:var(--dim);margin-bottom:13px}
+  .exname{font-family:var(--display);font-size:20px;font-weight:800;text-transform:uppercase;letter-spacing:.01em;line-height:1;margin-bottom:10px}
+
+  /* header stat badges (as in the app) */
+  .stats{display:flex;flex-direction:column;align-items:flex-end;gap:3px;margin-bottom:14px}
+  .ex-stat{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:11px;font-weight:600;border-radius:8px;padding:5px 9px}
+  .ex-stat .t{font-size:11px}
+  .ex-stat-pb{color:var(--pb);background:var(--pb-bg);border:1px solid var(--pb-border)}
+  .ex-stat-vol-pb{color:var(--vpb);background:var(--vpb-bg);border:1px solid var(--vpb-border)}
+  .ex-stat-e1rm{color:var(--pb);background:transparent}
+
+  /* set grid */
+  .slbls{display:grid;grid-template-columns:22px 1fr 1fr 44px 40px;gap:8px;font-size:9px;letter-spacing:.05em;text-transform:uppercase;color:var(--dim);margin-bottom:7px;padding:0 2px}
+  .slbls span{text-align:center}
+  .setrow{position:relative;display:grid;grid-template-columns:22px 1fr 1fr 44px 40px;gap:8px;align-items:center;margin-bottom:9px}
+  .snum{text-align:center;font-size:13px;color:var(--dim)}
+  .sin{height:46px;border:1px solid var(--border-mid);background:var(--surface2);border-radius:9px;text-align:center;font-size:17px;color:var(--text);width:100%;font-variant-numeric:tabular-nums;font-family:var(--mono)}
+  .rpe-in{height:46px;border:1px solid var(--border-mid);background:var(--surface2);border-radius:9px;text-align:center;color:var(--dim);font-size:15px;font-family:var(--mono);display:flex;align-items:center;justify-content:center}
+  .st{justify-self:center;width:28px;height:28px;border-radius:50%;border:1.6px solid var(--border-mid);background:transparent;color:transparent;display:flex;align-items:center;justify-content:center;font-size:14px}
+
+  /* PB highlight — WEIGHT (purple) */
+  .setrow.has-pb .sin{border-color:var(--pb);background:rgba(167,139,250,.22);box-shadow:inset 0 0 12px rgba(167,139,250,.55),0 0 14px rgba(167,139,250,.45);animation:pbglow 1.8s ease-in-out infinite}
+  .st.pb-on{background:var(--pb);border-color:var(--pb);color:#fff}
+  /* PB highlight — VOLUME (green) */
+  .setrow.has-pb-vol .sin{border-color:var(--vpb);background:rgba(45,212,191,.20);box-shadow:inset 0 0 12px rgba(45,212,191,.5),0 0 14px rgba(45,212,191,.42);animation:vpbglow 1.8s ease-in-out infinite}
+  .st.pb-on-vol{background:var(--vpb);border-color:var(--vpb);color:#04231f}
+
+  .pb-badge{position:absolute;right:-2px;top:-9px;font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:.03em;background:var(--pb);color:#fff;padding:2px 7px;border-radius:9px;white-space:nowrap;z-index:3;display:flex;align-items:center;gap:3px}
+  .pb-badge-vol{background:var(--vpb);color:#04231f}
+
+  @keyframes pbglow{0%,100%{box-shadow:inset 0 0 10px rgba(167,139,250,.4),0 0 9px rgba(167,139,250,.35)}50%{box-shadow:inset 0 0 14px rgba(167,139,250,.65),0 0 18px rgba(167,139,250,.55)}}
+  @keyframes vpbglow{0%,100%{box-shadow:inset 0 0 10px rgba(45,212,191,.4),0 0 9px rgba(45,212,191,.35)}50%{box-shadow:inset 0 0 14px rgba(45,212,191,.65),0 0 18px rgba(45,212,191,.55)}}
+
+  .legend{display:flex;gap:16px;justify-content:center;margin-top:6px;font-size:11px;color:var(--muted)}
+  .legend .k{display:inline-flex;align-items:center;gap:6px}
+  .legend .sw{width:11px;height:11px;border-radius:3px}
+  .cap{color:var(--dim);font-size:11px;line-height:1.6;margin-top:4px;text-align:center}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="lede">How the two PB types read at a glance. <b>Purple = weight/strength PB</b> (a new heaviest load). <b>Green = volume PB</b> (same weight, more reps, more total work).</p>
+
+  <!-- VOLUME PB (Karl's screenshot case) -->
+  <div class="scen">
+    <div class="scen-tag v">Volume PB</div>
+    <div class="scen-sub">You've hit 25kg before, but 25 × 10 on the last set is more reps than ever at this load.</div>
+    <div class="exname">Dumbbell Bulgarian Split Squat</div>
+    <div class="stats">
+      <span class="ex-stat ex-stat-pb">🏆 PB 25kg</span>
+      <span class="ex-stat ex-stat-vol-pb">🏆 Vol PB 795kg</span>
+      <span class="ex-stat ex-stat-e1rm">e1RM 33.3kg</span>
+    </div>
+    <div class="slbls"><span></span><span>kg</span><span>reps</span><span>RPE</span><span>✓</span></div>
+    <div class="setrow"><div class="snum">1</div><div class="sin">25</div><div class="sin">12</div><div class="rpe-in">—</div><button class="st">✓</button></div>
+    <div class="setrow"><div class="snum">2</div><div class="sin">25</div><div class="sin">11</div><div class="rpe-in">—</div><button class="st">✓</button></div>
+    <div class="setrow has-pb-vol"><div class="snum">3</div><div class="sin">25</div><div class="sin">10</div><div class="rpe-in">—</div><button class="st pb-on-vol">✓</button><div class="pb-badge pb-badge-vol">🏆 VOL PB</div></div>
+    <div class="legend">
+      <span class="k"><span class="sw" style="background:var(--vpb)"></span> Volume / rep PB</span>
+    </div>
+  </div>
+
+  <!-- WEIGHT PB -->
+  <div class="scen">
+    <div class="scen-tag w">Weight PB</div>
+    <div class="scen-sub">27.5kg is heavier than you've ever lifted here, so this is a genuine new max load.</div>
+    <div class="exname">Dumbbell Bulgarian Split Squat</div>
+    <div class="stats">
+      <span class="ex-stat ex-stat-pb">🏆 PB 25kg</span>
+      <span class="ex-stat ex-stat-vol-pb">🏆 Vol PB 795kg</span>
+      <span class="ex-stat ex-stat-e1rm">e1RM 33.3kg</span>
+    </div>
+    <div class="slbls"><span></span><span>kg</span><span>reps</span><span>RPE</span><span>✓</span></div>
+    <div class="setrow has-pb"><div class="snum">1</div><div class="sin">27.5</div><div class="sin">8</div><div class="rpe-in">—</div><button class="st pb-on">✓</button><div class="pb-badge">🏆 WEIGHT PB</div></div>
+    <div class="setrow"><div class="snum">2</div><div class="sin">27.5</div><div class="sin">7</div><div class="rpe-in">—</div><button class="st">✓</button></div>
+    <div class="setrow"><div class="snum">3</div><div class="sin">25</div><div class="sin">9</div><div class="rpe-in">—</div><button class="st">✓</button></div>
+    <div class="legend">
+      <span class="k"><span class="sw" style="background:var(--pb)"></span> Weight / strength PB</span>
+    </div>
+  </div>
+
+  <p class="cap">Both glow and update live as you type, and clear instantly if you edit the number back down.</p>
+</div>
+</body>
+</html>

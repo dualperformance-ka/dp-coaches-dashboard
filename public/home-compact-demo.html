@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Compact Home — Mobile Layout</title>
+<style>
+  :root{
+    --bg:#05080a; --surface:#0e1317; --surface2:#101c24; --surface3:#152430;
+    --border:rgba(255,255,255,.08); --border2:rgba(255,255,255,.14);
+    --text:#f4fbff; --muted:rgba(244,251,255,.72); --dim:rgba(244,251,255,.44);
+    --run:#92d2ed; --ok:#22c55e; --pb:#b9a6ee;
+    --mono:ui-monospace,SFMono-Regular,Menlo,monospace;
+    --display:'Barlow Condensed','Segoe UI',system-ui,sans-serif;
+    --body:'Segoe UI',system-ui,-apple-system,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:#000;font-family:var(--body);color:var(--text);-webkit-font-smoothing:antialiased;padding:20px 12px 40px}
+  .note{max-width:390px;margin:0 auto 14px;color:var(--dim);font-size:12px;line-height:1.5;text-align:center}
+  .note b{color:var(--muted)}
+  .phone{max-width:390px;margin:0 auto;background:var(--bg);border-radius:34px;border:1px solid #1c2630;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.6)}
+  .scr{padding:14px 13px 12px}
+
+  /* header */
+  .top{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+  .brand{display:flex;align-items:center;gap:8px}
+  .brand .logo{width:22px;height:22px;border-radius:6px;background:linear-gradient(135deg,var(--run),#4a8fb5);flex-shrink:0}
+  .brand .bt{font-family:var(--display);font-weight:800;font-size:12px;letter-spacing:.06em;line-height:1;text-transform:uppercase}
+  .top .acts{display:flex;gap:6px}
+  .pillbtn{font-size:11px;color:var(--muted);border:1px solid var(--border);border-radius:999px;padding:6px 11px;display:flex;align-items:center;gap:5px}
+
+  /* hero (compact) */
+  .hero{background:linear-gradient(155deg,rgba(16,22,26,.95),rgba(8,12,15,.9));border:1px solid var(--border);border-radius:18px;padding:14px;margin-bottom:10px;position:relative;overflow:hidden}
+  .hero::before{content:"";position:absolute;left:14px;right:14px;top:0;height:1px;background:linear-gradient(90deg,transparent,rgba(146,210,237,.6),transparent)}
+  .hero-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+  .kick{font-family:var(--mono);font-size:8px;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.25);margin-bottom:4px}
+  .name{font-family:var(--display);font-size:32px;font-weight:800;text-transform:uppercase;letter-spacing:.02em;line-height:.92}
+  .wk{text-align:right;flex-shrink:0}
+  .wk .wl{font-family:var(--mono);font-size:8px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+  .wk .wn{font-family:var(--display);font-size:26px;font-weight:800;line-height:1}
+  .saved{display:inline-flex;align-items:center;gap:5px;font-size:10px;color:var(--ok);background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.28);border-radius:999px;padding:3px 8px;margin-bottom:8px}
+  .saved .d{width:6px;height:6px;border-radius:50%;background:var(--ok)}
+  .support{color:var(--muted);font-size:12px;line-height:1.45;margin:9px 0 10px}
+  .strava{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--ok);border:1px solid rgba(34,197,94,.3);border-radius:999px;padding:4px 10px;margin-bottom:11px}
+
+  /* stat chips — 3 across, compact */
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+  .stat{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:9px 10px;text-align:left}
+  .stat .sl{font-size:8.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--dim);margin-bottom:5px}
+  .stat .sv{font-size:20px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
+  .stat .sv small{font-size:11px;font-weight:600;color:var(--muted)}
+  .stat .track{height:3px;background:rgba(255,255,255,.08);border-radius:2px;margin-top:7px;overflow:hidden}
+  .stat .track i{display:block;height:100%;background:var(--run);border-radius:2px}
+  .stat .sn{font-size:8.5px;color:var(--dim);margin-top:6px}
+  .stat.pbv .sv{color:var(--pb);display:flex;align-items:center;gap:4px}
+  .ring{width:34px;height:34px;border-radius:50%;background:conic-gradient(var(--run) 0deg,rgba(255,255,255,.08) 0deg);display:flex;align-items:center;justify-content:center;margin-top:2px}
+  .ring i{width:26px;height:26px;border-radius:50%;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;font-style:normal;color:var(--dim)}
+
+  /* weekly output inline */
+  .wout{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+  .wo{background:linear-gradient(155deg,rgba(16,22,26,.9),rgba(8,12,15,.86));border:1px solid var(--border);border-radius:14px;padding:11px 12px;display:flex;align-items:center;gap:10px}
+  .wo .ic{width:30px;height:30px;border-radius:9px;background:var(--surface3);display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+  .wo .wl2{font-size:9px;letter-spacing:.04em;text-transform:uppercase;color:var(--dim)}
+  .wo .wv{font-size:18px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.1}
+  .wo .wv small{font-size:10px;color:var(--muted);font-weight:600}
+  .wo .wsub{font-size:9px;color:var(--dim);margin-top:1px}
+  .wo .bar{height:3px;background:rgba(255,255,255,.08);border-radius:2px;margin-top:5px;overflow:hidden}
+  .wo .bar i{display:block;height:100%;background:var(--run)}
+  .wo .bar.str i{background:var(--ok)}
+
+  /* section label */
+  .seclabel{display:flex;align-items:center;justify-content:space-between;margin:12px 2px 8px}
+  .seclabel .t{font-family:var(--display);font-size:16px;font-weight:800;letter-spacing:.02em}
+  .seclabel .d{font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:.05em}
+  .optlabel{font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:.03em;text-transform:uppercase}
+  .optlabel.rec{color:var(--run)}
+
+  /* OPTION B — compact full-width rows */
+  .rows{display:flex;flex-direction:column;gap:7px}
+  .srow{display:flex;align-items:center;gap:11px;background:linear-gradient(160deg,rgba(16,22,26,.94),rgba(8,12,15,.9));border:1px solid var(--border);border-radius:14px;padding:12px 13px;border-left-width:3px}
+  .srow.run{border-left-color:var(--run)} .srow.str{border-left-color:#fff}
+  .srow .rdot{display:none}
+  .srow .rmain{flex:1;min-width:0}
+  .srow .rt{font-family:var(--display);font-size:17px;font-weight:800;text-transform:uppercase;letter-spacing:.01em;line-height:1}
+  .srow .rsub{font-family:var(--mono);font-size:9.5px;color:var(--muted);letter-spacing:.02em;margin-top:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .srow .ropen{flex-shrink:0;font-size:12px;font-weight:700;border-radius:10px;padding:9px 13px;background:var(--run);color:#04121a}
+  .srow .ropen.alt{background:rgba(255,255,255,.1);color:var(--text);border:1px solid var(--border2)}
+  .single-note{font-size:10px;color:var(--dim);margin:8px 2px 0;font-style:italic}
+
+  /* TWO-COLUMN session cards */
+  .sessions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .sess{background:linear-gradient(160deg,rgba(16,22,26,.94),rgba(8,12,15,.9));border:1px solid var(--border);border-radius:16px;padding:12px;display:flex;flex-direction:column;min-height:172px}
+  .sess .dot{width:8px;height:8px;border-radius:50%;margin-bottom:9px}
+  .sess.run .dot{background:var(--run)} .sess.str .dot{background:#fff}
+  .sess .st{font-family:var(--display);font-size:17px;font-weight:800;text-transform:uppercase;letter-spacing:.01em;line-height:1.02}
+  .sess .meta{font-family:var(--mono);font-size:8.5px;letter-spacing:.04em;color:var(--dim);text-transform:uppercase;margin-top:5px}
+  .sess .targ{font-size:11.5px;color:var(--muted);line-height:1.4;margin-top:9px;flex:1}
+  .sess .chiprow{display:flex;gap:5px;flex-wrap:wrap;margin-top:9px}
+  .sess .chip{font-family:var(--mono);font-size:9px;color:var(--muted);background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:3px 7px}
+  .sess .open{margin-top:10px;text-align:center;font-size:12px;font-weight:700;border-radius:10px;padding:9px;background:var(--run);color:#04121a;display:flex;align-items:center;justify-content:center;gap:5px}
+  .sess.str .open{background:rgba(255,255,255,.1);color:var(--text);border:1px solid var(--border2)}
+
+  /* nudge strips */
+  .nudges{display:grid;gap:7px;margin-top:10px}
+  .nudge{display:flex;align-items:center;gap:11px;border:1px solid var(--border);border-radius:14px;padding:11px 13px;background:linear-gradient(180deg,rgba(14,19,23,.96),rgba(8,11,14,.9))}
+  .nudge .ni{width:30px;height:30px;border-radius:999px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;background:rgba(146,210,237,.08);border:1px solid rgba(146,210,237,.22)}
+  .nudge.green .ni{background:rgba(34,197,94,.08);border-color:rgba(34,197,94,.22)}
+  .nudge .nt{flex:1;min-width:0}
+  .nudge .ntt{font-family:var(--display);font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:rgba(255,255,255,.82)}
+  .nudge .nts{font-family:var(--mono);font-size:8.5px;color:var(--dim);letter-spacing:.04em;margin-top:2px}
+  .nudge .na{color:var(--run);font-size:14px;flex-shrink:0}
+
+  /* bottom nav */
+  .nav{display:flex;justify-content:space-around;border-top:1px solid var(--border);padding:9px 6px 6px;margin-top:12px;background:rgba(10,13,16,.9)}
+  .nav .ni2{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:9px;color:var(--dim)}
+  .nav .ni2.on{color:var(--run)}
+  .nav .ni2 .g{width:20px;height:20px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:14px}
+
+  .cap{max-width:390px;margin:16px auto 0;color:var(--dim);font-size:11px;line-height:1.6}
+  .cap b{color:var(--muted)}
+</style>
+</head>
+<body>
+  <div class="note">Proposed <b>compressed mobile home</b>. Stat cards stay a tight 3-across; weekly output sits inline; the two daily sessions go <b>side-by-side</b> so both fit without a long scroll; all nudge bars are visible below.</div>
+
+  <div class="phone">
+    <div class="scr">
+      <!-- header -->
+      <div class="top">
+        <div class="brand"><div class="logo"></div><div class="bt">Dual<br>Performance</div></div>
+        <div class="acts"><span class="pillbtn">↻ Refresh</span><span class="pillbtn">✦ Outdoor</span></div>
+      </div>
+
+      <!-- compact hero -->
+      <div class="hero">
+        <div class="saved"><span class="d"></span> Saved</div>
+        <div class="hero-top">
+          <div><div class="kick">Training Portal</div><div class="name">Karl<br>Sexon</div></div>
+          <div class="wk"><div class="wl">Week</div><div class="wn">2</div></div>
+        </div>
+        <div class="support">Today centers on Easy + Strides. Open the brief, execute cleanly, and log it.</div>
+        <div class="strava">✓ Strava</div>
+        <div class="stats">
+          <div class="stat"><div class="sl">Week progress</div><div class="sv">13<small>%</small></div><div class="track"><i style="width:13%"></i></div><div class="sn">1/8 · underway</div></div>
+          <div class="stat"><div class="sl">Readiness</div><div class="ring"><i>—</i></div><div class="sn">Log body check</div></div>
+          <div class="stat pbv"><div class="sl">PB tracking</div><div class="sv">🏆 32</div><div class="sn">Open all PBs</div></div>
+        </div>
+      </div>
+
+      <!-- weekly output inline -->
+      <div class="wout">
+        <div class="wo"><div class="ic">👟</div><div style="flex:1;min-width:0"><div class="wl2">Running volume</div><div class="wv">32.5<small> km</small></div><div class="wsub">80 km target</div><div class="bar"><i style="width:41%"></i></div></div></div>
+        <div class="wo"><div class="ic">🏋️</div><div style="flex:1;min-width:0"><div class="wl2">Strength</div><div class="wv">1</div><div class="wsub">1 planned</div><div class="bar str"><i style="width:100%"></i></div></div></div>
+      </div>
+
+      <!-- OPTION A: two-column -->
+      <div class="seclabel"><div class="t">Today's session</div><div class="optlabel">Option A · two-column</div></div>
+      <div class="sessions">
+        <div class="sess run">
+          <div class="dot"></div>
+          <div class="st">Easy + Strides</div>
+          <div class="meta">Z2 · RPE 3 · Planned</div>
+          <div class="targ">Easy aerobic. Finish with 4–6 × 20s strides.</div>
+          <div class="chiprow"><span class="chip">10 km</span></div>
+          <div class="open">Open →</div>
+        </div>
+        <div class="sess str">
+          <div class="dot"></div>
+          <div class="st">Lower A</div>
+          <div class="meta">Strength · Planned</div>
+          <div class="targ">7 exercises. Squat focus, calves, core.</div>
+          <div class="chiprow"><span class="chip">7 ex</span><span class="chip">~50 min</span></div>
+          <div class="open">Open →</div>
+        </div>
+      </div>
+
+      <!-- OPTION B: compact full-width rows (recommended) -->
+      <div class="seclabel"><div class="t">Today's session</div><div class="optlabel rec">Option B · compact rows ★</div></div>
+      <div class="rows">
+        <div class="srow run">
+          <div class="rdot"></div>
+          <div class="rmain">
+            <div class="rt">Easy + Strides</div>
+            <div class="rsub">Z2 · RPE 3 · 10km · finish 4–6 × 20s strides</div>
+          </div>
+          <div class="ropen">Open →</div>
+        </div>
+        <div class="srow str">
+          <div class="rdot"></div>
+          <div class="rmain">
+            <div class="rt">Lower A</div>
+            <div class="rsub">Strength · 7 exercises · squat focus · ~50 min</div>
+          </div>
+          <div class="ropen alt">Open →</div>
+        </div>
+      </div>
+      <div class="single-note">1 session that day? The row simply spans full width — no empty column.</div>
+
+      <!-- nudges -->
+      <div class="nudges">
+        <div class="nudge"><span class="ni">📅</span><div class="nt"><div class="ntt">Book your weekly coaching call</div><div class="nts">30 min · Karl &amp; Alex</div></div><span class="na">›</span></div>
+        <div class="nudge green"><span class="ni">📋</span><div class="nt"><div class="ntt">Time for your weekly check-in</div><div class="nts">2 min · helps us coach you</div></div><span class="na">›</span></div>
+        <div class="nudge"><span class="ni">📸</span><div class="nt"><div class="ntt">Upload your progress photos</div><div class="nts">Same time, same lighting</div></div><span class="na">›</span></div>
+      </div>
+    </div>
+
+    <!-- bottom nav -->
+    <div class="nav">
+      <div class="ni2 on"><span class="g">◎</span>Home</div>
+      <div class="ni2"><span class="g">🗓</span>Training</div>
+      <div class="ni2"><span class="g">📋</span>Check-in</div>
+      <div class="ni2"><span class="g">📈</span>Progress</div>
+      <div class="ni2"><span class="g">☰</span>More</div>
+    </div>
+  </div>
+
+  <p class="cap"><b>What changed vs now:</b> the hero is tighter (smaller name, stat cards as compact chips), weekly output drops from two tall rings to two slim inline cards, and the biggest win — the two daily sessions render <b>two-up</b> instead of stacked, so a double-session day no longer runs off the screen. All three nudge bars sit together below the sessions. On a single-session day the one card simply spans full width.</p>
+</body>
+</html>

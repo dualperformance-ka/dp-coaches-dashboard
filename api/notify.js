@@ -1,118 +1,146 @@
-// /api/notify.js  (COACHES DASHBOARD)
-// Custom coach → athlete-portal push notifications.
+// /api/notify.js  (ATHLETE PORTAL)
+// Sends a custom coach-written push notification to an athlete's subscribed
+// devices (or every athlete). Lives on the portal because the VAPID private
+// key is already configured here — the coaches dashboard calls this endpoint
+// server-to-server via its own /api/notify proxy.
 //
-// The actual web-push send happens on the ATHLETE PORTAL's /api/notify —
-// that's where the VAPID private key already lives. This endpoint:
-//   GET  (x-admin-key) -> recipients + subscribed device counts (from Supabase)
-//   POST (x-admin-key) -> validates, then forwards the send to the portal
+//   POST /api/notify
+//     auth: Authorization: Bearer <NOTIFY_SECRET>  (or x-notify-secret header)
 //     body: { code: 'ABC123' | 'ALL', title?, message }
 //
-// Env required (DASHBOARD Vercel project):
-//   SUPABASE_URL, SUPABASE_SERVICE_KEY  (already configured)
-//   ADMIN_KEY                           (already configured)
-//   ATHLETE_PORTAL_URL                  (already configured; falls back to default)
-//   NOTIFY_SECRET                       -> same value as on the portal project.
-//     Create it yourself, e.g. run:  openssl rand -hex 32
+// Env required (portal Vercel project):
+//   NOTIFY_SECRET                        -> any long random string you create;
+//                                           set the SAME value on the dashboard
+//   VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY  -> already configured (reminders use them)
+//   SUPABASE_URL, SUPABASE_SERVICE_KEY   -> already configured
 
-import { coachError, requireCoach, setCoachCors } from '../server/coach-auth.js';
+import webpush from 'web-push';
+import crypto from 'node:crypto';
+import { select, supabaseRequest, tablePath } from './_lib/supabase-rest.js';
 
-const ADMIN_KEY = String(process.env.ADMIN_KEY || '').trim();
-const PORTAL_URL = String(process.env.ATHLETE_PORTAL_URL || 'https://dp-athlete-portal.vercel.app').replace(/\/+$/, '');
+const MAX_TITLE = 80;
+const MAX_MESSAGE = 500;
 
-function requireAdmin(req) {
-  if (!ADMIN_KEY) throw new Error('ADMIN_KEY is not configured');
-  const supplied = String(req.headers['x-admin-key'] || '').trim();
-  if (!supplied || supplied !== ADMIN_KEY) {
-    const error = new Error('Admin key rejected');
-    error.status = 401;
+function send(res, status, payload) {
+  return res.status(status).json(payload);
+}
+
+function equalSecret(a, b) {
+  const left = Buffer.from(String(a || ''));
+  const right = Buffer.from(String(b || ''));
+  return left.length > 0 && left.length === right.length && crypto.timingSafeEqual(left, right);
+}
+
+function requireSecret(req) {
+  const header = req.headers.authorization || '';
+  const bearer = header.startsWith('Bearer ') ? header.slice(7).trim() : '';
+  const alt = String(req.headers['x-notify-secret'] || '').trim();
+  const presented = bearer || alt;
+
+  const error = new Error('Unauthorized');
+  error.status = 401;
+  const configured = String(process.env.NOTIFY_SECRET || '').trim();
+  if (!configured) {
+    error.status = 503;
+    error.message = 'Notification service is not configured';
     throw error;
   }
+  if (!equalSecret(presented, configured)) throw error;
 }
 
-// ── Minimal Supabase REST helper (same pattern as /api/coach-data) ───────────
-async function sb(path) {
-  const baseUrl = String(process.env.SUPABASE_URL || '').replace(/\/+$/, '');
-  const key = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!baseUrl || !key) throw new Error('SUPABASE_URL or SUPABASE_SERVICE_KEY is not configured');
-  const response = await fetch(`${baseUrl}/rest/v1/${path}`, {
-    headers: { apikey: key, Authorization: `Bearer ${key}` },
+function configureVapid() {
+  const publicKey = process.env.VAPID_PUBLIC_KEY;
+  const privateKey = process.env.VAPID_PRIVATE_KEY;
+  const subject = process.env.VAPID_SUBJECT || 'mailto:coach@dualperformance.co';
+  if (!publicKey || !privateKey) throw new Error('VAPID keys not configured');
+  webpush.setVapidDetails(subject, publicKey, privateKey);
+}
+
+async function loadSubscriptions(code) {
+  if (code === 'ALL') return (await select('push_subscriptions', {})) || [];
+
+  let subs = await select('push_subscriptions', { athlete_code: `eq.${code}` });
+  if (subs && subs.length) return subs;
+
+  // Resolve a name to a roster code (the dashboard sometimes only has names).
+  const athletes = await select('athletes', {
+    or: `(code.eq.${code},name.ilike.${code})`,
+    select: 'code',
+    limit: '1',
   });
-  const body = await response.text();
-  let data = null;
-  try { data = body ? JSON.parse(body) : null; } catch { /* ignore */ }
-  if (!response.ok) throw new Error(data?.message || data?.error || `Supabase ${response.status} on ${path}`);
-  return data;
-}
-
-// ── GET: recipients with device counts ───────────────────────────────────────
-async function handleRecipients(req, res) {
-  const [athletes, subs] = await Promise.all([
-    sb('athletes?archived_at=is.null&select=code,name&order=name.asc'),
-    sb('push_subscriptions?select=athlete_code'),
-  ]);
-  const counts = {};
-  for (const s of subs || []) counts[s.athlete_code] = (counts[s.athlete_code] || 0) + 1;
-  const recipients = (athletes || []).map((a) => ({
-    code: a.code,
-    name: a.name,
-    devices: counts[a.code] || 0,
-  }));
-  return res.status(200).json({ ok: true, recipients, totalDevices: (subs || []).length });
-}
-
-// ── POST: forward the send to the portal (which holds the VAPID keys) ────────
-async function handleSend(req, res) {
-  // Auth to the portal with the dedicated shared notification secret.
-  // Do not use the Supabase service-role key here: the portal intentionally
-  // validates NOTIFY_SECRET and should never receive a database credential.
-  const secret = String(process.env.NOTIFY_SECRET || '').trim();
-  if (!secret) {
-    return res.status(500).json({ ok: false, error: 'NOTIFY_SECRET is not configured on the dashboard' });
+  if (athletes && athletes.length) {
+    subs = await select('push_subscriptions', { athlete_code: `eq.${athletes[0].code}` });
+    if (subs && subs.length) return subs;
   }
-
-  const code = String(req.body?.code || '').trim().toUpperCase();
-  const title = String(req.body?.title || '').trim();
-  const message = String(req.body?.message || '').trim();
-  if (!code) return res.status(400).json({ ok: false, error: 'code required (athlete code or ALL)' });
-  if (!message) return res.status(400).json({ ok: false, error: 'message required' });
-
-  const response = await fetch(`${PORTAL_URL}/api/notify`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${secret}`,
-      // Authorization gets stripped if the portal URL redirects to another
-      // domain (fetch drops it on cross-origin redirects). Custom headers
-      // survive, and the portal accepts this one too.
-      'x-notify-secret': secret,
-    },
-    body: JSON.stringify({ code, title, message }),
-  });
-
-  const data = await response.json().catch(() => ({ ok: false, error: `Portal returned HTTP ${response.status}` }));
-
-  // Don't pass the portal's 401 through as-is — the dashboard UI treats 401
-  // as "admin key rejected". A portal 401 means the NOTIFY_SECRET values on
-  // the two Vercel projects don't match.
-  if (response.status === 401) {
-    return res.status(502).json({
-      ok: false,
-      error: 'Portal rejected NOTIFY_SECRET — confirm the dashboard and portal production values match, then redeploy after any environment change',
-    });
-  }
-  return res.status(response.status).json(data);
+  return [];
 }
 
 export default async function handler(req, res) {
-  setCoachCors(req, res, 'GET, POST, OPTIONS');
-  if (req.method === 'OPTIONS') return res.status(200).end();
-
   try {
-    requireCoach(req);
-    if (req.method === 'GET') return await handleRecipients(req, res);
-    if (req.method === 'POST') return await handleSend(req, res);
-    return res.status(405).json({ ok: false, error: 'Method not allowed' });
+    if (req.method !== 'POST') return send(res, 405, { ok: false, error: 'Method not allowed' });
+    requireSecret(req);
+
+    const code = String(req.body?.code || '').trim().toUpperCase();
+    const title = String(req.body?.title || '').trim().slice(0, MAX_TITLE) || 'Message from your coach';
+    const message = String(req.body?.message || '').trim().slice(0, MAX_MESSAGE);
+
+    if (!code) return send(res, 400, { ok: false, error: 'code required (athlete code or ALL)' });
+    if (!message) return send(res, 400, { ok: false, error: 'message required' });
+
+    configureVapid();
+
+    const subs = await loadSubscriptions(code);
+    if (!subs.length) {
+      return send(res, 404, {
+        ok: false,
+        error: code === 'ALL'
+          ? 'No athletes have push notifications enabled yet'
+          : `No subscribed devices for ${code} — the athlete needs to enable notifications in their portal`,
+      });
+    }
+
+    // Unique tag so consecutive custom messages stack instead of replacing
+    // each other on the athlete's device.
+    const payload = JSON.stringify({
+      title,
+      body: message,
+      tag: `dp-coach-msg-${Date.now()}`,
+      url: '/',
+    });
+
+    let sent = 0;
+    let removed = 0;
+    const failed = [];
+    const reached = new Set();
+
+    for (const sub of subs) {
+      try {
+        await webpush.sendNotification(
+          { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+          payload,
+          { TTL: 12 * 3600 }
+        );
+        sent++;
+        reached.add(sub.athlete_code);
+      } catch (error) {
+        if (error.statusCode === 404 || error.statusCode === 410) {
+          // Dead subscription — clean it up like /api/reminders does.
+          await supabaseRequest(tablePath('push_subscriptions', { id: `eq.${sub.id}` }), { method: 'DELETE' }).catch(() => {});
+          removed++;
+        } else {
+          failed.push({
+            athlete: sub.athlete_code,
+            error: String(error.message || error).slice(0, 200),
+          });
+        }
+      }
+    }
+
+    return send(res, 200, { ok: sent > 0, sent, athletes: reached.size, devices: subs.length, removed, failed });
   } catch (error) {
-    return coachError(res, error);
+    return send(res, error.status || 500, {
+      ok: false,
+      error: error.status && error.status < 500 ? String(error.message || error) : 'Notification service unavailable',
+    });
   }
 }
