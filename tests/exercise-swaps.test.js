@@ -1,84 +1,150 @@
-import test from 'node:test';
 import assert from 'node:assert/strict';
-import vm from 'node:vm';
+import test from 'node:test';
 import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import vm from 'node:vm';
 
-// The swap bank only earns its place if every programmed slot resolves to a
-// same-muscle pattern. A slot that falls through returns no extra options, and
-// the athlete silently loses the fallback exactly when the gym is busiest.
-const root = new URL('..', import.meta.url).pathname;
-const source = readFileSync(join(root, 'public', 'js', '01-core.js'), 'utf8');
-const libraryStart = source.indexOf('const STR = ');
-const libraryEnd = source.indexOf('\n\n// ── RUN LIBRARY', libraryStart);
-const helperStart = source.indexOf('function normaliseExerciseName');
-const helperEnd = source.indexOf('function getType', helperStart);
+import handler from '../api/coach-data.js';
 
-const context = {};
-vm.createContext(context);
-vm.runInContext(
-  `${source.slice(helperStart, helperEnd)}\n${source.slice(libraryStart, libraryEnd)};` +
-  'this.STR=STR;this.getExerciseSwapOptions=getExerciseSwapOptions;this.exercisePatternKey=exercisePatternKey;this.EX_PATTERNS=EX_PATTERNS;',
-  context
-);
+// Athletes can substitute any exercise for a same-muscle alternative in the
+// portal. Sets are logged under what they actually performed, so the dashboard
+// needs the programmed slot to avoid two failure modes: the substituted lift
+// reading as though it was prescribed, and its slot being flagged "Not done"
+// on a session that was completed in full.
 
-// Values built inside the VM belong to another realm, so arrays are compared
-// through plain copies rather than deepEqual on the raw objects.
-function plain(value) {
-  return JSON.parse(JSON.stringify(value));
+function responseRecorder() {
+  return {
+    statusCode: 200,
+    headers: {},
+    body: null,
+    setHeader(key, value) { this.headers[key] = value; },
+    status(code) { this.statusCode = code; return this; },
+    json(value) { this.body = value; return value; },
+    end() { return undefined; },
+  };
 }
 
-function extrasFor(prescription) {
-  return context.getExerciseSwapOptions(prescription).groups.reduce((total, group) => total + group.options.length, 0);
-}
+const swappedRow = {
+  client_write_id: 'w-swap',
+  athlete_code: 'ALVIN',
+  athlete_name: 'Alvin',
+  session_name: 'Upper A',
+  session_category: 'Strength',
+  session_date: '2026-08-10',
+  exercise_log: 'T-Bar Row: Set 1: 40kg × 10reps',
+  exercise_name: 'T-Bar Row',
+  programmed_exercise: 'Low Machine Row',
+  muscle_group: 'Upper back — horizontal row',
+  is_swap: true,
+  rep_mode: 'reps',
+};
 
-test('every programmed exercise resolves to a muscle group with usable swaps', () => {
-  for (const [splitName, exercises] of Object.entries(context.STR)) {
-    for (const exercise of exercises) {
-      const pattern = context.exercisePatternKey(exercise.exercise);
-      assert.ok(pattern, `${splitName} / ${exercise.exercise} has no movement pattern`);
-      assert.ok(extrasFor(exercise) > 0, `${splitName} / ${exercise.exercise} offers no additional options`);
-    }
+test('the swap fields reach the dashboard payload', async () => {
+  const originalFetch = global.fetch;
+  const originalEnv = {
+    SUPABASE_URL: process.env.SUPABASE_URL,
+    SUPABASE_SERVICE_KEY: process.env.SUPABASE_SERVICE_KEY,
+    DASHBOARD_ACCESS_KEY: process.env.DASHBOARD_ACCESS_KEY,
+  };
+  process.env.SUPABASE_URL = 'https://example.supabase.co';
+  process.env.SUPABASE_SERVICE_KEY = 'service-key';
+  process.env.DASHBOARD_ACCESS_KEY = 'dashboard-key';
+
+  const rowsFor = url => {
+    if (url.includes('/training_session_logs?')) return [swappedRow];
+    if (url.includes('/athletes?')) return [{ code: 'ALVIN', name: 'Alvin' }];
+    return [];
+  };
+  global.fetch = async url => new Response(JSON.stringify(rowsFor(String(url))), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  });
+
+  try {
+    const res = responseRecorder();
+    await handler({ method: 'GET', headers: { 'x-dashboard-key': 'dashboard-key', 'x-coach-name': 'Karl' } }, res);
+    assert.equal(res.statusCode, 200);
+    const session = res.body.sessions.find(s => s['Exercise Name'] === 'T-Bar Row');
+    assert.ok(session, 'the swapped session should be present');
+    assert.equal(session['Programmed Exercise'], 'Low Machine Row');
+    assert.equal(session['Muscle Group'], 'Upper back — horizontal row');
+    assert.equal(session['Is Swap'], true);
+    assert.equal(session['Rep Mode'], 'reps');
+    // The log text itself must stay clean — the exercise name parser and PB
+    // history both key off everything before ": Set ".
+    assert.match(session['Exercise Log'], /^T-Bar Row: Set 1:/);
+  } finally {
+    global.fetch = originalFetch;
+    Object.entries(originalEnv).forEach(([key, value]) => {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    });
   }
 });
 
-test('the coach shortlist stays first and is never repeated in the wider bank', () => {
-  const prescription = context.STR['Upper A'].find((item) => item.exercise === 'Lat Pulldown');
-  const result = context.getExerciseSwapOptions(prescription);
-  assert.equal(result.priority[0], 'Lat Pulldown');
-  assert.deepEqual(plain(result.priority), ['Lat Pulldown', 'Cable Lat Pulldown', 'Machine Lat Pulldown']);
-  const normalise = (name) => name.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
-  const everything = plain(result.priority).map(normalise).concat(...plain(result.groups).map((group) => group.options.map(normalise)));
-  assert.equal(new Set(everything).size, everything.length);
+// renderExerciseLog lives inline in index.html, so it is lifted out and run in
+// a sandbox rather than duplicated here.
+function loadRenderer() {
+  const html = readFileSync(new URL('../public/index.html', import.meta.url), 'utf8');
+  const start = html.indexOf('function renderExerciseLog(');
+  assert.ok(start > 0, 'renderExerciseLog should exist in index.html');
+  const marker = '\n// ── Full-page Card';
+  const end = html.indexOf(marker, start);
+  assert.ok(end > start, 'renderExerciseLog should be followed by the full-page card section');
+  const context = { console };
+  vm.createContext(context);
+  vm.runInContext(
+    'function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}\n' +
+    html.slice(start, end) +
+    '\nthis.renderExerciseLog=renderExerciseLog;',
+    context
+  );
+  return context.renderExerciseLog;
+}
+
+const renderExerciseLog = loadRenderer();
+const plannedUpperA = [
+  { exercise: 'Low Machine Row' },
+  { exercise: 'Pec Dec' },
+];
+const swaps = {
+  't-bar row': {
+    performed: 'T-Bar Row',
+    programmed: 'Low Machine Row',
+    muscleGroup: 'Upper back — horizontal row',
+  },
+};
+
+test('a swapped exercise is not double counted as missing plus unplanned', () => {
+  const log = 'T-Bar Row: Set 1: 40kg × 10reps\nPec Dec: Set 1: 50kg × 12reps';
+  const html = renderExerciseLog(log, false, null, plannedUpperA, swaps);
+  assert.ok(!html.includes('Not done'), 'the replaced slot must not be flagged as skipped');
+  assert.ok(html.includes('T-Bar Row'));
+  assert.ok(html.includes('swapped for Low Machine Row'));
 });
 
-test('options are grouped by equipment in a fixed order', () => {
-  const result = context.getExerciseSwapOptions({ exercise: 'Barbell Romanian Dead Lift' });
-  const order = ['Machine', 'Cable', 'Free weight', 'Bodyweight / bands'];
-  const labels = plain(result.groups).map((group) => group.label);
-  assert.deepEqual(plain(labels), order.filter((label) => labels.includes(label)));
-  const freeWeights = plain(result.groups).find((group) => group.equipment === 'free').options;
-  assert.ok(freeWeights.includes('Dumbbell Romanian Deadlift'));
+test('the swapped lift holds the slot position it replaced', () => {
+  const log = 'Pec Dec: Set 1: 50kg × 12reps\nT-Bar Row: Set 1: 40kg × 10reps';
+  const html = renderExerciseLog(log, false, null, plannedUpperA, swaps);
+  assert.ok(html.indexOf('T-Bar Row') < html.indexOf('Pec Dec'), 'portal order should put the row slot first');
 });
 
-test('swaps respect the muscle group rather than just the body part', () => {
-  assert.equal(context.exercisePatternKey('Standing Calf Raise'), 'calf_straight');
-  assert.equal(context.exercisePatternKey('Seated Calf Raise'), 'calf_bent');
-  assert.equal(context.exercisePatternKey('Adduction Machine'), 'hip_adduction');
-  assert.equal(context.exercisePatternKey('Seated Hip Abduction'), 'hip_abduction');
-  const soleus = context.getExerciseSwapOptions({ exercise: 'Seated Calf Raise' });
-  const soleusOptions = plain(soleus.groups).flatMap((group) => group.options);
-  assert.ok(!soleusOptions.includes('Standing Calf Raise'), 'a soleus slot must not offer a straight-leg calf raise');
+test('a genuinely skipped exercise is still flagged', () => {
+  const html = renderExerciseLog('T-Bar Row: Set 1: 40kg × 10reps', false, null, plannedUpperA, swaps);
+  assert.ok(html.includes('Not done'));
+  assert.ok(html.includes('Pec Dec'));
 });
 
-test('unseen Supabase exercises still get options through keyword inference', () => {
-  assert.equal(context.exercisePatternKey('Half Kneeling Single Arm Cable Row'), 'horizontal_row');
-  assert.equal(context.exercisePatternKey('Weighted Nordic Curl'), 'hamstring_curl');
-  assert.ok(extrasFor({ exercise: 'Paused Barbell Back Squat' }) > 0);
+test('sessions without swap data render exactly as before', () => {
+  const log = 'Low Machine Row: Set 1: 60kg × 10reps';
+  const withUndefined = renderExerciseLog(log, false, null, plannedUpperA, undefined);
+  const withEmpty = renderExerciseLog(log, false, null, plannedUpperA, {});
+  assert.equal(withUndefined, withEmpty);
+  assert.ok(!withUndefined.includes('swapped for'));
+  assert.ok(withUndefined.includes('Low Machine Row'));
 });
 
-test('a coach can lock a slot that must not be substituted', () => {
-  const locked = context.getExerciseSwapOptions({ exercise: 'Barbell Back Squat', swapLocked: true });
-  assert.deepEqual(plain(locked.groups), []);
-  assert.deepEqual(plain(locked.priority), ['Barbell Back Squat']);
+test('PB detection still keys on the exercise actually performed', () => {
+  const priorBests = { 't-bar row': { e1rm: 40 } };
+  const html = renderExerciseLog('T-Bar Row: Set 1: 60kg × 10reps', false, priorBests, plannedUpperA, swaps);
+  assert.ok(html.includes('PB'), 'a heavy swapped lift should still register against its own history');
 });

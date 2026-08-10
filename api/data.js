@@ -173,6 +173,12 @@ function mapSessions(rows) {
     // Dashboard's parseExerciseLine splits exercises by newline; Supabase
     // separates them with "  ||  ". Convert so names/sets align correctly.
     'Exercise Log': s(r.exercise_log).replace(/\s*\|\|\s*/g, '\n'),
+    // Swap tracking — see mapSession in coach-data.js. Null on older rows.
+    'Exercise Name': s(r.exercise_name),
+    'Programmed Exercise': s(r.programmed_exercise),
+    'Muscle Group': s(r.muscle_group),
+    'Is Swap': r.is_swap === true,
+    'Rep Mode': s(r.rep_mode),
     'Athlete Code': s(r.athlete_code),
     'Date': s(r.session_date),
     ...dateFields('Date', r.session_date),

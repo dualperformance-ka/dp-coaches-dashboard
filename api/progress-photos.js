@@ -61,10 +61,12 @@ export default async function handler(req, res) {
     return;
   }
 
-  // Use path-based prefix — works with public_id folder structure (no asset_folder needed)
-  const prefix = weekNum >= 0
+  // The trailing slash is significant: without it, `week2` also matches
+  // Cloudinary public IDs under `week20`, `week21`, `week22`, and so on.
+  const folder = weekNum >= 0
     ? `dp_progress/${athleteSlug}/week${weekNum}`
     : `dp_progress/${athleteSlug}`;
+  const prefix = `${folder}/`;
 
   const auth = Buffer.from(`${apiKey}:${apiSecret}`).toString('base64');
   const qs = new URLSearchParams({
@@ -84,19 +86,21 @@ export default async function handler(req, res) {
       throw new Error(data.error?.message || `Cloudinary API ${response.status}`);
     }
 
-    const photos = (data.resources || []).map(asset => ({
-      publicId: asset.public_id,
-      type: inferPhotoType(asset.public_id),
-      url: asset.secure_url,
-      thumbUrl: asset.secure_url?.replace('/upload/', '/upload/f_auto,q_auto,c_fill,g_auto,w_420,h_560/'),
-      width: asset.width,
-      height: asset.height,
-      createdAt: asset.created_at,
-      format: asset.format,
-    }));
+    const photos = (data.resources || [])
+      .filter(asset => asset.public_id?.startsWith(prefix))
+      .map(asset => ({
+        publicId: asset.public_id,
+        type: inferPhotoType(asset.public_id),
+        url: asset.secure_url,
+        thumbUrl: asset.secure_url?.replace('/upload/', '/upload/f_auto,q_auto,c_fill,g_auto,w_420,h_560/'),
+        width: asset.width,
+        height: asset.height,
+        createdAt: asset.created_at,
+        format: asset.format,
+      }));
 
     res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=300');
-    res.status(200).json({ athlete: athleteSlug, week: weekNum, folder: prefix, photos });
+    res.status(200).json({ athlete: athleteSlug, week: weekNum, folder, photos });
   } catch (e) {
     console.error('[progress-photos]', e.message);
     res.status(500).json({ error: e.message });

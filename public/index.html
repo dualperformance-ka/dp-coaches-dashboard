@@ -1561,6 +1561,19 @@ body[data-theme="light"] .wd-ext-row.pb .wd-ext-num strong,body[data-theme="ligh
 .progress-photo-meta{padding:8px 10px}
 .progress-photo-type{font-family:var(--mono);font-size:9px;font-weight:800;color:var(--text);text-transform:uppercase;letter-spacing:.08em}
 .progress-photo-date{font-family:var(--mono);font-size:8px;color:var(--dim);margin-top:3px}
+.photo-compare-toolbar{display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+.photo-week-field{display:flex;flex-direction:column;gap:5px;min-width:132px}
+.photo-week-field span{font-family:var(--mono);font-size:9px;color:var(--dim);font-weight:700;text-transform:uppercase;letter-spacing:.1em}
+.photo-week-select{width:100%;font-family:var(--mono);font-size:10px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:7px 28px 7px 9px}
+.photo-swap-btn{width:34px;height:32px;border:1px solid var(--border);border-radius:7px;background:var(--surface2);color:var(--muted);font-size:16px;line-height:1;cursor:pointer;transition:border-color .15s,color .15s,background .15s}
+.photo-swap-btn:hover{border-color:var(--accent);color:var(--accent);background:var(--surface3)}
+.photo-compare-hint{font-family:var(--mono);font-size:8px;color:var(--dim);letter-spacing:.05em;text-transform:uppercase;margin-bottom:12px}
+.photo-comparison-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px 14px;align-items:start}
+.photo-comparison-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;border-radius:8px;background:var(--surface2);border:1px solid var(--border);font-family:var(--mono);font-size:10px;font-weight:800;color:var(--text);text-transform:uppercase;letter-spacing:.08em}
+.photo-comparison-heading span{font-size:8px;color:var(--dim);font-weight:600;letter-spacing:.05em}
+.photo-comparison-grid .progress-photo{height:100%}
+.progress-photo-empty{min-height:180px;display:flex;align-items:center;justify-content:center;border-style:dashed;color:var(--dim);font-family:var(--mono);font-size:9px;text-align:center;text-transform:uppercase;letter-spacing:.06em;padding:14px}
+.photo-comparison-message{grid-column:1/-1;font-family:var(--mono);font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.07em;padding:14px 2px}
 
 /* ── Strava section ── */
 .strava-panel{min-height:80px}
@@ -8050,29 +8063,32 @@ function buildFPCard(a, weekOffset = 0) {
     }
   }
 
-  const maxWeek = a.weekNum || 12;
-  const weekOptions = Array.from({ length: maxWeek + 1 }, (_, i) => i)
-    .map(i => `<option value="${i}" ${i === (ctx.selectedWeekNum || 0) ? 'selected' : ''}>${i === 0 ? 'Discovery Week' : 'Week ' + i}</option>`)
+  const maxWeek = Math.max(Number(a.weekNum) || 0, 12);
+  const selectedPhotoWeek = Number.isInteger(ctx.selectedWeekNum) ? ctx.selectedWeekNum : maxWeek;
+  const comparePhotoWeek = selectedPhotoWeek > 0 ? selectedPhotoWeek - 1 : Math.min(maxWeek, 1);
+  const weekOptionsFor = selectedWeek => Array.from({ length: maxWeek + 1 }, (_, i) => i)
+    .map(i => `<option value="${i}" ${i === selectedWeek ? 'selected' : ''}>${i === 0 ? 'Discovery Week' : 'Week ' + i}</option>`)
     .reverse().join('');
 
   const progressPhotosHtml = `<div class="fpc-section progress-photo-panel">
     <div class="fpc-section-title">Progress Photos</div>
-    <div class="fpc-photo-grid">
-      <div>
-        <div style="font-family:var(--mono);font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px">Primary week</div>
-        <div class="progress-photo-state" data-progress-photos="${esc(a.id)}">Loading…</div>
-      </div>
-      <div>
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-          <span style="font-family:var(--mono);font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.1em">Compare</span>
-          <select id="photo-compare-select-${esc(a.id)}" style="font-family:var(--mono);font-size:9px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:3px 6px" onchange="loadComparePhoto('${esc(a.id)}', this.value)">
-            <option value="">— pick a week —</option>
-            ${weekOptions}
-          </select>
-        </div>
-        <div id="photo-compare-${esc(a.id)}" style="color:var(--dim);font-family:var(--mono);font-size:11px">Select a week to compare</div>
-      </div>
+    <div class="photo-compare-toolbar">
+      <label class="photo-week-field">
+        <span>Base week</span>
+        <select class="photo-week-select" id="photo-base-select-${esc(a.id)}" aria-label="Base progress-photo week" onchange="loadProgressPhotoComparison('${esc(a.id)}')">
+          ${weekOptionsFor(selectedPhotoWeek)}
+        </select>
+      </label>
+      <button class="photo-swap-btn" type="button" aria-label="Swap comparison weeks" title="Swap weeks" onclick="swapProgressPhotoWeeks('${esc(a.id)}')">⇄</button>
+      <label class="photo-week-field">
+        <span>Compare week</span>
+        <select class="photo-week-select" id="photo-compare-select-${esc(a.id)}" aria-label="Comparison progress-photo week" onchange="loadProgressPhotoComparison('${esc(a.id)}')">
+          ${weekOptionsFor(comparePhotoWeek)}
+        </select>
+      </label>
     </div>
+    <div class="photo-compare-hint">Matching poses stay aligned · click a photo to open the full-resolution original</div>
+    <div id="photo-comparison-${esc(a.id)}" class="progress-photo-state">Loading comparison…</div>
   </div>`;
 
   const stravaHtml = `<div class="fpc-section strava-panel">
@@ -9369,7 +9385,7 @@ function _drawFP() {
   document.getElementById('fp-overlay').scrollTop = 0;
   initCollapsibleSections();
   requestAnimationFrame(() => _positionCurrentProgrammeWeek(document.getElementById('fp-body')));
-  loadProgressPhotos(a, _fpWeekOffset);
+  loadProgressPhotoComparison(a.id);
   loadStravaData(a);
 
   // Restore saved note (fpc-note textarea uses onchange so pre-fill here)
@@ -9998,67 +10014,111 @@ async function loadStravaData(a) {
   }
 }
 
-async function loadProgressPhotos(a, weekOffset = 0) {
-  const target = document.querySelector(`[data-progress-photos="${a.id}"]`);
-  if (!target) return;
-  const ctx = getSelectedWeekContext(a, weekOffset);
-  if (ctx.selectedWeekNum === null || ctx.selectedWeekNum === undefined) {
-    target.textContent = 'Week number unavailable — cannot match photos yet.';
+function progressPhotoTypeKey(photo) {
+  return String(photo?.type || photo?.publicId || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+}
+
+function progressPhotoTypeLabel(typeKey) {
+  return String(typeKey || 'progress_photo')
+    .split('_')
+    .filter(Boolean)
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
+
+async function fetchProgressPhotoWeek(athleteId, weekNum) {
+  const url = `/api/progress-photos?athlete=${encodeURIComponent(athleteId)}&week=${encodeURIComponent(weekNum)}`;
+  const res = await fetch(url);
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+  return data.photos || [];
+}
+
+function renderProgressComparisonCard(photo, athleteId, weekNum, typeKey) {
+  const typeLabel = progressPhotoTypeLabel(typeKey);
+  if (!photo) {
+    return `<div class="progress-photo progress-photo-empty">
+      No ${esc(typeLabel)} photo<br>for Week ${esc(weekNum)}
+    </div>`;
+  }
+  return `<a class="progress-photo" href="${esc(photo.url)}" target="_blank" rel="noopener">
+    <img src="${esc(photo.thumbUrl || photo.url)}" alt="${esc(athleteId)} Week ${esc(weekNum)} ${esc(typeLabel)} progress photo" loading="lazy">
+    <div class="progress-photo-meta">
+      <div class="progress-photo-type">${esc(typeLabel)}</div>
+      <div class="progress-photo-date">Week ${esc(weekNum)}${photo.createdAt ? ` · ${fmtDate(String(photo.createdAt).split('T')[0])}` : ''}</div>
+    </div>
+  </a>`;
+}
+
+async function loadProgressPhotoComparison(athleteId) {
+  const baseSelect = document.getElementById(`photo-base-select-${athleteId}`);
+  const compareSelect = document.getElementById(`photo-compare-select-${athleteId}`);
+  const target = document.getElementById(`photo-comparison-${athleteId}`);
+  if (!baseSelect || !compareSelect || !target) return;
+
+  const baseWeek = baseSelect.value;
+  const compareWeek = compareSelect.value;
+  if (baseWeek === compareWeek) {
+    target.className = 'photo-comparison-grid';
+    target.innerHTML = '<div class="photo-comparison-message">Choose two different weeks to compare.</div>';
     return;
   }
 
+  target.className = 'progress-photo-state';
+  target.textContent = `Loading Week ${baseWeek} and Week ${compareWeek}…`;
+
   try {
-    const url = `/api/progress-photos?athlete=${encodeURIComponent(a.id)}&week=${encodeURIComponent(ctx.selectedWeekNum)}`;
-    const res = await fetch(url);
-    if (!res.ok) {
-      const e = await res.json().catch(() => ({}));
-      throw new Error(e.error || `HTTP ${res.status}`);
-    }
-    const data = await res.json();
-    const photos = data.photos || [];
-    if (!photos.length) {
-      target.textContent = `No photos found at dp_progress/${a.id.toLowerCase()}/week${ctx.selectedWeekNum}`;
+    const [basePhotos, comparePhotos] = await Promise.all([
+      fetchProgressPhotoWeek(athleteId, baseWeek),
+      fetchProgressPhotoWeek(athleteId, compareWeek),
+    ]);
+    const toPhotoMap = photos => {
+      const map = new Map();
+      photos.forEach(photo => {
+        const key = progressPhotoTypeKey(photo);
+        if (key && !map.has(key)) map.set(key, photo);
+      });
+      return map;
+    };
+    const baseMap = toPhotoMap(basePhotos);
+    const compareMap = toPhotoMap(comparePhotos);
+    const preferredOrder = ['back', 'back_flexed', 'front', 'front_flexed', 'side'];
+    const allKeys = new Set([...baseMap.keys(), ...compareMap.keys()]);
+    const orderedKeys = [
+      ...preferredOrder.filter(key => allKeys.has(key)),
+      ...[...allKeys].filter(key => !preferredOrder.includes(key)).sort(),
+    ];
+
+    target.className = 'photo-comparison-grid';
+    const headings = `<div class="photo-comparison-heading">Week ${esc(baseWeek)} <span>${basePhotos.length} photo${basePhotos.length === 1 ? '' : 's'}</span></div>
+      <div class="photo-comparison-heading">Week ${esc(compareWeek)} <span>${comparePhotos.length} photo${comparePhotos.length === 1 ? '' : 's'}</span></div>`;
+    if (!orderedKeys.length) {
+      target.innerHTML = `${headings}
+        <div class="progress-photo progress-photo-empty">No photos for Week ${esc(baseWeek)}</div>
+        <div class="progress-photo progress-photo-empty">No photos for Week ${esc(compareWeek)}</div>`;
       return;
     }
-    target.outerHTML = `<div class="progress-photo-grid">
-      ${photos.map(p => `<a class="progress-photo" href="${esc(p.url)}" target="_blank" rel="noopener">
-        <img src="${esc(p.thumbUrl || p.url)}" alt="${esc(a.id)} ${esc(p.type)} progress photo" loading="lazy">
-        <div class="progress-photo-meta">
-          <div class="progress-photo-type">${esc(p.type)}</div>
-          <div class="progress-photo-date">${p.createdAt ? fmtDate(String(p.createdAt).split('T')[0]) : esc(p.publicId)}</div>
-        </div>
-      </a>`).join('')}
-    </div>`;
+    target.innerHTML = headings + orderedKeys.map(typeKey =>
+      renderProgressComparisonCard(baseMap.get(typeKey), athleteId, baseWeek, typeKey) +
+      renderProgressComparisonCard(compareMap.get(typeKey), athleteId, compareWeek, typeKey)
+    ).join('');
   } catch (e) {
-    target.textContent = `Progress photos unavailable: ${e.message}`;
+    target.className = 'photo-comparison-grid';
+    target.innerHTML = `<div class="photo-comparison-message" style="color:var(--alert)">Progress photos unavailable: ${esc(e.message)}</div>`;
   }
 }
 
-async function loadComparePhoto(athleteId, weekNum) {
-  const target = document.getElementById(`photo-compare-${athleteId}`);
-  if (!target || weekNum === '') return;
-  target.innerHTML = `<span style="font-family:var(--mono);font-size:11px;color:var(--dim)">Loading…</span>`;
-  try {
-    const url = `/api/progress-photos?athlete=${encodeURIComponent(athleteId)}&week=${encodeURIComponent(weekNum)}`;
-    const res = await fetch(url);
-    const data = await res.json();
-    const photos = data.photos || [];
-    if (!photos.length) {
-      target.innerHTML = `<span style="font-family:var(--mono);font-size:11px;color:var(--dim)">No photos for week ${weekNum}</span>`;
-      return;
-    }
-    target.innerHTML = `<div class="progress-photo-grid">
-      ${photos.map(p => `<a class="progress-photo" href="${esc(p.url)}" target="_blank" rel="noopener">
-        <img src="${esc(p.thumbUrl || p.url)}" alt="Week ${weekNum}" loading="lazy">
-        <div class="progress-photo-meta">
-          <div class="progress-photo-type">${esc(p.type)}</div>
-          <div class="progress-photo-date">Wk ${weekNum}</div>
-        </div>
-      </a>`).join('')}
-    </div>`;
-  } catch (e) {
-    target.innerHTML = `<span style="font-family:var(--mono);font-size:11px;color:var(--alert)">${e.message}</span>`;
-  }
+function swapProgressPhotoWeeks(athleteId) {
+  const baseSelect = document.getElementById(`photo-base-select-${athleteId}`);
+  const compareSelect = document.getElementById(`photo-compare-select-${athleteId}`);
+  if (!baseSelect || !compareSelect) return;
+  const previousBase = baseSelect.value;
+  baseSelect.value = compareSelect.value;
+  compareSelect.value = previousBase;
+  loadProgressPhotoComparison(athleteId);
 }
 
 // ── Weight History Overlay ────────────────────────────────────────────────────

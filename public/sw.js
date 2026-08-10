@@ -12,7 +12,7 @@
       would risk showing stale or cross-coach data offline)
    ============================================================ */
 
-const VERSION = 'dp-coaches-v23-unified-mobile-type';
+const VERSION = 'dp-coaches-v24-exercise-swaps';
 const SHELL_CACHE = `${VERSION}-shell`;
 const STATIC_CACHE = `${VERSION}-static`;
 const FONT_CACHE = `${VERSION}-fonts`;

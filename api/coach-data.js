@@ -187,6 +187,15 @@ function mapSession(row) {
     Notes: row.notes || '',
     Date: row.session_date,
     'date:Date:start': row.session_date,
+    // Swap tracking. Athletes can substitute any exercise for a same-muscle
+    // alternative in the portal; sets are logged under what they actually did,
+    // so without the programmed slot a swapped session reads as though it was
+    // written that way. Rows predating this are null and simply render as normal.
+    'Exercise Name': row.exercise_name || '',
+    'Programmed Exercise': row.programmed_exercise || '',
+    'Muscle Group': row.muscle_group || '',
+    'Is Swap': row.is_swap === true,
+    'Rep Mode': row.rep_mode || '',
     _clientWriteId: row.client_write_id,
     _source: 'portal_supabase',
     _submittedAt: row.submitted_at,
