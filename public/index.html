@@ -1361,6 +1361,10 @@ details.wd-plan[open] .wd-plan-chev{transform:rotate(180deg)}
 body[data-theme="light"] .wd-ext-row.pb .wd-ext-num strong,body[data-theme="light"] .wd-ext-row.pb .wd-ext-num{color:#6d28d9}
 .wd-ext-ex{display:flex;align-items:baseline;gap:8px;font-size:12.5px;font-weight:500;color:var(--text);line-height:1.35;text-transform:capitalize;min-width:0}
 .wd-ext-exname{min-width:0;overflow-wrap:break-word}
+/* Substituted exercise. Amber, not red — swapping is allowed and usually the
+   right call in a busy gym; this is context, not a compliance failure. */
+.wd-ext-swap{display:inline-block;font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:.05em;text-transform:none;background:rgba(245,158,11,.16);color:#f59e0b;border:1px solid rgba(245,158,11,.32);border-radius:4px;padding:1.5px 6px;vertical-align:1.5px;white-space:nowrap}
+body[data-theme="light"] .wd-ext-swap{background:rgba(180,83,9,.1);color:#b45309;border-color:rgba(180,83,9,.28)}
 .wd-ext-setlbl{margin-left:auto;font-family:var(--mono);font-style:normal;font-size:8.5px;font-weight:500;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;white-space:nowrap;padding-right:6px}
 .wd-ext-num{font-family:var(--mono);font-size:12px;color:var(--text);text-align:center;white-space:nowrap;font-variant-numeric:tabular-nums}
 .wd-ext-num.w{text-align:right}
@@ -5212,13 +5216,23 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [
     const sessionName = r.Session || '';
     const k = `${id}|${sessionName}|${_cat}|${ds}`;
     if (!sessionMap[k]) {
-      sessionMap[k] = { ...r, _d: ds, _cat, _isRun, _isStr, _isDisc, _exercises: [] };
+      sessionMap[k] = { ...r, _d: ds, _cat, _isRun, _isStr, _isDisc, _exercises: [], _swaps: {} };
     }
     // Accumulate each exercise's log line into _exercises
     // Note: the Exercise Log field from Make.com already starts with "ExerciseName: Set 1:…"
     // so we push it directly — no need to prepend the name again.
     const exLine = r['Exercise Log'] || r.exerciseLog || '';
     if (exLine) sessionMap[k]._exercises.push(exLine);
+    // One DB row per exercise, so the swap detail lives here and would be lost
+    // in the merge. Key it by the exercise actually performed — that is the name
+    // the log line carries, and how the renderer finds it again.
+    if (r['Is Swap'] && r['Exercise Name'] && r['Programmed Exercise']) {
+      sessionMap[k]._swaps[String(r['Exercise Name']).toLowerCase().trim()] = {
+        performed: r['Exercise Name'],
+        programmed: r['Programmed Exercise'],
+        muscleGroup: r['Muscle Group'] || '',
+      };
+    }
   });
   // Flatten merged sessions into athlete maps
   Object.values(sessionMap).forEach(s => {
@@ -7197,7 +7211,7 @@ function buildCallPrep(a) {
 // ── Exercise log renderer ─────────────────────────────────────────────────────
 // Strength log format: "ExerciseName: Set 1: 40kg × 12reps | Set 2: 65kg × 10reps\n..."
 // Run log format:      "Distance: 13km | Duration: 96min | Pace: 6:40 | RPE: 6.5/10 | Feel: 😐"
-function renderExerciseLog(logStr, isRun, priorBests, plannedExs) {
+function renderExerciseLog(logStr, isRun, priorBests, plannedExs, swaps) {
   if (!logStr) return '';
   if (isRun) {
     // Parse flat key:value pairs separated by |
@@ -7246,7 +7260,8 @@ function renderExerciseLog(logStr, isRun, priorBests, plannedExs) {
     if (!sets.length) return;
     // Saved-but-empty (e.g. "—kg × — reps"): opened in the logger, not done.
     const empty = sets.every(st => st.w === null && st.r === null);
-    entries.push({ exName, sets, empty, _i: li });
+    const swap = swaps ? swaps[exName.toLowerCase().trim()] : null;
+    entries.push({ exName, sets, empty, swap: swap || null, _i: li });
   });
 
   // Phase 2: align with the planned split — portal order + missing exercises
@@ -7259,13 +7274,18 @@ function renderExerciseLog(logStr, isRun, priorBests, plannedExs) {
       if (i === -1) i = planned.findIndex(p => n.includes(norm(p)) || norm(p).includes(n));
       return i;
     };
+    // A swapped exercise is matched on the slot it replaced, not on its own
+    // name. Otherwise a substituted lift lands at the bottom as an unplanned
+    // extra AND its slot is flagged "Not done" — the session would look half
+    // skipped when it was completed in full.
+    const slotIdx = entry => plannedIdx(entry.swap ? entry.swap.programmed : entry.exName);
     // Planned exercises that never came back in the log at all
     planned.forEach((pname, pi) => {
-      const seen = entries.some(e => e.exName && plannedIdx(e.exName) === pi);
+      const seen = entries.some(e => e.exName && slotIdx(e) === pi);
       if (!seen) entries.push({ exName: pname, missing: true, _i: 1000 + pi });
     });
     // Sort into portal order; anything not in the split keeps its log position at the end
-    entries.forEach(e => { e._ord = e.exName ? plannedIdx(e.exName) : -1; });
+    entries.forEach(e => { e._ord = e.exName ? slotIdx(e) : -1; });
     entries.sort((a, b) => {
       const ao = a._ord === -1 ? 1e6 + a._i : a._ord;
       const bo = b._ord === -1 ? 1e6 + b._i : b._ord;
@@ -7291,7 +7311,12 @@ function renderExerciseLog(logStr, isRun, priorBests, plannedExs) {
     // label so continuation rows never read as floating numbers
     en.sets.forEach((st, si) => {
       const first = si === 0;
-      const exCell = `<span class="wd-ext-ex">${first ? `<span class="wd-ext-exname">${esc(en.exName)}</span>` : ''}<em class="wd-ext-setlbl">Set ${si + 1}</em></span>`;
+      // Repeated swaps of one slot are worth a conversation — it usually means
+      // a machine they can never get on, or a niggle they have not mentioned.
+      const swapTag = en.swap
+        ? `<span class="wd-ext-swap" title="Programmed: ${esc(en.swap.programmed)}${en.swap.muscleGroup ? ` · ${esc(en.swap.muscleGroup)}` : ''}">swapped for ${esc(en.swap.programmed)}</span>`
+        : '';
+      const exCell = `<span class="wd-ext-ex">${first ? `<span class="wd-ext-exname">${esc(en.exName)}</span>${swapTag}` : ''}<em class="wd-ext-setlbl">Set ${si + 1}</em></span>`;
       const parsed = st.w !== null || st.r !== null;
       if (!parsed) {
         bodyRows.push(`<div class="wd-ext-row${first ? ' grp' : ''}">${exCell}<span class="wd-ext-raw">${esc(st.raw)}</span></div>`);
@@ -7702,7 +7727,7 @@ function buildFPCard(a, weekOffset = 0) {
           // Planned split for this session (matched by title, same as the athlete
           // portal) — enables portal-order rows + "Not done" flags for skipped exercises
           const plannedExs = isStr ? (splitForTitle(rawName, a.id)?.exercises || null) : null;
-          const logHtml = renderExerciseLog(exLog, isRun, priorBests, plannedExs);
+          const logHtml = renderExerciseLog(exLog, isRun, priorBests, plannedExs, s._swaps);
           return `<div class="wd-session ${cls}">
             <div class="wd-sess-cat">${catLabel}</div>
             ${rawName ? `<div class="wd-sess-name">${esc(rawName)}</div>` : ''}
