@@ -1,122 +1,189 @@
-const CACHE_NAME = 'dp-athlete-v122'; // v122: muscle-group coverage, swap tracking and variation-churn guidance
-const APP_SHELL = [
-  '/index.html', '/styles.css?v=104', '/desktop.css?v=4', '/config.js',
-  '/manifest.json', '/icon-192.png?v=3', '/icon-512.png?v=3', '/apple-touch-icon.png?v=3',
-  '/js/01-core.js?v=99',
-  '/js/02-login-goals.js?v=95',
-  '/js/03-nav-nudges.js?v=93',
-  '/js/04-checkin.js?v=86',
-  '/js/05-handbook.js?v=82',
-  '/js/06-nutrition.js?v=86',
-  '/js/07-progress.js?v=86',
-  '/js/strava-match.js?v=4',
-  '/js/08-training.js?v=108',
-  '/js/09-logging.js?v=102',
-  '/accessibility.js?v=1',
-  '/js/10-boot.js?v=92',
-  '/login.js?v=47', '/icons.css?v=3',
-  '/dual_performance_one_line_filled_logo_black_preview.png',
-  '/dp_baby_blue_transparent_512x512.png'
+/* ============================================================
+   DP Coaches Dashboard - Service Worker
+   Vanilla SW, no build step, safe for Vercel static hosting.
+
+   Strategy summary:
+   - App shell (index.html)          : network-first, cache fallback
+   - Same-origin static assets       : stale-while-revalidate
+   - Google Fonts files              : cache-first (immutable)
+   - CDN scripts (jsdelivr)          : stale-while-revalidate
+   - /api/* and *.supabase.co        : NETWORK ONLY, never cached
+     (coach/athlete data is authenticated + dynamic - caching it
+      would risk showing stale or cross-coach data offline)
+   ============================================================ */
+
+const VERSION = 'dp-coaches-v23-unified-mobile-type';
+const SHELL_CACHE = `${VERSION}-shell`;
+const STATIC_CACHE = `${VERSION}-static`;
+const FONT_CACHE = `${VERSION}-fonts`;
+
+// Everything needed for first paint of the shell.
+const SHELL_ASSETS = [
+  '/',
+  '/index.html',
+  '/app.js',
+  '/coach-auth.js',
+  '/coaching-actions.js',
+  '/dashboard-redesign.js',
+  '/dashboard-redesign.css',
+  '/dashboard-detail-cleanup.css',
+  '/dashboard-mobile.css',
+  '/dashboard-comprehensive.css',
+  '/dashboard-theme-system.css',
+  '/dashboard-desktop.css',
+  '/dashboard-mobile-polish.css',
+  '/dashboard-mobilenav.js',
+  '/triage.css?v=21',
+  '/triage.js?v=21',
+  '/manifest.webmanifest',
+  '/dp-mark-blue.png',
+  '/dp-mark-light.png',
+  '/dp-mark-dark.png',
+  '/icons/icon-192.png',
+  '/icons/icon-512.png'
 ];
 
-self.addEventListener('install', event => {
-  // Cache files individually: one missing file must never block the install
-  // (cache.addAll is all-or-nothing and a single 404 bricks the service worker).
-  event.waitUntil(caches.open(CACHE_NAME).then(cache =>
-    Promise.allSettled(APP_SHELL.map(url => cache.add(url)))
-  ));
-  self.skipWaiting();
+// Hosts whose responses must never be cached (dynamic / authenticated).
+const NEVER_CACHE_HOSTS = ['supabase.co', 'supabase.in'];
+
+// Cross-origin hosts we DO allow runtime caching for.
+const FONT_HOSTS = ['fonts.gstatic.com'];
+const CDN_HOSTS = ['fonts.googleapis.com', 'cdn.jsdelivr.net'];
+
+/* ---------- install: precache the shell ---------- */
+self.addEventListener('install', (event) => {
+  event.waitUntil(
+    caches.open(SHELL_CACHE).then((cache) =>
+      // addAll is atomic; if one asset 404s the install fails,
+      // so fetch individually and tolerate misses.
+      Promise.allSettled(
+        SHELL_ASSETS.map((url) =>
+          fetch(url, { cache: 'no-cache' }).then((res) => {
+            if (res.ok) return cache.put(url, res);
+          })
+        )
+      )
+    )
+  );
+  // Do NOT skipWaiting here - app.js triggers it after the user
+  // accepts the update, so we never swap SW mid-session silently.
 });
 
-self.addEventListener('activate', event => {
-  event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key)))));
-  self.clients.claim();
+/* ---------- activate: drop old caches ---------- */
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches
+      .keys()
+      .then((keys) =>
+        Promise.all(
+          keys
+            .filter((k) => !k.startsWith(VERSION))
+            .map((k) => caches.delete(k))
+        )
+      )
+      .then(() => self.clients.claim())
+  );
 });
 
-self.addEventListener('fetch', event => {
-  const request = event.request;
-  if (request.method !== 'GET') return;
-  const url = new URL(request.url);
-  if (url.origin !== self.location.origin || url.pathname.startsWith('/api/')) return;
-
-  // Versioned JS/CSS: CACHE-FIRST. Every changed shell file gets a new ?v=
-  // value in index.html, so a deploy naturally misses the old cache and fetches
-  // the new file. Installed PWAs can therefore launch without waiting for a
-  // network round trip while never caching API or athlete-data responses.
-  const isVersionedShellAsset = /\.(?:css|js)$/.test(url.pathname) && url.searchParams.has('v');
-  if (isVersionedShellAsset) {
-    event.respondWith(caches.match(request).then(cached => cached || fetch(request).then(response => {
-      if (response.ok) caches.open(CACHE_NAME).then(cache => cache.put(request, response.clone()));
-      return response;
-    })));
-    return;
+/* ---------- messages from the page ---------- */
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
   }
+});
 
-  // Installed-PWA navigations: return the cached shell immediately and refresh
-  // it in the background. The service-worker update check plus versioned asset
-  // URLs still advances deployments safely, while weak connections no longer
-  // hold a home-screen launch behind an HTML round trip.
-  if (request.mode === 'navigate' || url.pathname === '/') {
-    const cacheKey = '/index.html';
-    const networkResponse = fetch(request).then(response => {
-      if (response.ok) {
-        const copy = response.clone();
-        caches.open(CACHE_NAME).then(cache => cache.put(cacheKey, copy));
-      }
-      return response;
-    });
-    event.waitUntil(networkResponse.then(() => undefined).catch(() => undefined));
-    event.respondWith(caches.match(cacheKey).then(cached => cached || networkResponse));
-    return;
-  }
+/* ---------- fetch routing ---------- */
+self.addEventListener('fetch', (event) => {
+  const req = event.request;
 
-  // Unversioned runtime files (notably config.js): NETWORK-FIRST so runtime
-  // configuration changes remain immediate.
-  const isShell = /\.(?:html|css|js)$/.test(url.pathname);
+  // Only ever touch GET requests. POST/PATCH etc. pass straight through.
+  if (req.method !== 'GET') return;
 
-  if (isShell) {
-    const cacheKey = request;
+  const url = new URL(req.url);
+
+  // 1. Never intercept authenticated/dynamic data.
+  //    /api/* on our origin, or anything on Supabase.
+  if (
+    (url.origin === self.location.origin && url.pathname.startsWith('/api/')) ||
+    NEVER_CACHE_HOSTS.some((h) => url.hostname.endsWith(h))
+  ) {
+    // Network-first with no cache fallback: fresh or a clear offline error.
     event.respondWith(
-      fetch(request).then(response => {
-        if (response.ok) {
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(cacheKey, copy));
-        }
-        return response;
-      }).catch(() => caches.match(cacheKey))
+      fetch(req).catch(
+        () =>
+          new Response(
+            JSON.stringify({ error: 'offline', message: 'No network connection.' }),
+            { status: 503, headers: { 'Content-Type': 'application/json' } }
+          )
+      )
     );
     return;
   }
 
-  // Everything else (images, fonts, icons): cache-first — they're versioned
-  // or immutable, so serving from cache is fine and fast.
-  event.respondWith(caches.match(request).then(cached => cached || fetch(request).then(response => {
-    if (response.ok) caches.open(CACHE_NAME).then(cache => cache.put(request, response.clone()));
-    return response;
-  })));
+  // 2. Navigations: network-first, fall back to cached shell.
+  if (req.mode === 'navigate') {
+    event.respondWith(
+      fetch(req)
+        .then((res) => {
+          const copy = res.clone();
+          caches.open(SHELL_CACHE).then((c) => c.put('/index.html', copy));
+          return res;
+        })
+        .catch(() =>
+          caches.match('/index.html').then(
+            (cached) =>
+              cached ||
+              new Response('Offline and no cached shell available.', {
+                status: 503,
+                headers: { 'Content-Type': 'text/plain' }
+              })
+          )
+        )
+    );
+    return;
+  }
+
+  // 3. Font files: cache-first (versioned + immutable by Google).
+  if (FONT_HOSTS.includes(url.hostname)) {
+    event.respondWith(cacheFirst(req, FONT_CACHE));
+    return;
+  }
+
+  // 4. Same-origin static assets + allowed CDNs: stale-while-revalidate.
+  const isOwnStatic = url.origin === self.location.origin;
+  const isAllowedCdn = CDN_HOSTS.includes(url.hostname);
+  if (isOwnStatic || isAllowedCdn) {
+    event.respondWith(staleWhileRevalidate(req, STATIC_CACHE));
+    return;
+  }
+
+  // 5. Anything else (unknown third parties): don't intercept at all.
 });
 
-// ── PUSH REMINDERS ───────────────────────────────────────────────────────────
-self.addEventListener('push', event => {
-  let data = {};
-  try { data = event.data ? event.data.json() : {}; } catch (e) {}
-  const title = data.title || 'Dual Performance';
-  event.waitUntil(self.registration.showNotification(title, {
-    body: data.body || '',
-    icon: '/dp_baby_blue_transparent_512x512.png',
-    badge: '/dp_baby_blue_transparent_512x512.png',
-    tag: data.tag || 'dp-reminder',
-    data: { url: data.url || '/' }
-  }));
-});
+/* ---------- strategies ---------- */
+function cacheFirst(req, cacheName) {
+  return caches.open(cacheName).then((cache) =>
+    cache.match(req).then(
+      (cached) =>
+        cached ||
+        fetch(req).then((res) => {
+          if (res.ok || res.type === 'opaque') cache.put(req, res.clone());
+          return res;
+        })
+    )
+  );
+}
 
-self.addEventListener('notificationclick', event => {
-  event.notification.close();
-  const url = (event.notification.data && event.notification.data.url) || '/';
-  event.waitUntil(clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
-    for (const client of list) {
-      if ('focus' in client) { client.navigate(url); return client.focus(); }
-    }
-    return clients.openWindow(url);
-  }));
-});
+function staleWhileRevalidate(req, cacheName) {
+  return caches.open(cacheName).then((cache) =>
+    cache.match(req).then((cached) => {
+      const network = fetch(req)
+        .then((res) => {
+          if (res.ok || res.type === 'opaque') cache.put(req, res.clone());
+          return res;
+        })
+        .catch(() => cached); // offline: fall back to cache if we have it
+      return cached || network;
+    })
+  );
+}
