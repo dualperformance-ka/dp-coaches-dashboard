@@ -210,6 +210,36 @@ body[data-theme="light"] .week-jump {
   background:var(--surface);
 }
 
+/* The athlete-history overlay has its own Dark / Light toggle. Keep it
+   independent from the dashboard theme selected underneath the overlay. */
+#wh-overlay:not(.wh-light) .wh-section {
+  color:var(--wh-text);
+  background:var(--wh-surface);
+  border-color:var(--wh-border);
+  box-shadow:0 16px 42px rgba(0,0,0,.28);
+}
+#wh-overlay.wh-light .wh-section {
+  color:var(--wh-text);
+  background:var(--wh-surface);
+  border-color:var(--wh-border);
+  box-shadow:0 14px 34px rgba(20,48,66,.10);
+}
+#wh-overlay .wh-section-title,
+#wh-overlay .wh-stat-val,
+#wh-overlay .wh-table td {
+  color:var(--wh-text);
+}
+#wh-overlay .wh-stat-lbl,
+#wh-overlay .wh-table th,
+#wh-overlay .wh-range-label {
+  color:var(--wh-dim);
+}
+#wh-overlay .wh-range-select {
+  color:var(--wh-text);
+  background-color:var(--wh-bg);
+  border-color:var(--wh-border);
+}
+
 /* Light theme renders card/table headers as light surfaces instead of stranded black blocks. */
 body[data-theme="light"] .cc-hero,
 body[data-theme="light"] .card-head,
