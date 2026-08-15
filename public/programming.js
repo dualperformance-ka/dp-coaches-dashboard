@@ -120,18 +120,39 @@
             '<div class="rx-picker-results" id="rx-picker-results" role="tabpanel"></div>' +
           '</div>' +
         '</div>' +
+      '</div>' +
+      '<div class="rx-picker hidden" id="rx-saveas" role="dialog" aria-modal="true" aria-labelledby="rx-saveas-title">' +
+        '<div class="rx-picker-card rx-saveas-card">' +
+          '<div class="rx-picker-head">' +
+            '<div class="rx-picker-title" id="rx-saveas-title">Save as split</div>' +
+            '<button type="button" class="rx-x" id="rx-saveas-cancel" aria-label="Close">&times;</button>' +
+          '</div>' +
+          '<div class="rx-saveas-body">' +
+            '<label class="rx-lbl" for="rx-saveas-name">Split name</label>' +
+            '<input type="text" id="rx-saveas-name" class="rx-input" placeholder="e.g. Lower C" autocomplete="off">' +
+            '<label class="rx-lbl" for="rx-saveas-code">Athlete code <span>blank = all athletes</span></label>' +
+            '<input type="text" id="rx-saveas-code" class="rx-input" placeholder="e.g. KHANG" autocomplete="off">' +
+            '<p class="rx-saveas-hint" id="rx-saveas-hint"></p>' +
+          '</div>' +
+          '<div class="rx-picker-foot">' +
+            '<button type="button" class="rx-btn rx-btn-primary" id="rx-saveas-go">Save split</button>' +
+          '</div>' +
+        '</div>' +
       '</div>';
     document.body.insertAdjacentHTML('beforeend', html);
 
     el('rx-close-btn').addEventListener('click', close);
     el('rx-preview-btn').addEventListener('click', togglePreview);
     el('rx-picker-cancel').addEventListener('click', closePicker);
+    el('rx-saveas-cancel').addEventListener('click', closeSaveAs);
+    el('rx-saveas-go').addEventListener('click', saveAsSplit);
     el('rx-picker-search').addEventListener('input', debounce(runPickerSearch, 180));
     el('rx-overlay').addEventListener('click', function (event) {
       if (event.target === el('rx-overlay')) close();
     });
     document.addEventListener('keydown', function (event) {
       if (event.key !== 'Escape') return;
+      if (!el('rx-saveas').classList.contains('hidden')) return closeSaveAs();
       if (!el('rx-picker').classList.contains('hidden')) return closePicker();
       if (!el('rx-overlay').classList.contains('hidden')) close();
     });
@@ -258,6 +279,9 @@
         '</span>' +
       '</div>' +
       '<div class="rx-foot-right">' +
+        (state.exercises.length
+          ? '<button type="button" class="rx-btn" id="rx-saveas-btn">Save as split</button>'
+          : '') +
         '<button type="button" class="rx-btn" id="rx-publish-btn">' +
           (draft ? 'Publish to athlete' : 'Move to draft') +
         '</button>' +
@@ -479,6 +503,9 @@
 
     var publish = el('rx-publish-btn');
     if (publish) publish.addEventListener('click', togglePublish);
+
+    var saveAs = el('rx-saveas-btn');
+    if (saveAs) saveAs.addEventListener('click', openSaveAs);
 
     var save = el('rx-steps-save');
     if (save) save.addEventListener('click', saveSteps);
@@ -716,6 +743,61 @@
     } catch (error) {
       toast(error.message || 'Could not save the run structure', 'bad');
     } finally { busy(false); }
+  }
+
+  // ── Save as split (§39) ────────────────────────────────────────────────────
+  // Shape a session on one athlete, then promote it to a reusable split.
+
+  function openSaveAs() {
+    el('rx-saveas').classList.remove('hidden');
+    var name = el('rx-saveas-name');
+    var code = el('rx-saveas-code');
+    // Default to the session's own title and no athlete code: the common case
+    // is promoting a session to a shared split under the name it already has.
+    name.value = (state.session && state.session.title) || '';
+    code.value = '';
+    updateSaveAsHint();
+    code.oninput = updateSaveAsHint;
+    setTimeout(function () { name.focus(); name.select(); }, 40);
+  }
+
+  function closeSaveAs() { el('rx-saveas').classList.add('hidden'); }
+
+  // Say plainly who this will reach, because "blank = all athletes" is the one
+  // field here that can quietly change everyone's training.
+  function updateSaveAsHint() {
+    var hint = el('rx-saveas-hint');
+    if (!hint) return;
+    var code = el('rx-saveas-code').value.trim().toUpperCase();
+    var count = state.exercises.length;
+    hint.textContent = code
+      ? count + ' exercises, available to ' + code + ' only.'
+      : count + ' exercises, available to every athlete.';
+    hint.className = 'rx-saveas-hint' + (code ? '' : ' is-broad');
+  }
+
+  async function saveAsSplit() {
+    var button = el('rx-saveas-go');
+    var name = el('rx-saveas-name').value.trim();
+    if (!name) return toast('Give the split a name', 'warn');
+
+    button.disabled = true;
+    button.textContent = 'Saving…';
+    try {
+      var result = await apiPost({
+        action: 'split_save_from_session',
+        session_id: state.sessionId,
+        name: name,
+        athlete_code: el('rx-saveas-code').value.trim() || null,
+      });
+      closeSaveAs();
+      toast('Saved "' + name + '" — ' + result.exercises + ' exercises, ' + result.scope, 'ok');
+    } catch (error) {
+      toast(error.message || 'Could not save the split', 'bad');
+    } finally {
+      button.disabled = false;
+      button.textContent = 'Save split';
+    }
   }
 
   // ── Exercise picker (§16) ──────────────────────────────────────────────────

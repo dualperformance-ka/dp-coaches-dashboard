@@ -156,6 +156,14 @@
 .rx-picker-name{font-size:13px}
 .rx-picker-meta{font-family:var(--mono);font-size:8.5px;color:var(--dim);text-transform:uppercase;letter-spacing:.07em}
 
+/* ── Save as split (§39) ── */
+.rx-saveas-card{max-width:420px;max-height:none}
+.rx-saveas-body{padding:16px}
+.rx-saveas-body .rx-lbl:first-child{margin-top:0}
+.rx-saveas-hint{font-size:11.5px;line-height:1.5;color:var(--muted);margin-top:12px}
+/* A shared split reaches every athlete — say so in the colour that means care. */
+.rx-saveas-hint.is-broad{color:var(--amber-text)}
+
 /* ── Toast ── */
 .rx-toast{position:absolute;left:50%;bottom:70px;transform:translate(-50%,10px);background:var(--surface2);border:1px solid var(--border-mid);color:var(--text);font-size:12px;padding:10px 15px;border-radius:8px;opacity:0;pointer-events:none;transition:opacity .18s,transform .18s;max-width:min(440px,88%);text-align:center;box-shadow:0 8px 24px rgba(0,0,0,.4)}
 .rx-toast.is-visible{opacity:1;transform:translate(-50%,0)}
