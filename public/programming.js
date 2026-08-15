@@ -306,7 +306,9 @@
         '<div class="rx-ex" data-id="' + esc(ex.id) + '">' +
           '<div class="rx-ex-head">' +
             group +
-            '<input class="rx-ex-name rx-input" value="' + esc(ex.exercise_name) + '" data-field="exercise_name" aria-label="Exercise name">' +
+            '<input class="rx-ex-name rx-input" value="' + esc(ex.exercise_name) + '" data-pick="1" readonly ' +
+              'aria-label="Exercise name — click to choose from the library" ' +
+              'title="Click to choose from the exercise library">' +
             '<div class="rx-ex-tools">' +
               '<button type="button" class="rx-icon" data-act="up" title="Move up" aria-label="Move up">↑</button>' +
               '<button type="button" class="rx-icon" data-act="down" title="Move down" aria-label="Move down">↓</button>' +
@@ -486,6 +488,21 @@
       Array.prototype.forEach.call(row.querySelectorAll('[data-field]'), function (input) {
         input.addEventListener('change', function () { saveField(id, input); });
       });
+      // The name is chosen, never typed: clicking it opens the library at the
+      // exercise's own muscle group, which is almost always where the coach
+      // wants to swap within.
+      var nameInput = row.querySelector('[data-pick]');
+      if (nameInput) {
+        nameInput.addEventListener('click', function () { openPicker('replace', id); });
+        // Keyboard equivalent. Deliberately NOT bound to focus: choose() puts
+        // focus back on the field, which would immediately reopen the picker.
+        nameInput.addEventListener('keydown', function (event) {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            openPicker('replace', id);
+          }
+        });
+      }
       Array.prototype.forEach.call(row.querySelectorAll('[data-act]'), function (button) {
         button.addEventListener('click', function () { exerciseAction(id, button.getAttribute('data-act')); });
       });
@@ -705,12 +722,26 @@
 
   var pickerMode = 'add';
   var pickerTargetId = null;
+  var pickerInput = null;
   var library = { rows: [], categories: [], loaded: false };
   var activeCategory = null;
 
-  async function openPicker(mode, exerciseId) {
+  // mode: 'add' | 'replace' | 'input'
+  //   'input' writes the chosen name straight into a DOM field and is what the
+  //   dashboard's own New Split editor uses — see bindLegacySplitEditor().
+  async function openPicker(mode, exerciseId, inputEl) {
+    if (!el('rx-picker')) ensureShell();
     pickerMode = mode;
     pickerTargetId = exerciseId;
+    pickerInput = inputEl || null;
+
+    var titleEl = el('rx-picker-title');
+    if (titleEl) {
+      titleEl.textContent = mode === 'replace' ? 'Replace exercise'
+        : mode === 'input' ? 'Choose exercise'
+        : 'Add exercise';
+    }
+
     el('rx-picker').classList.remove('hidden');
     el('rx-picker-search').value = '';
 
@@ -724,13 +755,26 @@
         return;
       }
     }
-    activeCategory = library.categories[0] || null;
+    // Land on the category the coach is most likely to want: the group the
+    // exercise being replaced already belongs to, or the field's current value.
+    var current = '';
+    if (mode === 'replace') {
+      var ex = state.exercises.find(function (row) { return row.id === exerciseId; });
+      current = ex ? ex.exercise_name : '';
+    } else if (mode === 'input' && inputEl) {
+      current = inputEl.value || '';
+    }
+    var match = current && library.rows.find(function (row) {
+      return row.name.toLowerCase() === current.toLowerCase();
+    });
+    activeCategory = (match && match.category) || library.categories[0] || null;
     renderPicker();
   }
 
   function closePicker() {
     el('rx-picker').classList.add('hidden');
     pickerTargetId = null;
+    pickerInput = null;
   }
 
   function categoryCount(name) {
@@ -794,14 +838,35 @@
   function runPickerSearch() { if (library.loaded) renderPicker(); }
 
   async function choose(libraryId, name) {
+    // 'input' mode is a pure DOM write — no API call, because the field it
+    // fills belongs to the dashboard's own editor, which saves on its own.
+    if (pickerMode === 'input') {
+      var target = pickerInput;
+      closePicker();
+      if (target) {
+        target.value = name;
+        // The split editor reads .value on save, but fire both events anyway so
+        // anything else listening to that field stays in step.
+        target.dispatchEvent(new Event('input', { bubbles: true }));
+        target.dispatchEvent(new Event('change', { bubbles: true }));
+        target.focus();
+      }
+      return;
+    }
+
+    // Capture before closing: closePicker() clears pickerTargetId, and reading
+    // it afterwards posted a null exercise id — replace failed every time.
+    var mode = pickerMode;
+    var targetId = pickerTargetId;
     closePicker();
+
     busy(true);
     try {
       var result;
-      if (pickerMode === 'replace') {
+      if (mode === 'replace') {
         result = await apiPost({
           action: 'exercise_replace',
-          exercise_id: pickerTargetId,
+          exercise_id: targetId,
           exercise_name: name,
           exercise_library_id: libraryId,
           scope: state.scope,
@@ -877,9 +942,38 @@
     };
   }
 
+  // ── The dashboard's own New Split editor ────────────────────────────────
+  //
+  // Its rows are built by addSplitExRow() in index.html's inline script and are
+  // created on demand, so this delegates from the document rather than binding
+  // to elements that may not exist yet. Nothing in the inline code changes: the
+  // picker just writes into the same input the editor already reads on save.
+  function bindLegacySplitEditor() {
+    document.addEventListener('click', function (event) {
+      var input = event.target;
+      if (!input || input.tagName !== 'INPUT') return;
+      if (input.getAttribute('data-f') !== 'exercise') return;
+      if (!input.closest('#pw-ex-list')) return;
+      event.preventDefault();
+      openPicker('input', null, input);
+    });
+
+    // Same affordance for the keyboard.
+    document.addEventListener('keydown', function (event) {
+      var input = event.target;
+      if (!input || input.tagName !== 'INPUT') return;
+      if (input.getAttribute('data-f') !== 'exercise') return;
+      if (!input.closest('#pw-ex-list')) return;
+      if (event.key !== 'Enter') return;
+      event.preventDefault();
+      openPicker('input', null, input);
+    });
+  }
+
   document.addEventListener('DOMContentLoaded', function () {
     ensureShell();
     shadowEditingId();
+    bindLegacySplitEditor();
   });
 
   window.DP_PROGRAMMING = { open: open, close: close };

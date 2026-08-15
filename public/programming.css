@@ -64,7 +64,14 @@
 .rx-ex{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:11px 12px}
 .rx-ex-head{display:flex;align-items:center;gap:7px;margin-bottom:9px}
 .rx-group{font-family:var(--mono);font-size:9px;font-weight:800;color:var(--amber-text);background:var(--amber-bg);border:1px solid var(--amber-border);border-radius:4px;padding:4px 7px;flex-shrink:0}
-.rx-ex-name{flex:1;min-width:0;font-family:var(--mono);font-size:12px;font-weight:700}
+/* The name is chosen from the library, never typed — so it reads as a field
+   but behaves as a button. */
+.rx-ex-name{flex:1;min-width:0;font-family:var(--mono);font-size:12px;font-weight:700;cursor:pointer}
+.rx-ex-name:hover{border-color:var(--amber);color:var(--amber-text)}
+/* Same affordance on the dashboard's own New Split editor, whose exercise field
+   this module also hooks. */
+#pw-ex-list input[data-f="exercise"]{cursor:pointer}
+#pw-ex-list input[data-f="exercise"]:hover{border-color:var(--amber)}
 .rx-ex-tools{display:flex;gap:3px;flex-shrink:0}
 .rx-icon{background:none;border:1px solid var(--border-mid);border-radius:6px;color:var(--dim);width:29px;height:29px;cursor:pointer;font-size:12px;line-height:1;display:flex;align-items:center;justify-content:center;transition:all .15s}
 .rx-icon:hover{color:var(--text);border-color:var(--amber)}
