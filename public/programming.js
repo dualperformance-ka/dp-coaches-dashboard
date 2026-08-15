@@ -108,12 +108,16 @@
           '<div class="rx-toast" id="rx-toast"></div>' +
         '</div>' +
       '</div>' +
-      '<div class="rx-picker hidden" id="rx-picker" role="dialog" aria-modal="true" aria-label="Exercise library">' +
+      '<div class="rx-picker hidden" id="rx-picker" role="dialog" aria-modal="true" aria-labelledby="rx-picker-title">' +
         '<div class="rx-picker-card">' +
-          '<input type="search" id="rx-picker-search" class="rx-input" placeholder="Search the exercise library…" autocomplete="off">' +
-          '<div class="rx-picker-results" id="rx-picker-results"></div>' +
-          '<div class="rx-picker-foot">' +
-            '<button type="button" class="rx-btn rx-btn-quiet" id="rx-picker-cancel">Cancel</button>' +
+          '<div class="rx-picker-head">' +
+            '<div class="rx-picker-title" id="rx-picker-title">Exercise library</div>' +
+            '<button type="button" class="rx-x" id="rx-picker-cancel" aria-label="Close">&times;</button>' +
+          '</div>' +
+          '<input type="search" id="rx-picker-search" class="rx-input rx-picker-search" placeholder="Filter by name (optional)" autocomplete="off">' +
+          '<div class="rx-picker-panes">' +
+            '<div class="rx-picker-cats" id="rx-picker-cats" role="tablist" aria-label="Muscle group"></div>' +
+            '<div class="rx-picker-results" id="rx-picker-results" role="tabpanel"></div>' +
           '</div>' +
         '</div>' +
       '</div>';
@@ -701,16 +705,27 @@
 
   var pickerMode = 'add';
   var pickerTargetId = null;
+  var library = { rows: [], categories: [], loaded: false };
+  var activeCategory = null;
 
-  function openPicker(mode, exerciseId) {
+  async function openPicker(mode, exerciseId) {
     pickerMode = mode;
     pickerTargetId = exerciseId;
     el('rx-picker').classList.remove('hidden');
-    var search = el('rx-picker-search');
-    search.value = '';
-    el('rx-picker-results').innerHTML = '<div class="rx-loading">Type to search…</div>';
-    setTimeout(function () { search.focus(); }, 40);
-    runPickerSearch();
+    el('rx-picker-search').value = '';
+
+    if (!library.loaded) {
+      el('rx-picker-results').innerHTML = '<div class="rx-loading">Loading library…</div>';
+      try {
+        var data = await apiGet({ action: 'exercise_library' });
+        library = { rows: data.results || [], categories: data.categories || [], loaded: true };
+      } catch (error) {
+        el('rx-picker-results').innerHTML = '<div class="rx-error">' + esc(error.message) + '</div>';
+        return;
+      }
+    }
+    activeCategory = library.categories[0] || null;
+    renderPicker();
   }
 
   function closePicker() {
@@ -718,30 +733,65 @@
     pickerTargetId = null;
   }
 
-  async function runPickerSearch() {
-    var term = el('rx-picker-search').value.trim();
-    try {
-      var data = await apiGet({ action: 'exercise_library', q: term });
-      var results = data.results || [];
-      el('rx-picker-results').innerHTML = results.length
-        ? results.map(function (row) {
-            var meta = [row.muscle_group, row.equipment].filter(Boolean).join(' · ');
-            return '<button type="button" class="rx-picker-row" data-id="' + esc(row.id) + '" data-name="' + esc(row.name) + '">' +
-              '<span class="rx-picker-name">' + esc(row.name) + '</span>' +
-              (meta ? '<span class="rx-picker-meta">' + esc(meta) + '</span>' : '') +
-            '</button>';
-          }).join('')
-        : '<div class="rx-empty">Nothing matched. Press Enter to use "' + esc(term) + '" anyway.</div>';
-
-      Array.prototype.forEach.call(el('rx-picker-results').querySelectorAll('.rx-picker-row'), function (button) {
-        button.addEventListener('click', function () {
-          choose(button.getAttribute('data-id'), button.getAttribute('data-name'));
-        });
-      });
-    } catch (error) {
-      el('rx-picker-results').innerHTML = '<div class="rx-error">' + esc(error.message) + '</div>';
-    }
+  function categoryCount(name) {
+    return library.rows.filter(function (row) { return (row.category || 'General') === name; }).length;
   }
+
+  // Browsing beats typing: a coach picks a muscle group, then an exercise. The
+  // filter box is there for when they already know the name, not as the only
+  // way in.
+  function renderPicker() {
+    var term = el('rx-picker-search').value.trim().toLowerCase();
+
+    var cats = el('rx-picker-cats');
+    cats.innerHTML = library.categories.map(function (name) {
+      return '<button type="button" role="tab" aria-selected="' + (name === activeCategory && !term) + '" ' +
+        'class="rx-cat' + (name === activeCategory && !term ? ' is-active' : '') + '" data-cat="' + esc(name) + '">' +
+        '<span>' + esc(name) + '</span><span class="rx-cat-n">' + categoryCount(name) + '</span>' +
+      '</button>';
+    }).join('');
+    Array.prototype.forEach.call(cats.querySelectorAll('.rx-cat'), function (button) {
+      button.addEventListener('click', function () {
+        activeCategory = button.getAttribute('data-cat');
+        el('rx-picker-search').value = '';
+        renderPicker();
+      });
+    });
+
+    // A filter search spans every category; otherwise show the chosen one.
+    var visible = term
+      ? library.rows.filter(function (row) { return row.name.toLowerCase().indexOf(term) >= 0; })
+      : library.rows.filter(function (row) { return (row.category || 'General') === activeCategory; });
+
+    var results = el('rx-picker-results');
+    if (!visible.length) {
+      results.innerHTML = '<div class="rx-empty">' +
+        (term
+          ? 'Nothing matched “' + esc(term) + '”.<button type="button" class="rx-btn" id="rx-use-typed">Use “' + esc(term) + '” anyway</button>'
+          : 'No exercises in this group yet.') +
+        '</div>';
+      var useTyped = el('rx-use-typed');
+      if (useTyped) useTyped.addEventListener('click', function () { choose(null, el('rx-picker-search').value.trim()); });
+      return;
+    }
+
+    results.innerHTML = (term ? '<div class="rx-picker-group">' + visible.length + ' matches</div>' : '') +
+      visible.map(function (row) {
+        var meta = [term ? row.category : null, row.equipment].filter(Boolean).join(' · ');
+        return '<button type="button" class="rx-picker-row" data-id="' + esc(row.id) + '" data-name="' + esc(row.name) + '">' +
+          '<span class="rx-picker-name">' + esc(row.name) + '</span>' +
+          (meta ? '<span class="rx-picker-meta">' + esc(meta) + '</span>' : '') +
+        '</button>';
+      }).join('');
+
+    Array.prototype.forEach.call(results.querySelectorAll('.rx-picker-row'), function (button) {
+      button.addEventListener('click', function () {
+        choose(button.getAttribute('data-id'), button.getAttribute('data-name'));
+      });
+    });
+  }
+
+  function runPickerSearch() { if (library.loaded) renderPicker(); }
 
   async function choose(libraryId, name) {
     closePicker();
