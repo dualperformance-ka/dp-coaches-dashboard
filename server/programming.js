@@ -507,15 +507,34 @@ function toRunStepRow(step, order, sessionId, parentId) {
   };
 }
 
+// The picker browses by category rather than requiring a coach to type, so this
+// returns the WHOLE library grouped, not a search page. 119 rows is small enough
+// to send in one response and filter in the browser, which keeps category
+// switching instant.
 export async function searchExerciseLibrary(query, sb) {
   const term = String(query || '').trim().slice(0, 60);
   const filter = term
     ? `&name=ilike.*${encodeURIComponent(term.replace(/[*%]/g, ''))}*`
     : '';
   const rows = await sb(
-    `exercise_library?archived=eq.false${filter}&select=id,name,category,muscle_group,equipment,thumbnail_url,cues&order=name.asc&limit=60`
+    `exercise_library?archived=eq.false${filter}&select=id,name,category,muscle_group,equipment,thumbnail_url,cues&order=category.asc,name.asc&limit=400`
   );
-  return { ok: true, results: Array.isArray(rows) ? rows : [] };
+  const results = Array.isArray(rows) ? rows : [];
+
+  // Category order is coaching order, not alphabetical: upper push/pull first,
+  // then arms, then lower, then the accessory groups.
+  const RANK = [
+    'Chest', 'Back', 'Shoulders', 'Biceps', 'Triceps',
+    'Quads', 'Hamstrings', 'Glutes', 'Calves',
+    'Core', 'Running Strength', 'General',
+  ];
+  const categories = [...new Set(results.map((row) => row.category || 'General'))]
+    .sort((a, b) => {
+      const ai = RANK.indexOf(a); const bi = RANK.indexOf(b);
+      return (ai < 0 ? 99 : ai) - (bi < 0 ? 99 : bi) || a.localeCompare(b);
+    });
+
+  return { ok: true, results, categories };
 }
 
 export async function setPublishState(body, sb, coach) {
