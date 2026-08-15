@@ -897,7 +897,7 @@ header{background:rgba(6,8,10,.92);backdrop-filter:blur(12px)}
 /* Premium login experience */
 :root{
   --dp-logo:url('dp_baby_blue_transparent_512x512.png');
-  --dp-wordmark:url('dual_performance_one_line_filled_logo_black_preview.png');
+  --dp-wordmark:url('dp-wordmark-dark.png');
 }
 
 #loginScreen{
