@@ -13,6 +13,7 @@ import {
   reorderExercises,
   replaceExercise,
   saveRunSteps,
+  saveSessionAsSplit,
   searchExerciseLibrary,
   setPublishState,
   updateExercise,
@@ -861,6 +862,7 @@ export default async function handler(req, res) {
       exercise_reorder: reorderExercises,
       runsteps_save: saveRunSteps,
       session_publish: setPublishState,
+      split_save_from_session: saveSessionAsSplit,
     };
 
     if (PROGRAMMING_ACTIONS[action]) {
