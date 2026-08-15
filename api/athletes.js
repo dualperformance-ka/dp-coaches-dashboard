@@ -1,4 +1,22 @@
 import { coachError, requireCoach, setCoachCors } from '../server/coach-auth.js';
+import {
+  assertAthleteAllowed,
+  loadSession,
+  resolveCoachIdentity,
+} from '../server/coach-scope.js';
+import {
+  addExercise,
+  materialiseSession,
+  programmeHistory,
+  readPrescription,
+  removeExercise,
+  reorderExercises,
+  replaceExercise,
+  saveRunSteps,
+  searchExerciseLibrary,
+  setPublishState,
+  updateExercise,
+} from '../server/programming.js';
 
 const SUPABASE_URL = String(process.env.SUPABASE_URL || '').replace(/\/+$/, '');
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
@@ -708,6 +726,27 @@ export default async function handler(req, res) {
         return res.status(200).json({ ok: true, results, total: results.length, source: 'roster_supabase' });
       }
 
+      // ── Programming reads ──────────────────────────────────────────────
+      // These share the existing serverless function on purpose: the Vercel
+      // plan caps api/*.js files, and a programming endpoint is not worth a
+      // slot when an action discriminator does the same job.
+      if (action === 'exercise_library') {
+        return res.status(200).json(await searchExerciseLibrary(req.query.q, sb));
+      }
+
+      if (action === 'prescription') {
+        const coachRow = await resolveCoachIdentity(req, sb);
+        const data = await readPrescription(req.query.session_id, sb);
+        await assertAthleteAllowed(coachRow, data.session.athlete_code, sb);
+        return res.status(200).json({ ok: true, ...data });
+      }
+
+      if (action === 'programme_history') {
+        const coachRow = await resolveCoachIdentity(req, sb);
+        await assertAthleteAllowed(coachRow, req.query.code, sb);
+        return res.status(200).json(await programmeHistory(req.query.code, sb));
+      }
+
       const athletes = await loadRosterRows();
       return res.status(200).json({ ok: true, athletes, total: athletes.length, source: 'roster_supabase' });
     }
@@ -807,6 +846,37 @@ export default async function handler(req, res) {
     if (action === 'delete') {
       if (!req.body?.code) return res.status(400).json({ ok: false, error: 'Athlete code is required' });
       return res.status(200).json(await deleteAthlete(req.body.code));
+    }
+
+    // ── Programming writes ────────────────────────────────────────────────
+    // Every one of these resolves a real coaches row and checks the athlete
+    // before touching data. requireCoach() above proves the caller holds the
+    // shared key; resolveCoachIdentity() proves they are a registered, enabled
+    // coach; assertAthleteAllowed() proves they may touch this athlete.
+    const PROGRAMMING_ACTIONS = {
+      exercise_add: addExercise,
+      exercise_update: updateExercise,
+      exercise_replace: replaceExercise,
+      exercise_remove: removeExercise,
+      exercise_reorder: reorderExercises,
+      runsteps_save: saveRunSteps,
+      session_publish: setPublishState,
+    };
+
+    if (PROGRAMMING_ACTIONS[action]) {
+      const coachRow = await resolveCoachIdentity(req, sb);
+      return res.status(200).json(await PROGRAMMING_ACTIONS[action](req.body || {}, sb, coachRow));
+    }
+
+    if (action === 'session_materialise') {
+      const coachRow = await resolveCoachIdentity(req, sb);
+      // Authorise BEFORE mutating. Materialising first and checking after would
+      // still have written session_exercises rows for an athlete this coach is
+      // not allowed to touch.
+      const target = await loadSession(req.body?.session_id, sb);
+      await assertAthleteAllowed(coachRow, target.athlete_code, sb);
+      const result = await materialiseSession(target.id, sb, coachRow);
+      return res.status(200).json({ ok: true, ...result });
     }
 
     return res.status(400).json({ ok: false, error: 'Unknown action' });
