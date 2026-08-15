@@ -200,3 +200,138 @@ test('a session with no matching split becomes structured but empty', async () =
   assert.ok(!writes.some((w) => w.p === 'session_exercises'), 'no empty insert');
   assert.ok(writes.some((w) => w.p.startsWith('planned_sessions?id=eq.')), 'still flips to structured');
 });
+
+// ── Save a session back out as a split (§39) ─────────────────────────────────
+
+import { exerciseToSplitEntry, saveSessionAsSplit } from '../server/programming.js';
+
+test('a split survives the round trip out to a session and back', async () => {
+  // The strongest guarantee available here: materialising a split into a
+  // session and then saving that session as a split must not quietly drop
+  // sets, rep ranges, rest, alternatives or unilateral metadata.
+  const original = {
+    exercise: 'Bulgarian Split Squat',
+    sets: '4',            // total, warm-up included — the editor's convention
+    reps: '8',
+    repRange: '8-12',
+    rest: '90s',
+    warmupSets: '1',
+    workingSets: '3',
+    notes: 'RIR 1,0,0',
+    alts: ['Reverse Lunge', 'Dumbbell Split Squat'],
+    repMode: 'left_right',
+    leftRightExercises: ['Bulgarian Split Squat', 'Reverse Lunge'],
+  };
+
+  const asRow = splitEntryToExercise(original, 0, 'sess-1', 'split-1');
+  const backAgain = exerciseToSplitEntry(asRow);
+
+  assert.equal(backAgain.exercise, original.exercise);
+  assert.equal(backAgain.repRange, original.repRange);
+  assert.equal(backAgain.rest, original.rest);
+  assert.equal(backAgain.warmupSets, original.warmupSets);
+  assert.equal(backAgain.workingSets, original.workingSets);
+  assert.equal(backAgain.sets, original.sets, 'sets stays warm-up + working');
+  assert.equal(backAgain.notes, original.notes);
+  assert.deepEqual(backAgain.alts, original.alts);
+  assert.equal(backAgain.repMode, 'left_right');
+  assert.deepEqual(backAgain.leftRightExercises, original.leftRightExercises);
+});
+
+test('a plain bilateral exercise round-trips without gaining stray metadata', () => {
+  const row = splitEntryToExercise(
+    { exercise: 'Bench Press', sets: '4', repRange: '6-8', rest: '180s', warmupSets: '2', workingSets: '4' },
+    0, 'sess-1', null
+  );
+  const entry = exerciseToSplitEntry(row);
+  assert.equal('repMode' in entry, false, 'no rep mode on a normal exercise');
+  assert.equal('leftRightExercises' in entry, false);
+  assert.equal(entry.sets, '6', '2 warm-up + 4 working');
+});
+
+test('a coach-only note never reaches a saved split', async () => {
+  // workout_splits.exercises[].notes is rendered to athletes by the portal, so
+  // a private note copied in here would be published to everyone.
+  const writes = [];
+  const sb = async (path, options) => {
+    if (options && options.method === 'POST') { writes.push({ path, options }); return [{ id: 'new-split', name: 'Lower C', athlete_code: null }]; }
+    if (path.startsWith('planned_sessions?id=eq.')) {
+      return [{ id: 's1', athlete_code: 'ALEX', title: 'Lower C', status: 'Planned', locked_at: null }];
+    }
+    if (path.startsWith('session_exercises?')) {
+      return [{ exercise_name: 'Leg Extension', sets: 4, warmup_sets: 1, working_sets: 3,
+                rep_min: 8, rep_max: 12, rest_seconds: 90,
+                athlete_notes: 'First set warm-up',
+                coach_notes: 'knee is grumpy, do not tell him',
+                alternatives: [], left_right_exercises: [], rep_mode: 'reps' }];
+    }
+    return [];
+  };
+
+  const result = await saveSessionAsSplit(
+    { session_id: 's1', name: 'Lower C' }, sb, { handle: 'KARL', role: 'admin' }
+  );
+
+  assert.equal(result.exercises, 1);
+  assert.equal(result.scope, 'all athletes');
+
+  const insert = writes.find((w) => w.path === 'workout_splits');
+  const serialised = JSON.stringify(insert.options.body);
+  assert.ok(!serialised.includes('grumpy'), 'coach note must not reach the split');
+  assert.ok(serialised.includes('First set warm-up'), 'athlete note does');
+});
+
+test('a duplicate split name is refused rather than silently shadowing', async () => {
+  // (name, athlete_code) is UNIQUE, but Postgres treats NULLs as distinct — so
+  // two shared splits of the same name would both insert and the portal would
+  // resolve to whichever came back first.
+  const sb = async (path, options) => {
+    if (options && options.method === 'POST') return [{ id: 'x' }];
+    if (path.startsWith('planned_sessions?id=eq.')) {
+      return [{ id: 's1', athlete_code: 'ALEX', title: 'Upper A', status: 'Planned', locked_at: null }];
+    }
+    if (path.startsWith('session_exercises?')) return [{ exercise_name: 'Bench Press', sets: 4 }];
+    if (path.startsWith('workout_splits?name=eq.')) {
+      assert.ok(path.includes('athlete_code=is.null'), 'a blank code checks the shared namespace');
+      return [{ id: 'existing' }];
+    }
+    return [];
+  };
+
+  await assert.rejects(
+    () => saveSessionAsSplit({ session_id: 's1', name: 'Upper A' }, sb, { handle: 'KARL', role: 'admin' }),
+    (error) => error.status === 409 && /already exists/.test(error.message)
+  );
+});
+
+test('an empty session cannot be saved as a split', async () => {
+  const sb = async (path) => {
+    if (path.startsWith('planned_sessions?id=eq.')) {
+      return [{ id: 's1', athlete_code: 'ALEX', title: 'Rest', status: 'Planned', locked_at: null }];
+    }
+    return [];
+  };
+  await assert.rejects(
+    () => saveSessionAsSplit({ session_id: 's1', name: 'Empty' }, sb, { handle: 'KARL', role: 'admin' }),
+    (error) => error.status === 400 && /no exercises/.test(error.message)
+  );
+});
+
+test('saving to another athlete is authorised separately', async () => {
+  // The session belongs to an athlete this coach may touch, but the split is
+  // being filed under a different athlete's code — that needs its own check.
+  const sb = async (path) => {
+    if (path.startsWith('planned_sessions?id=eq.')) {
+      return [{ id: 's1', athlete_code: 'NATE', title: 'Upper A', status: 'Planned', locked_at: null }];
+    }
+    if (path.startsWith('coach_athletes')) return [{ athlete_code: 'NATE' }];
+    return [];
+  };
+  await assert.rejects(
+    () => saveSessionAsSplit(
+      { session_id: 's1', name: 'Upper A', athlete_code: 'JORDAN' },
+      sb, { id: 'c-alex', handle: 'ALEX', role: 'coach' }
+    ),
+    (error) => error.status === 403
+  );
+});

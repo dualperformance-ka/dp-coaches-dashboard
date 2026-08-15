@@ -511,6 +511,108 @@ function toRunStepRow(step, order, sessionId, parentId) {
 // returns the WHOLE library grouped, not a search page. 119 rows is small enough
 // to send in one response and filter in the browser, which keeps category
 // switching instant.
+// ── Save a session's prescription as a reusable split (spec §39) ────────────
+//
+// The inverse of splitEntryToExercise(). A coach shapes a session on one
+// athlete, then promotes it to a named split they can assign anywhere.
+//
+// coach_notes is deliberately NOT carried across. workout_splits.exercises[].notes
+// is rendered to athletes by the portal, so copying a private note into it would
+// publish it to everyone who ever trains this split.
+export function exerciseToSplitEntry(row) {
+  const working = row.working_sets != null ? row.working_sets : row.sets;
+  const warmup = row.warmup_sets || 0;
+  const reps = row.rep_min != null && row.rep_max != null && row.rep_max !== row.rep_min
+    ? `${row.rep_min}-${row.rep_max}`
+    : String(row.rep_min != null ? row.rep_min : (row.rep_max != null ? row.rep_max : ''));
+
+  const entry = {
+    exercise: row.exercise_name,
+    // The split editor's own convention: `sets` is the TOTAL, warm-up included.
+    // _collectSplitExercises() in index.html computes it the same way.
+    sets: String((parseInt(warmup, 10) || 0) + (parseInt(working, 10) || 0)),
+    warmupSets: String(warmup),
+    workingSets: working != null ? String(working) : '',
+    reps: row.rep_min != null ? String(row.rep_min) : '',
+    repRange: reps,
+    rest: row.rest_seconds != null ? `${row.rest_seconds}s` : '',
+    notes: row.athlete_notes || '',
+    alts: Array.isArray(row.alternatives) ? row.alternatives : [],
+  };
+
+  // Only carry unilateral metadata when it is actually set, so a plain
+  // bilateral exercise round-trips to exactly the shape it started as.
+  if (row.rep_mode && row.rep_mode !== 'reps') entry.repMode = row.rep_mode;
+  if (Array.isArray(row.left_right_exercises) && row.left_right_exercises.length) {
+    entry.leftRightExercises = row.left_right_exercises;
+  }
+  return entry;
+}
+
+export async function saveSessionAsSplit(body, sb, coach) {
+  const session = await loadSession(body.session_id, sb);
+  await assertAthleteAllowed(coach, session.athlete_code, sb);
+
+  const name = text(body.name, 120);
+  if (!name) throw httpError('A split name is required', 400);
+
+  // Blank means every athlete, matching the New Split editor's own wording.
+  const athleteCode = body.athlete_code
+    ? String(body.athlete_code).trim().toUpperCase()
+    : null;
+  if (athleteCode) await assertAthleteAllowed(coach, athleteCode, sb);
+
+  const rows = await sb(
+    `session_exercises?planned_session_id=eq.${encodeURIComponent(session.id)}&select=*&order=position.asc&limit=200`
+  );
+  const exercises = (Array.isArray(rows) ? rows : []).map(exerciseToSplitEntry);
+  if (!exercises.length) {
+    throw httpError('This session has no exercises to save', 400);
+  }
+
+  // The unique index is (name, athlete_code), and Postgres treats NULLs as
+  // distinct — so two GLOBAL splits with the same name would both insert and
+  // the portal would silently resolve to whichever came back first. Check by
+  // hand rather than relying on the constraint.
+  const clash = await sb(
+    `workout_splits?name=eq.${encodeURIComponent(name)}` +
+    `&athlete_code=${athleteCode ? `eq.${encodeURIComponent(athleteCode)}` : 'is.null'}` +
+    `&archived=eq.false&select=id&limit=1`
+  );
+  if (Array.isArray(clash) && clash.length) {
+    throw httpError(
+      athleteCode
+        ? `${athleteCode} already has a split called "${name}"`
+        : `A shared split called "${name}" already exists`,
+      409
+    );
+  }
+
+  const created = await sb('workout_splits', {
+    method: 'POST',
+    body: [{ name, athlete_code: athleteCode, exercises, archived: false }],
+    prefer: 'return=representation',
+  });
+  const split = Array.isArray(created) && created[0] ? created[0] : null;
+
+  await logProgrammeChange(sb, {
+    athleteCode: session.athlete_code,
+    changedBy: coach.handle,
+    entityType: 'split',
+    entityId: split ? split.id : null,
+    action: 'created',
+    newValue: { name, athlete_code: athleteCode, exercises: exercises.length },
+    summary: `Saved "${session.title}" as ${athleteCode ? `${athleteCode}'s` : 'a shared'} split "${name}"`,
+  });
+
+  return {
+    ok: true,
+    split: split ? { id: split.id, name: split.name, athlete_code: split.athlete_code } : null,
+    exercises: exercises.length,
+    scope: athleteCode || 'all athletes',
+  };
+}
+
 export async function searchExerciseLibrary(query, sb) {
   const term = String(query || '').trim().slice(0, 60);
   const filter = term
