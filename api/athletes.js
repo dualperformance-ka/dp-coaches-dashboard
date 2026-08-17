@@ -477,6 +477,40 @@ export async function upsertNutritionPlan(input, request = sb) {
   return { ok: true, rows: Array.isArray(rows) ? rows : [] };
 }
 
+export async function relabelNutritionPlan(code, fromWeekLabel, toWeekLabel, request = sb) {
+  const athleteCode = normaliseCode(code);
+  const fromWeek = String(fromWeekLabel || '').trim();
+  const toWeek = String(toWeekLabel || '').trim();
+  if (!athleteCode || !fromWeek || !toWeek) {
+    throw new Error('Nutrition plan athlete and week labels are required');
+  }
+  if (fromWeek === toWeek) return { ok: true, rows: [] };
+
+  // A nutrition plan is unique per athlete + programme week. Check first so a
+  // coach gets a useful message instead of a raw database constraint error.
+  const existing = await request(
+    `nutrition_plans?athlete_code=eq.${encodeURIComponent(athleteCode)}` +
+    `&week_label=eq.${encodeURIComponent(toWeek)}&select=id&limit=1`
+  );
+  if (Array.isArray(existing) && existing.length) {
+    throw new Error(`${athleteCode} already has nutrition targets for ${toWeek}`);
+  }
+
+  const rows = await request(
+    `nutrition_plans?athlete_code=eq.${encodeURIComponent(athleteCode)}` +
+    `&week_label=eq.${encodeURIComponent(fromWeek)}`,
+    {
+      method: 'PATCH',
+      prefer: 'return=representation',
+      body: { week_label: toWeek, updated_at: new Date().toISOString() },
+    }
+  );
+  if (!Array.isArray(rows) || !rows.length) {
+    throw new Error(`Nutrition targets for ${fromWeek} were not found`);
+  }
+  return { ok: true, rows };
+}
+
 export async function deleteNutritionPlan(code, weekLabel, request = sb) {
   const athleteCode = normaliseCode(code);
   const week = String(weekLabel || '').trim();
@@ -805,6 +839,14 @@ export default async function handler(req, res) {
 
     if (action === 'nutrition_upsert') {
       return res.status(200).json(await upsertNutritionPlan(req.body?.row || {}));
+    }
+
+    if (action === 'nutrition_relabel') {
+      return res.status(200).json(await relabelNutritionPlan(
+        req.body?.code,
+        req.body?.from_week_label,
+        req.body?.to_week_label
+      ));
     }
 
     if (action === 'nutrition_delete') {
