@@ -12,7 +12,7 @@
       would risk showing stale or cross-coach data offline)
    ============================================================ */
 
-const VERSION = 'dp-coaches-v26-inline-ticks';
+const VERSION = 'dp-coaches-v28-daily-macro-cta';
 const SHELL_CACHE = `${VERSION}-shell`;
 const STATIC_CACHE = `${VERSION}-static`;
 const FONT_CACHE = `${VERSION}-fonts`;
@@ -24,17 +24,23 @@ const SHELL_ASSETS = [
   '/app.js',
   '/coach-auth.js',
   '/coaching-actions.js?v=3',
-  '/dashboard-redesign.js',
+  '/dashboard-redesign.js?v=20260810-3',
   '/dashboard-redesign.css',
   '/dashboard-detail-cleanup.css',
   '/dashboard-mobile.css',
   '/dashboard-comprehensive.css?v=2',
-  '/dashboard-theme-system.css',
+  '/dashboard-theme-system.css?v=20260810-2',
   '/dashboard-desktop.css',
   '/dashboard-mobile-polish.css',
   '/dashboard-mobilenav.js',
-  '/triage.css?v=21',
+  '/triage.css?v=23',
   '/triage.js?v=21',
+  '/programming.css?v=4',
+  '/weekly-sport-targets.css?v=3',
+  '/daily-macro-overrides.css?v=3',
+  '/weekly-sport-targets.js?v=3',
+  '/daily-macro-overrides.js?v=3',
+  '/programming.js?v=4',
   '/manifest.webmanifest',
   '/dp-mark-blue.png',
   '/dp-mark-light.png',

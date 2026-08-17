@@ -13,6 +13,9 @@
     loading: false, error: null, openDate: null, openWeekLabel: null,
     weekStart: null, baseline: null,
   };
+  var LOAD_TIMEOUT_MS = 12000;
+  var loadPromise = null;
+  var loadController = null;
 
   function esc(value) {
     return String(value == null ? '' : value).replace(/[&<>"']/g, function (character) {
@@ -59,8 +62,10 @@
     }).length;
   }
 
-  async function apiGet(code) {
-    var response = await fetch('/api/athletes?action=daily_macro_overrides&code=' + encodeURIComponent(code), { cache: 'no-store' });
+  async function apiGet(code, signal) {
+    var response = await fetch('/api/athletes?action=daily_macro_overrides&code=' + encodeURIComponent(code), {
+      cache: 'no-store', signal: signal,
+    });
     var data = await response.json().catch(function () { return {}; });
     if (!response.ok || data.ok === false) throw new Error(data.error || 'Daily macro overrides could not load');
     return data;
@@ -77,15 +82,16 @@
     var row = activeOverride(options.date);
     var baselineCalories = baselineValue(baseline, 'calories');
     if (!row) {
+      var baselineDisplay = baselineCalories == null || baselineCalories === '' ? 'No weekly calories' : baselineCalories + ' kcal';
       return '<button type="button" class="dmo-fuel-footer inherits" data-dmo-date="' + esc(options.date) + '" data-dmo-week="' + esc(options.weekLabel) + '">' +
-        '<span class="dmo-state">Inherits</span><span class="dmo-main"><b>' + esc(baselineCalories || '—') + '</b><span>week</span></span>' +
-        '<span class="dmo-label">Edit daily fuelling</span></button>';
+        '<span class="dmo-state">Uses weekly targets</span><span class="dmo-main"><b>' + esc(baselineDisplay) + '</b><span>No daily override</span></span>' +
+        '<span class="dmo-label dmo-override-cta"><span aria-hidden="true">+</span> Override macros for this day</span></button>';
     }
     var change = delta(row.calories, baselineCalories);
     return '<button type="button" class="dmo-fuel-footer ' + (row.state === 'published' ? 'published' : 'draft') + '" data-dmo-date="' + esc(options.date) + '" data-dmo-week="' + esc(options.weekLabel) + '">' +
-      '<span class="dmo-state">' + (row.state === 'published' ? 'Published' : 'Draft') + '</span>' +
-      '<span class="dmo-main"><b>' + esc(row.calories == null ? '—' : row.calories) + '</b><span>' + esc(change) + '</span></span>' +
-      '<span class="dmo-label">' + esc(row.dayLabel || 'Daily override') + '</span></button>';
+      '<span class="dmo-state">Daily override · ' + (row.state === 'published' ? 'Published' : 'Draft') + '</span>' +
+      '<span class="dmo-main"><b>' + esc(row.calories == null ? '—' : row.calories) + ' kcal</b><span>' + esc(change) + '</span></span>' +
+      '<span class="dmo-label">' + esc(row.dayLabel || 'Custom daily macros') + '</span></button>';
   }
 
   function weekBarHtml(options) {
@@ -144,7 +150,7 @@
       element.innerHTML = shell('<div class="dmo-head"><div><strong id="dmo-title">Daily macro overrides</strong><span>Loading programme week…</span></div><button class="dmo-close">×</button></div>'); bindEditor(); return;
     }
     if (state.error) {
-      element.innerHTML = shell('<div class="dmo-head"><div><strong id="dmo-title">Daily macro overrides</strong><span>' + esc(state.error) + '</span></div><button class="dmo-close">×</button></div>'); bindEditor(); return;
+      element.innerHTML = shell('<div class="dmo-head"><div><strong id="dmo-title">Daily macro overrides</strong><span>' + esc(state.error) + '</span><button type="button" class="dmo-retry">Retry</button></div><button class="dmo-close">×</button></div>'); bindEditor(); return;
     }
     if (!week) {
       element.innerHTML = shell('<div class="dmo-head"><div><strong id="dmo-title">' + esc(state.openWeekLabel) + ' daily macros</strong><span>This week needs its canonical programme-week record before day overrides can be saved.</span></div><button class="dmo-close">×</button></div>'); bindEditor(); return;
@@ -225,6 +231,7 @@
     var element = root(); if (!element) return;
     var overlay = element.querySelector('.dmo-overlay'); if (overlay) overlay.addEventListener('click', function (event) { if (event.target === overlay) closeEditor(); });
     var close = element.querySelector('.dmo-close'); if (close) close.addEventListener('click', closeEditor);
+    var retry = element.querySelector('.dmo-retry'); if (retry) retry.addEventListener('click', function () { load(true); });
     element.querySelectorAll('.dmo-row').forEach(function (row) {
       row.querySelectorAll('input[type="number"]').forEach(function (input) { input.addEventListener('input', function () { updateDeltas(row); }); });
       row.querySelector('.dmo-prefill').addEventListener('click', function () { prefillRow(row); });
@@ -234,19 +241,43 @@
     });
   }
   async function load(force) {
-    if (!state.athleteCode || (state.loading && !force)) return;
+    if (!state.athleteCode) return;
+    if (state.loading && loadPromise) return loadPromise;
+    if (state.loaded && !force) return state.overrides;
+    var athleteCode = state.athleteCode;
+    var controller = new AbortController();
+    var timer = setTimeout(function () { controller.abort(); }, LOAD_TIMEOUT_MS);
+    loadController = controller;
     state.loading = true; state.error = null; renderEditor();
-    try {
-      var data = await apiGet(state.athleteCode); state.programmeWeeks = data.programmeWeeks || []; state.overrides = data.overrides || []; state.loaded = true;
-    } catch (error) { state.error = error.message || 'Daily macro overrides could not load'; }
-    finally { state.loading = false; renderEditor(); notify(); }
+    loadPromise = (async function () {
+      try {
+        var data = await apiGet(athleteCode, controller.signal);
+        if (state.athleteCode !== athleteCode) return [];
+        state.programmeWeeks = data.programmeWeeks || []; state.overrides = data.overrides || []; state.loaded = true;
+        return state.overrides;
+      } catch (error) {
+        if (state.athleteCode !== athleteCode) return [];
+        state.error = error && error.name === 'AbortError'
+          ? 'Daily macros took too long to load. Check the database migration, then retry.'
+          : (error.message || 'Daily macro overrides could not load');
+        return [];
+      } finally {
+        clearTimeout(timer);
+        if (loadController === controller) {
+          state.loading = false; loadController = null; loadPromise = null;
+          renderEditor(); notify();
+        }
+      }
+    })();
+    return loadPromise;
   }
   function open(date, weekLabel, baseline) {
     state.openDate = String(date || ''); state.openWeekLabel = String(weekLabel || ''); state.baseline = baseline || null;
     var week = weekForLabel(state.openWeekLabel), parsed = new Date(state.openDate + 'T00:00:00Z');
     if (!Number.isNaN(parsed.getTime())) parsed.setUTCDate(parsed.getUTCDate() - ((parsed.getUTCDay() + 6) % 7));
     state.weekStart = (week && week.startDate) || (!Number.isNaN(parsed.getTime()) ? parsed.toISOString().slice(0, 10) : null);
-    renderEditor(); if (!state.loaded || state.error) load(true);
+    renderEditor();
+    if (!state.loaded && !state.loading && !state.error) load(false);
   }
   function bindCells(container, baselineForWeek) {
     if (!container) return;
@@ -262,7 +293,12 @@
   window.DailyMacroOverridesEditor = {
     mount: function (options) {
       options = options || {}; var athlete = options.athleteCode || null;
-      if (state.athleteCode === athlete) { if (athlete && !state.loaded && !state.loading) load(false); return; }
+      if (state.athleteCode === athlete) {
+        if (athlete && !state.loaded && !state.loading && !state.error) load(false);
+        return;
+      }
+      if (loadController) loadController.abort();
+      loadController = null; loadPromise = null; state.loading = false;
       state.athleteCode = athlete; state.programmeWeeks = []; state.overrides = []; state.loaded = false; state.error = null; closeEditor();
       if (athlete) load(true);
     },
@@ -271,6 +307,7 @@
     bindCells: bindCells,
     open: open,
     close: closeEditor,
+    reload: function () { return load(true); },
     publishedCount: overrideCount,
     publishedCountForWeek: function (weekLabel) {
       var week = weekForLabel(weekLabel);

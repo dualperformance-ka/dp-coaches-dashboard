@@ -6,16 +6,22 @@
 .dmo-week-sports .wst-sport-summary{min-height:58px}
 .dmo-fuel-footer{width:100%;margin-top:2px;padding:7px;border:0;border-top:2px solid var(--border-mid);border-radius:0 0 6px 6px;background:var(--surface2);text-align:left;cursor:pointer;color:var(--muted)}
 .dmo-fuel-footer:hover{background:var(--brand-bg)}
+.dmo-fuel-footer.inherits{border-top-color:var(--brand-border)}
 .dmo-fuel-footer.draft{border-top-color:#fbbf24}
 .dmo-fuel-footer.published{border-top-color:#4ade80}
 .dmo-fuel-footer .dmo-main{display:flex;justify-content:space-between;gap:6px;margin-top:3px;font-family:var(--mono);font-size:10px}
+.dmo-fuel-footer .dmo-main span{font-size:8px;color:var(--dim);text-align:right}
 .dmo-fuel-footer .dmo-label{display:block;margin-top:3px;font-family:var(--mono);font-size:8px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dmo-fuel-footer.inherits .dmo-state,.dmo-fuel-footer .dmo-override-cta{color:var(--brand-text)}
+.dmo-fuel-footer .dmo-override-cta{font-weight:700}
 .dmo-fuel-footer.draft .dmo-state{color:#fbbf24}.dmo-fuel-footer.published .dmo-state{color:#4ade80}
 .dmo-overlay{position:fixed;inset:0;z-index:10020;display:flex;align-items:center;justify-content:center;padding:18px;background:rgba(0,0,0,.72);backdrop-filter:blur(4px)}
 .dmo-dialog{width:min(1180px,96vw);max-height:92vh;overflow:auto;border:1px solid var(--border-mid);border-radius:14px;background:var(--surface);box-shadow:0 24px 80px rgba(0,0,0,.5)}
 .dmo-head{position:sticky;top:0;z-index:2;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:16px 18px;border-bottom:1px solid var(--border);background:var(--surface)}
 .dmo-head strong{display:block;font-family:var(--cond);font-size:20px;color:var(--text)}
 .dmo-head span{display:block;margin-top:3px;font-family:var(--mono);font-size:9px;color:var(--dim)}
+.dmo-retry{margin-top:10px;padding:7px 12px;border:1px solid var(--brand-border);border-radius:6px;background:var(--brand-bg);color:var(--brand-text);font:700 9px var(--mono);text-transform:uppercase;letter-spacing:.06em;cursor:pointer}
+.dmo-retry:hover{border-color:var(--brand);color:var(--text)}
 .dmo-close{border:0;background:transparent;color:var(--muted);font-size:25px;cursor:pointer}
 .dmo-grid{display:flex;flex-direction:column;padding:10px}
 .dmo-row{display:grid;grid-template-columns:92px 1.1fr repeat(5,minmax(74px,.75fr)) 1.5fr 112px 128px;gap:8px;align-items:end;padding:10px;border:1px solid transparent;border-bottom-color:var(--border)}
