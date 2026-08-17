@@ -20,6 +20,9 @@
       "maxDuration": 30
     }
   },
+  "rewrites": [
+    { "source": "/api/strava-webhook", "destination": "/api/strava?mode=webhook" }
+  ],
   "headers": [
     {
       "source": "/(.*)",

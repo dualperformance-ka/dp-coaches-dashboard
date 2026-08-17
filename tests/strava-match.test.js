@@ -106,39 +106,39 @@ test('undo clears the session rejection key after restoring its only activity', 
   assert.deepEqual(JSON.parse(JSON.stringify(restored)),{});
 });
 
-test('prescribed tempo run at 2.4 relative effort per km downgrades to low confidence', () => {
+test('prescribed tempo run at 2.4 suffer score per km downgrades to low confidence', () => {
   const tempo = { ...session, name: 'Tempo — 4 × 1500m' };
-  const activity = run(11, 12, { relative_effort: 12 * 2.4 });
+  const activity = run(11, 12, { suffer_score: 12 * 2.4 });
   const result = matchActivityToSession(tempo, [activity]);
   assert.equal(DEFAULT_RELATIVE_EFFORT_PER_KM_THRESHOLD, 3.0);
   assert.equal(result.confidence, 'low');
   assert.deepEqual(result.reasons, ['intensity_below_prescription']);
 });
 
-test('prescribed tempo run at 5.4 relative effort per km stays high confidence', () => {
+test('prescribed tempo run at 5.4 suffer score per km stays high confidence', () => {
   const tempo = { ...session, name: 'Tempo — 4 x 1500m' };
-  const result = matchActivityToSession(tempo, [run(12, 12, { relative_effort: 12 * 5.4 })]);
+  const result = matchActivityToSession(tempo, [run(12, 12, { suffer_score: 12 * 5.4 })]);
   assert.equal(result.confidence, 'high');
   assert.deepEqual(result.reasons, []);
 });
 
-test('prescribed easy run executed at 5.4 relative effort per km stays high and is flagged for coaches', () => {
+test('prescribed easy run executed at 5.4 suffer score per km stays high and is flagged for coaches', () => {
   const easy = { ...session, name: 'Easy 12km' };
-  const result = matchActivityToSession(easy, [run(13, 12, { relative_effort: 12 * 5.4 })]);
+  const result = matchActivityToSession(easy, [run(13, 12, { suffer_score: 12 * 5.4 })]);
   assert.equal(result.confidence, 'high');
   assert.deepEqual(result.reasons, ['ran_above_prescription']);
 });
 
-test('missing relative effort leaves the previous result unchanged', () => {
+test('missing suffer score leaves the previous result unchanged', () => {
   const tempo = { ...session, name: 'Threshold intervals' };
   const result = matchActivityToSession(tempo, [run(14, 12)]);
   assert.equal(result.confidence, 'high');
   assert.deepEqual(result.reasons, []);
 });
 
-test('zero relative effort is treated as absent rather than easy', () => {
+test('zero suffer score is treated as absent rather than easy', () => {
   const tempo = { ...session, name: 'Hill repeats — 12 x 90s' };
-  const result = matchActivityToSession(tempo, [run(15, 12, { relative_effort: 0 })]);
+  const result = matchActivityToSession(tempo, [run(15, 12, { suffer_score: 0 })]);
   assert.equal(result.confidence, 'high');
   assert.deepEqual(result.reasons, []);
 });
@@ -146,7 +146,21 @@ test('zero relative effort is treated as absent rather than easy', () => {
 test('an unparseable session name is unknown and does not downgrade', () => {
   const unknown = { ...session, name: 'Wednesday Run' };
   assert.equal(classifyPrescribedIntensity(unknown), 'unknown');
-  const result = matchActivityToSession(unknown, [run(16, 12, { relative_effort: 12 * 2.4 })]);
+  const result = matchActivityToSession(unknown, [run(16, 12, { suffer_score: 12 * 2.4 })]);
   assert.equal(result.confidence, 'high');
   assert.deepEqual(result.reasons, []);
+});
+
+test('athlete HR zones personalize the intensity classification', () => {
+  const tempo = { ...session, name: 'Threshold intervals' };
+  const athleteZones = { heart_rate: { zones: [
+    { min: 0, max: 130 }, { min: 130, max: 145 }, { min: 145, max: 160 },
+    { min: 160, max: 175 }, { min: 175, max: -1 },
+  ] } };
+  const result = matchActivityToSession(tempo, [run(22, 12, {
+    suffer_score: 100,
+    average_heartrate: 139,
+  })], { athleteZones });
+  assert.equal(result.confidence, 'low');
+  assert.deepEqual(result.reasons, ['intensity_below_prescription']);
 });
