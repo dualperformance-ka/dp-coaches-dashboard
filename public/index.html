@@ -1133,6 +1133,9 @@ body[data-theme="light"] .plan-chip.coach::before{color:#92400e}
 .nut-table td{padding:7px 8px;border-bottom:1px solid var(--border);vertical-align:middle}
 .nut-table tr:last-child td{border-bottom:none}
 .nut-wk{font-family:var(--cond);font-size:15px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text);white-space:nowrap}
+.nut-week-select{font-family:var(--cond);font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--text);background:var(--surface2);border:1px solid var(--border-mid);border-radius:6px;padding:5px 7px;max-width:155px}
+.nut-week-select:focus{outline:none;border-color:var(--amber)}
+.nut-week-cap{display:block;font-family:var(--mono);font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.05em;margin-top:3px;white-space:nowrap}
 .nut-row.current td{background:var(--amber-bg)}
 .nut-row.current .nut-wk{color:var(--amber-dim)}
 .nut-now{font-family:var(--mono);font-size:8px;color:var(--amber);border:1px solid var(--amber-border);border-radius:4px;padding:1px 5px;margin-left:6px;vertical-align:middle;letter-spacing:.06em}
@@ -2393,7 +2396,7 @@ function refreshRosterDrivenUI() {
         <span class="nut-prog">Start override <input class="nut-input wide" id="nut-start-override" type="date" onchange="saveStartDateOverride(this.value)"></span>
         <span class="nut-prog">Programme <input class="nut-input km" id="nut-prog-weeks" onchange="saveProgWeeks(this.value)"> wks</span>
         <button class="plan-action-btn" id="nut-restart-btn" onclick="restartProgramme()" title="Restart this athlete at Week 0 or Week 1 on a chosen Monday">↻ Restart programme</button>
-        <button class="plan-action-btn" onclick="addNutWeek()">+ Week</button>
+        <button class="plan-action-btn" id="nut-add-week-btn" onclick="addNutWeek()">+ Week</button>
       </div>
     </div>
     <div class="nut-meta" id="nut-meta"></div>
@@ -3369,30 +3372,47 @@ function _nutAthleteCodes() {
 
 function _nutWkNum(label) { if (isDiscoveryWeek(label)) return 0; const m = String(label || '').match(/(\d+)/); return m ? parseInt(m[1], 10) : -1; }
 
-function _nutCurrentWeekLabel(code) {
+// One programme-week resolver is shared by the athlete cards and Nutrition.
+// Restart metadata wins, then this calendar week's coach-assigned session
+// label, then start-date maths. NO_DISCOVERY athletes intentionally keep the
+// start-date result because their legacy session labels run one week behind.
+function currentProgrammeWeekNumber(code, fallback = null) {
   const restartedWeek = programmeRestartWeek(code);
-  if (restartedWeek !== null) return `Week ${restartedWeek}`;
-  // NO_DISCOVERY athletes (JACOB, KHANG) skipped the Week 0 discovery week, so
-  // their planned_sessions labels run a week behind their true programme week.
-  // Anchor NOW to the start-date-derived week number, which already applies the
-  // no-discovery +1 (calcWeekNum) — keeps the Nutrition tab in sync with the
-  // Athletes tab for these two.
-  if (NO_DISCOVERY.has(code)) {
-    const na = _allAthletes.find(x => x.id === code);
-    if (na && na.weekNum != null) return `Week ${na.weekNum}`;
+  if (restartedWeek !== null) return restartedWeek;
+  if (!NO_DISCOVERY.has(code)) {
+    const planLabel = _planRowsForWeek(code, currentWeekStart).map(r => r.week_label).find(Boolean);
+    const planWeek = _nutWkNum(planLabel);
+    if (planWeek >= 0) return planWeek;
   }
-  // Match the athlete portal exactly: the current week is whatever week_label
-  // the coach assigned to THIS calendar week's planned sessions (Mon–Sun).
-  // The portal reads that label straight off planned_sessions, so anchoring the
-  // dashboard "NOW" to the same source keeps coach and athlete in sync. The old
-  // start-date math (calcWeekNum, which assumes a discovery Week 0) ran a week
-  // behind the plan's numbering.
-  const planRows = _planRowsForWeek(code, currentWeekStart);
-  const fromPlan = planRows.map(r => r.week_label).find(Boolean);
-  if (fromPlan) return fromPlan;
-  // Fallback (no plan for the current week): start-date-derived week number.
+  if (fallback === null || fallback === undefined || fallback === '') return null;
+  const fallbackWeek = Number(fallback);
+  return Number.isFinite(fallbackWeek) ? fallbackWeek : null;
+}
+
+function _nutCurrentWeekLabel(code) {
   const a = _allAthletes.find(x => x.id === code);
-  return (a && a.weekNum != null) ? `Week ${a.weekNum}` : null;
+  const week = currentProgrammeWeekNumber(code, a?.weekNum);
+  return week === null ? null : `Week ${week}`;
+}
+
+function _captureNutInputs(i, row) {
+  const read = id => document.getElementById(`nut-${i}-${id}`)?.value ?? '';
+  row.calories = read('cal'); row.protein = read('pro'); row.carbs = read('carb');
+  row.fats = read('fat'); row.fibre = read('fib'); row.notes = read('notes');
+  row.weekly_km_target = read('km');
+}
+
+function _nutWeekOptions(row) {
+  const current = _nutWkNum(_nutCurrentWeekLabel(row.athlete_code));
+  const highestSaved = _nutPlans
+    .filter(r => r.athlete_code === row.athlete_code)
+    .reduce((max, r) => Math.max(max, _nutWkNum(r.week_label)), 0);
+  const last = Math.max(getProgWeeks(row.athlete_code), highestSaved, current);
+  return Array.from({ length: last + 1 }, (_, week) => {
+    const label = `Week ${week}`;
+    const text = `${displayWeekLabel(label)}${week === current ? ' — current' : ''}`;
+    return `<option value="${label}"${label === row.week_label ? ' selected' : ''}>${esc(text)}</option>`;
+  }).join('');
 }
 
 function renderNutritionTab() {
@@ -3426,7 +3446,10 @@ function renderNutTable() {
     .sort((a, b) => _nutWkNum(a.week_label) - _nutWkNum(b.week_label));
 
   const curNum = curWk ? _nutWkNum(curWk) : null;
-  meta.textContent = `${_nutAthlete} — ${curNum != null ? `${fmtWk(curNum, true)} of ${getProgWeeks(_nutAthlete)}` : `${getProgWeeks(_nutAthlete)}-week programme`} · weekly macro & KM targets · KM auto-fills from the training plan when no manual target is set`;
+  const hasCurrent = !!(curWk && _nutRenderRows.some(r => r.week_label === curWk));
+  const addButton = document.getElementById('nut-add-week-btn');
+  if (addButton) addButton.textContent = !hasCurrent && curWk ? `+ ${displayWeekLabel(curWk)}` : '+ Week';
+  meta.textContent = `${_nutAthlete} — ${curNum != null ? `${fmtWk(curNum, true)} of ${getProgWeeks(_nutAthlete)} from programming` : `${getProgWeeks(_nutAthlete)}-week programme`} · nutrition uses the same week as the training plan · KM auto-fills when no manual target is set`;
 
   if (_nutPlansLoadError) {
     wrap.innerHTML = `<div class="nut-empty">Nutrition prescriptions could not load — ${esc(_nutPlansLoadError)}. No plans were deleted. Use Refresh to try again.</div>`;
@@ -3434,7 +3457,7 @@ function renderNutTable() {
   }
 
   if (!_nutRenderRows.length) {
-    wrap.innerHTML = '<div class="nut-empty">No nutrition plan yet — use + Week to add the first week</div>';
+    wrap.innerHTML = `<div class="nut-empty">No nutrition targets yet — add ${esc(curWk ? displayWeekLabel(curWk) : 'a week')} to match programming</div>`;
     return;
   }
 
@@ -3443,7 +3466,7 @@ function renderNutTable() {
     const isCur = curWk && r.week_label === curWk;
     const autoKm = _plannedKmForWeek(r.athlete_code, r.week_label);
     return `<tr class="nut-row${isCur ? ' current' : ''}">
-      <td><span class="nut-wk">${esc(displayWeekLabel(r.week_label))}</span>${isCur ? '<span class="nut-now">NOW</span>' : ''}</td>
+      <td><select class="nut-week-select" id="nut-${i}-week" onchange="relabelNutWeek(${i},this.value)">${_nutWeekOptions(r)}</select>${isCur ? '<span class="nut-now">NOW</span>' : ''}<span class="nut-week-cap">Programme week</span></td>
       <td><input class="nut-input" id="nut-${i}-cal"   value="${iv(r.calories)}" placeholder="kcal" oninput="nutDirty(${i})"></td>
       <td><input class="nut-input" id="nut-${i}-pro"   value="${iv(r.protein)}"  placeholder="g"    oninput="nutDirty(${i})"></td>
       <td><input class="nut-input" id="nut-${i}-carb"  value="${iv(r.carbs)}"    placeholder="g"    oninput="nutDirty(${i})"></td>
@@ -3467,6 +3490,38 @@ function renderNutTable() {
 function nutDirty(i) {
   const btn = document.getElementById(`nut-${i}-save`);
   if (btn) { btn.classList.add('dirty'); btn.textContent = 'Save'; btn.disabled = false; }
+}
+
+async function relabelNutWeek(i, nextLabel) {
+  const r = _nutRenderRows[i]; if (!r) return;
+  const previousLabel = r.week_label;
+  if (nextLabel === previousLabel) return;
+  if (_nutPlans.some(p => p !== r && p.athlete_code === r.athlete_code && p.week_label === nextLabel)) {
+    alert(`${r.athlete_code} already has nutrition targets for ${displayWeekLabel(nextLabel)}.`);
+    document.getElementById(`nut-${i}-week`).value = previousLabel;
+    return;
+  }
+
+  _captureNutInputs(i, r);
+  const select = document.getElementById(`nut-${i}-week`);
+  if (select) select.disabled = true;
+  try {
+    if (r.id) {
+      const result = await maPost({
+        action: 'nutrition_relabel', code: r.athlete_code,
+        from_week_label: previousLabel, to_week_label: nextLabel,
+      });
+      Object.assign(r, result.rows?.[0] || { week_label: nextLabel });
+    } else {
+      r.week_label = nextLabel;
+    }
+    renderNutTable();
+  } catch (error) {
+    console.warn('nutrition week relabel failed', error);
+    r.week_label = previousLabel;
+    if (select) { select.value = previousLabel; select.disabled = false; }
+    alert(error.message || 'Nutrition week could not be relabelled. Please try again.');
+  }
 }
 
 async function saveNutRow(i) {
@@ -3517,12 +3572,16 @@ async function deleteNutRow(i) {
 
 function addNutWeek() {
   if (!_nutAthlete) return;
-  const maxWk = _nutPlans.filter(r => r.athlete_code === _nutAthlete)
+  const athleteRows = _nutPlans.filter(r => r.athlete_code === _nutAthlete);
+  const maxWk = athleteRows
     .reduce((m, r) => Math.max(m, _nutWkNum(r.week_label)), 0);
+  const currentWk = _nutWkNum(_nutCurrentWeekLabel(_nutAthlete));
+  const hasCurrent = currentWk >= 0 && athleteRows.some(r => _nutWkNum(r.week_label) === currentWk);
+  const nextWk = currentWk >= 0 && !hasCurrent ? currentWk : maxWk + 1;
   // Extending past the programme end bumps the programme length automatically
-  if (maxWk + 1 > getProgWeeks(_nutAthlete)) saveProgWeeks(maxWk + 1);
+  if (nextWk > getProgWeeks(_nutAthlete)) saveProgWeeks(nextWk);
   _nutPlans.push({
-    athlete_code: _nutAthlete, week_label: `Week ${maxWk + 1}`,
+    athlete_code: _nutAthlete, week_label: `Week ${nextWk}`,
     calories: null, protein: null, carbs: null, fats: null, fibre: null,
     weekly_km_target: null, notes: null,
   });
@@ -5443,12 +5502,15 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [
     // and stays authoritative for NO_DISCOVERY athletes whose plan labels lag their
     // true programme week. Mirrors the fix already applied to the Nutrition tab.
     let wkNum = calcWeekNum(a.id);
-    if (!NO_DISCOVERY.has(a.id) && programmeRestartWeek(a.id) === null) {
-      const planLbl = _planRowsForWeek(a.id, currentWeekStart).map(r => r.week_label).find(Boolean);
-      if (planLbl) {
-        const pn = _nutWkNum(planLbl); // isDiscoveryWeek → 0, else parsed int, else -1
-        if (pn >= 0) wkNum = pn;
-      }
+    if (typeof currentProgrammeWeekNumber === 'function') {
+      wkNum = currentProgrammeWeekNumber(a.id, wkNum);
+    } else if (!NO_DISCOVERY.has(a.id) && programmeRestartWeek(a.id) === null) {
+      // buildAll is also exercised in isolation by the dashboard model tests.
+      // Keep the same resolution inline when that isolated harness does not
+      // include the surrounding page helper.
+      const planLabel = _planRowsForWeek(a.id, currentWeekStart).map(r => r.week_label).find(Boolean);
+      const planWeek = _nutWkNum(planLabel);
+      if (planWeek >= 0) wkNum = planWeek;
     }
     const expectedWeekEnd = currentWeekEnd; // global, computed once at load time
     const checkin = weeklyCheckinStatus(
