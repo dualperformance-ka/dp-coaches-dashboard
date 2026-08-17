@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Consolidated Programming tab — honest exploration</title>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Barlow+Semi+Condensed:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0b0e10; --surface:#121618; --surface2:#161b1e; --surface3:#1c2226;
+  --border:#242b30; --border-mid:#2f383e; --text:#e8eef1; --dim:#7c8b93;
+  --brand:#92D2ED; --brand-bg:rgba(146,210,237,.09); --brand-border:rgba(146,210,237,.42);
+  --green:#4ade80; --amber:#fbbf24; --red:#f87171; --violet:#c4b5fd;
+  --display:'Anton',sans-serif; --sans:'Barlow Semi Condensed',sans-serif; --mono:'DM Mono',monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:15px;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1300px;margin:0 auto;padding:44px 22px 90px}
+.masthead{border-bottom:1px solid var(--border);padding-bottom:22px;margin-bottom:36px}
+.eyebrow{font:400 10px var(--mono);letter-spacing:.22em;text-transform:uppercase;color:var(--brand);margin-bottom:10px}
+h1{font-family:var(--display);font-size:clamp(30px,4.4vw,46px);line-height:1.02;letter-spacing:.4px;margin:0 0 12px;text-transform:uppercase}
+.sub{color:var(--dim);max-width:720px;line-height:1.55;font-size:16px}
+.sec{margin-top:52px}
+.sec-head{display:flex;align-items:baseline;gap:12px;margin-bottom:6px}
+.sec-num{font:500 10px var(--mono);color:var(--brand);letter-spacing:.14em}
+h2{font-family:var(--display);font-size:21px;letter-spacing:.5px;text-transform:uppercase;margin:0}
+.sec-note{color:var(--dim);font-size:14.5px;line-height:1.55;max-width:820px;margin:0 0 20px}
+.frame{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden}
+.frame-bar{display:flex;align-items:center;gap:9px;padding:11px 15px;border-bottom:1px solid var(--border);background:var(--surface2)}
+.frame-bar span{font:400 9px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--border-mid)}
+.pad{padding:18px}
+
+/* Tab bar ---------------------------------------------------------------- */
+.tabbar{display:flex;gap:2px;padding:0 15px;border-bottom:1px solid var(--border);background:var(--surface2);overflow-x:auto}
+.tb{font:400 10px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--dim);padding:13px 13px;border-bottom:2px solid transparent;white-space:nowrap;cursor:pointer}
+.tb.on{color:var(--brand);border-bottom-color:var(--brand)}
+.tb b{font-weight:500;background:var(--surface3);border-radius:99px;padding:2px 6px;margin-left:6px;font-size:9px}
+.tb.merged{color:var(--brand);border-bottom-color:var(--brand);background:var(--brand-bg)}
+.tb.gone{color:#3d474d;text-decoration:line-through;text-decoration-color:var(--red)}
+
+/* Toolbar ---------------------------------------------------------------- */
+.toolbar{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;padding:13px 18px;border-bottom:1px solid var(--border)}
+.chips{display:flex;gap:5px;flex-wrap:wrap}
+.ch{font:400 10px var(--mono);border:1px solid var(--border);border-radius:99px;padding:6px 11px;color:var(--dim);cursor:pointer}
+.ch.on{border-color:var(--brand);color:#08161c;background:var(--brand);font-weight:500}
+.tools{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.btn{border:1px solid var(--border);background:transparent;color:var(--text);border-radius:7px;padding:7px 11px;font:400 9px var(--mono);letter-spacing:.06em;cursor:pointer;text-transform:uppercase}
+.btn:hover{border-color:var(--brand-border);color:var(--brand)}
+.btn.pri{background:var(--brand);border-color:var(--brand);color:#08161c;font-weight:500}
+.seg{display:flex;border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.seg button{border:0;background:transparent;color:var(--dim);font:500 9px var(--mono);letter-spacing:.1em;text-transform:uppercase;padding:8px 14px;cursor:pointer}
+.seg button.on{background:var(--brand);color:#08161c}
+.ctx{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:9px 18px;border-bottom:1px solid var(--border);background:var(--surface3);font:400 9px var(--mono);letter-spacing:.05em;color:var(--dim)}
+.ctx b{color:var(--text);font-weight:500}
+.ctx .lk{color:var(--brand)}
+
+/* Week view -------------------------------------------------------------- */
+.wkbar{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:11px 18px;border-bottom:1px solid var(--border);background:var(--surface2)}
+.wkbar .k{font:500 7.5px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
+.wkbar .v{font:500 11px var(--mono);color:var(--text)}
+.wkbar .v.run{color:var(--amber)}
+.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:7px;padding:16px 18px}
+.day{background:var(--surface2);border:1px solid var(--border);border-radius:9px;display:flex;flex-direction:column;min-height:210px;overflow:hidden}
+.day.today{border-color:var(--brand-border)}
+.dhead{display:flex;align-items:baseline;justify-content:space-between;padding:8px 9px;border-bottom:1px solid var(--border);font:500 8px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+.day.today .dhead{color:var(--brand)}
+.dbody{padding:7px;display:flex;flex-direction:column;gap:5px;flex:1}
+.sess{background:var(--surface3);border-left:3px solid var(--dim);border-radius:6px;padding:7px 8px}
+.sess.run{border-left-color:var(--amber)}
+.sess.str{border-left-color:var(--violet)}
+.sess.rest{border-left-color:var(--border-mid)}
+.sess b{display:block;font-family:var(--sans);font-size:12.5px;font-weight:600;line-height:1.2;margin-bottom:3px}
+.sess i{display:block;font-style:normal;font:400 8.5px var(--mono);color:var(--dim);line-height:1.4}
+.sess i.t{color:var(--amber)}
+.sess.str i.t{color:var(--violet)}
+.dempty{font:400 9px var(--mono);color:#3d474d;text-align:center;padding:12px 0}
+/* the macro footer — the whole point */
+.fuel{margin-top:auto;border-top:1px solid var(--border);background:rgba(146,210,237,.05);padding:8px 9px;cursor:pointer}
+.fuel:hover{background:var(--brand-bg)}
+.fuel .fk{font:500 7px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--dim);display:block;margin-bottom:4px}
+.fuel .fv{font:500 13px var(--mono);color:var(--dim);display:block;line-height:1}
+.fuel .fm{font:400 8px var(--mono);color:var(--dim);display:block;margin-top:4px}
+.fuel.set{background:rgba(74,222,128,.07);border-top-color:rgba(74,222,128,.3)}
+.fuel.set .fv{color:var(--text)}
+.fuel.set .fk{color:var(--green)}
+.fuel.set .fm{color:var(--brand)}
+.fuel.draft{background:rgba(251,191,36,.07);border-top-color:rgba(251,191,36,.3)}
+.fuel.draft .fk{color:var(--amber)}
+.fuel.draft .fv{color:var(--text)}
+
+/* Block view ------------------------------------------------------------- */
+.tscroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:1180px}
+th{font:500 8px var(--mono);letter-spacing:.09em;text-transform:uppercase;color:var(--dim);padding:10px 8px;border-bottom:1px solid var(--border-mid);text-align:left;white-space:nowrap}
+th.grp{color:var(--brand)}
+th.grp2{color:var(--violet)}
+td{padding:8px;border-bottom:1px solid var(--border);font:400 11px var(--mono);color:var(--text);white-space:nowrap}
+tr.cur td{background:var(--brand-bg)}
+tr:hover td{background:var(--surface2)}
+.wkc{font-family:var(--display);font-size:14px;letter-spacing:.3px}
+.now{font:500 7px var(--mono);letter-spacing:.1em;color:#08161c;background:var(--brand);border-radius:99px;padding:2px 6px;margin-left:7px}
+.cell-in{background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:5px 7px;font:500 11px var(--mono);color:var(--text);width:62px}
+.tsum{color:var(--violet)}
+.tsum em{font-style:normal;color:var(--dim)}
+.adj{font:500 8px var(--mono);letter-spacing:.06em;color:var(--brand);background:var(--brand-bg);border:1px solid var(--brand-border);border-radius:99px;padding:3px 8px;cursor:pointer}
+.adj.none{color:#3d474d;background:transparent;border-color:var(--border)}
+.divider{border-left:2px solid var(--border-mid)!important}
+
+/* Ledger ----------------------------------------------------------------- */
+.ledger{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:860px){.ledger{grid-template-columns:1fr}}
+.col{border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.col-h{padding:12px 16px;font:500 9px var(--mono);letter-spacing:.13em;text-transform:uppercase;border-bottom:1px solid var(--border)}
+.col.good .col-h{color:var(--green);background:rgba(74,222,128,.06)}
+.col.bad .col-h{color:var(--red);background:rgba(248,113,113,.06)}
+.it{padding:14px 16px;border-bottom:1px solid var(--border)}
+.it:last-child{border-bottom:0}
+.it b{display:block;font-family:var(--sans);font-size:14.5px;font-weight:600;margin-bottom:5px}
+.it p{margin:0;font-size:13.5px;line-height:1.55;color:var(--dim)}
+.it code{font-family:var(--mono);font-size:12px;color:var(--brand);background:var(--surface2);padding:1px 5px;border-radius:4px}
+.verdict{margin-top:26px;border:1px solid var(--brand-border);background:var(--brand-bg);border-radius:12px;padding:20px 22px}
+.verdict b{display:block;font-family:var(--display);font-size:17px;letter-spacing:.4px;text-transform:uppercase;margin-bottom:10px;color:var(--brand)}
+.verdict p{margin:0 0 12px;font-size:14.5px;line-height:1.6}
+.verdict p:last-child{margin-bottom:0}
+.fork{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:18px}
+@media(max-width:760px){.fork{grid-template-columns:1fr}}
+.fk{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:15px}
+.fk i{display:block;font-style:normal;font:500 8px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--dim);margin-bottom:7px}
+.fk b{display:block;font-family:var(--sans);font-size:15px;font-weight:600;margin-bottom:6px}
+.fk p{margin:0;font-size:13.5px;line-height:1.55;color:var(--dim)}
+.fk.a{border-color:var(--brand-border)}
+.fk.a i{color:var(--brand)}
+@media(max-width:1050px){.grid{grid-template-columns:repeat(4,1fr)}}
+@media(max-width:680px){.grid{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="masthead">
+  <div class="eyebrow">Dual Performance · Coaches Dashboard · Option study</div>
+  <h1>One Programming tab</h1>
+  <p class="sub">Planning and Nutrition merged into a single tab with a Week / Block toggle. This is the version you asked to see, mocked as well as I can make it, followed by an honest account of what it costs and the one question that actually decides it.</p>
+</header>
+
+<!-- 1 -->
+<section class="sec">
+  <div class="sec-head"><span class="sec-num">01</span><h2>Week view — training and fuelling in one column</h2></div>
+  <p class="sec-note">The current plan grid, with a macro footer welded to the bottom of each day cell. The coach sees the 30 km long run and sets Saturday's fuelling in the same glance, without changing tab, athlete, or week. This is the part of consolidation that is unambiguously good.</p>
+  <div class="frame">
+    <div class="frame-bar"><i class="dot"></i><i class="dot"></i><i class="dot"></i><span>Coaches dashboard</span></div>
+    <div class="tabbar">
+      <div class="tb">Triage <b>4</b></div>
+      <div class="tb">Athletes</div>
+      <div class="tb merged">Programming <b>9</b></div>
+      <div class="tb gone">Nutrition</div>
+      <div class="tb">Coaches</div>
+      <div class="tb">Sync</div>
+      <div class="tb">Send</div>
+    </div>
+    <div class="toolbar">
+      <div class="chips">
+        <span class="ch on">JORDAN</span><span class="ch">SAM</span><span class="ch">PRIYA</span><span class="ch">MARCUS</span><span class="ch">ELI</span>
+      </div>
+      <div class="tools">
+        <div class="seg"><button class="on">Week</button><button>Block</button></div>
+        <button class="btn">← Prev</button><button class="btn">Week 9</button><button class="btn">Next →</button>
+        <button class="btn">⧉ Copy → Next</button>
+        <button class="btn pri">+ Session</button>
+      </div>
+    </div>
+    <div class="ctx">One athlete, one week, shared by both views · <b>JORDAN</b> · <b>Week 9</b> · Mon 17 – Sun 23 Aug <span class="lk">↔ selection follows you into Block view</span></div>
+    <div class="wkbar">
+      <span class="k">Week baseline</span><span class="v">2,750 kcal</span><span class="v">175 P</span><span class="v">340 C</span><span class="v">78 F</span><span class="v">32 Fib</span>
+      <span class="k" style="margin-left:18px">Targets</span><span class="v run">68 km run</span><span class="v">5 sessions</span>
+      <span class="k" style="margin-left:auto">3 days adjusted</span>
+    </div>
+    <div class="grid">
+
+      <div class="day">
+        <div class="dhead"><span>Mon</span><span>17</span></div>
+        <div class="dbody">
+          <div class="sess str"><b>Lower A</b><i class="t">Strength</i><i>6 exercises</i></div>
+        </div>
+        <div class="fuel"><span class="fk">Fuel</span><span class="fv">2,750</span><span class="fm">inherits week</span></div>
+      </div>
+
+      <div class="day">
+        <div class="dhead"><span>Tue</span><span>18</span></div>
+        <div class="dbody">
+          <div class="sess run"><b>Easy Run</b><i class="t">Easy · 10km</i><i>5:45/km</i></div>
+        </div>
+        <div class="fuel"><span class="fk">Fuel</span><span class="fv">2,750</span><span class="fm">inherits week</span></div>
+      </div>
+
+      <div class="day">
+        <div class="dhead"><span>Wed</span><span>19</span></div>
+        <div class="dbody">
+          <div class="sess run"><b>Threshold</b><i class="t">Quality · 14km</i><i>6 × 1km @ 4:05</i></div>
+          <div class="sess str"><b>Upper A</b><i class="t">Strength</i><i>5 exercises</i></div>
+        </div>
+        <div class="fuel set"><span class="fk">✦ Published</span><span class="fv">3,050</span><span class="fm">Threshold · +300</span></div>
+      </div>
+
+      <div class="day">
+        <div class="dhead"><span>Thu</span><span>20</span></div>
+        <div class="dbody"><div class="dempty">—</div></div>
+        <div class="fuel"><span class="fk">Fuel</span><span class="fv">2,750</span><span class="fm">inherits week</span></div>
+      </div>
+
+      <div class="day">
+        <div class="dhead"><span>Fri</span><span>21</span></div>
+        <div class="dbody">
+          <div class="sess rest"><b>Rest</b><i>Pre-long shakeout opt.</i></div>
+        </div>
+        <div class="fuel draft"><span class="fk">Draft</span><span class="fv">2,500</span><span class="fm">Pre-long rest · −250</span></div>
+      </div>
+
+      <div class="day today">
+        <div class="dhead"><span>Sat</span><span>22</span></div>
+        <div class="dbody">
+          <div class="sess run"><b>Long Run</b><i class="t">Long · 30km</i><i>5:20/km · fuel every 30'</i></div>
+        </div>
+        <div class="fuel set"><span class="fk">✦ Published</span><span class="fv">3,400</span><span class="fm">Long run 30k · +650</span></div>
+      </div>
+
+      <div class="day">
+        <div class="dhead"><span>Sun</span><span>23</span></div>
+        <div class="dbody">
+          <div class="sess run"><b>Recovery</b><i class="t">Easy · 8km</i><i>6:00/km</i></div>
+        </div>
+        <div class="fuel set"><span class="fk">✦ Published</span><span class="fv">3,000</span><span class="fm">Refeed · +250</span></div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- 2 -->
+<section class="sec">
+  <div class="sec-head"><span class="sec-num">02</span><h2>Block view — every week, macros beside the training load</h2></div>
+  <p class="sec-note">The current Nutrition table, with the week's training summary sitting next to the macro columns. Alex can finally see that Week 9 is the 68 km peak while he sets its calories. Note the width: this is eleven columns today and fifteen here, already past a laptop screen.</p>
+  <div class="frame">
+    <div class="frame-bar"><i class="dot"></i><i class="dot"></i><i class="dot"></i><span>Coaches dashboard</span></div>
+    <div class="tabbar">
+      <div class="tb">Triage <b>4</b></div>
+      <div class="tb">Athletes</div>
+      <div class="tb merged">Programming <b>9</b></div>
+      <div class="tb gone">Nutrition</div>
+      <div class="tb">Coaches</div>
+      <div class="tb">Sync</div>
+      <div class="tb">Send</div>
+    </div>
+    <div class="toolbar">
+      <div class="chips"><span class="ch on">JORDAN</span><span class="ch">SAM</span><span class="ch">PRIYA</span><span class="ch">MARCUS</span><span class="ch">ELI</span></div>
+      <div class="tools">
+        <div class="seg"><button>Week</button><button class="on">Block</button></div>
+        <span style="font:400 9px var(--mono);color:var(--dim)">Start <input class="cell-in" style="width:104px" value="2026-06-22"></span>
+        <span style="font:400 9px var(--mono);color:var(--dim)">Programme <input class="cell-in" style="width:38px" value="16"> wks</span>
+        <button class="btn">↻ Restart</button>
+        <button class="btn pri">+ Week</button>
+      </div>
+    </div>
+    <div class="ctx">Same athlete, same block · <b>JORDAN</b> · 16-week programme · currently <b>Week 9</b> <span class="lk">↔ click any week to open it in Week view</span></div>
+    <div class="tscroll">
+      <table>
+        <thead><tr>
+          <th>Week</th>
+          <th class="grp">kcal</th><th class="grp">P</th><th class="grp">C</th><th class="grp">F</th><th class="grp">Fib</th>
+          <th class="grp2 divider">Sessions</th><th class="grp2">Load</th><th class="grp2">Key session</th>
+          <th class="divider">Run</th><th>Bike</th><th>Swim</th>
+          <th class="divider">Days adj.</th>
+          <th>Coach note</th>
+        </tr></thead>
+        <tbody>
+          <tr>
+            <td class="wkc">W7</td>
+            <td><input class="cell-in" value="2700"></td><td><input class="cell-in" value="175"></td><td><input class="cell-in" value="320"></td><td><input class="cell-in" value="78"></td><td><input class="cell-in" value="32"></td>
+            <td class="tsum divider">5</td><td class="tsum">58 <em>km</em></td><td class="tsum">Long 26k</td>
+            <td class="divider">58.0</td><td>—</td><td>—</td>
+            <td><span class="adj none">0</span></td>
+            <td style="color:var(--dim)">Base build</td>
+          </tr>
+          <tr>
+            <td class="wkc">W8</td>
+            <td><input class="cell-in" value="2600"></td><td><input class="cell-in" value="175"></td><td><input class="cell-in" value="300"></td><td><input class="cell-in" value="76"></td><td><input class="cell-in" value="32"></td>
+            <td class="tsum divider">4</td><td class="tsum">44 <em>km</em></td><td class="tsum">Long 18k</td>
+            <td class="divider">44.0</td><td>—</td><td>—</td>
+            <td><span class="adj none">0</span></td>
+            <td style="color:var(--dim)">Down week</td>
+          </tr>
+          <tr class="cur">
+            <td class="wkc">W9<span class="now">NOW</span></td>
+            <td><input class="cell-in" value="2750"></td><td><input class="cell-in" value="175"></td><td><input class="cell-in" value="340"></td><td><input class="cell-in" value="78"></td><td><input class="cell-in" value="32"></td>
+            <td class="tsum divider">5</td><td class="tsum">68 <em>km</em></td><td class="tsum">Long 30k</td>
+            <td class="divider">68.0</td><td>—</td><td>—</td>
+            <td><span class="adj">3 days</span></td>
+            <td style="color:var(--dim)">Peak — fuel the long</td>
+          </tr>
+          <tr>
+            <td class="wkc">W10</td>
+            <td><input class="cell-in" value="2750"></td><td><input class="cell-in" value="175"></td><td><input class="cell-in" value="345"></td><td><input class="cell-in" value="78"></td><td><input class="cell-in" value="32"></td>
+            <td class="tsum divider">5</td><td class="tsum">72 <em>km</em></td><td class="tsum">Long 32k</td>
+            <td class="divider">72.0</td><td>—</td><td>—</td>
+            <td><span class="adj">2 days</span></td>
+            <td style="color:var(--dim)">New peak</td>
+          </tr>
+          <tr>
+            <td class="wkc">W11</td>
+            <td><input class="cell-in" value="2650"></td><td><input class="cell-in" value="175"></td><td><input class="cell-in" value="310"></td><td><input class="cell-in" value="76"></td><td><input class="cell-in" value="32"></td>
+            <td class="tsum divider">4</td><td class="tsum">50 <em>km</em></td><td class="tsum">Long 20k</td>
+            <td class="divider">50.0</td><td>—</td><td>—</td>
+            <td><span class="adj none">0</span></td>
+            <td style="color:var(--dim)">Absorb</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- 3 -->
+<section class="sec">
+  <div class="sec-head"><span class="sec-num">03</span><h2>The ledger</h2></div>
+  <p class="sec-note">Written against the actual code, not in the abstract.</p>
+  <div class="ledger">
+
+    <div class="col good">
+      <div class="col-h">What genuinely gets better</div>
+      <div class="it"><b>Fuelling gets its context</b><p>The thing you asked for. The day cell already holds the athlete, the ISO date and the sessions, so the macro footer is a render change to <code>renderPlanGrid()</code>, not new architecture.</p></div>
+      <div class="it"><b>One athlete selector, one week</b><p>Today <code>_planAthlete</code> and <code>_nutAthlete</code> are separate variables in separate localStorage keys. A coach can be on Jordan in one tab and Sam in the other with nothing on screen saying so. Merging kills that class of mistake outright.</p></div>
+      <div class="it"><b>Training load lands beside the macros</b><p>Block view lets Alex set Week 9's calories while looking at "68 km, long 30k". For body composition work against a running block that is the context he is currently missing.</p></div>
+      <div class="it"><b>Programme settings go home</b><p>Start-date override, programme length and Restart programme currently live in the Nutrition toolbar, which is an accident of build order. They are programme settings and would sit correctly in a Programming tab.</p></div>
+      <div class="it"><b>The join already exists</b><p><code>_plannedKmForWeek()</code> already reads planned sessions from inside the nutrition render. The two datasets are joined today. Consolidation is mostly a UI question, not a data one.</p></div>
+    </div>
+
+    <div class="col bad">
+      <div class="col-h">What gets worse</div>
+      <div class="it"><b>Block view runs out of screen</b><p>The nutrition row is 11 columns at <code>min-width:780px</code> and already scrolls sideways with a sticky first column. Adding sessions, load and key session makes it 14–15. The mobile breakpoints that remap cells to a stacked card would all need rewriting.</p></div>
+      <div class="it"><b>Two coaches, one context</b><p>Right now you can sit in Planning on one athlete while Alex sits in Nutrition on another. One tab means one athlete selection per person per view. In a 2:1 model where you split by discipline, this is the sharpest cost.</p></div>
+      <div class="it"><b>You lose a badge</b><p><code>tab-planning-count</code> counts this week's sessions; <code>tab-nut-count</code> is its own signal. One tab means one number, so one of those early-warning signals disappears from the nav.</p></div>
+      <div class="it"><b>A mode to forget you are in</b><p>Week and Block are different enough that landing in the wrong one is disorienting. It needs a loud persistent affordance and per-coach memory of the last view, which is more state, not less.</p></div>
+      <div class="it"><b>Real refactor, on fresh code</b><p><code>renderPlanning()</code> and <code>renderNutritionTab()</code> are separate render paths with separate state and separate persistence, and <code>switchTab()</code> has a hardcoded tab list and id map. The sport target columns shipped into that nutrition table on 17 Aug and have not been used in anger yet. This churns days-old code.</p></div>
+    </div>
+
+  </div>
+
+  <div class="verdict">
+    <b>What I actually think</b>
+    <p>The Week view is right and I would build it whatever else you decide. Training and fuelling on the same day column is the correct home for a daily override, and my earlier spec put it in the wrong place by parking the day strip inside the Nutrition week row.</p>
+    <p>The Block view merge is the part I am not convinced by. It buys Alex one useful column group and costs a table that is already too wide, a badge, and a rewrite of code that shipped last week. You could get most of its value by adding a single <em>Load</em> column to the existing nutrition table and leaving the tabs alone.</p>
+    <p>But this genuinely turns on how the two of you work, and that is not something I can read out of the repo.</p>
+  </div>
+
+  <div class="fork">
+    <div class="fk a">
+      <i>If you mostly work like this</i>
+      <b>Per-athlete deep dive</b>
+      <p>You open Jordan and work through everything about Jordan — training, fuelling, check-in — then move to the next athlete. Consolidation wins clearly. One tab, one athlete, everything about them in front of you.</p>
+    </div>
+    <div class="fk">
+      <i>Or if you mostly work like this</i>
+      <b>Per-discipline sweep</b>
+      <p>Alex sits down and does nutrition for all twelve athletes in one pass; you do training for all twelve in another. Consolidation makes both of you wade through the other's context twelve times. Keep the tabs, connect them.</p>
+    </div>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

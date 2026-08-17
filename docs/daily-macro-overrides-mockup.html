@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Daily macro overrides — interaction mockup</title>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Barlow+Semi+Condensed:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0b0e10; --surface:#121618; --surface2:#161b1e; --surface3:#1c2226;
+  --border:#242b30; --border-mid:#2f383e; --text:#e8eef1; --dim:#7c8b93;
+  --brand:#92D2ED; --brand-bg:rgba(146,210,237,.09); --brand-border:rgba(146,210,237,.42);
+  --green:#4ade80; --amber:#fbbf24; --red:#f87171;
+  --display:'Anton',sans-serif; --sans:'Barlow Semi Condensed',sans-serif; --mono:'DM Mono',monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:15px;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1240px;margin:0 auto;padding:44px 22px 90px}
+
+/* Page furniture ---------------------------------------------------------- */
+.masthead{border-bottom:1px solid var(--border);padding-bottom:22px;margin-bottom:38px}
+.eyebrow{font:400 10px var(--mono);letter-spacing:.22em;text-transform:uppercase;color:var(--brand);margin-bottom:10px}
+h1{font-family:var(--display);font-size:clamp(30px,4.4vw,46px);line-height:1.02;letter-spacing:.4px;margin:0 0 12px;text-transform:uppercase}
+.sub{color:var(--dim);max-width:680px;line-height:1.5;font-size:16px}
+.sec{margin-top:52px}
+.sec-head{display:flex;align-items:baseline;gap:12px;margin-bottom:6px}
+.sec-num{font:500 10px var(--mono);color:var(--brand);letter-spacing:.14em}
+h2{font-family:var(--display);font-size:21px;letter-spacing:.5px;text-transform:uppercase;margin:0}
+.sec-note{color:var(--dim);font-size:14.5px;line-height:1.55;max-width:760px;margin:0 0 20px}
+.frame{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden}
+.frame-bar{display:flex;align-items:center;gap:9px;padding:11px 15px;border-bottom:1px solid var(--border);background:var(--surface2)}
+.frame-bar span{font:400 9px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--border-mid)}
+.pad{padding:20px}
+
+/* 1. Coach week row ------------------------------------------------------- */
+.wk-row{border:1px solid var(--border);border-radius:11px;background:var(--surface2);overflow:hidden}
+.wk-top{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:13px 16px;border-bottom:1px solid var(--border)}
+.wk-id{display:flex;flex-direction:column;gap:3px}
+.wk-id strong{font-family:var(--display);font-size:17px;letter-spacing:.4px}
+.wk-id span{font:400 9px var(--mono);color:var(--dim);letter-spacing:.06em}
+.adj-flag{font:500 8.5px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--brand);background:var(--brand-bg);border:1px solid var(--brand-border);border-radius:99px;padding:5px 11px}
+.macros{display:grid;grid-template-columns:repeat(5,1fr);gap:1px;background:var(--border)}
+.mac{background:var(--surface2);padding:12px 14px}
+.mac i{display:block;font:500 7.5px var(--mono);font-style:normal;letter-spacing:.11em;text-transform:uppercase;color:var(--dim);margin-bottom:5px}
+.mac b{font:500 17px var(--mono);color:var(--text)}
+.mac small{font:400 9px var(--mono);color:var(--dim);margin-left:2px}
+.baseline-tag{padding:9px 16px;border-top:1px solid var(--border);font:400 9px var(--mono);letter-spacing:.05em;color:var(--dim)}
+
+/* Day strip */
+.strip{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;padding:14px 16px;border-top:1px solid var(--border);background:var(--surface)}
+.day{position:relative;text-align:left;background:var(--surface2);border:1px solid var(--border);border-left:3px solid var(--border-mid);border-radius:8px;padding:9px 9px 10px;cursor:pointer;transition:border-color .15s,background .15s;min-height:88px;display:flex;flex-direction:column;gap:6px}
+.day:hover{border-color:var(--brand-border);background:var(--brand-bg)}
+.day .dow{font:500 8px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
+.day .kcal{font:500 15px var(--mono);color:var(--text);line-height:1}
+.day .kcal em{font-style:normal;font-size:8.5px;color:var(--dim);margin-left:2px}
+.day .lbl{font-family:var(--sans);font-size:12px;font-weight:600;line-height:1.15;color:var(--text)}
+.day .state{margin-top:auto;font:500 7.5px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+.day.inherit .kcal{color:var(--dim)}
+.day.inherit .state{color:var(--dim);opacity:.7}
+.day.inherit::after{content:'+';position:absolute;top:8px;right:9px;font:400 13px var(--mono);color:var(--dim);opacity:0;transition:opacity .15s}
+.day.inherit:hover::after{opacity:.85}
+.day.pub{border-left-color:var(--green);background:var(--surface3)}
+.day.pub .state{color:var(--green)}
+.day.draft{border-left-color:var(--amber);background:var(--surface3)}
+.day.draft .state{color:var(--amber)}
+.day.focus{border-color:var(--brand);box-shadow:0 0 0 1px var(--brand-border)}
+.delta{font:500 8.5px var(--mono);letter-spacing:.03em}
+.up{color:var(--brand)} .down{color:var(--amber)}
+
+/* 2. Editor --------------------------------------------------------------- */
+.dlg{background:var(--surface);border:1px solid var(--border-mid);border-radius:13px;box-shadow:0 26px 70px rgba(0,0,0,.5);overflow:hidden}
+.dlg-head{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:15px 18px;border-bottom:1px solid var(--border);background:var(--surface2)}
+.dlg-head strong{font-family:var(--display);font-size:18px;letter-spacing:.4px;display:block;text-transform:uppercase}
+.dlg-head span{font:400 9px var(--mono);color:var(--dim);letter-spacing:.05em}
+.btn{border:1px solid var(--border);background:transparent;color:var(--text);border-radius:7px;padding:8px 12px;font:400 9px var(--mono);letter-spacing:.06em;cursor:pointer;text-transform:uppercase}
+.btn:hover{border-color:var(--brand-border);color:var(--brand)}
+.btn.pri{background:var(--brand);border-color:var(--brand);color:#08161c;font-weight:500}
+.btn.ghost{color:var(--dim)}
+.ref{display:flex;align-items:center;gap:18px;flex-wrap:wrap;padding:11px 18px;border-bottom:1px solid var(--border);background:var(--surface3)}
+.ref-k{font:500 7.5px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
+.ref-v{font:500 11px var(--mono);color:var(--text)}
+.ed-row{display:grid;grid-template-columns:118px repeat(5,minmax(0,1fr)) 150px 108px auto;gap:10px;align-items:end;padding:13px 18px;border-bottom:1px solid var(--border)}
+.ed-row:last-of-type{border-bottom:0}
+.ed-row.focused{background:var(--brand-bg);box-shadow:inset 3px 0 0 var(--brand)}
+.ed-row.muted{opacity:.5}
+.ed-day{align-self:center}
+.ed-day b{font-family:var(--display);font-size:15px;letter-spacing:.3px;display:block;text-transform:uppercase}
+.ed-day span{font:400 8px var(--mono);color:var(--dim)}
+.fld{display:flex;flex-direction:column;gap:5px;min-width:0}
+.fld>label{font:500 7.5px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--dim);display:flex;justify-content:space-between;gap:6px;align-items:baseline}
+.inp{background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:8px 9px;font:500 11px var(--mono);width:100%}
+.inp.on{border-color:var(--brand-border);background:rgba(146,210,237,.06)}
+.inp.sel{appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--dim) 50%),linear-gradient(135deg,var(--dim) 50%,transparent 50%);background-position:calc(100% - 14px) 52%,calc(100% - 9px) 52%;background-size:5px 5px;background-repeat:no-repeat}
+.inp.pubsel{color:var(--green)}
+.inp.draftsel{color:var(--amber)}
+.rowacts{display:flex;gap:6px;align-items:center}
+.helper{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;padding:12px 18px;border-top:1px solid var(--border);background:var(--surface2)}
+.copyto{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.copyto>span{font:500 7.5px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+.chip{font:500 9px var(--mono);border:1px solid var(--border);border-radius:99px;padding:5px 10px;color:var(--dim);cursor:pointer}
+.chip.on{border-color:var(--brand);color:var(--brand);background:var(--brand-bg)}
+.warn{display:flex;gap:10px;align-items:flex-start;margin:0;padding:12px 18px;border-top:1px solid var(--border);background:rgba(251,191,36,.06)}
+.warn b{font:500 8px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--amber);white-space:nowrap;padding-top:2px}
+.warn p{margin:0;font-size:13.5px;line-height:1.5;color:var(--dim)}
+
+/* 3. Athlete portal ------------------------------------------------------- */
+.phones{display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:22px}
+.phone{background:var(--surface);border:1px solid var(--border);border-radius:22px;padding:16px;max-width:400px}
+.phone-cap{font:500 8px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--dim);text-align:center;margin-bottom:14px}
+.p-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:13px}
+.p-hd b{font-family:var(--display);font-size:19px;letter-spacing:.4px;text-transform:uppercase}
+.p-hd span{font:400 9px var(--mono);color:var(--dim)}
+.card{background:var(--surface2);border:1px solid var(--border);border-radius:13px;padding:15px;margin-bottom:11px}
+.card.hero{border-color:var(--brand-border);background:linear-gradient(180deg,rgba(146,210,237,.10),rgba(146,210,237,.02))}
+.chip-today{display:inline-flex;align-items:center;gap:7px;font:500 8px var(--mono);letter-spacing:.11em;text-transform:uppercase;color:#08161c;background:var(--brand);border-radius:99px;padding:5px 11px;margin-bottom:12px}
+.chip-plain{display:inline-flex;font:500 8px var(--mono);letter-spacing:.11em;text-transform:uppercase;color:var(--dim);border:1px solid var(--border);border-radius:99px;padding:5px 11px;margin-bottom:12px}
+.big{display:flex;align-items:baseline;gap:9px;margin-bottom:3px}
+.big strong{font-family:var(--display);font-size:40px;line-height:.9;letter-spacing:.5px}
+.big s{font:400 12px var(--mono);color:var(--dim)}
+.big i{font-style:normal;font:500 10px var(--mono);color:var(--brand)}
+.kcal-lbl{font:500 8px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--dim);margin-bottom:14px}
+.mrow{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.m{background:rgba(0,0,0,.28);border:1px solid var(--border);border-radius:9px;padding:9px 8px}
+.m i{display:block;font-style:normal;font:500 7px var(--mono);letter-spacing:.11em;text-transform:uppercase;color:var(--dim);margin-bottom:4px}
+.m b{font:500 14px var(--mono);display:block;line-height:1.1}
+.m s{font:400 8.5px var(--mono);color:var(--dim);display:block;margin-top:2px}
+.m.up b{color:var(--brand)}
+.note{display:flex;gap:9px;margin-top:13px;padding-top:12px;border-top:1px solid var(--border)}
+.note svg{flex:0 0 14px;margin-top:2px}
+.note p{margin:0;font-size:13.5px;line-height:1.5;color:var(--text)}
+.locked{margin-top:11px;font:400 8px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--dim);display:flex;align-items:center;gap:6px}
+.p-strip{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-top:3px}
+.pd{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 3px;text-align:center}
+.pd i{display:block;font-style:normal;font:500 7.5px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--dim);margin-bottom:5px}
+.pd b{font:500 10.5px var(--mono);color:var(--dim);display:block}
+.pd.o{border-color:var(--brand-border);background:var(--brand-bg)}
+.pd.o b{color:var(--brand)}
+.pd.o::after{content:'';display:block;width:4px;height:4px;border-radius:50%;background:var(--brand);margin:5px auto 0}
+.pd.sel{border-color:var(--brand);box-shadow:0 0 0 1px var(--brand-border)}
+.pd.sel b{color:var(--text)}
+.strip-cap{font:500 7.5px var(--mono);letter-spacing:.11em;text-transform:uppercase;color:var(--dim);margin:0 0 9px}
+
+/* Rules ------------------------------------------------------------------- */
+.rules{display:grid;grid-template-columns:repeat(auto-fit,minmax(255px,1fr));gap:1px;background:var(--border);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.rule{background:var(--surface);padding:18px}
+.rule i{display:block;font-style:normal;font:500 8px var(--mono);letter-spacing:.13em;text-transform:uppercase;color:var(--brand);margin-bottom:9px}
+.rule b{display:block;font-family:var(--display);font-size:15px;letter-spacing:.3px;text-transform:uppercase;margin-bottom:7px}
+.rule p{margin:0;font-size:13.5px;line-height:1.55;color:var(--dim)}
+.flow{font-family:var(--mono);font-size:12.5px;line-height:2;color:var(--dim);background:var(--surface2);border:1px solid var(--border);border-left:3px solid var(--brand);border-radius:10px;padding:16px 18px;margin-top:20px;overflow-x:auto;white-space:pre}
+.flow em{font-style:normal;color:var(--brand)}
+.flow b{color:var(--text);font-weight:500}
+@media(max-width:900px){
+  .ed-row{grid-template-columns:repeat(3,1fr)}
+  .ed-day{grid-column:1/-1}
+  .ed-note{grid-column:1/3}
+  .rowacts{grid-column:1/-1;justify-content:flex-end}
+  .macros{grid-template-columns:repeat(3,1fr)}
+  .strip{grid-template-columns:repeat(4,1fr)}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="masthead">
+  <div class="eyebrow">Dual Performance · Coaches Dashboard</div>
+  <h1>Daily macro overrides</h1>
+  <p class="sub">Nutrition is prescribed per week. The days that actually need precision — the 30 km long run, the double, race day, a full rest day — all sit inside that one week. This adds a coach-owned override for a single date, without touching how the rest of the week works.</p>
+</header>
+
+<!-- 1 -->
+<section class="sec">
+  <div class="sec-head"><span class="sec-num">01</span><h2>Coach · the week row</h2></div>
+  <p class="sec-note">The day strip lives inside the existing Nutrition week row, under the macro cells. Dim days inherit the week. Green days are published to the athlete. Amber is a draft the athlete cannot see. A coach scanning the roster can tell at a glance that a week is not uniform.</p>
+  <div class="frame">
+    <div class="frame-bar"><i class="dot"></i><i class="dot"></i><i class="dot"></i><span>Coaches dashboard · Nutrition · JORDAN</span></div>
+    <div class="pad">
+      <div class="wk-row">
+        <div class="wk-top">
+          <div class="wk-id"><strong>Week 9</strong><span>MON 17 AUG — SUN 23 AUG · BUILD</span></div>
+          <div class="adj-flag">3 days adjusted</div>
+        </div>
+        <div class="macros">
+          <div class="mac"><i>Calories</i><b>2,750</b><small>kcal</small></div>
+          <div class="mac"><i>Protein</i><b>175</b><small>g</small></div>
+          <div class="mac"><i>Carbs</i><b>340</b><small>g</small></div>
+          <div class="mac"><i>Fats</i><b>78</b><small>g</small></div>
+          <div class="mac"><i>Fibre</i><b>32</b><small>g</small></div>
+        </div>
+        <div class="baseline-tag">Weekly baseline · applies to every day without an override</div>
+        <div class="strip">
+          <div class="day inherit"><span class="dow">Mon 17</span><span class="kcal">2,750<em>kcal</em></span><span class="state">Inherits week</span></div>
+          <div class="day inherit"><span class="dow">Tue 18</span><span class="kcal">2,750<em>kcal</em></span><span class="state">Inherits week</span></div>
+          <div class="day pub"><span class="dow">Wed 19</span><span class="kcal">3,050<em>kcal</em></span><span class="lbl">Threshold</span><span class="delta up">+300</span><span class="state">✦ Published</span></div>
+          <div class="day inherit"><span class="dow">Thu 20</span><span class="kcal">2,750<em>kcal</em></span><span class="state">Inherits week</span></div>
+          <div class="day draft"><span class="dow">Fri 21</span><span class="kcal">2,500<em>kcal</em></span><span class="lbl">Pre-long rest</span><span class="delta down">−250</span><span class="state">Draft</span></div>
+          <div class="day pub focus"><span class="dow">Sat 22</span><span class="kcal">3,400<em>kcal</em></span><span class="lbl">Long run 30k</span><span class="delta up">+650</span><span class="state">✦ Published</span></div>
+          <div class="day pub"><span class="dow">Sun 23</span><span class="kcal">3,000<em>kcal</em></span><span class="lbl">Refeed</span><span class="delta up">+250</span><span class="state">✦ Published</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 2 -->
+<section class="sec">
+  <div class="sec-head"><span class="sec-num">02</span><h2>Coach · the day editor</h2></div>
+  <p class="sec-note">Tapping any day opens the whole week, with that day focused, so a back-to-back weekend gets set in one sitting. The weekly baseline is pinned at the top and every input shows its live delta against it, so a mistyped figure is obvious before it reaches an athlete. Values are absolute — what the athlete eats that day — never deltas, so editing the week later cannot silently move a published day.</p>
+  <div class="dlg">
+    <div class="dlg-head">
+      <div><strong>Daily macros · Week 9</strong><span>JORDAN · MON 17 — SUN 23 AUG 2026</span></div>
+      <div style="display:flex;gap:7px"><button class="btn ghost">Close</button><button class="btn pri">Save week</button></div>
+    </div>
+    <div class="ref">
+      <span class="ref-k">Weekly baseline</span>
+      <span class="ref-v">2,750 kcal</span><span class="ref-v">175 P</span><span class="ref-v">340 C</span><span class="ref-v">78 F</span><span class="ref-v">32 Fib</span>
+      <span class="ref-k" style="margin-left:auto">Locked reference · edit in the week row</span>
+    </div>
+
+    <div class="ed-row muted">
+      <div class="ed-day"><b>Fri 21</b><span>Draft</span></div>
+      <div class="fld"><label>kcal <span class="delta down">−250</span></label><input class="inp" value="2500"></div>
+      <div class="fld"><label>Protein</label><input class="inp" value="180"></div>
+      <div class="fld"><label>Carbs <span class="delta down">−60</span></label><input class="inp" value="280"></div>
+      <div class="fld"><label>Fats</label><input class="inp" value="78"></div>
+      <div class="fld"><label>Fibre</label><input class="inp" value="32"></div>
+      <div class="fld ed-note"><label>Day label</label><input class="inp" value="Pre-long rest"></div>
+      <div class="fld"><label>State</label><select class="inp sel draftsel"><option>Draft</option><option>Published</option></select></div>
+      <div class="rowacts"><button class="btn">Save</button></div>
+    </div>
+
+    <div class="ed-row focused">
+      <div class="ed-day"><b>Sat 22</b><span>Published · 18 Aug</span></div>
+      <div class="fld"><label>kcal <span class="delta up">+650</span></label><input class="inp on" value="3400"></div>
+      <div class="fld"><label>Protein</label><input class="inp on" value="175"></div>
+      <div class="fld"><label>Carbs <span class="delta up">+180</span></label><input class="inp on" value="520"></div>
+      <div class="fld"><label>Fats <span class="delta up">+7</span></label><input class="inp on" value="85"></div>
+      <div class="fld"><label>Fibre <span class="delta down">−2</span></label><input class="inp on" value="30"></div>
+      <div class="fld ed-note"><label>Day label</label><input class="inp on" value="Long run 30k"></div>
+      <div class="fld"><label>State</label><select class="inp sel pubsel"><option>Published</option><option>Draft</option></select></div>
+      <div class="rowacts"><button class="btn pri">Save</button><button class="btn ghost">Remove</button></div>
+    </div>
+
+    <div class="ed-row">
+      <div class="ed-day"><b>Sun 23</b><span>Published · 18 Aug</span></div>
+      <div class="fld"><label>kcal <span class="delta up">+250</span></label><input class="inp" value="3000"></div>
+      <div class="fld"><label>Protein</label><input class="inp" value="175"></div>
+      <div class="fld"><label>Carbs <span class="delta up">+70</span></label><input class="inp" value="410"></div>
+      <div class="fld"><label>Fats</label><input class="inp" value="80"></div>
+      <div class="fld"><label>Fibre</label><input class="inp" value="34"></div>
+      <div class="fld ed-note"><label>Day label</label><input class="inp" value="Refeed"></div>
+      <div class="fld"><label>State</label><select class="inp sel pubsel"><option>Published</option><option>Draft</option></select></div>
+      <div class="rowacts"><button class="btn">Save</button><button class="btn ghost">Remove</button></div>
+    </div>
+
+    <div class="helper">
+      <div class="copyto">
+        <span>Copy Sat 22 to</span>
+        <span class="chip">Mon</span><span class="chip">Tue</span><span class="chip">Wed</span><span class="chip">Thu</span><span class="chip">Fri</span><span class="chip on">Sun</span>
+      </div>
+      <button class="btn">Prefill row from week</button>
+    </div>
+    <div class="warn">
+      <b>Confirm</b>
+      <p>Saturday is 24% above the weekly baseline. Anything past 60% either way asks for a second confirm before publishing — race day genuinely is an outlier, it just should never be an accident.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 3 -->
+<section class="sec">
+  <div class="sec-head"><span class="sec-num">03</span><h2>Athlete · the portal</h2></div>
+  <p class="sec-note">Today's card sits at the top of Nutrition and shows the effective targets for today. On an overridden day it carries the day label, the coach note, and the weekly figure struck through beside each changed macro — so the athlete can see the day is deliberately different and why. On a normal day the tab looks exactly as it does now.</p>
+  <div class="phones">
+
+    <div class="phone">
+      <div class="phone-cap">Sat 22 · override published</div>
+      <div class="p-hd"><b>Nutrition</b><span>WEEK 9</span></div>
+      <div class="card hero">
+        <div class="chip-today">◆ Today · Long run 30k</div>
+        <div class="big"><strong>3,400</strong><s>2,750</s><i>+650</i></div>
+        <div class="kcal-lbl">Calories today</div>
+        <div class="mrow">
+          <div class="m"><i>Protein</i><b>175</b></div>
+          <div class="m up"><i>Carbs</i><b>520</b><s>340</s></div>
+          <div class="m up"><i>Fats</i><b>85</b><s>78</s></div>
+          <div class="m"><i>Fibre</i><b>30</b><s>32</s></div>
+        </div>
+        <div class="note">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#92D2ED" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          <p>Front-load carbs before the 30k. Gel every 30 min on the run, and get 60 g in within the hour after.</p>
+        </div>
+        <div class="locked">🔒 Set by your coach for today</div>
+      </div>
+      <p class="strip-cap">This week</p>
+      <div class="p-strip">
+        <div class="pd"><i>M</i><b>2750</b></div>
+        <div class="pd"><i>T</i><b>2750</b></div>
+        <div class="pd o"><i>W</i><b>3050</b></div>
+        <div class="pd"><i>T</i><b>2750</b></div>
+        <div class="pd"><i>F</i><b>2750</b></div>
+        <div class="pd o sel"><i>S</i><b>3400</b></div>
+        <div class="pd o"><i>S</i><b>3000</b></div>
+      </div>
+    </div>
+
+    <div class="phone">
+      <div class="phone-cap">Thu 20 · no override — unchanged</div>
+      <div class="p-hd"><b>Nutrition</b><span>WEEK 9</span></div>
+      <div class="card">
+        <div class="chip-plain">Today · Week 9</div>
+        <div class="big"><strong>2,750</strong></div>
+        <div class="kcal-lbl">Calories today</div>
+        <div class="mrow">
+          <div class="m"><i>Protein</i><b>175</b></div>
+          <div class="m"><i>Carbs</i><b>340</b></div>
+          <div class="m"><i>Fats</i><b>78</b></div>
+          <div class="m"><i>Fibre</i><b>32</b></div>
+        </div>
+        <div class="locked">🔒 Set by your coach for this week</div>
+      </div>
+      <p class="strip-cap">This week</p>
+      <div class="p-strip">
+        <div class="pd"><i>M</i><b>2750</b></div>
+        <div class="pd"><i>T</i><b>2750</b></div>
+        <div class="pd o"><i>W</i><b>3050</b></div>
+        <div class="pd sel"><i>T</i><b>2750</b></div>
+        <div class="pd"><i>F</i><b>2750</b></div>
+        <div class="pd o"><i>S</i><b>3400</b></div>
+        <div class="pd o"><i>S</i><b>3000</b></div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- 4 -->
+<section class="sec">
+  <div class="sec-head"><span class="sec-num">04</span><h2>The rules underneath</h2></div>
+  <p class="sec-note">These are the decisions that keep it from turning into a second, competing source of truth for macros.</p>
+  <div class="rules">
+    <div class="rule"><i>Ownership</i><b>Coach writes, athlete reads</b><p>Athletes never create, edit or dismiss an override. Same rule as the training prescription and the weekly sport targets.</p></div>
+    <div class="rule"><i>Values</i><b>Absolute, not deltas</b><p>The stored number is what the athlete eats. Editing the weekly baseline later cannot silently move a day that has already been published.</p></div>
+    <div class="rule"><i>Scope</i><b>Purely additive</b><p>Weekly rows stay exactly as they are. No backfill of seven rows per week. A week with no overrides behaves identically to today.</p></div>
+    <div class="rule"><i>Lifecycle</i><b>Draft, publish, soft-remove</b><p>Drafts are invisible to athletes. Removing returns the row to draft and stamps it — hard delete is rejected by the database, so history survives.</p></div>
+  </div>
+  <div class="flow"><b>effectiveTargetsFor(date)</b>
+
+  published override for that date   <em>→</em>  use it        <b>source: coach_day</b>
+  else weekly nutrition_plans row    <em>→</em>  use it        <b>source: coach_week</b>
+  else                               <em>→</em>  nothing
+
+  <em>One resolver, one place.</em> The km target code already shows how fast two
+  resolvers drift into showing one week two different numbers.</div>
+</section>
+
+</div>
+</body>
+</html>

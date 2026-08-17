@@ -24,6 +24,12 @@ import {
   removeWeeklySportTarget,
   saveWeeklySportTarget,
 } from '../server/weekly-sport-targets.js';
+import {
+  listDailyMacroOverrides,
+  removeDailyMacroOverride,
+  saveDailyMacroOverride,
+  saveDailyMacroOverrideRange,
+} from '../server/daily-macro-overrides.js';
 
 const SUPABASE_URL = String(process.env.SUPABASE_URL || '').replace(/\/+$/, '');
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
@@ -793,6 +799,11 @@ export default async function handler(req, res) {
         return res.status(200).json(await listWeeklySportTargets(req.query.code, sb, coachRow));
       }
 
+      if (action === 'daily_macro_overrides') {
+        const coachRow = await resolveCoachIdentity(req, sb);
+        return res.status(200).json(await listDailyMacroOverrides(req.query.code, sb, coachRow));
+      }
+
       const athletes = await loadRosterRows();
       return res.status(200).json({ ok: true, athletes, total: athletes.length, source: 'roster_supabase' });
     }
@@ -919,6 +930,9 @@ export default async function handler(req, res) {
       weekly_sport_target_save: saveWeeklySportTarget,
       weekly_sport_target_remove: removeWeeklySportTarget,
       weekly_sport_target_week_ensure: ensureWeeklyTargetProgrammeWeek,
+      daily_macro_override_save: saveDailyMacroOverride,
+      daily_macro_override_range_save: saveDailyMacroOverrideRange,
+      daily_macro_override_remove: removeDailyMacroOverride,
     };
 
     if (PROGRAMMING_ACTIONS[action]) {

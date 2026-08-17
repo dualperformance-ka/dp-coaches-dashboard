@@ -48,6 +48,50 @@ export async function loadPublishedCoachTargets(athleteCode, request = select) {
   return Array.isArray(rows) ? rows.map(publishedCoachTargetContract) : [];
 }
 
+export function publishedMacroOverrideContract(row) {
+  return {
+    date: row.override_date,
+    weekIdentifier: row.programme_week_id,
+    calories: row.calories,
+    proteinG: row.protein_g,
+    carbsG: row.carbs_g,
+    fatsG: row.fats_g,
+    fibreG: row.fibre_g,
+    dayLabel: row.day_label,
+    coachNote: row.coach_note,
+    source: 'coach',
+    locked: true,
+    publishedAt: row.published_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+export async function loadPublishedMacroOverrides(athleteCode, request = select, today = new Date()) {
+  const floor = new Date(today);
+  floor.setUTCDate(floor.getUTCDate() - 60);
+  const rows = await request('daily_macro_overrides', {
+    athlete_code: `eq.${athleteCode}`,
+    publish_state: 'eq.published',
+    removed_at: 'is.null',
+    override_date: `gte.${floor.toISOString().slice(0, 10)}`,
+    select: [
+      'override_date',
+      'programme_week_id',
+      'calories',
+      'protein_g',
+      'carbs_g',
+      'fats_g',
+      'fibre_g',
+      'day_label',
+      'coach_note',
+      'published_at',
+      'updated_at',
+    ].join(','),
+    order: 'override_date.asc',
+  });
+  return Array.isArray(rows) ? rows.map(publishedMacroOverrideContract) : [];
+}
+
 export default async function handler(req, res) {
   if (!allowPortalRequest(req, res, 'GET, OPTIONS')) return;
 
@@ -62,6 +106,10 @@ export default async function handler(req, res) {
     if (resource === 'weekly-sport-targets') {
       const targets = await loadPublishedCoachTargets(code);
       return send(res, 200, { ok: true, targets });
+    }
+    if (resource === 'daily-macro-overrides') {
+      const overrides = await loadPublishedMacroOverrides(code);
+      return send(res, 200, { ok: true, overrides });
     }
     if (resource) return send(res, 400, { ok: false, error: 'unknown_resource' });
     const body = await select('daily_body_logs', {
