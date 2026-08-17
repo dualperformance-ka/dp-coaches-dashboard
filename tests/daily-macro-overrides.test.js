@@ -267,6 +267,60 @@ test('coach Week cells expose inherited, draft, and published fuel states plus t
   assert.match(editor, /> 0\.6/);
 });
 
+test('a failed editor load stops retrying, surfaces the error, and offers a manual retry', async () => {
+  const source = fs.readFileSync(new URL('../public/daily-macro-overrides.js', import.meta.url), 'utf8');
+  const editorRoot = {
+    innerHTML: '',
+    querySelector() { return null; },
+    querySelectorAll() { return []; },
+  };
+  let fetchCalls = 0;
+  const context = {
+    window: {},
+    document: {
+      getElementById(id) { return id === 'daily-macro-overrides-editor' ? editorRoot : null; },
+      addEventListener() {},
+    },
+    fetch: async () => {
+      fetchCalls += 1;
+      return { ok: false, status: 500, json: async () => ({ error: 'Override table unavailable' }) };
+    },
+    AbortController,
+    setTimeout,
+    clearTimeout,
+    console,
+  };
+  context.renderProgramming = () => context.window.DailyMacroOverridesEditor.mount({ athleteCode: ATHLETE });
+  vm.createContext(context);
+  vm.runInContext(source, context);
+  context.window.DailyMacroOverridesEditor.mount({ athleteCode: ATHLETE });
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  context.window.DailyMacroOverridesEditor.open('2026-08-22', 'Week 4', null);
+  assert.equal(fetchCalls, 1);
+  assert.match(editorRoot.innerHTML, /Override table unavailable/);
+  assert.match(editorRoot.innerHTML, /class="dmo-retry"/);
+});
+
+test('dashboard ships the daily fuelling fix under a fresh PWA asset version', () => {
+  const dashboard = fs.readFileSync(new URL('../public/index.html', import.meta.url), 'utf8');
+  const worker = fs.readFileSync(new URL('../public/sw.js', import.meta.url), 'utf8');
+  assert.match(dashboard, /daily-macro-overrides\.css\?v=2/);
+  assert.match(dashboard, /daily-macro-overrides\.js\?v=2/);
+  assert.match(worker, /daily-macro-overrides\.css\?v=2/);
+  assert.match(worker, /daily-macro-overrides\.js\?v=2/);
+  assert.match(worker, /dp-coaches-v27-daily-fuelling/);
+});
+
+test('coach links and notification forwarding default to the canonical athlete portal', () => {
+  const dashboard = fs.readFileSync(new URL('../public/index.html', import.meta.url), 'utf8');
+  const athletesApi = fs.readFileSync(new URL('../api/athletes.js', import.meta.url), 'utf8');
+  const notifyApi = fs.readFileSync(new URL('../api/notify.js', import.meta.url), 'utf8');
+  for (const source of [dashboard, athletesApi, notifyApi]) {
+    assert.match(source, /https:\/\/portal\.dualperformance\.au/);
+    assert.doesNotMatch(source, /dp-athlete-?portal\.vercel\.app/);
+  }
+});
+
 test('athlete Nutrition uses the exported resolver, warm snapshot cache, strip, locked overrides, and no local shadow', () => {
   const source = fs.readFileSync(new URL('../public/js/06-nutrition.js', import.meta.url), 'utf8');
   assert.match(source, /window\.effectiveTargetsFor=effectiveTargetsFor/);
