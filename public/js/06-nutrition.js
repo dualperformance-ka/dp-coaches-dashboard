@@ -209,6 +209,120 @@ async function renderVolumeStrip(id,mode){
 }
 // ── LOAD NUTRITION + KM TRACKER ───────────────────────────────────────────────
 
+var _dailyMacroOverrides=[];
+var _dailyMacroOverridesLoadedAt=0;
+var _dailyMacroOverridesPromise=null;
+var _selectedNutritionDate=null;
+
+function getMacro(v){
+  if(v==null)return '—';
+  var s=String(v).trim();
+  return s===''?'—':s;
+}
+function toNutNum(v){
+  if(typeof v==='number')return{display:String(v),min:v};
+  if(!v||v==='—')return null;
+  var s=String(v).trim(),n=parseFloat(s);
+  return isNaN(n)?null:{display:s,min:n};
+}
+function weeklyMacroShape(row){
+  if(!row)return null;
+  return{
+    cal:getMacro(row.calories),pro:getMacro(row.protein),carb:getMacro(row.carbs),
+    fat:getMacro(row.fats),fibre:getMacro(row.fibre)
+  };
+}
+
+// The one macro resolver used by the Nutrition card and seven-day strip.
+// Tests may pass fixtures explicitly; production defaults to the loaded rows.
+function effectiveTargetsFor(date,weeklyRow,overrides){
+  var rows=Array.isArray(overrides)?overrides:_dailyMacroOverrides;
+  var override=rows.find(function(item){return item&&item.date===date&&!item.removedAt&&(!item.state||item.state==='published');})||null;
+  var weekly=weeklyMacroShape(weeklyRow);
+  if(override){
+    return{
+      cal:getMacro(override.calories),pro:getMacro(override.proteinG),carb:getMacro(override.carbsG),
+      fat:getMacro(override.fatsG),fibre:getMacro(override.fibreG),source:'coach_day',locked:true,
+      dayLabel:override.dayLabel||'',coachNote:override.coachNote||'',weekly:weekly
+    };
+  }
+  if(!weekly)return null;
+  return Object.assign({source:'coach_week',locked:true,dayLabel:'',coachNote:(weeklyRow.notes||'').trim(),weekly:null},weekly);
+}
+window.effectiveTargetsFor=effectiveTargetsFor;
+
+async function loadDailyMacroOverrides(){
+  if(_dailyMacroOverridesLoadedAt&&(Date.now()-_dailyMacroOverridesLoadedAt)<60000)return _dailyMacroOverrides;
+  var snapshot=window._trainingReadSnapshot;
+  var fresh=!!(snapshot&&snapshot.ts&&(Date.now()-snapshot.ts)<60000&&Array.isArray(snapshot.macroOverrides));
+  if(fresh){_dailyMacroOverrides=snapshot.macroOverrides;_dailyMacroOverridesLoadedAt=Date.now();return _dailyMacroOverrides;}
+  if(!_authToken)return[];
+  if(_dailyMacroOverridesPromise)return _dailyMacroOverridesPromise;
+  _dailyMacroOverridesPromise=(async function(){
+    var response=await fetch('/api/my-logs?resource=daily-macro-overrides',{headers:authHeaders({}),cache:'no-store'});
+    var data={};try{data=await response.json();}catch(e){}
+    if(response.status===401){handleAuthSessionLost();throw new Error('Your session has expired. Please sign in again.');}
+    if(!response.ok||data.ok===false)throw new Error(data.error||'Daily macro overrides could not load');
+    _dailyMacroOverrides=Array.isArray(data.overrides)?data.overrides:[];
+    _dailyMacroOverridesLoadedAt=Date.now();
+    if(window._trainingReadSnapshot)window._trainingReadSnapshot.macroOverrides=_dailyMacroOverrides;
+    return _dailyMacroOverrides;
+  })();
+  try{return await _dailyMacroOverridesPromise;}finally{_dailyMacroOverridesPromise=null;}
+}
+
+function nutritionWeekStart(){
+  var now=new Date(),monday=new Date(now.getFullYear(),now.getMonth(),now.getDate()-((now.getDay()+6)%7));
+  monday.setDate(monday.getDate()+nutWeekOffset*7);return monday;
+}
+function nutritionDateISO(date){return date.getFullYear()+'-'+String(date.getMonth()+1).padStart(2,'0')+'-'+String(date.getDate()).padStart(2,'0');}
+function renderMacroTarget(id,value,weekly){
+  var el=document.getElementById(id);if(!el)return;
+  if(weekly&&String(weekly)!==String(value))el.innerHTML='<s>'+esc(weekly)+'</s> '+esc(value);
+  else el.textContent=value;
+}
+function ensureNutritionDayUI(){
+  var cal=document.getElementById('nutCal');if(!cal)return null;
+  var grid=cal.closest?cal.closest('.macro-grid'):null;if(!grid)return null;
+  var chip=document.getElementById('nutOverrideChip');
+  if(!chip){chip=document.createElement('div');chip.id='nutOverrideChip';chip.className='nut-override-chip';chip.style.display='none';grid.parentNode.insertBefore(chip,grid);}
+  var strip=document.getElementById('nutDayStrip');
+  if(!strip){strip=document.createElement('div');strip.id='nutDayStrip';strip.className='nut-day-strip';grid.insertAdjacentElement('afterend',strip);}
+  return{chip:chip,strip:strip};
+}
+function renderEffectiveNutritionDate(row,date){
+  var target=effectiveTargetsFor(date,row,_dailyMacroOverrides);if(!target)return;
+  var weekly=target.weekly||{};
+  renderMacroTarget('nutCal',target.cal,weekly.cal);renderMacroTarget('nutPro',target.pro,weekly.pro);
+  renderMacroTarget('nutCarb',target.carb,weekly.carb);renderMacroTarget('nutFat',target.fat,weekly.fat);
+  renderMacroTarget('nutFibre',target.fibre,weekly.fibre);
+  currentNutTargets={cal:toNutNum(target.cal),pro:toNutNum(target.pro),carb:toNutNum(target.carb),fat:toNutNum(target.fat),fibre:toNutNum(target.fibre)};
+  var ui=ensureNutritionDayUI(),today=nutritionDateISO(new Date()),parsed=new Date(date+'T00:00:00');
+  if(ui){
+    if(target.source==='coach_day'){
+      ui.chip.textContent=(date===today?'Today':parsed.toLocaleDateString('en-AU',{weekday:'short'}))+(target.dayLabel?' · '+target.dayLabel:'');ui.chip.style.display='inline-flex';
+    }else ui.chip.style.display='none';
+  }
+  var noteEl=document.getElementById('nutCoachNote'),note=target.coachNote||'';
+  if(note){noteEl.innerHTML='<svg class="icon icon-run"><use href="#i-chat"/></svg> '+esc(note);noteEl.style.display='block';}
+  else noteEl.style.display='none';
+  if(ui)ui.strip.querySelectorAll('button').forEach(function(button){button.classList.toggle('selected',button.dataset.date===date);});
+}
+function renderNutritionDayStrip(row){
+  var ui=ensureNutritionDayUI();if(!ui)return;
+  var start=nutritionWeekStart(),today=nutritionDateISO(new Date());
+  ui.strip.innerHTML='';
+  for(var i=0;i<7;i++){
+    var day=new Date(start);day.setDate(day.getDate()+i);var date=nutritionDateISO(day),target=effectiveTargetsFor(date,row,_dailyMacroOverrides);
+    var button=document.createElement('button');button.type='button';button.dataset.date=date;
+    button.className='nut-day-cell'+(target&&target.source==='coach_day'?' overridden':'')+(date===_selectedNutritionDate?' selected':'');
+    button.innerHTML='<span>'+day.toLocaleDateString('en-AU',{weekday:'short'})+'</span><strong>'+(target?esc(target.cal):'—')+'</strong>'+(target&&target.dayLabel?'<i>'+esc(target.dayLabel)+'</i>':'');
+    button.addEventListener('click',function(){_selectedNutritionDate=this.dataset.date;renderEffectiveNutritionDate(row,_selectedNutritionDate);});ui.strip.appendChild(button);
+  }
+  if(!_selectedNutritionDate){var startISO=nutritionDateISO(start),end=new Date(start);end.setDate(end.getDate()+6);_selectedNutritionDate=today>=startISO&&today<=nutritionDateISO(end)?today:startISO;}
+  renderEffectiveNutritionDate(row,_selectedNutritionDate);
+}
+
 async function loadNutrition(){
   var weekNum=getCurrentProgrammeWeek();
   var displayWeek=weekNum+nutWeekOffset;
@@ -222,10 +336,12 @@ async function loadNutrition(){
   document.getElementById('nutNoplan').style.display='none';
 
   var weekLabel='Week '+displayWeek;
+  _selectedNutritionDate=null;
 
   // Kick off the completed-KM tracker scan now — it's the slowest fetch and is
   // independent of the nutrition row, so it runs in parallel.
   var trackerPromise=getWeeklyCompletedKmFromTracker(nutWeekOffset).catch(function(){return null;});
+  var macroOverridePromise=loadDailyMacroOverrides().catch(function(error){console.warn('daily macro overrides load failed',error);return[];});
 
   // Nutrition plans now live in Supabase (nutrition_plans) — single source of
   // truth shared with the coaches dashboard. One row per athlete per week.
@@ -246,10 +362,13 @@ async function loadNutrition(){
     }catch(e){console.warn('nutrition_plans load failed',e);}
   }
 
+  _dailyMacroOverrides=await macroOverridePromise;
   _nutLastLoad=Date.now();
   document.getElementById('nutLoadingEl').style.display='none';
 
-  if(!row){
+  var weekStart=nutritionDateISO(nutritionWeekStart()),weekEndDate=new Date(weekStart+'T00:00:00');weekEndDate.setDate(weekEndDate.getDate()+6);
+  var hasDayOverride=_dailyMacroOverrides.some(function(item){return item.date>=weekStart&&item.date<=nutritionDateISO(weekEndDate);});
+  if(!row&&!hasDayOverride){
     document.getElementById('nutNoplan').style.display='block';
     document.getElementById('kmBar').style.display='none';
     renderWeeklyKmCard('nutKmCard',null);
@@ -260,39 +379,14 @@ async function loadNutrition(){
 
   currentWeekKmData={week:weekLabel,target:null,completed:null,source:'nutrition_row'};
 
-  function getMacro(v){
-    if(v==null) return '—';
-    var s=String(v).trim();
-    return s===''?'—':s;
-  }
+  if(!row)row={};
 
   var mCal=getMacro(row.calories);
   var mPro=getMacro(row.protein);
   var mCarb=getMacro(row.carbs);
   var mFat=getMacro(row.fats);
   var mFibre=getMacro(row.fibre);
-  document.getElementById('nutCal').textContent=mCal;
-  document.getElementById('nutPro').textContent=mPro;
-  document.getElementById('nutCarb').textContent=mCarb;
-  document.getElementById('nutFat').textContent=mFat;
-  document.getElementById('nutFibre').textContent=mFibre;
-  function toNutNum(v){
-    if(typeof v==='number') return {display:String(v),min:v};
-    if(!v||v==='—') return null;
-    var s=String(v).trim();
-    var n=parseFloat(s); // stops at first non-numeric char, so "35-38" → 35
-    return isNaN(n)?null:{display:s,min:n};
-  }
-  currentNutTargets={cal:toNutNum(mCal),pro:toNutNum(mPro),carb:toNutNum(mCarb),fat:toNutNum(mFat),fibre:toNutNum(mFibre)};
-
-  var note=(row.notes||'').trim();
-  var noteEl=document.getElementById('nutCoachNote');
-  if(note){
-    noteEl.innerHTML='<svg class="icon icon-run"><use href="#i-chat"/></svg> '+esc(note);
-    noteEl.style.display='block';
-  }else{
-    noteEl.style.display='none';
-  }
+  renderNutritionDayStrip(row);
 
   // Weekly KM: manual target wins; otherwise auto-sum this week's planned
   // session distances (with "Weekly KM Total: 65km" rows as a floor).

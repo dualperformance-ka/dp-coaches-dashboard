@@ -322,6 +322,14 @@ html.strength-rpe-off .setrow.extra{grid-template-columns:22px 1fr 1fr 36px 26px
 .ci-lbl{font-family:var(--mono);font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em}
 .ci-card.run .ci-val{color:var(--run)}.ci-card.lift .ci-val{color:var(--strength)}
 .macro-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.nut-override-chip{display:inline-flex;width:max-content;margin:0 0 10px;padding:5px 9px;border:1px solid rgba(74,222,128,.35);border-radius:999px;background:rgba(74,222,128,.10);color:#4ade80;font:700 10px var(--mono,monospace);text-transform:uppercase;letter-spacing:.06em}
+.nut-day-strip{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;margin:10px 0 16px}
+.nut-day-cell{min-width:0;padding:8px 5px;border:1px solid var(--border,rgba(255,255,255,.1));border-radius:8px;background:var(--surface2,#1e1e1e);color:var(--muted,#999);text-align:center;cursor:pointer}
+.nut-day-cell span,.nut-day-cell i{display:block;font:8px var(--mono,monospace);text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nut-day-cell strong{display:block;margin:4px 0;font:700 12px var(--mono,monospace);color:var(--text,#fff)}
+.nut-day-cell i{color:#4ade80;font-style:normal}.nut-day-cell.overridden{border-color:rgba(74,222,128,.4)}.nut-day-cell.selected{box-shadow:0 0 0 2px var(--brand,#79c3e8)}
+.macro-grid s{color:var(--dim,#777);font-size:.72em;margin-right:3px}
+@media(max-width:560px){.nut-day-strip{gap:3px}.nut-day-cell{padding:7px 2px}.nut-day-cell strong{font-size:10px}}
 .mc{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;text-align:center}
 .mv{font-family:var(--display);font-size:36px;font-weight:700;line-height:1;margin-bottom:4px}
 .ml{font-family:var(--mono);font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.05em}
@@ -594,6 +602,7 @@ html.strength-rpe-off .setrow.extra{grid-template-columns:22px 1fr 1fr 36px 26px
   .macro-grid .mc.fibre{grid-column:auto !important}
   #nutContent{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 24px;align-items:start}
   #nutContent>.macro-grid,#nutContent>.cnote{grid-column:1/-1}
+  .nut-override-chip,.nut-day-strip{grid-column:1/-1}
 
   /* Goals: two-column grid */
   #tab-goals.active{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 24px;align-items:start}

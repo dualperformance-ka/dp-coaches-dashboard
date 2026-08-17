@@ -1118,12 +1118,31 @@ body[data-theme="pride"] .texp-name{background:linear-gradient(90deg,#FF8C00,#FF
 body[data-theme="light"] .plan-chip.coach::before{color:#92400e}
 .chip-divider{font-family:var(--mono);font-size:7px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);align-self:center;border-left:1px solid var(--border-mid);padding-left:10px;margin-left:6px}
 .plan-toolbar-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.prog-view-toggle{display:inline-flex;padding:2px;border:1px solid var(--border-mid);border-radius:8px;background:var(--surface2)}
+.prog-view-toggle button{font-family:var(--mono);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;padding:6px 12px;border:0;border-radius:6px;background:transparent;color:var(--dim);cursor:pointer}
+.prog-view-toggle button.active{background:var(--brand-bg);color:var(--brand-text);box-shadow:inset 0 0 0 1px var(--brand-border)}
+.prog-context{margin:0 0 12px;padding:9px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);font-family:var(--mono);font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.prog-context b{color:var(--text)}
+.prog-body[hidden],.prog-toolbar[hidden]{display:none!important}
+.nut-row.selected td{box-shadow:inset 0 1px 0 var(--brand-border),inset 0 -1px 0 var(--brand-border)}
+.nut-row{cursor:pointer}
+.nut-row:hover td{background:var(--surface2)}
 .plan-action-btn{font-family:var(--mono);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:6px 12px;border-radius:6px;border:1px solid rgba(245,158,11,.4);background:rgba(245,158,11,.08);color:#fbbf24;cursor:pointer;transition:all .15s}
 .plan-action-btn:hover{background:rgba(245,158,11,.18)}
 .plan-week-meta{font-family:var(--mono);font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px}
 .plan-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:8px}
 @media(max-width:980px){.plan-grid{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:560px){.plan-grid{grid-template-columns:1fr}}
+@media(max-width:760px){
+  .nut-table{display:block;min-width:0}.nut-table thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+  .nut-table tbody,.nut-table tr,.nut-table td{display:block;width:100%}
+  .nut-table tr{margin:0 0 10px;padding:10px;border:1px solid var(--border);border-radius:10px;background:var(--surface)}
+  .nut-table td{display:grid;grid-template-columns:90px minmax(0,1fr);align-items:center;gap:8px;padding:6px 0;border:0!important;box-shadow:none!important;background:transparent!important}
+  .nut-table td::before{content:attr(data-label);font:700 8px var(--mono);color:var(--dim);text-transform:uppercase;letter-spacing:.06em}
+  .nut-table th:first-child,.nut-table td:first-child{position:static;background:transparent;z-index:auto}
+  .nut-table td:first-child{padding-bottom:9px;border-bottom:1px solid var(--border)!important}
+  .nut-table .nut-input,.nut-table .nut-input.wide{width:100%}.nut-table .nut-actions{display:flex;align-items:center}
+}
 
 /* ── Nutrition planning tab ── */
 .nut-meta{font-family:var(--mono);font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px}
@@ -1982,6 +2001,7 @@ body[data-theme="light"] .theme-btn.active{background:rgba(255,255,255,.22);colo
 <link rel="stylesheet" href="/triage.css?v=23">
 <link rel="stylesheet" href="/programming.css?v=4">
 <link rel="stylesheet" href="/weekly-sport-targets.css?v=3">
+<link rel="stylesheet" href="/daily-macro-overrides.css?v=1">
 <div class="ma-backdrop" id="ma-backdrop" role="dialog" aria-modal="true" aria-label="Manage athletes" onclick="if(event.target===this)closeManageAthletes()">
   <div class="ma-card">
     <div class="ma-head">
@@ -2231,10 +2251,8 @@ function maCopyText(text, btn) {
 // Re-render any roster-driven UI (plan/nutrition chips) after roster changes.
 function refreshRosterDrivenUI() {
   try {
-    const planTab = document.getElementById('tab-planning-content');
-    if (planTab && planTab.style.display !== 'none' && typeof renderPlanning === 'function') renderPlanning();
-    const nutTab = document.getElementById('tab-nut-content');
-    if (nutTab && nutTab.style.display !== 'none' && typeof renderNutritionTab === 'function') renderNutritionTab();
+    const programmingTab = document.getElementById('tab-programming-content');
+    if (programmingTab && programmingTab.style.display !== 'none' && typeof renderProgramming === 'function') renderProgramming();
   } catch (e) {}
 }
 </script>
@@ -2246,11 +2264,8 @@ function refreshRosterDrivenUI() {
   <button class="tab" id="tab-athletes-btn" onclick="switchTab('athletes')">
     Athletes <span class="tab-badge" id="tab-ath-count">—</span>
   </button>
-  <button class="tab" id="tab-planning-btn" onclick="switchTab('planning')">
-    Planning <span class="tab-badge" id="tab-planning-count">—</span>
-  </button>
-  <button class="tab" id="tab-nut-btn" onclick="switchTab('nutrition')">
-    Nutrition <span class="tab-badge" id="tab-nut-count">—</span>
+  <button class="tab" id="tab-programming-btn" onclick="switchTab('programming')">
+    Programming <span class="tab-badge" id="tab-programming-count">—</span>
   </button>
   <button class="tab" id="tab-coaches-btn" onclick="switchTab('coaches')">
     Coaches <span class="tab-badge">3</span>
@@ -2366,12 +2381,16 @@ function refreshRosterDrivenUI() {
   </div>
 </div>
 
-<!-- PLANNING TAB -->
-<div id="tab-planning-content" style="display:none">
+<!-- PROGRAMMING TAB -->
+<div id="tab-programming-content" style="display:none">
   <div class="plan-section">
     <div class="plan-toolbar">
-      <div class="plan-ath-chips" id="plan-ath-chips"></div>
-      <div class="plan-toolbar-right">
+      <div class="plan-ath-chips" id="prog-ath-chips"></div>
+      <div class="prog-view-toggle" id="prog-view-toggle" aria-label="Programming view">
+        <button type="button" id="prog-view-week" onclick="setProgView('week')">Week</button>
+        <button type="button" id="prog-view-block" onclick="setProgView('block')">Block</button>
+      </div>
+      <div class="plan-toolbar-right prog-toolbar" id="prog-week-toolbar">
         <div class="sf-group">
           <button class="sf" onclick="planWeekNav(-1)">← Prev</button>
           <button class="sf" id="plan-week-label" onclick="planWeekReset()">This Week</button>
@@ -2381,28 +2400,26 @@ function refreshRosterDrivenUI() {
         <button class="plan-action-btn" onclick="openPlanSession(null)">+ Session</button>
         <button class="plan-action-btn" id="plan-lib-btn" onclick="togglePlanLibrary()">Library</button>
       </div>
-    </div>
-    <div class="plan-week-meta" id="plan-week-meta"></div>
-    <div class="plan-grid" id="plan-grid"></div>
-    <div class="plan-lib" id="plan-lib" style="display:none"></div>
-  </div>
-</div>
-
-<!-- NUTRITION TAB -->
-<div id="tab-nut-content" style="display:none">
-  <div class="plan-section">
-    <div class="plan-toolbar">
-      <div class="plan-ath-chips" id="nut-ath-chips"></div>
-      <div class="plan-toolbar-right">
+      <div class="plan-toolbar-right prog-toolbar" id="prog-block-toolbar" hidden>
         <span class="nut-prog">Start override <input class="nut-input wide" id="nut-start-override" type="date" onchange="saveStartDateOverride(this.value)"></span>
         <span class="nut-prog">Programme <input class="nut-input km" id="nut-prog-weeks" onchange="saveProgWeeks(this.value)"> wks</span>
         <button class="plan-action-btn" id="nut-restart-btn" onclick="restartProgramme()" title="Restart this athlete at Week 0 or Week 1 on a chosen Monday">↻ Restart programme</button>
         <button class="plan-action-btn" id="nut-add-week-btn" onclick="addNutWeek()">+ Week</button>
       </div>
     </div>
-    <div class="nut-meta" id="nut-meta"></div>
-    <div class="nut-table-wrap" id="nut-table-wrap"></div>
+    <div class="prog-context" id="prog-context"></div>
+    <div class="prog-body" id="prog-week-body">
+      <div class="plan-week-meta" id="plan-week-meta"></div>
+      <div id="prog-week-bar"></div>
+      <div class="plan-grid" id="plan-grid"></div>
+      <div class="plan-lib" id="plan-lib" style="display:none"></div>
+    </div>
+    <div class="prog-body" id="prog-block-body" hidden>
+      <div class="nut-meta" id="nut-meta"></div>
+      <div class="nut-table-wrap" id="nut-table-wrap"></div>
+    </div>
     <div id="weekly-sport-targets-editor"></div>
+    <div id="daily-macro-overrides-editor"></div>
   </div>
 </div>
 
@@ -2977,8 +2994,24 @@ const PLAN_TYPE_COLORS = {
   'Run + Strength':'#f87171','Rest':'#38bdf8','Optional':'#34d399','Weekly KM Total':'#a78b71','discovery':'#92d2ed',
 };
 const PLAN_DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-let _planAthlete = null;
-let _planWeekOffset = 0;
+function _migrateProgAthleteSelection() {
+  try {
+    const selected = localStorage.getItem('dp_prog_athlete')
+      || localStorage.getItem('dp_plan_athlete')
+      || localStorage.getItem('dp_nut_athlete')
+      || null;
+    if (selected) localStorage.setItem('dp_prog_athlete', selected);
+    return selected;
+  } catch {
+    return null;
+  }
+}
+let _progAthlete = _migrateProgAthleteSelection();
+let _progWeekOffset = 0;
+let _progView = (() => {
+  try { return localStorage.getItem('dp_prog_view') === 'block' ? 'block' : 'week'; }
+  catch { return 'week'; }
+})();
 let _planLibOpen = false;
 
 function _isoDate(d) {
@@ -2987,10 +3020,10 @@ function _isoDate(d) {
 function _planWeekStart() {
   const now = new Date();
   const mon = new Date(now.getFullYear(), now.getMonth(), now.getDate() - ((now.getDay() + 6) % 7));
-  mon.setDate(mon.getDate() + _planWeekOffset * 7);
+  mon.setDate(mon.getDate() + _progWeekOffset * 7);
   return mon;
 }
-function _planAthleteCodes() {
+function _progAthleteCodes() {
   // Supabase roster (public.athletes) is the canonical chip list: active,
   // non-archived athletes only. Paused athletes drop off the chips but keep
   // all their history. Falls back to the legacy derived list only if the
@@ -2998,17 +3031,18 @@ function _planAthleteCodes() {
   if (_roster.length) {
     const codes = new Set(_roster.filter(a => a.active !== false).map(a => String(a.code || '').toUpperCase()));
     COACHES.forEach(c => codes.add(c));
+    _nutPlans.forEach(r => codes.add(String(r.athlete_code || '').toUpperCase()));
     return [...codes].filter(Boolean).sort();
   }
   const codes = new Set(_planRowsSB.map(r => r.athlete_code));
   _allAthletes.forEach(a => codes.add(a.id));
   COACHES.forEach(c => codes.add(c));
+  _nutPlans.forEach(r => codes.add(String(r.athlete_code || '').toUpperCase()));
   return [...codes].filter(Boolean).sort();
 }
 
 // ── Nutrition planning (Supabase nutrition_plans) ─────────────────────────────
 let _nutPlans = [];
-let _nutAthlete = null;
 let _nutPlansLoadError = null;
 
 // ── Programme length (athlete_data key 'programme_weeks', default 12) ─────────
@@ -3039,10 +3073,10 @@ function nextProgrammeMonday() {
 }
 
 async function restartProgramme() {
-  if (!_nutAthlete) return;
+  if (!_progAthlete) return;
 
   const effectiveDate = window.prompt(
-    `Restart ${_nutAthlete}'s programme on which Monday?\n\nUse YYYY-MM-DD. Existing history will be kept.`,
+    `Restart ${_progAthlete}'s programme on which Monday?\n\nUse YYYY-MM-DD. Existing history will be kept.`,
     nextProgrammeMonday()
   );
   if (effectiveDate === null) return;
@@ -3070,7 +3104,7 @@ async function restartProgramme() {
 
   const label = startWeek === 0 ? 'Discovery Week' : 'Week 1';
   if (!confirm(
-    `Restart ${_nutAthlete} at ${label} from ${date}?\n\n` +
+    `Restart ${_progAthlete} at ${label} from ${date}?\n\n` +
     'Their check-ins, activity, photos and previous programme history will not be deleted. ' +
     'Any sessions already planned from that Monday onward will be renumbered to the new programme weeks.'
   )) return;
@@ -3080,15 +3114,15 @@ async function restartProgramme() {
   try {
     const result = await maPost({
       action: 'reset_programme',
-      code: _nutAthlete,
+      code: _progAthlete,
       effective_date: date,
       start_week: startWeek,
     });
-    _startDateOverrides[_nutAthlete] = result.anchorDate;
-    _programmeRestarts[_nutAthlete] = result.restart;
+    _startDateOverrides[_progAthlete] = result.anchorDate;
+    _programmeRestarts[_progAthlete] = result.restart;
     await load({ bust: true });
     alert(
-      `${_nutAthlete} will restart at ${label} on ${date}.\n` +
+      `${_progAthlete} will restart at ${label} on ${date}.\n` +
       `${result.updatedSessions || 0} planned session${result.updatedSessions === 1 ? '' : 's'} relabelled.\n` +
       'Existing history was kept.'
     );
@@ -3101,15 +3135,15 @@ async function restartProgramme() {
 }
 
 async function saveStartDateOverride(value) {
-  if (!_nutAthlete) return;
+  if (!_progAthlete) return;
   const date = String(value || '').trim();
   try {
     if (date) {
-      await maPost({ action: 'setting_upsert', code: _nutAthlete, key: 'start_date_override', value: date });
-      _startDateOverrides[_nutAthlete] = date;
+      await maPost({ action: 'setting_upsert', code: _progAthlete, key: 'start_date_override', value: date });
+      _startDateOverrides[_progAthlete] = date;
     } else {
-      await maPost({ action: 'setting_delete', code: _nutAthlete, key: 'start_date_override' });
-      delete _startDateOverrides[_nutAthlete];
+      await maPost({ action: 'setting_delete', code: _progAthlete, key: 'start_date_override' });
+      delete _startDateOverrides[_progAthlete];
     }
     await load({ bust: true });
   } catch (e) {
@@ -3119,15 +3153,15 @@ async function saveStartDateOverride(value) {
 }
 
 async function saveProgWeeks(v) {
-  if (!_nutAthlete) return;
+  if (!_progAthlete) return;
   const n = parseInt(v, 10);
   const weeks = (!isNaN(n) && n > 0 && n <= 52) ? n : DEFAULT_PROG_WEEKS;
-  _progWeeks[_nutAthlete] = weeks;
+  _progWeeks[_progAthlete] = weeks;
   const el = document.getElementById('nut-prog-weeks');
   if (el) el.value = weeks;
   renderNutTable();
   try {
-    await maPost({ action: 'setting_upsert', code: _nutAthlete, key: 'programme_weeks', value: weeks });
+    await maPost({ action: 'setting_upsert', code: _progAthlete, key: 'programme_weeks', value: weeks });
   } catch (e) { console.warn('programme_weeks save failed', e); }
 }
 
@@ -3150,8 +3184,8 @@ function useNutritionPlanRows(rows, settings, loadError = null) {
       _programmeRestarts[r.athlete_code] = r.value;
     }
   });
-  const badge = document.getElementById('tab-nut-count');
-  if (badge) badge.textContent = _nutPlansLoadError ? '!' : (new Set(_nutPlans.map(r => r.athlete_code)).size || '—');
+  const badge = document.getElementById('tab-programming-count');
+  if (badge && _nutPlansLoadError) badge.textContent = '!';
   return _nutPlans.map(r => ({
     Name: r.athlete_code, Week: r.week_label,
     Calories: r.calories || '', Protein: r.protein || '', Carbs: r.carbs || '',
@@ -3184,6 +3218,26 @@ function _plannedKmForWeek(code, weekLabel) {
     sum += _sessionKm(r);
   });
   return Math.round(Math.max(sum, declared) * 10) / 10;
+}
+
+function _plannedSessionsForWeek(code, weekLabel) {
+  return _planRowsSB.filter(r => r.athlete_code === code
+    && String(r.week_label || '').trim() === weekLabel
+    && r.session_type !== 'Weekly KM Total'
+    && !/km total/i.test(r.title || ''));
+}
+
+function _keySessionForWeek(code, weekLabel) {
+  const rows = _plannedSessionsForWeek(code, weekLabel);
+  if (!rows.length) return null;
+  const score = row => {
+    const priority = Number(row.priority);
+    const explicit = row.is_key_session === true || row.key_session === true ? 100000 : 0;
+    const type = /race/i.test(row.session_type || row.title || '') ? 50000
+      : (/long run/i.test(row.session_type || row.title || '') ? 25000 : 0);
+    return explicit + (Number.isFinite(priority) ? Math.max(0, 100 - priority) * 100 : 0) + type + _sessionKm(row);
+  };
+  return rows.slice().sort((a, b) => score(b) - score(a))[0];
 }
 
 function _fmtProgrammeKm(n) {
@@ -3366,12 +3420,6 @@ function _fillTargetsKm(targets) {
   return targets;
 }
 
-function _nutAthleteCodes() {
-  const codes = new Set(_planAthleteCodes());
-  _nutPlans.forEach(r => codes.add(r.athlete_code));
-  return [...codes].filter(Boolean).sort();
-}
-
 function _nutWkNum(label) { if (isDiscoveryWeek(label)) return 0; const m = String(label || '').match(/(\d+)/); return m ? parseInt(m[1], 10) : -1; }
 
 // One programme-week resolver is shared by the athlete cards and Nutrition.
@@ -3416,47 +3464,62 @@ function _nutWeekOptions(row) {
   }).join('');
 }
 
-function renderNutritionTab() {
-  const codes = _nutAthleteCodes();
-  if (!_nutAthlete || !codes.includes(_nutAthlete)) {
-    _nutAthlete = localStorage.getItem('dp_nut_athlete');
-    if (!_nutAthlete || !codes.includes(_nutAthlete)) _nutAthlete = codes.filter(c => !COACHES.has(c))[0] || codes[0] || null;
-  }
-  document.getElementById('nut-ath-chips').innerHTML = buildAthChipsHTML(codes, _nutAthlete, 'setNutAthlete');
+function _renderProgBlockControls() {
   const pwEl = document.getElementById('nut-prog-weeks');
-  if (pwEl) pwEl.value = _nutAthlete ? getProgWeeks(_nutAthlete) : DEFAULT_PROG_WEEKS;
+  if (pwEl) pwEl.value = _progAthlete ? getProgWeeks(_progAthlete) : DEFAULT_PROG_WEEKS;
   const startEl = document.getElementById('nut-start-override');
-  if (startEl) startEl.value = (_nutAthlete && _startDateOverrides[_nutAthlete]) || '';
+  if (startEl) startEl.value = (_progAthlete && _startDateOverrides[_progAthlete]) || '';
+}
+
+function _mountProgrammingEditors() {
   if (window.WeeklySportTargetsEditor) {
     window.WeeklySportTargetsEditor.mount({
-      athleteCode: _nutAthlete,
-      preferredWeekLabel: _nutAthlete ? _nutCurrentWeekLabel(_nutAthlete) : null,
+      athleteCode: _progAthlete,
+      preferredWeekLabel: _progAthlete ? _progSelectedWeekLabel(_progAthlete) : null,
     });
   }
-  renderNutTable();
+  if (window.DailyMacroOverridesEditor) {
+    window.DailyMacroOverridesEditor.mount({ athleteCode: _progAthlete });
+  }
 }
+
+/** @deprecated Use setProgView('block'). */
+function renderNutritionTab() { setProgView('block'); }
+
+function setProgAthlete(code) {
+  _progAthlete = code;
+  try { localStorage.setItem('dp_prog_athlete', code); } catch {}
+  renderProgramming();
+}
+/** @deprecated Use setProgAthlete. */
 function setNutAthlete(code) {
-  _nutAthlete = code;
-  try { localStorage.setItem('dp_nut_athlete', code); } catch {}
-  renderNutritionTab();
+  setProgAthlete(code);
+}
+
+function _progSelectedWeekLabel(code) {
+  const rows = _planRowsForWeek(code, _planWeekStart());
+  const planned = rows.map(r => r.week_label).find(Boolean);
+  if (planned) return planned;
+  const current = _nutWkNum(_nutCurrentWeekLabel(code));
+  return current >= 0 ? `Week ${Math.max(0, current + _progWeekOffset)}` : null;
 }
 
 let _nutRenderRows = [];
 function renderNutTable() {
   const wrap = document.getElementById('nut-table-wrap');
   const meta = document.getElementById('nut-meta');
-  if (!_nutAthlete) { wrap.innerHTML = '<div class="nut-empty">No athletes found</div>'; meta.textContent = ''; return; }
+  if (!_progAthlete) { wrap.innerHTML = '<div class="nut-empty">No athletes found</div>'; meta.textContent = ''; return; }
 
-  const curWk = _nutCurrentWeekLabel(_nutAthlete);
+  const curWk = _progSelectedWeekLabel(_progAthlete);
   _nutRenderRows = _nutPlans
-    .filter(r => r.athlete_code === _nutAthlete)
+    .filter(r => r.athlete_code === _progAthlete)
     .sort((a, b) => _nutWkNum(a.week_label) - _nutWkNum(b.week_label));
 
   const curNum = curWk ? _nutWkNum(curWk) : null;
   const hasCurrent = !!(curWk && _nutRenderRows.some(r => r.week_label === curWk));
   const addButton = document.getElementById('nut-add-week-btn');
   if (addButton) addButton.textContent = !hasCurrent && curWk ? `+ ${displayWeekLabel(curWk)}` : '+ Week';
-  meta.textContent = `${_nutAthlete} — ${curNum != null ? `${fmtWk(curNum, true)} of ${getProgWeeks(_nutAthlete)} from programming` : `${getProgWeeks(_nutAthlete)}-week programme`} · nutrition and sport targets use the same programme week · publish a sport target to lock it for the athlete`;
+  meta.textContent = `${_progAthlete} — ${curNum != null ? `${fmtWk(curNum, true)} of ${getProgWeeks(_progAthlete)} from programming` : `${getProgWeeks(_progAthlete)}-week programme`} · nutrition and sport targets use the same programme week · publish a sport target to lock it for the athlete`;
 
   if (_nutPlansLoadError) {
     wrap.innerHTML = `<div class="nut-empty">Nutrition prescriptions could not load — ${esc(_nutPlansLoadError)}. No plans were deleted. Use Refresh to try again.</div>`;
@@ -3472,29 +3535,32 @@ function renderNutTable() {
   const rowsHtml = _nutRenderRows.map((r, i) => {
     const isCur = curWk && r.week_label === curWk;
     const autoKm = _plannedKmForWeek(r.athlete_code, r.week_label);
-    return `<tr class="nut-row${isCur ? ' current' : ''}">
-      <td><select class="nut-week-select" id="nut-${i}-week" onchange="relabelNutWeek(${i},this.value)">${_nutWeekOptions(r)}</select>${isCur ? '<span class="nut-now">NOW</span>' : ''}<span class="nut-week-cap">Programme week</span></td>
-      <td><input class="nut-input" id="nut-${i}-cal"   value="${iv(r.calories)}" placeholder="kcal" oninput="nutDirty(${i})"></td>
-      <td><input class="nut-input" id="nut-${i}-pro"   value="${iv(r.protein)}"  placeholder="g"    oninput="nutDirty(${i})"></td>
-      <td><input class="nut-input" id="nut-${i}-carb"  value="${iv(r.carbs)}"    placeholder="g"    oninput="nutDirty(${i})"></td>
-      <td><input class="nut-input" id="nut-${i}-fat"   value="${iv(r.fats)}"     placeholder="g"    oninput="nutDirty(${i})"></td>
-      <td><input class="nut-input" id="nut-${i}-fib"   value="${iv(r.fibre)}"    placeholder="g"    oninput="nutDirty(${i})"></td>
-      <td class="nut-sport-target running">${window.WeeklySportTargetsEditor?.sportCellHtml({ weekLabel: r.week_label, sport: 'running', planKm: autoKm, legacyKm: r.weekly_km_target }) || `<span class="nut-km-auto">${iv(r.weekly_km_target ?? (autoKm > 0 ? autoKm : '—'))} km<span class="src">Loading running target</span></span>`}</td>
-      <td class="nut-sport-target cycling">${window.WeeklySportTargetsEditor?.sportCellHtml({ weekLabel: r.week_label, sport: 'cycling', planKm: autoKm, legacyKm: r.weekly_km_target }) || '<span class="nut-km-auto">—<span class="src">Loading cycling target</span></span>'}</td>
-      <td class="nut-sport-target swimming">${window.WeeklySportTargetsEditor?.sportCellHtml({ weekLabel: r.week_label, sport: 'swimming', planKm: autoKm, legacyKm: r.weekly_km_target }) || '<span class="nut-km-auto">—<span class="src">Loading swimming target</span></span>'}</td>
-      <td><input class="nut-input wide" id="nut-${i}-notes" value="${iv(r.notes)}" placeholder="Coach note" oninput="nutDirty(${i})"></td>
-      <td class="nut-actions"><button class="nut-save" id="nut-${i}-save" onclick="saveNutRow(${i})">Save</button><button class="nut-del" id="nut-${i}-del" onclick="deleteNutRow(${i})" title="Delete this week">&#10005;</button></td>
+    const plannedSessions = _plannedSessionsForWeek(r.athlete_code, r.week_label);
+    const keySession = _keySessionForWeek(r.athlete_code, r.week_label);
+    const adjustedDays = window.DailyMacroOverridesEditor?.publishedCountForWeek(r.week_label) || 0;
+    return `<tr class="nut-row${isCur ? ' current selected' : ''}" onclick="if(event.target.closest('input,button,select'))return;openProgWeek('${esc(r.week_label)}')" title="Open ${esc(displayWeekLabel(r.week_label))} in Week view">
+      <td data-label="Week"><select class="nut-week-select" id="nut-${i}-week" onchange="relabelNutWeek(${i},this.value)">${_nutWeekOptions(r)}</select>${isCur ? '<span class="nut-now">OPEN</span>' : ''}<span class="nut-week-cap">Programme week</span></td>
+      <td data-label="Calories"><input class="nut-input" id="nut-${i}-cal" value="${iv(r.calories)}" placeholder="kcal" oninput="nutDirty(${i})"></td>
+      <td data-label="Protein"><input class="nut-input" id="nut-${i}-pro" value="${iv(r.protein)}" placeholder="g" oninput="nutDirty(${i})"></td>
+      <td data-label="Carbs"><input class="nut-input" id="nut-${i}-carb" value="${iv(r.carbs)}" placeholder="g" oninput="nutDirty(${i})"></td>
+      <td data-label="Fats"><input class="nut-input" id="nut-${i}-fat" value="${iv(r.fats)}" placeholder="g" oninput="nutDirty(${i})"></td>
+      <td data-label="Fibre"><input class="nut-input" id="nut-${i}-fib" value="${iv(r.fibre)}" placeholder="g" oninput="nutDirty(${i})"></td>
+      <td data-label="Sessions"><span class="nut-km-auto">${plannedSessions.length}<span class="src">planned</span></span></td>
+      <td data-label="Load"><span class="nut-km-auto">${autoKm > 0 ? iv(autoKm) + ' km' : '—'}<span class="src">week load</span></span></td>
+      <td data-label="Key session"><span class="nut-km-auto">${keySession ? esc(keySession.title || 'Session') : '—'}${keySession && _sessionKm(keySession) ? `<span class="src">${iv(_sessionKm(keySession))} km</span>` : ''}</span></td>
+      <td data-label="Days adjusted"><button class="nut-save" onclick="openProgWeek('${esc(r.week_label)}')">${adjustedDays} day${adjustedDays === 1 ? '' : 's'}</button></td>
+      <td data-label="Notes"><input class="nut-input wide" id="nut-${i}-notes" value="${iv(r.notes)}" placeholder="Coach note" oninput="nutDirty(${i})"></td>
+      <td data-label="Actions" class="nut-actions"><button class="nut-save" id="nut-${i}-save" onclick="saveNutRow(${i})">Save</button><button class="nut-del" id="nut-${i}-del" onclick="deleteNutRow(${i})" title="Delete this week">&#10005;</button></td>
     </tr>`;
   }).join('');
 
   wrap.innerHTML = `<table class="nut-table">
     <thead><tr>
       <th>Week</th><th>Calories</th><th>Protein</th><th>Carbs</th><th>Fats</th><th>Fibre</th>
-      <th>Running</th><th>Cycling</th><th>Swimming</th><th>Notes</th><th></th>
+      <th>Sessions</th><th>Load</th><th>Key session</th><th>Days adj.</th><th>Notes</th><th></th>
     </tr></thead>
     <tbody>${rowsHtml}</tbody>
   </table>`;
-  window.WeeklySportTargetsEditor?.bindCells(wrap);
 }
 
 function nutDirty(i) {
@@ -3579,17 +3645,17 @@ async function deleteNutRow(i) {
 }
 
 function addNutWeek() {
-  if (!_nutAthlete) return;
-  const athleteRows = _nutPlans.filter(r => r.athlete_code === _nutAthlete);
+  if (!_progAthlete) return;
+  const athleteRows = _nutPlans.filter(r => r.athlete_code === _progAthlete);
   const maxWk = athleteRows
     .reduce((m, r) => Math.max(m, _nutWkNum(r.week_label)), 0);
-  const currentWk = _nutWkNum(_nutCurrentWeekLabel(_nutAthlete));
+  const currentWk = _nutWkNum(_progSelectedWeekLabel(_progAthlete));
   const hasCurrent = currentWk >= 0 && athleteRows.some(r => _nutWkNum(r.week_label) === currentWk);
   const nextWk = currentWk >= 0 && !hasCurrent ? currentWk : maxWk + 1;
   // Extending past the programme end bumps the programme length automatically
-  if (nextWk > getProgWeeks(_nutAthlete)) saveProgWeeks(nextWk);
+  if (nextWk > getProgWeeks(_progAthlete)) saveProgWeeks(nextWk);
   _nutPlans.push({
-    athlete_code: _nutAthlete, week_label: `Week ${nextWk}`,
+    athlete_code: _progAthlete, week_label: `Week ${nextWk}`,
     calories: null, protein: null, carbs: null, fats: null, fibre: null,
     weekly_km_target: null, notes: null,
   });
@@ -3606,28 +3672,81 @@ function buildAthChipsHTML(codes, active, handlerName) {
     + (co.length ? `<span class="chip-divider">Coaches</span>` + co.map(chip).join('') : '');
 }
 
-function renderPlanning() {
-  const codes = _planAthleteCodes();
-  if (!_planAthlete || !codes.includes(_planAthlete)) {
-    _planAthlete = localStorage.getItem('dp_plan_athlete');
-    if (!_planAthlete || !codes.includes(_planAthlete)) _planAthlete = codes.filter(c => !COACHES.has(c))[0] || codes[0] || null;
+function _renderProgContext() {
+  const context = document.getElementById('prog-context');
+  if (!context) return;
+  const ws = _planWeekStart();
+  const we = new Date(ws); we.setDate(we.getDate() + 6);
+  const fmt = d => d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
+  const weekLabel = _progAthlete ? _progSelectedWeekLabel(_progAthlete) : null;
+  context.innerHTML = _progView === 'week'
+    ? `One athlete, one week · <b>${esc(_progAthlete || 'No athlete')}</b> · <b>${esc(displayWeekLabel(weekLabel || 'Week'))}</b> · ${fmt(ws)} – ${fmt(we)}`
+    : `Same athlete, same block · <b>${esc(_progAthlete || 'No athlete')}</b> · ${_progAthlete ? getProgWeeks(_progAthlete) : DEFAULT_PROG_WEEKS}-week programme · selected <b>${esc(displayWeekLabel(weekLabel || 'Week'))}</b>`;
+}
+
+function setProgView(view) {
+  _progView = view === 'block' ? 'block' : 'week';
+  try { localStorage.setItem('dp_prog_view', _progView); } catch {}
+  renderProgramming();
+}
+
+function renderProgramming() {
+  const codes = _progAthleteCodes();
+  if (!_progAthlete || !codes.includes(_progAthlete)) {
+    _progAthlete = codes.filter(c => !COACHES.has(c))[0] || codes[0] || null;
+    if (_progAthlete) try { localStorage.setItem('dp_prog_athlete', _progAthlete); } catch {}
   }
-  document.getElementById('plan-ath-chips').innerHTML = buildAthChipsHTML(codes, _planAthlete, 'setPlanAthlete');
-  if (_planLibOpen) renderPlanLibrary(); else renderPlanGrid();
+  const chips = document.getElementById('prog-ath-chips');
+  if (chips) chips.innerHTML = buildAthChipsHTML(codes, _progAthlete, 'setProgAthlete');
+  const weekBody = document.getElementById('prog-week-body');
+  const blockBody = document.getElementById('prog-block-body');
+  const weekToolbar = document.getElementById('prog-week-toolbar');
+  const blockToolbar = document.getElementById('prog-block-toolbar');
+  if (weekBody) weekBody.hidden = _progView !== 'week';
+  if (blockBody) blockBody.hidden = _progView !== 'block';
+  if (weekToolbar) weekToolbar.hidden = _progView !== 'week';
+  if (blockToolbar) blockToolbar.hidden = _progView !== 'block';
+  document.getElementById('prog-view-week')?.classList.toggle('active', _progView === 'week');
+  document.getElementById('prog-view-block')?.classList.toggle('active', _progView === 'block');
+  _renderProgBlockControls();
+  _mountProgrammingEditors();
+  if (_progView === 'block') renderNutTable();
+  else if (_planLibOpen) renderPlanLibrary();
+  else renderPlanGrid();
+  _renderProgContext();
 }
+/** @deprecated Use setProgView('week'). */
+function renderPlanning() { setProgView('week'); }
+/** @deprecated Use setProgAthlete. */
 function setPlanAthlete(code) {
-  _planAthlete = code;
-  try { localStorage.setItem('dp_plan_athlete', code); } catch {}
-  renderPlanning();
+  setProgAthlete(code);
 }
-function planWeekNav(d)  { _planWeekOffset += d; renderPlanGrid(); }
-function planWeekReset() { _planWeekOffset = 0; renderPlanGrid(); }
+function planWeekNav(d)  { _progWeekOffset += d; renderProgramming(); }
+function planWeekReset() { _progWeekOffset = 0; renderProgramming(); }
+
+function openProgWeek(weekLabel) {
+  const selected = _nutWkNum(weekLabel);
+  const current = _nutWkNum(_nutCurrentWeekLabel(_progAthlete));
+  _progWeekOffset = selected >= 0 && current >= 0 ? selected - current : 0;
+  setProgView('week');
+}
 
 function _planRowsForWeek(code, ws) {
   const wsISO = _isoDate(ws);
   const we = new Date(ws); we.setDate(we.getDate() + 6);
   const weISO = _isoDate(we);
   return _planRowsSB.filter(r => r.athlete_code === code && r.planned_date && r.planned_date >= wsISO && r.planned_date <= weISO);
+}
+
+function _weeklyMacrosForWeek(code, weekLabel) {
+  const row = _nutPlans.find(r => r.athlete_code === code && r.week_label === weekLabel) || null;
+  return row ? {
+    calories: row.calories,
+    proteinG: row.protein,
+    carbsG: row.carbs,
+    fatsG: row.fats,
+    fibreG: row.fibre,
+  } : null;
 }
 
 function renderPlanGrid() {
@@ -3639,13 +3758,36 @@ function renderPlanGrid() {
   const we = new Date(ws); we.setDate(we.getDate() + 6);
   const fmt = d => d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
   document.getElementById('plan-week-label').textContent =
-    _planWeekOffset === 0 ? 'This Week' : fmt(ws) + ' – ' + fmt(we);
+    _progWeekOffset === 0 ? 'This Week' : fmt(ws) + ' – ' + fmt(we);
 
-  const rows = _planAthlete ? _planRowsForWeek(_planAthlete, ws) : [];
-  const wkLabel = displayWeekLabel(rows.map(r => r.week_label).find(Boolean) || '');
+  const rows = _progAthlete ? _planRowsForWeek(_progAthlete, ws) : [];
+  const rawWeekLabel = rows.map(r => r.week_label).find(Boolean) || (_progAthlete ? _progSelectedWeekLabel(_progAthlete) : '');
+  const wkLabel = displayWeekLabel(rawWeekLabel || '');
+  const baseline = _progAthlete ? _weeklyMacrosForWeek(_progAthlete, rawWeekLabel) : null;
   const totalKm = rows.reduce((s, r) => s + (parseFloat(r.distance_km) || 0), 0);
   document.getElementById('plan-week-meta').textContent =
-    `${esc(_planAthlete || '—')} · ${fmt(ws)} – ${fmt(we)}${wkLabel ? ' · ' + wkLabel : ''} · ${rows.length} session${rows.length === 1 ? '' : 's'}${totalKm ? ' · ' + (Math.round(totalKm * 10) / 10) + ' km planned' : ''}`;
+    `${esc(_progAthlete || '—')} · ${fmt(ws)} – ${fmt(we)}${wkLabel ? ' · ' + wkLabel : ''} · ${rows.length} session${rows.length === 1 ? '' : 's'}${totalKm ? ' · ' + (Math.round(totalKm * 10) / 10) + ' km planned' : ''}`;
+  const weekBar = document.getElementById('prog-week-bar');
+  if (weekBar) {
+    weekBar.innerHTML = window.DailyMacroOverridesEditor?.weekBarHtml({
+      weekLabel: rawWeekLabel,
+      weekStart: _isoDate(ws),
+      baseline,
+    }) || '<div class="dmo-week-bar"></div>';
+    const weeklyRow = _nutPlans.find(r => r.athlete_code === _progAthlete && r.week_label === rawWeekLabel) || null;
+    const sports = document.createElement('div');
+    sports.className = 'dmo-week-sports';
+    sports.innerHTML = ['running','cycling','swimming'].map(sport =>
+      window.WeeklySportTargetsEditor?.sportCellHtml({
+        weekLabel: rawWeekLabel,
+        sport,
+        planKm: totalKm,
+        legacyKm: weeklyRow?.weekly_km_target,
+      }) || `<span class="nut-km-auto">${esc(sport)} target loading</span>`
+    ).join('');
+    (weekBar.querySelector('.dmo-week-bar') || weekBar).appendChild(sports);
+    window.WeeklySportTargetsEditor?.bindCells(weekBar);
+  }
 
   const todayISO = _isoDate(new Date());
   let html = '';
@@ -3671,16 +3813,20 @@ function renderPlanGrid() {
         <span class="plan-card-status ${esc(r.status || 'Planned')}">${esc(r.status || 'Planned')}</span>
       </div>`;
     });
-    html += `<button class="plan-add-btn" onclick="openPlanSession(null,'${iso}')">+ Add</button></div>`;
+    html += `<button class="plan-add-btn" onclick="openPlanSession(null,'${iso}')">+ Add</button>`;
+    html += window.DailyMacroOverridesEditor?.footerHtml({ date: iso, weekLabel: rawWeekLabel, baseline }) || '';
+    html += `</div>`;
   }
   grid.innerHTML = html;
+  window.DailyMacroOverridesEditor?.bindCells(grid, label => _weeklyMacrosForWeek(_progAthlete, label));
 }
 
 function updatePlanningBadge() {
-  const el = document.getElementById('tab-planning-count');
+  const el = document.getElementById('tab-programming-count');
   if (!el) return;
-  const saved = _planWeekOffset; _planWeekOffset = 0;
-  const ws = _planWeekStart(); _planWeekOffset = saved;
+  if (_nutPlansLoadError) { el.textContent = '!'; return; }
+  const saved = _progWeekOffset; _progWeekOffset = 0;
+  const ws = _planWeekStart(); _progWeekOffset = saved;
   const wsISO = _isoDate(ws);
   const we = new Date(ws); we.setDate(we.getDate() + 6);
   const weISO = _isoDate(we);
@@ -3689,11 +3835,11 @@ function updatePlanningBadge() {
 
 // ── Copy week → next week ─────────────────────────────────────────────────────
 async function copyPlanWeek() {
-  if (!_planAthlete) return;
+  if (!_progAthlete) return;
   const ws = _planWeekStart();
-  const rows = _planRowsForWeek(_planAthlete, ws);
+  const rows = _planRowsForWeek(_progAthlete, ws);
   if (!rows.length) { alert('No sessions in this week to copy.'); return; }
-  if (!confirm(`Copy ${rows.length} session${rows.length === 1 ? '' : 's'} for ${_planAthlete} into next week?`)) return;
+  if (!confirm(`Copy ${rows.length} session${rows.length === 1 ? '' : 's'} for ${_progAthlete} into next week?`)) return;
   const clones = rows.map(r => {
     const d = new Date(r.planned_date + 'T00:00:00'); d.setDate(d.getDate() + 7);
     const wkNum = r.week_label && /\d+/.test(r.week_label) ? 'Week ' + (parseInt(r.week_label.match(/\d+/)[0], 10) + 1) : r.week_label;
@@ -3714,7 +3860,7 @@ async function copyPlanWeek() {
     return;
   }
   _planRowsSB = _planRowsSB.concat(result.rows || []);
-  _planWeekOffset += 1;
+  _progWeekOffset += 1;
   renderPlanGrid();
   updatePlanningBadge();
 }
@@ -3795,7 +3941,7 @@ function openPlanSession(id, dateISO) {
   _psEditingId = id || null;
   const row = id ? _planRowsSB.find(r => r.id === id) : null;
   document.getElementById('ps-title').textContent = row ? 'Edit Session' : 'Plan Session';
-  document.getElementById('ps-sub').textContent = (_planAthlete || '') + (row?.planned_date ? ' · ' + fmtDate(row.planned_date) : dateISO ? ' · ' + fmtDate(dateISO) : '');
+  document.getElementById('ps-sub').textContent = (_progAthlete || '') + (row?.planned_date ? ' · ' + fmtDate(row.planned_date) : dateISO ? ' · ' + fmtDate(dateISO) : '');
   document.getElementById('ps-delete').style.display = row ? '' : 'none';
 
   // Library template (searchable)
@@ -3806,19 +3952,19 @@ function openPlanSession(id, dateISO) {
 
   // Strength split select — preselect if the title matches a split name
   const spSel = document.getElementById('ps-split');
-  const splits = splitsForAthlete(_planAthlete);
+  const splits = splitsForAthlete(_progAthlete);
   spSel.innerHTML = '<option value="">— split —</option>' +
     splits.map(s => {
       const audience = splitAudienceLabel(s);
       return `<option value="${s.id}">${esc(s.name)}${audience ? ' · ' + esc(audience) : ''} (${(s.exercises || []).length} ex)</option>`;
     }).join('');
-  const matched = row ? splitForTitle(row.title, _planAthlete) : null;
+  const matched = row ? splitForTitle(row.title, _progAthlete) : null;
   spSel.value = matched ? matched.id : '';
 
   // Guess week label for new sessions from neighbours in the same visible week
   let weekGuess = '';
-  if (!row && _planAthlete) {
-    weekGuess = _planRowsForWeek(_planAthlete, _planWeekStart()).map(r => r.week_label).find(Boolean) || '';
+  if (!row && _progAthlete) {
+    weekGuess = _planRowsForWeek(_progAthlete, _planWeekStart()).map(r => r.week_label).find(Boolean) || '';
   }
 
   document.getElementById('ps-name').value      = row?.title || '';
@@ -3961,7 +4107,7 @@ function renderPsExPreview() {
   const type = document.getElementById('ps-type').value;
   const strish = type === 'Strength' || type === 'Run + Strength';
   let sp = _splitsCache.find(s => s.id === document.getElementById('ps-split').value) || null;
-  if (!sp) sp = splitForTitle(document.getElementById('ps-name').value, _planAthlete);
+  if (!sp) sp = splitForTitle(document.getElementById('ps-name').value, _progAthlete);
   if (!strish || !sp) { el.style.display = 'none'; el.innerHTML = ''; return; }
   const exs = sp.exercises || [];
   el.style.display = '';
@@ -3975,7 +4121,7 @@ function renderPsExPreview() {
     <div class="ps-ex-preview-hint">Edit exercises in Library → Workout Splits</div>`;
 }
 async function savePlanSession() {
-  if (!_planAthlete && !_psEditingId) { alert('Pick an athlete first.'); return; }
+  if (!_progAthlete && !_psEditingId) { alert('Pick an athlete first.'); return; }
   if (_psMode === 'discovery') return saveDiscoverySession();
   const v = id => document.getElementById(id).value.trim();
   const dist = v('ps-dist');
@@ -4007,7 +4153,7 @@ async function savePlanSession() {
       const i = _planRowsSB.findIndex(r => r.id === _psEditingId);
       if (i >= 0) _planRowsSB[i] = data;
     } else {
-      patch.athlete_code = _planAthlete;
+      patch.athlete_code = _progAthlete;
       const result = await maPost({ action: 'plan_insert', row: patch });
       const data = result.rows?.[0];
       if (!data) throw new Error('The new session was not returned');
@@ -4059,7 +4205,7 @@ async function saveDiscoverySession() {
       const rows = days.map(i => {
         const d = new Date(mon); d.setDate(d.getDate() + i);
         return {
-          athlete_code: _planAthlete,
+          athlete_code: _progAthlete,
           title, session_type: 'discovery', status, week_label: week,
           planned_date: _isoDate(d),
           run_details: instruction, notes: instruction,
@@ -9113,8 +9259,13 @@ async function decideApplication(notionId, name, decision) {
 
 // ── Tab switching ─────────────────────────────────────────────────────────────
 function switchTab(tab) {
-  const idMap = { applications: 'apps', notifications: 'notif', nutrition: 'nut' };
-  const tabs = ['triage','athletes','planning','nutrition','coaches','sync','applications','notifications','send'];
+  if (tab === 'planning' || tab === 'nutrition') {
+    _progView = tab === 'nutrition' ? 'block' : 'week';
+    try { localStorage.setItem('dp_prog_view', _progView); } catch {}
+    tab = 'programming';
+  }
+  const idMap = { applications: 'apps', notifications: 'notif' };
+  const tabs = ['triage','athletes','programming','coaches','sync','applications','notifications','send'];
   tabs.forEach(t => {
     const key = idMap[t] || t;
     const btn     = document.getElementById(`tab-${key}-btn`);
@@ -9136,15 +9287,14 @@ function switchTab(tab) {
   // Navigation should never be blocked by a slow or incomplete data render.
   // Paint the destination first, then hydrate its content independently.
   try {
-    if (tab === 'planning') renderPlanning();
-    if (tab === 'nutrition') renderNutritionTab();
+    if (tab === 'programming') renderProgramming();
     if (tab === 'send') cnPopulate();
   } catch (err) {
     console.warn('[tabs] content render failed for ' + tab, err);
   }
 
   const needsFullData = new Set([
-    'triage', 'athletes', 'planning', 'nutrition', 'coaches', 'sync', 'applications', 'notifications',
+    'triage', 'athletes', 'programming', 'coaches', 'sync', 'applications', 'notifications',
   ]).has(tab);
   if (needsFullData && !_fullDashboardLoaded && !_fullDashboardLoading) load();
 
@@ -9399,10 +9549,8 @@ async function load({ bust = false } = {}) {
     renderNotifications(applications, _decisions);
     renderApplications(applications, _decisions);
     updatePlanningBadge();
-    const planTab = document.getElementById('tab-planning-content');
-    if (planTab && planTab.style.display !== 'none') renderPlanning();
-    const nutTab = document.getElementById('tab-nut-content');
-    if (nutTab && nutTab.style.display !== 'none') renderNutritionTab();
+    const programmingTab = document.getElementById('tab-programming-content');
+    if (programmingTab && programmingTab.style.display !== 'none') renderProgramming();
 
     document.getElementById('loading').style.display = 'none';
     document.getElementById('content').style.display = 'block';
@@ -9568,8 +9716,8 @@ window.addEventListener('popstate', event => {
 // Jump from the FP view straight into planning for this athlete
 function fpPlanWeek(id) {
   hideFP();
-  _planAthlete = id;
-  try { localStorage.setItem('dp_plan_athlete', id); } catch {}
+  _progAthlete = id;
+  try { localStorage.setItem('dp_prog_athlete', id); } catch {}
   switchTab('planning');
 }
 
@@ -11040,6 +11188,7 @@ document.getElementById('gen-btn').addEventListener('click', generateAI);
 <script src="/dashboard-mobilenav.js" defer></script>
 <script src="/triage.js?v=21" defer></script>
 <script src="/weekly-sport-targets.js?v=3" defer></script>
+<script src="/daily-macro-overrides.js?v=1" defer></script>
 <script src="/programming.js?v=4" defer></script>
 <script src="/app.js" defer></script>
 </body>

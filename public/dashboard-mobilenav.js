@@ -13,8 +13,7 @@
   var PRIMARY = [
     { key: 'triage',    label: 'Today',  icon: 'today'  },
     { key: 'athletes',  label: 'Squad',  icon: 'squad'  },
-    { key: 'planning',  label: 'Plan',   icon: 'plan'   },
-    { key: 'nutrition', label: 'Fuel',   icon: 'fuel'   }
+    { key: 'programming', label: 'Program', icon: 'plan' }
   ];
   var MORE = [
     { key: 'send',          label: 'Notify',   icon: 'send'     },
@@ -29,8 +28,7 @@
   var BADGE_SRC = {
     triage:       'tab-triage-count',
     athletes:     'tab-ath-count',
-    planning:     'tab-planning-count',
-    nutrition:    'tab-nut-count',
+    programming:  'tab-programming-count',
     sync:         'tab-sync-count',
     applications: 'tab-apps-count',
     notifications:'tab-notif-count'
@@ -192,7 +190,7 @@
     var original = window.switchTab;
     var wrapped = function (tab) {
       var r = original.apply(this, arguments);
-      try { setActive(tab); } catch (e) {}
+      try { setActive(tab === 'planning' || tab === 'nutrition' ? 'programming' : tab); } catch (e) {}
       return r;
     };
     wrapped.__dpWrapped = true;
@@ -278,8 +276,7 @@
 
   function addMobileSectionTitles() {
     var sections = {
-      'tab-planning-content': ['Programming', 'Build and adjust the week'],
-      'tab-nut-content': ['Nutrition', 'Targets and weekly progression'],
+      'tab-programming-content': ['Programming', 'Week sessions and block targets'],
       'tab-coaches-content': ['Coaches', 'Karl and Alex training'],
       'tab-sync-content': ['Data health', 'Spot gaps before coaching decisions'],
       'tab-apps-content': ['Pipeline', 'Review every application'],
@@ -307,7 +304,7 @@
     // Reflect whichever tab is active on load.
     var current = document.querySelector('.tab.active');
     var onload = current && current.id ? current.id.replace('tab-', '').replace('-btn', '') : 'triage';
-    var keyFix = { triage: 'triage', ath: 'athletes', athletes: 'athletes', planning: 'planning', nut: 'nutrition', coaches: 'coaches', sync: 'sync', apps: 'applications', notif: 'notifications', send: 'send' };
+    var keyFix = { triage: 'triage', ath: 'athletes', athletes: 'athletes', programming: 'programming', planning: 'programming', nut: 'programming', coaches: 'coaches', sync: 'sync', apps: 'applications', notif: 'notifications', send: 'send' };
     setActive(keyFix[onload] || 'triage');
 
     // switchTab is defined in a later inline script; wait for it.

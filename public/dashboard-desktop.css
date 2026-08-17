@@ -143,7 +143,7 @@
   .dash-table tbody tr:hover td { background: color-mix(in srgb, var(--brand) 6%, var(--surface)); }
 
   /* Programming: give seven-day planning enough visual weight */
-  #tab-planning-content .plan-section { overflow-x: auto; }
+  #tab-programming-content .plan-section { overflow-x: auto; }
   .plan-toolbar {
     padding: 15px 16px;
     margin-bottom: 16px;
@@ -164,7 +164,7 @@
   .plan-add-btn { min-height: 36px; }
 
   /* Nutrition: readable table density and persistent column labels */
-  #tab-nut-content .plan-section { max-width: var(--desktop-max); }
+  #tab-programming-content .plan-section { max-width: var(--desktop-max); }
   .nut-table-wrap { border-radius: 14px; }
   .nut-table th {
     position: static;

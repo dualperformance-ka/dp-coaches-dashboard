@@ -1,0 +1,40 @@
+.dmo-week-bar{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin:0 0 12px;padding:10px 12px;border:1px solid var(--border);border-radius:9px;background:var(--surface)}
+.dmo-week-bar .dmo-kicker,.dmo-fuel-footer .dmo-state{font-family:var(--mono);font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--dim)}
+.dmo-week-bar .dmo-value{font-family:var(--mono);font-size:10px;color:var(--text)}
+.dmo-week-bar .dmo-count{margin-left:auto;color:var(--brand-text)}
+.dmo-week-sports{display:grid;grid-template-columns:repeat(3,minmax(130px,1fr));gap:6px;flex:1 1 100%;padding-top:8px;border-top:1px solid var(--border)}
+.dmo-week-sports .wst-sport-summary{min-height:58px}
+.dmo-fuel-footer{width:100%;margin-top:2px;padding:7px;border:0;border-top:2px solid var(--border-mid);border-radius:0 0 6px 6px;background:var(--surface2);text-align:left;cursor:pointer;color:var(--muted)}
+.dmo-fuel-footer:hover{background:var(--brand-bg)}
+.dmo-fuel-footer.draft{border-top-color:#fbbf24}
+.dmo-fuel-footer.published{border-top-color:#4ade80}
+.dmo-fuel-footer .dmo-main{display:flex;justify-content:space-between;gap:6px;margin-top:3px;font-family:var(--mono);font-size:10px}
+.dmo-fuel-footer .dmo-label{display:block;margin-top:3px;font-family:var(--mono);font-size:8px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dmo-fuel-footer.draft .dmo-state{color:#fbbf24}.dmo-fuel-footer.published .dmo-state{color:#4ade80}
+.dmo-overlay{position:fixed;inset:0;z-index:10020;display:flex;align-items:center;justify-content:center;padding:18px;background:rgba(0,0,0,.72);backdrop-filter:blur(4px)}
+.dmo-dialog{width:min(1180px,96vw);max-height:92vh;overflow:auto;border:1px solid var(--border-mid);border-radius:14px;background:var(--surface);box-shadow:0 24px 80px rgba(0,0,0,.5)}
+.dmo-head{position:sticky;top:0;z-index:2;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:16px 18px;border-bottom:1px solid var(--border);background:var(--surface)}
+.dmo-head strong{display:block;font-family:var(--cond);font-size:20px;color:var(--text)}
+.dmo-head span{display:block;margin-top:3px;font-family:var(--mono);font-size:9px;color:var(--dim)}
+.dmo-close{border:0;background:transparent;color:var(--muted);font-size:25px;cursor:pointer}
+.dmo-grid{display:flex;flex-direction:column;padding:10px}
+.dmo-row{display:grid;grid-template-columns:92px 1.1fr repeat(5,minmax(74px,.75fr)) 1.5fr 112px 128px;gap:8px;align-items:end;padding:10px;border:1px solid transparent;border-bottom-color:var(--border)}
+.dmo-row.focused{border-color:var(--brand);border-radius:9px;background:var(--brand-bg)}
+.dmo-date strong{display:block;font-family:var(--cond);font-size:14px;color:var(--text)}
+.dmo-date span{font-family:var(--mono);font-size:8px;color:var(--dim)}
+.dmo-field>span{display:block;margin-bottom:4px;font-family:var(--mono);font-size:8px;text-transform:uppercase;letter-spacing:.06em;color:var(--dim)}
+.dmo-field input,.dmo-field select{width:100%;min-width:0;padding:7px 8px;border:1px solid var(--border-mid);border-radius:6px;background:var(--surface3,var(--surface2));color:var(--text);font:10px var(--mono)}
+.dmo-field input:focus,.dmo-field select:focus{outline:none;border-color:var(--brand)}
+.dmo-delta{display:block;min-height:12px;margin-top:3px;font:8px var(--mono);color:var(--dim)}
+.dmo-delta.up{color:#4ade80}.dmo-delta.down{color:#fbbf24}
+.dmo-actions{display:flex;gap:5px;flex-wrap:wrap}
+.dmo-actions button,.dmo-copy button{padding:6px 8px;border:1px solid var(--border-mid);border-radius:6px;background:transparent;color:var(--muted);font:700 8px var(--mono);text-transform:uppercase;cursor:pointer}
+.dmo-actions .dmo-save{border-color:var(--brand-border);background:var(--brand-bg);color:var(--brand-text)}
+.dmo-actions .dmo-remove{color:var(--red-text)}
+.dmo-copy{position:relative}.dmo-copy details{font:8px var(--mono);color:var(--dim)}
+.dmo-copy summary{cursor:pointer;padding:6px;border:1px solid var(--border-mid);border-radius:6px;list-style:none;text-transform:uppercase}
+.dmo-copy-list{position:absolute;right:0;bottom:100%;z-index:3;width:170px;padding:8px;border:1px solid var(--border-mid);border-radius:8px;background:var(--surface2);box-shadow:0 10px 30px rgba(0,0,0,.4)}
+.dmo-copy-list label{display:block;padding:3px;color:var(--muted)}
+.dmo-message{position:sticky;bottom:0;min-height:34px;padding:10px 18px;background:var(--surface);border-top:1px solid var(--border);font:9px var(--mono);color:#4ade80}.dmo-message.bad{color:var(--red-text)}
+@media(max-width:900px){.dmo-row{grid-template-columns:repeat(3,1fr)}.dmo-date{grid-column:1/-1}.dmo-field.note{grid-column:1/3}.dmo-actions,.dmo-copy{align-self:center}}
+@media(max-width:560px){.dmo-overlay{padding:0}.dmo-dialog{width:100vw;max-height:100vh;border-radius:0}.dmo-row{grid-template-columns:repeat(2,1fr)}.dmo-field.note{grid-column:1/-1}.dmo-week-bar .dmo-count{margin-left:0}.dmo-week-sports{grid-template-columns:1fr}}

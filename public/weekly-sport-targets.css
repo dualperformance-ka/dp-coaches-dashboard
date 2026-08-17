@@ -1,6 +1,4 @@
-/* Three visible sport columns ---------------------------------------------- */
-.nut-table th:nth-child(7),.nut-table td:nth-child(7){min-width:145px}
-.nut-table th:nth-child(8),.nut-table td:nth-child(8),.nut-table th:nth-child(9),.nut-table td:nth-child(9){min-width:125px}
+/* Week-bar sport controls -------------------------------------------------- */
 .wst-sport-summary{width:100%;min-width:110px;padding:7px 8px;border:1px solid var(--border);border-left:3px solid var(--dim);border-radius:8px;background:var(--surface2,#161616);color:var(--text);text-align:left;cursor:pointer;transition:border-color .15s,background .15s;display:flex;flex-direction:column;gap:4px}
 .wst-sport-summary.running{border-left-color:#f59e0b}.wst-sport-summary.cycling{border-left-color:#60a5fa}.wst-sport-summary.swimming{border-left-color:#22d3ee}
 .wst-sport-summary:hover,.wst-sport-summary:focus-visible{border-color:var(--brand-border);background:var(--brand-bg);outline:none}
@@ -53,11 +51,6 @@
   .wst-note{grid-column:1/3}.wst-actions{grid-column:4}
 }
 @media(max-width:760px){
-  .nut-table .nut-row td:nth-child(7){grid-column:1/-1!important}.nut-table .nut-row td:nth-child(7)::before{content:'Running'}
-  .nut-table .nut-row td:nth-child(8){grid-column:auto!important}.nut-table .nut-row td:nth-child(8)::before{content:'Cycling'}
-  .nut-table .nut-row td:nth-child(9){grid-column:auto!important;display:flex!important;flex-direction:column!important}.nut-table .nut-row td:nth-child(9)::before{display:block!important;content:'Swimming'}
-  .nut-table .nut-row td:nth-child(10){grid-column:1/-1!important}.nut-table .nut-row td:nth-child(10)::before{content:'Coach note'}
-  .nut-table .nut-row td:nth-child(11){grid-column:1/-1!important;display:flex!important;flex-direction:row!important;gap:7px}.nut-table .nut-row td:nth-child(11)::before{display:none!important}
   .wst-sport-summary{min-width:0;min-height:58px}
   .wst-overlay{align-items:flex-end;padding:0}
   .wst-dialog{width:100%;max-height:92vh;border-radius:16px 16px 0 0}
