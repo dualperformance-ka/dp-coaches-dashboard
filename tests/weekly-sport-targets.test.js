@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
+import vm from 'node:vm';
 
 import athletesHandler from '../api/athletes.js';
 import myLogsHandler, {
@@ -267,4 +268,63 @@ test('legacy running-target migration is idempotent and leaves nutrition values 
   assert.doesNotMatch(sql, /(?:update|delete\s+from)\s+public\.nutrition_plans/i);
   assert.match(sql, /revoke all on table public\.weekly_sport_targets from public, anon, authenticated/i);
   assert.match(sql, /grant select, insert, update on table public\.weekly_sport_targets to service_role/i);
+});
+
+function weeklyTargetBrowser(payload) {
+  const source = fs.readFileSync(
+    new URL('../public/weekly-sport-targets.js', import.meta.url),
+    'utf8'
+  );
+  const context = {
+    document: { addEventListener() {}, getElementById() { return null; } },
+    window: {},
+    fetch: async () => ({ ok: true, json: async () => payload }),
+    renderNutTable() {},
+    console,
+  };
+  vm.createContext(context);
+  vm.runInContext(source, context);
+  return context.window.WeeklySportTargetsEditor;
+}
+
+test('running column keeps plan mileage visible before a coach target is published', () => {
+  const editor = weeklyTargetBrowser({ ok: true, programmeWeeks: [], targets: [] });
+  const html = editor.sportCellHtml({ weekLabel: 'Week 6', sport: 'running', planKm: 86, legacyKm: null });
+  assert.match(html, /86 km/);
+  assert.match(html, /From plan · publish/);
+});
+
+test('nutrition renders each sport in its own column and preserves authoritative zero', async () => {
+  const editor = weeklyTargetBrowser({
+    ok: true,
+    programmeWeeks: [{ id: WEEK_ID, weekLabel: 'Week 4' }],
+    targets: [
+      { weekIdentifier: WEEK_ID, sport: 'running', state: 'published', distanceTargetMetres: 0, removedAt: null },
+      { weekIdentifier: WEEK_ID, sport: 'cycling', state: 'published', distanceTargetMetres: 120000, removedAt: null },
+      { weekIdentifier: WEEK_ID, sport: 'swimming', state: 'draft', distanceTargetMetres: 2500, removedAt: null },
+    ],
+  });
+  editor.mount({ athleteCode: ATHLETE });
+  await new Promise((resolve) => setImmediate(resolve));
+  const running = editor.sportCellHtml({ weekLabel: 'Week 4', sport: 'running', planKm: 75 });
+  const cycling = editor.sportCellHtml({ weekLabel: 'Week 4', sport: 'cycling', planKm: 75 });
+  const swimming = editor.sportCellHtml({ weekLabel: 'Week 4', sport: 'swimming', planKm: 75 });
+  assert.match(running, /Running/);
+  assert.match(running, /0 km/);
+  assert.match(running, /Locked/);
+  assert.match(cycling, /Cycling/);
+  assert.match(cycling, /120 km/);
+  assert.match(swimming, /Swimming/);
+  assert.match(swimming, /2500 m/);
+  assert.match(swimming, /Draft/);
+});
+
+test('nutrition saves cannot erase the preserved legacy running target', () => {
+  const html = fs.readFileSync(new URL('../public/index.html', import.meta.url), 'utf8');
+  const capture = html.slice(html.indexOf('function _captureNutInputs'), html.indexOf('function _nutWeekOptions'));
+  const save = html.slice(html.indexOf('async function saveNutRow'), html.indexOf('// Delete a single week row'));
+  assert.doesNotMatch(capture, /weekly_km_target/);
+  assert.doesNotMatch(save, /weekly_km_target/);
+  assert.match(html, /<th>Running<\/th><th>Cycling<\/th><th>Swimming<\/th>/);
+  assert.match(html, /WeeklySportTargetsEditor\?\.sportCellHtml/);
 });
