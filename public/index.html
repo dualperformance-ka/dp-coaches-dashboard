@@ -1981,7 +1981,7 @@ body[data-theme="light"] .theme-btn.active{background:rgba(255,255,255,.22);colo
 <link rel="stylesheet" href="/dashboard-mobile-polish.css">
 <link rel="stylesheet" href="/triage.css?v=23">
 <link rel="stylesheet" href="/programming.css?v=4">
-<link rel="stylesheet" href="/weekly-sport-targets.css?v=1">
+<link rel="stylesheet" href="/weekly-sport-targets.css?v=3">
 <div class="ma-backdrop" id="ma-backdrop" role="dialog" aria-modal="true" aria-label="Manage athletes" onclick="if(event.target===this)closeManageAthletes()">
   <div class="ma-card">
     <div class="ma-head">
@@ -3401,7 +3401,6 @@ function _captureNutInputs(i, row) {
   const read = id => document.getElementById(`nut-${i}-${id}`)?.value ?? '';
   row.calories = read('cal'); row.protein = read('pro'); row.carbs = read('carb');
   row.fats = read('fat'); row.fibre = read('fib'); row.notes = read('notes');
-  row.weekly_km_target = read('km');
 }
 
 function _nutWeekOptions(row) {
@@ -3428,13 +3427,13 @@ function renderNutritionTab() {
   if (pwEl) pwEl.value = _nutAthlete ? getProgWeeks(_nutAthlete) : DEFAULT_PROG_WEEKS;
   const startEl = document.getElementById('nut-start-override');
   if (startEl) startEl.value = (_nutAthlete && _startDateOverrides[_nutAthlete]) || '';
-  renderNutTable();
   if (window.WeeklySportTargetsEditor) {
     window.WeeklySportTargetsEditor.mount({
       athleteCode: _nutAthlete,
       preferredWeekLabel: _nutAthlete ? _nutCurrentWeekLabel(_nutAthlete) : null,
     });
   }
+  renderNutTable();
 }
 function setNutAthlete(code) {
   _nutAthlete = code;
@@ -3457,7 +3456,7 @@ function renderNutTable() {
   const hasCurrent = !!(curWk && _nutRenderRows.some(r => r.week_label === curWk));
   const addButton = document.getElementById('nut-add-week-btn');
   if (addButton) addButton.textContent = !hasCurrent && curWk ? `+ ${displayWeekLabel(curWk)}` : '+ Week';
-  meta.textContent = `${_nutAthlete} — ${curNum != null ? `${fmtWk(curNum, true)} of ${getProgWeeks(_nutAthlete)} from programming` : `${getProgWeeks(_nutAthlete)}-week programme`} · nutrition uses the same week as the training plan · KM auto-fills when no manual target is set`;
+  meta.textContent = `${_nutAthlete} — ${curNum != null ? `${fmtWk(curNum, true)} of ${getProgWeeks(_nutAthlete)} from programming` : `${getProgWeeks(_nutAthlete)}-week programme`} · nutrition and sport targets use the same programme week · publish a sport target to lock it for the athlete`;
 
   if (_nutPlansLoadError) {
     wrap.innerHTML = `<div class="nut-empty">Nutrition prescriptions could not load — ${esc(_nutPlansLoadError)}. No plans were deleted. Use Refresh to try again.</div>`;
@@ -3480,7 +3479,9 @@ function renderNutTable() {
       <td><input class="nut-input" id="nut-${i}-carb"  value="${iv(r.carbs)}"    placeholder="g"    oninput="nutDirty(${i})"></td>
       <td><input class="nut-input" id="nut-${i}-fat"   value="${iv(r.fats)}"     placeholder="g"    oninput="nutDirty(${i})"></td>
       <td><input class="nut-input" id="nut-${i}-fib"   value="${iv(r.fibre)}"    placeholder="g"    oninput="nutDirty(${i})"></td>
-      <td><input class="nut-input km" id="nut-${i}-km" data-auto="${autoKm}" value="${iv(r.weekly_km_target)}" placeholder="${autoKm > 0 ? autoKm : 'auto'}" oninput="nutDirty(${i});updateNutKmCap(${i})"><div class="nut-km-cap" id="nut-${i}-kmcap">${_nutKmCapHtml(r.weekly_km_target, autoKm)}</div></td>
+      <td class="nut-sport-target running">${window.WeeklySportTargetsEditor?.sportCellHtml({ weekLabel: r.week_label, sport: 'running', planKm: autoKm, legacyKm: r.weekly_km_target }) || `<span class="nut-km-auto">${iv(r.weekly_km_target ?? (autoKm > 0 ? autoKm : '—'))} km<span class="src">Loading running target</span></span>`}</td>
+      <td class="nut-sport-target cycling">${window.WeeklySportTargetsEditor?.sportCellHtml({ weekLabel: r.week_label, sport: 'cycling', planKm: autoKm, legacyKm: r.weekly_km_target }) || '<span class="nut-km-auto">—<span class="src">Loading cycling target</span></span>'}</td>
+      <td class="nut-sport-target swimming">${window.WeeklySportTargetsEditor?.sportCellHtml({ weekLabel: r.week_label, sport: 'swimming', planKm: autoKm, legacyKm: r.weekly_km_target }) || '<span class="nut-km-auto">—<span class="src">Loading swimming target</span></span>'}</td>
       <td><input class="nut-input wide" id="nut-${i}-notes" value="${iv(r.notes)}" placeholder="Coach note" oninput="nutDirty(${i})"></td>
       <td class="nut-actions"><button class="nut-save" id="nut-${i}-save" onclick="saveNutRow(${i})">Save</button><button class="nut-del" id="nut-${i}-del" onclick="deleteNutRow(${i})" title="Delete this week">&#10005;</button></td>
     </tr>`;
@@ -3489,10 +3490,11 @@ function renderNutTable() {
   wrap.innerHTML = `<table class="nut-table">
     <thead><tr>
       <th>Week</th><th>Calories</th><th>Protein</th><th>Carbs</th><th>Fats</th><th>Fibre</th>
-      <th>KM Target</th><th>Notes</th><th></th>
+      <th>Running</th><th>Cycling</th><th>Swimming</th><th>Notes</th><th></th>
     </tr></thead>
     <tbody>${rowsHtml}</tbody>
   </table>`;
+  window.WeeklySportTargetsEditor?.bindCells(wrap);
 }
 
 function nutDirty(i) {
@@ -3535,13 +3537,11 @@ async function relabelNutWeek(i, nextLabel) {
 async function saveNutRow(i) {
   const r = _nutRenderRows[i]; if (!r) return;
   const val = id => { const el = document.getElementById(`nut-${i}-${id}`); const v = el ? el.value.trim() : ''; return v === '' ? null : v; };
-  const kmRaw = val('km');
   const patch = {
     athlete_code: r.athlete_code,
     week_label:   r.week_label,
     calories: val('cal'), protein: val('pro'), carbs: val('carb'),
     fats: val('fat'), fibre: val('fib'), notes: val('notes'),
-    weekly_km_target: kmRaw == null ? null : (isNaN(parseFloat(kmRaw)) ? null : parseFloat(kmRaw)),
     updated_at: new Date().toISOString(),
   };
   const btn = document.getElementById(`nut-${i}-save`);
@@ -3564,7 +3564,7 @@ async function saveNutRow(i) {
 // rows too — the DB delete simply matches nothing.
 async function deleteNutRow(i) {
   const r = _nutRenderRows[i]; if (!r) return;
-  if (!confirm(`Delete ${displayWeekLabel(r.week_label)} for ${r.athlete_code}?\nThis removes its macro & KM targets.`)) return;
+  if (!confirm(`Delete ${displayWeekLabel(r.week_label)} nutrition plan for ${r.athlete_code}?\nPublished sport targets are preserved separately.`)) return;
   const btn = document.getElementById(`nut-${i}-del`);
   if (btn) { btn.textContent = '…'; btn.disabled = true; }
   try {
@@ -11039,7 +11039,7 @@ document.getElementById('gen-btn').addEventListener('click', generateAI);
 <script src="/coaching-actions.js?v=3" defer></script>
 <script src="/dashboard-mobilenav.js" defer></script>
 <script src="/triage.js?v=21" defer></script>
-<script src="/weekly-sport-targets.js?v=1" defer></script>
+<script src="/weekly-sport-targets.js?v=3" defer></script>
 <script src="/programming.js?v=4" defer></script>
 <script src="/app.js" defer></script>
 </body>

@@ -1,22 +1,25 @@
-/* Compact coach-owned weekly sport-target editor for the Nutrition/programming
- * screen. All writes use /api/athletes and therefore pass through the existing
- * authenticated coach boundary. No Supabase credential is present here. */
+/* Coach-owned weekly sport targets embedded in each Nutrition week row.
+ * The table shows the running plan even before it is published, while every
+ * authoritative write still passes through /api/athletes. */
 (function () {
   'use strict';
 
   var SPORTS = [
-    { key: 'running', label: 'Running', unit: 'km', step: '0.1' },
-    { key: 'cycling', label: 'Cycling', unit: 'km', step: '0.1' },
-    { key: 'swimming', label: 'Swimming', unit: 'm', step: '1' },
+    { key: 'running', label: 'Running', short: 'Run', unit: 'km', step: '0.1' },
+    { key: 'cycling', label: 'Cycling', short: 'Bike', unit: 'km', step: '0.1' },
+    { key: 'swimming', label: 'Swimming', short: 'Swim', unit: 'm', step: '1' },
   ];
   var state = {
     athleteCode: null,
-    preferredWeekLabel: null,
-    weekIdentifier: null,
     programmeWeeks: [],
     targets: [],
     loading: false,
+    loaded: false,
     error: null,
+    openWeekLabel: null,
+    weekIdentifier: null,
+    planRunningKm: null,
+    focusSport: null,
   };
 
   function esc(value) {
@@ -25,7 +28,37 @@
     });
   }
 
+  function finiteNumber(value) {
+    if (value === '' || value === null || value === undefined) return null;
+    var number = Number(value);
+    return Number.isFinite(number) ? number : null;
+  }
+
   function root() { return document.getElementById('weekly-sport-targets-editor'); }
+
+  function weekForLabel(label) {
+    return state.programmeWeeks.find(function (week) { return week.weekLabel === label; }) || null;
+  }
+
+  function targetFor(weekIdentifier, sport) {
+    return state.targets.find(function (target) {
+      return target.weekIdentifier === weekIdentifier && target.sport === sport && !target.removedAt;
+    }) || null;
+  }
+
+  function formatDistance(target, sport) {
+    if (!target || target.distanceTargetMetres == null) return null;
+    if (sport === 'swimming') return String(target.distanceTargetMetres) + ' m';
+    var km = Number(target.distanceTargetMetres) / 1000;
+    return String(Math.round(km * 10) / 10) + ' km';
+  }
+
+  function distanceInputValue(target, sport) {
+    if (!target || target.distanceTargetMetres == null) return '';
+    return sport === 'swimming'
+      ? String(target.distanceTargetMetres)
+      : String(Math.round(Number(target.distanceTargetMetres) / 100) / 10);
+  }
 
   async function apiGet(code) {
     var response = await fetch(
@@ -42,87 +75,100 @@
     return maPost(payload);
   }
 
-  function currentWeek() {
-    return state.programmeWeeks.find(function (week) { return week.id === state.weekIdentifier; }) || null;
+  function notifyNutritionRows() {
+    if (typeof renderNutTable === 'function') renderNutTable();
   }
 
-  function targetFor(sport) {
-    return state.targets.find(function (target) {
-      return target.weekIdentifier === state.weekIdentifier && target.sport === sport;
-    }) || null;
+  function sportCellHtml(options) {
+    options = options || {};
+    var weekLabel = String(options.weekLabel || '');
+    var sport = SPORTS.find(function (item) { return item.key === options.sport; }) || SPORTS[0];
+    var planKm = finiteNumber(options.planKm);
+    var legacyKm = finiteNumber(options.legacyKm);
+    var suggestedKm = legacyKm !== null ? legacyKm : planKm;
+    var week = weekForLabel(weekLabel);
+    var target = week ? targetFor(week.id, sport.key) : null;
+    var suggested = sport.key === 'running' && !target && suggestedKm !== null && suggestedKm > 0;
+    var displayValue = target ? formatDistance(target, sport.key) : (suggested ? suggestedKm + ' km' : 'Set target');
+    var targetState = target
+      ? (target.state === 'published' ? 'Locked' : 'Draft')
+      : (suggested ? (legacyKm !== null ? 'Previous · publish' : 'From plan · publish') : 'Not set');
+    if (state.loading && !state.loaded) targetState = 'Loading…';
+    if (state.error) targetState = sport.key === 'running' && suggested ? 'Plan shown · unavailable' : 'Targets unavailable';
+
+    return '<button type="button" class="wst-sport-summary ' + sport.key + '" data-wst-week="' + esc(weekLabel) + '" data-wst-sport="' + sport.key + '" data-wst-plan-km="' + esc(suggestedKm === null ? '' : suggestedKm) + '" aria-label="Edit ' + esc(sport.label.toLowerCase()) + ' target for ' + esc(weekLabel) + '">' +
+      '<span class="wst-cell-sport">' + esc(sport.label) + '</span>' +
+      '<strong>' + esc(displayValue) + '</strong>' +
+      '<span><i class="' + (target && target.state === 'published' ? 'locked' : (target ? 'draft' : '')) + '">' + esc(targetState) + '</i><b>Edit</b></span>' +
+    '</button>';
   }
 
-  function distanceDisplay(target, sport) {
-    if (!target || target.distanceTargetMetres == null) return '';
-    return sport === 'swimming'
-      ? String(target.distanceTargetMetres)
-      : String(Math.round(Number(target.distanceTargetMetres) / 100) / 10);
+  function bindCells(container) {
+    if (!container) return;
+    container.querySelectorAll('.wst-sport-summary').forEach(function (button) {
+      button.addEventListener('click', function () {
+        openWeek(button.getAttribute('data-wst-week'), button.getAttribute('data-wst-plan-km'), button.getAttribute('data-wst-sport'));
+      });
+    });
   }
 
-  function statusText(target) {
-    if (!target || target.removedAt) return 'Not set';
-    return target.state === 'published' ? 'Published · locked for athlete' : 'Draft · hidden';
+  function editorStatus(target, suggested) {
+    if (target) return target.state === 'published' ? 'Published · athlete locked' : 'Draft · hidden from athlete';
+    if (suggested) return 'Plan suggestion · ready to publish';
+    return 'Not set';
   }
 
   function sportRow(sport) {
-    var target = targetFor(sport.key);
-    var enabled = !!(target && !target.removedAt);
+    var target = targetFor(state.weekIdentifier, sport.key);
+    var suggested = !target && sport.key === 'running' && state.planRunningKm !== null && state.planRunningKm > 0;
+    var enabled = !!target || suggested;
     var disabled = enabled ? '' : ' disabled';
-    return '<div class="wst-row" data-sport="' + sport.key + '">' +
-      '<div class="wst-sport">' +
-        '<label><input type="checkbox" class="wst-enabled"' + (enabled ? ' checked' : '') + '> ' + esc(sport.label) + '</label>' +
-        '<span class="wst-state ' + (target && target.state === 'published' && !target.removedAt ? 'published' : '') + '">' + esc(statusText(target)) + '</span>' +
-      '</div>' +
-      '<label class="wst-field"><span>Distance</span><div><input class="wst-distance" type="number" min="0" step="' + sport.step + '" value="' + esc(distanceDisplay(target, sport.key)) + '"' + disabled + '><b>' + sport.unit + '</b></div></label>' +
+    var distance = target ? distanceInputValue(target, sport.key) : (suggested ? String(state.planRunningKm) : '');
+    var publishState = target ? target.state : (suggested ? 'published' : 'draft');
+    return '<div class="wst-row' + (state.focusSport === sport.key ? ' focused' : '') + '" data-sport="' + sport.key + '">' +
+      '<div class="wst-sport"><label><input type="checkbox" class="wst-enabled"' + (enabled ? ' checked' : '') + '> ' + esc(sport.label) + '</label>' +
+        '<span class="wst-state ' + (target && target.state === 'published' ? 'published' : '') + '">' + esc(editorStatus(target, suggested)) + '</span></div>' +
+      '<label class="wst-field"><span>Distance</span><div><input class="wst-distance" type="number" min="0" step="' + sport.step + '" value="' + esc(distance) + '"' + disabled + '><b>' + sport.unit + '</b></div></label>' +
       '<label class="wst-field"><span>Sessions <i>optional</i></span><input class="wst-sessions" type="number" min="0" step="1" value="' + esc(target && target.sessionTarget != null ? target.sessionTarget : '') + '"' + disabled + '></label>' +
       '<label class="wst-field"><span>Duration <i>min · optional</i></span><input class="wst-duration" type="number" min="0" step="1" value="' + esc(target && target.durationTargetMinutes != null ? target.durationTargetMinutes : '') + '"' + disabled + '></label>' +
       '<label class="wst-field wst-note"><span>Coach note</span><input class="wst-coach-note" maxlength="2000" value="' + esc(target ? target.coachNote || '' : '') + '" placeholder="Optional guidance"' + disabled + '></label>' +
-      '<label class="wst-field wst-publish"><span>Visibility</span><select class="wst-publish-state"' + disabled + '><option value="draft"' + (!target || target.state !== 'published' ? ' selected' : '') + '>Draft</option><option value="published"' + (target && target.state === 'published' ? ' selected' : '') + '>Published</option></select></label>' +
-      '<div class="wst-actions"><button type="button" class="wst-save"' + disabled + '>Save</button>' +
-        (enabled ? '<button type="button" class="wst-remove">Remove</button>' : '') +
-      '</div>' +
+      '<label class="wst-field wst-publish"><span>Visibility</span><select class="wst-publish-state"' + disabled + '><option value="draft"' + (publishState !== 'published' ? ' selected' : '') + '>Draft</option><option value="published"' + (publishState === 'published' ? ' selected' : '') + '>Published</option></select></label>' +
+      '<div class="wst-actions"><button type="button" class="wst-save"' + disabled + '>' + (suggested ? 'Publish target' : 'Save') + '</button>' +
+        (target ? '<button type="button" class="wst-remove">Remove</button>' : '') + '</div>' +
     '</div>';
   }
 
-  function render() {
+  function dialogShell(content) {
+    return '<div class="wst-overlay"><section class="wst-dialog" role="dialog" aria-modal="true" aria-labelledby="wst-title">' + content + '</section></div>';
+  }
+
+  function renderEditor() {
     var el = root();
     if (!el) return;
-    if (!state.athleteCode) {
-      el.innerHTML = '';
-      return;
-    }
+    if (!state.openWeekLabel) { el.innerHTML = ''; return; }
     if (state.loading) {
-      el.innerHTML = '<div class="wst-shell"><div class="wst-head"><div><strong>Weekly sport targets</strong><span>Loading ' + esc(state.athleteCode) + '…</span></div></div></div>';
+      el.innerHTML = dialogShell('<div class="wst-head"><div><strong id="wst-title">' + esc(state.openWeekLabel) + ' sport targets</strong><span>Loading coach targets…</span></div><button type="button" class="wst-close" aria-label="Close">×</button></div>');
+      bindEditor();
       return;
     }
     if (state.error) {
-      el.innerHTML = '<div class="wst-shell"><div class="wst-head"><div><strong>Weekly sport targets</strong><span class="wst-error">' + esc(state.error) + '</span></div><button type="button" class="wst-retry">Retry</button></div></div>';
-      bind();
+      el.innerHTML = dialogShell('<div class="wst-head"><div><strong id="wst-title">' + esc(state.openWeekLabel) + ' sport targets</strong><span class="wst-error">' + esc(state.error) + '</span></div><div class="wst-head-actions"><button type="button" class="wst-retry">Retry</button><button type="button" class="wst-close" aria-label="Close">×</button></div></div>');
+      bindEditor();
       return;
     }
-
-    var preferredExists = state.programmeWeeks.some(function (week) {
-      return week.weekLabel === state.preferredWeekLabel;
-    });
-    if (!state.programmeWeeks.length || (state.preferredWeekLabel && !preferredExists)) {
-      el.innerHTML = '<div class="wst-shell"><div class="wst-head"><div><strong>Weekly sport targets</strong>' +
-        '<span>' + esc(state.preferredWeekLabel || 'This week') + ' needs a canonical programme-week record before targets can be prescribed.</span></div>' +
-        '<button type="button" class="wst-ensure">Set up ' + esc(state.preferredWeekLabel || 'programme week') + '</button></div></div>';
-      bind();
+    var week = weekForLabel(state.openWeekLabel);
+    if (!week) {
+      el.innerHTML = dialogShell('<div class="wst-head"><div><strong id="wst-title">' + esc(state.openWeekLabel) + ' sport targets</strong><span>This week needs its canonical programme-week record before a target can be published.</span></div><button type="button" class="wst-close" aria-label="Close">×</button></div><div class="wst-setup"><button type="button" class="wst-ensure">Set up ' + esc(state.openWeekLabel) + '</button></div><div class="wst-message" role="status"></div>');
+      bindEditor();
       return;
     }
-
-    var week = currentWeek();
-    var options = state.programmeWeeks.map(function (item) {
-      return '<option value="' + esc(item.id) + '"' + (item.id === state.weekIdentifier ? ' selected' : '') + '>' + esc(item.weekLabel) + '</option>';
-    }).join('');
-    el.innerHTML = '<section class="wst-shell" aria-labelledby="wst-title">' +
-      '<div class="wst-head"><div><strong id="wst-title">Weekly sport targets</strong><span>Coach-owned prescriptions · published values lock the athlete target, including zero</span></div>' +
-      '<label class="wst-week"><span>Programme week</span><select class="wst-week-select">' + options + '</select></label></div>' +
-      '<div class="wst-grid" data-week="' + esc(week ? week.id : '') + '">' + SPORTS.map(sportRow).join('') + '</div>' +
-      '<div class="wst-message" role="status"></div>' +
-    '</section>';
-    bind();
+    state.weekIdentifier = week.id;
+    el.innerHTML = dialogShell(
+      '<div class="wst-head"><div><strong id="wst-title">' + esc(state.openWeekLabel) + ' sport targets</strong><span>Published values are the athlete’s locked prescription. Zero is valid.</span></div><button type="button" class="wst-close" aria-label="Close">×</button></div>' +
+      '<div class="wst-grid" data-week="' + esc(week.id) + '">' + SPORTS.map(sportRow).join('') + '</div>' +
+      '<div class="wst-message" role="status"></div>'
+    );
+    bindEditor();
   }
 
   function setRowEnabled(row, enabled) {
@@ -130,9 +176,8 @@
       control.disabled = !enabled;
     });
     if (!enabled) {
-      var sport = row.getAttribute('data-sport');
-      var target = targetFor(sport);
-      if (target && !target.removedAt) removeTarget(row);
+      var target = targetFor(state.weekIdentifier, row.getAttribute('data-sport'));
+      if (target) removeTarget(row);
     }
   }
 
@@ -178,8 +223,9 @@
         return !(item.weekIdentifier === state.weekIdentifier && item.sport === sport);
       });
       state.targets.push(result.target);
-      render();
-      message(sportDef.label + ' target saved' + (publishState === 'published' ? ' and published.' : ' as a draft.'));
+      renderEditor();
+      notifyNutritionRows();
+      message(sportDef.label + ' target saved' + (publishState === 'published' ? ' and locked for the athlete.' : ' as a draft.'));
     } catch (error) {
       button.disabled = false;
       button.textContent = 'Retry';
@@ -202,44 +248,51 @@
         return !(item.weekIdentifier === state.weekIdentifier && item.sport === sport);
       });
       if (result.target) state.targets.push(result.target);
-      render();
+      renderEditor();
+      notifyNutritionRows();
       message(sportDef.label + ' target removed. Its audit history was preserved.');
     } catch (error) {
-      render();
+      renderEditor();
       message(error.message || 'Target could not be removed', true);
     }
   }
 
   async function ensureWeek() {
-    if (!state.preferredWeekLabel) return;
-    var button = root().querySelector('.wst-ensure');
-    button.disabled = true;
-    button.textContent = 'Setting up…';
+    var button = root() && root().querySelector('.wst-ensure');
+    if (button) { button.disabled = true; button.textContent = 'Setting up…'; }
     try {
       await apiPost({
         action: 'weekly_sport_target_week_ensure',
         athlete_code: state.athleteCode,
-        week_label: state.preferredWeekLabel,
+        week_label: state.openWeekLabel,
       });
       await load(true);
+      renderEditor();
     } catch (error) {
       state.error = error.message || 'Programme week could not be created';
-      render();
+      renderEditor();
     }
   }
 
-  function bind() {
+  function closeEditor() {
+    state.openWeekLabel = null;
+    state.weekIdentifier = null;
+    state.planRunningKm = null;
+    state.focusSport = null;
+    renderEditor();
+  }
+
+  function bindEditor() {
     var el = root();
     if (!el) return;
+    var overlay = el.querySelector('.wst-overlay');
+    if (overlay) overlay.addEventListener('click', function (event) { if (event.target === overlay) closeEditor(); });
+    var close = el.querySelector('.wst-close');
+    if (close) close.addEventListener('click', closeEditor);
     var retry = el.querySelector('.wst-retry');
     if (retry) retry.addEventListener('click', function () { load(true); });
     var ensure = el.querySelector('.wst-ensure');
     if (ensure) ensure.addEventListener('click', ensureWeek);
-    var week = el.querySelector('.wst-week-select');
-    if (week) week.addEventListener('change', function () {
-      state.weekIdentifier = week.value;
-      render();
-    });
     el.querySelectorAll('.wst-row').forEach(function (row) {
       row.querySelector('.wst-enabled').addEventListener('change', function (event) {
         setRowEnabled(row, event.target.checked);
@@ -255,44 +308,53 @@
     if (!state.athleteCode || (state.loading && !force)) return;
     state.loading = true;
     state.error = null;
-    render();
+    renderEditor();
     try {
       var data = await apiGet(state.athleteCode);
       state.programmeWeeks = data.programmeWeeks || [];
       state.targets = data.targets || [];
-      var preferred = state.programmeWeeks.find(function (week) {
-        return week.weekLabel === state.preferredWeekLabel;
-      });
-      if (preferred) state.weekIdentifier = preferred.id;
-      else if (!state.programmeWeeks.some(function (week) { return week.id === state.weekIdentifier; })) {
-        state.weekIdentifier = state.programmeWeeks[0] ? state.programmeWeeks[0].id : null;
-      }
+      state.loaded = true;
     } catch (error) {
       state.error = error.message || 'Weekly sport targets could not load';
     } finally {
       state.loading = false;
-      render();
+      renderEditor();
+      notifyNutritionRows();
     }
   }
+
+  async function openWeek(weekLabel, planKm, sport) {
+    state.openWeekLabel = String(weekLabel || '');
+    state.planRunningKm = finiteNumber(planKm);
+    state.focusSport = SPORTS.some(function (item) { return item.key === sport; }) ? sport : null;
+    renderEditor();
+    if (!state.loaded || state.error) await load(true);
+    renderEditor();
+  }
+
+  document.addEventListener('keydown', function (event) {
+    if (event.key === 'Escape' && state.openWeekLabel) closeEditor();
+  });
 
   window.WeeklySportTargetsEditor = {
     mount: function (options) {
       options = options || {};
-      var athleteChanged = state.athleteCode !== options.athleteCode;
-      state.athleteCode = options.athleteCode || null;
-      state.preferredWeekLabel = options.preferredWeekLabel || null;
-      if (athleteChanged) {
-        state.weekIdentifier = null;
-        state.programmeWeeks = [];
-        state.targets = [];
-        load(true);
-      } else {
-        var preferred = state.programmeWeeks.find(function (week) {
-          return week.weekLabel === state.preferredWeekLabel;
-        });
-        if (preferred) state.weekIdentifier = preferred.id;
-        render();
+      var nextAthlete = options.athleteCode || null;
+      if (state.athleteCode === nextAthlete) {
+        if (nextAthlete && !state.loaded && !state.loading) load(false);
+        return;
       }
+      state.athleteCode = nextAthlete;
+      state.programmeWeeks = [];
+      state.targets = [];
+      state.loaded = false;
+      state.error = null;
+      closeEditor();
+      if (state.athleteCode) load(true);
     },
+    sportCellHtml: sportCellHtml,
+    bindCells: bindCells,
+    openWeek: openWeek,
+    close: closeEditor,
   };
 }());
