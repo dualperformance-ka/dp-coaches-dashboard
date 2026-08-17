@@ -19,7 +19,7 @@ Both applications ask for a real business identity. Do not send with blanks.
 | Country of operation | Australia | ok |
 | Company website | https://dualperformance.au | ok |
 | Product / platform name | Dual Performance Athlete Portal | ok |
-| Product URL | https://dp-athlete-portal.vercel.app | ok |
+| Product URL | https://portal.dualperformance.au | ok |
 | Authorised technical representative | Karl Sexon, Co-founder | ok |
 | Technical contact email | | **FILL** (use a domain address, not gmail — see note below) |
 | Current active athletes | ~10 | **CONFIRM** |
@@ -129,8 +129,8 @@ rest. Those two are the whole business case.
 
 ### Technical details to supply
 
-- **OAuth redirect URI:** `https://dp-athlete-portal.vercel.app/api/garmin-callback`
-- **Webhook / ping endpoint:** `https://dp-athlete-portal.vercel.app/api/garmin-webhook`
+- **OAuth redirect URI:** `https://portal.dualperformance.au/api/garmin-callback`
+- **Webhook / ping endpoint:** `https://portal.dualperformance.au/api/garmin-webhook`
 - **Auth:** OAuth 2.0 with PKCE (confirm the current Garmin flow on the
   integration call, they migrated off OAuth 1.0a)
 - **Data storage:** Supabase (PostgreSQL) with row-level security, hosted in
@@ -207,11 +207,11 @@ than Garmin.
 > - Company: [ENTITY NAME], ABN [ABN]
 > - Country: Australia
 > - Website: https://dualperformance.au
-> - Platform: Dual Performance Athlete Portal, https://dp-athlete-portal.vercel.app
+> - Platform: Dual Performance Athlete Portal, https://portal.dualperformance.au
 > - Authorised technical representative: Karl Sexon, Co-founder
 > - Technical contact: [EMAIL]
-> - OAuth 2.0 redirect URI: https://dp-athlete-portal.vercel.app/api/coros-callback
-> - Webhook endpoint: https://dp-athlete-portal.vercel.app/api/coros-webhook
+> - OAuth 2.0 redirect URI: https://portal.dualperformance.au/api/coros-callback
+> - Webhook endpoint: https://portal.dualperformance.au/api/coros-webhook
 > - Existing integrations: Strava (OAuth 2.0, production)
 >
 > I have attached the completed application form. Happy to provide any further

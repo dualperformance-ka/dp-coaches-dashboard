@@ -10,14 +10,13 @@
 // Env required (DASHBOARD Vercel project):
 //   SUPABASE_URL, SUPABASE_SERVICE_KEY  (already configured)
 //   ADMIN_KEY                           (already configured)
-//   ATHLETE_PORTAL_URL                  (already configured; falls back to default)
 //   NOTIFY_SECRET                       -> same value as on the portal project.
 //     Create it yourself, e.g. run:  openssl rand -hex 32
 
 import { coachError, requireCoach, setCoachCors } from '../server/coach-auth.js';
 
 const ADMIN_KEY = String(process.env.ADMIN_KEY || '').trim();
-const PORTAL_URL = String(process.env.ATHLETE_PORTAL_URL || 'https://dp-athlete-portal.vercel.app').replace(/\/+$/, '');
+const PORTAL_URL = 'https://portal.dualperformance.au';
 
 function requireAdmin(req) {
   if (!ADMIN_KEY) throw new Error('ADMIN_KEY is not configured');

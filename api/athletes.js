@@ -34,7 +34,7 @@ import {
 const SUPABASE_URL = String(process.env.SUPABASE_URL || '').replace(/\/+$/, '');
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
 const ADMIN_KEY = String(process.env.ADMIN_KEY || '').trim();
-const ATHLETE_PORTAL_URL = String(process.env.ATHLETE_PORTAL_URL || 'https://dp-athlete-portal.vercel.app').replace(/\/+$/, '');
+const ATHLETE_PORTAL_URL = 'https://portal.dualperformance.au';
 
 const HISTORY_TABLES = [
   'daily_body_logs',

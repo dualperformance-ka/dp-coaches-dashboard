@@ -18,18 +18,13 @@ the login portal. You do not have a public support page. A single page at
 watch" section, and a disconnect instruction is enough. Submitting without it gives
 them an easy reason to reject.
 
-**2. Sort the callback domain first.** Your live portal is on a `vercel.app`
-subdomain and the repo references a second variant of it, so confirm which is
-actually live before you register anything:
+**2. Use the canonical callback domain.** The production portal is:
 
-- `https://dp-athleteportal.vercel.app` (currently serving)
-- `https://dp-athlete-portal.vercel.app` (Vercel project name, in the repo)
+- `https://portal.dualperformance.au` (canonical production portal)
 
-Strong recommendation: put the portal on `portal.dualperformance.au` before you
-submit either application. Both COROS and Garmin bake the callback domain into your
-credentials, changing it later means going back through their support, and a
-`vercel.app` address on a partner application reads as a side project rather than a
-business.
+Use this domain for both COROS and Garmin. They bake the callback domain into your
+credentials, so every application, redirect and webhook should stay on the canonical
+production hostname.
 
 **3. Download the API Reference Guide.** Linked from the form intro. Question 13
 explicitly references section 5.3 for the Workout Summary Data Push Service, so you
@@ -70,12 +65,12 @@ will ask.
 | 4 | Secondary Contact Email | **[Alex's domain address]** |
 | 5 | Privacy Officer Email | **[privacy@dualperformance.au]** — a role alias reads better than a personal one |
 | 6 | Company Owner Name and Title | `Karl Sexon, Co-founder` (add Alex if you are both listed owners) |
-| 7 | Platform / Application URL | **[confirmed portal domain]** |
+| 7 | Platform / Application URL | **https://portal.dualperformance.au** |
 | 8 | Description (100 char limit) | see options below |
 | 9 | Total Active Users | `0-150` |
 | 10 | Primary Region | `Australia` |
 | 11 | API function(s) needed | tick **Activity / Workout Data Sync (one way, COROS to your platform)** and **Access Daily Health Data**. Nothing else. |
-| 12 | Authorized Callback Domain | **[confirmed portal domain]** — domain only, no path. They allow one or two, so list both the custom domain and the vercel one if you have both live. |
+| 12 | Authorized Callback Domain | **portal.dualperformance.au** — domain only, no path. |
 | 13 | Workout Data Receiving Endpoint | `https://[domain]/api/coros-webhook` — check §5.3 of the Reference Guide first |
 | 14 | Service Status Check URL | `https://[domain]/api/status` — **you need to build this**, see note below |
 | 15 | Bluetooth / ANT+ protocol link | `N/A` |
@@ -179,7 +174,7 @@ icon, say so and I will regenerate from that source instead.
 ## Submission order
 
 1. Deploy the support page and the `/api/status` endpoint.
-2. Confirm or set up the portal domain.
+2. Confirm `portal.dualperformance.au` remains connected to the production portal deployment.
 3. Download the API Reference Guide, read §5.3, read the API Agreement PDF.
 4. Send the cover email to `api@coros.com` (draft in `wearable-api-applications.md`).
 5. Submit this form, referencing the email in question 18 if there is room.
