@@ -148,10 +148,11 @@ prescribed.
 
 ### The signal
 
-Use `relative_effort` divided by distance in km. It is already present in the
-activity summary payload that `/api/strava` returns. Do not make an additional
-Strava API call for this — the per-activity endpoints are rate limited across the
-whole app and this feature does not justify spending that budget.
+Use `suffer_score` divided by distance in km. Strava calls this metric “Relative
+Effort” in its UI, but the API field is `suffer_score`. It is reliable on the
+detailed activity when heart-rate data exists, so the matcher must consume the
+permanently cached detail returned by `/api/strava`; never invent a
+`relative_effort` alias or add a fresh detail request from the browser.
 
 Reference values from real portal data:
 
@@ -165,7 +166,7 @@ Reference values from real portal data:
 Seed the quality/easy boundary at `3.0` as an exported, named constant. Do not
 bury it as a magic number.
 
-`relative_effort` is derived from heart rate and will be absent or zero for any
+`suffer_score` is derived from heart rate and will be absent or zero for any
 athlete running without a strap. When it is missing, this entire check is
 skipped and the match falls through to Prompt 1's behaviour unchanged. Never
 treat a missing value as "easy".
@@ -200,14 +201,13 @@ Everything else is `unknown`, and `unknown` never changes the confidence.
   coaching conversation, not a portal nag, and telling an athlete they ran too
   fast in the moment they finished reliably produces the opposite behaviour.
 
-- Either side `unknown`, or `relative_effort` missing: no change.
+- Either side `unknown`, or `suffer_score` missing: no change.
 
 ### Per-athlete calibration
 
-The threshold is personal — relative effort scales with an individual's HR
-profile. Structure the code so a per-athlete value can replace the constant
-later, and add a short comment saying so. Do not build the calibration now, and
-do not compute a rolling median in this change.
+Prefer the athlete's configured HR-zone boundary when `profile:read_all` data is
+available. The `3.0` suffer-score-per-km threshold remains the fallback for
+athletes without usable configured zones.
 
 ### Tests
 
@@ -220,8 +220,8 @@ Add coverage for:
 - prescribed tempo, run at 5.4 RE/km → `high` confidence, auto-completes
 - prescribed easy, run at 5.4 RE/km → `high` confidence, `ran_above_prescription`
   flag present, athlete sees nothing unusual
-- `relative_effort` absent → identical result to before this change
-- `relative_effort` of `0` is treated as absent, not as easy
+- `suffer_score` absent → identical result to before this change
+- `suffer_score` of `0` is treated as absent, not as easy
 - an unparseable session name returns `unknown` and does not downgrade
 
 ### Done means
