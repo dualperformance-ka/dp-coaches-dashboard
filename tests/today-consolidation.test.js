@@ -17,7 +17,7 @@ test('Today keeps live triage beside priorities and before coaching actions when
   assert.ok(commandCenter > operations);
   assert.ok(triageShell > commandCenter);
   assert.ok(coachingActions > triageShell);
-  assert.match(html, /'triage', 'athletes', 'planning'/);
+  assert.match(html, /'triage', 'athletes', 'programming'/);
 });
 
 test('desktop Today layout uses a sticky triage rail and stacks triage second', () => {

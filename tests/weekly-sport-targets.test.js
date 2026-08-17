@@ -319,12 +319,13 @@ test('nutrition renders each sport in its own column and preserves authoritative
   assert.match(swimming, /Draft/);
 });
 
-test('nutrition saves cannot erase the preserved legacy running target', () => {
+test('nutrition saves cannot erase the preserved legacy running target after sport controls move to Week view', () => {
   const html = fs.readFileSync(new URL('../public/index.html', import.meta.url), 'utf8');
   const capture = html.slice(html.indexOf('function _captureNutInputs'), html.indexOf('function _nutWeekOptions'));
   const save = html.slice(html.indexOf('async function saveNutRow'), html.indexOf('// Delete a single week row'));
   assert.doesNotMatch(capture, /weekly_km_target/);
   assert.doesNotMatch(save, /weekly_km_target/);
-  assert.match(html, /<th>Running<\/th><th>Cycling<\/th><th>Swimming<\/th>/);
+  assert.doesNotMatch(save, /weekly_sport_target/);
+  assert.match(html, /className = 'dmo-week-sports'/);
   assert.match(html, /WeeklySportTargetsEditor\?\.sportCellHtml/);
 });
