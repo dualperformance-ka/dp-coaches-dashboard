@@ -259,6 +259,11 @@ test('coach Week cells expose inherited, draft, and published fuel states plus t
   const editor = fs.readFileSync(new URL('../public/daily-macro-overrides.js', import.meta.url), 'utf8');
   assert.match(dashboard, /DailyMacroOverridesEditor\?\.footerHtml/);
   assert.match(editor, /dmo-fuel-footer inherits/);
+  assert.match(editor, /Uses weekly targets/);
+  assert.match(editor, /Override macros for this day/);
+  assert.match(editor, /Daily override ·/);
+  assert.doesNotMatch(editor, />Inherits</);
+  assert.doesNotMatch(editor, /Edit daily fuelling/);
   assert.match(editor, /row\.state === 'published' \? 'published' : 'draft'/);
   assert.match(editor, /for \(var index = 0; index < 7; index \+= 1\)/);
   assert.match(editor, /dmo-prefill/);
@@ -304,11 +309,11 @@ test('a failed editor load stops retrying, surfaces the error, and offers a manu
 test('dashboard ships the daily fuelling fix under a fresh PWA asset version', () => {
   const dashboard = fs.readFileSync(new URL('../public/index.html', import.meta.url), 'utf8');
   const worker = fs.readFileSync(new URL('../public/sw.js', import.meta.url), 'utf8');
-  assert.match(dashboard, /daily-macro-overrides\.css\?v=2/);
-  assert.match(dashboard, /daily-macro-overrides\.js\?v=2/);
-  assert.match(worker, /daily-macro-overrides\.css\?v=2/);
-  assert.match(worker, /daily-macro-overrides\.js\?v=2/);
-  assert.match(worker, /dp-coaches-v27-daily-fuelling/);
+  assert.match(dashboard, /daily-macro-overrides\.css\?v=3/);
+  assert.match(dashboard, /daily-macro-overrides\.js\?v=3/);
+  assert.match(worker, /daily-macro-overrides\.css\?v=3/);
+  assert.match(worker, /daily-macro-overrides\.js\?v=3/);
+  assert.match(worker, /dp-coaches-v28-daily-macro-cta/);
 });
 
 test('coach links and notification forwarding default to the canonical athlete portal', () => {
