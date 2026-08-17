@@ -13,6 +13,41 @@ function send(res, status, payload) {
   return res.status(status).json(payload);
 }
 
+export function publishedCoachTargetContract(row) {
+  return {
+    sport: row.sport,
+    weekIdentifier: row.programme_week_id,
+    distanceTargetMetres: row.distance_target_metres,
+    sessionTarget: row.session_target,
+    durationTargetMinutes: row.duration_target_minutes,
+    coachNote: row.coach_note,
+    source: 'coach',
+    locked: true,
+    publishedAt: row.published_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+export async function loadPublishedCoachTargets(athleteCode, request = select) {
+  const rows = await request('weekly_sport_targets', {
+    athlete_code: `eq.${athleteCode}`,
+    publish_state: 'eq.published',
+    removed_at: 'is.null',
+    select: [
+      'sport',
+      'programme_week_id',
+      'distance_target_metres',
+      'session_target',
+      'duration_target_minutes',
+      'coach_note',
+      'published_at',
+      'updated_at',
+    ].join(','),
+    order: 'programme_week_id.asc,sport.asc',
+  });
+  return Array.isArray(rows) ? rows.map(publishedCoachTargetContract) : [];
+}
+
 export default async function handler(req, res) {
   if (!allowPortalRequest(req, res, 'GET, OPTIONS')) return;
 
@@ -23,6 +58,12 @@ export default async function handler(req, res) {
     const identity = await getRequestAthlete(req);
     if (!identity) return send(res, 401, { ok: false, error: 'invalid_session', body: [] });
     const code = identity.athlete.code;
+    const resource = String(req.query?.resource || '').trim().toLowerCase();
+    if (resource === 'weekly-sport-targets') {
+      const targets = await loadPublishedCoachTargets(code);
+      return send(res, 200, { ok: true, targets });
+    }
+    if (resource) return send(res, 400, { ok: false, error: 'unknown_resource' });
     const body = await select('daily_body_logs', {
       athlete_code: `eq.${code}`,
       select: 'log_date,weight,sleep,energy,stress,soreness,notes,raw_payload,submitted_at',

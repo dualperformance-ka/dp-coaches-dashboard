@@ -18,6 +18,12 @@ import {
   setPublishState,
   updateExercise,
 } from '../server/programming.js';
+import {
+  ensureWeeklyTargetProgrammeWeek,
+  listWeeklySportTargets,
+  removeWeeklySportTarget,
+  saveWeeklySportTarget,
+} from '../server/weekly-sport-targets.js';
 
 const SUPABASE_URL = String(process.env.SUPABASE_URL || '').replace(/\/+$/, '');
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
@@ -782,6 +788,11 @@ export default async function handler(req, res) {
         return res.status(200).json(await programmeHistory(req.query.code, sb));
       }
 
+      if (action === 'weekly_sport_targets') {
+        const coachRow = await resolveCoachIdentity(req, sb);
+        return res.status(200).json(await listWeeklySportTargets(req.query.code, sb, coachRow));
+      }
+
       const athletes = await loadRosterRows();
       return res.status(200).json({ ok: true, athletes, total: athletes.length, source: 'roster_supabase' });
     }
@@ -905,6 +916,9 @@ export default async function handler(req, res) {
       runsteps_save: saveRunSteps,
       session_publish: setPublishState,
       split_save_from_session: saveSessionAsSplit,
+      weekly_sport_target_save: saveWeeklySportTarget,
+      weekly_sport_target_remove: removeWeeklySportTarget,
+      weekly_sport_target_week_ensure: ensureWeeklyTargetProgrammeWeek,
     };
 
     if (PROGRAMMING_ACTIONS[action]) {
