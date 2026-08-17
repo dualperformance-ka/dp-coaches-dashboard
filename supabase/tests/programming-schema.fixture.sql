@@ -103,6 +103,7 @@ create table public.nutrition_plans (
   athlete_code text not null,
   week_label text not null,
   completed_km numeric,
+  weekly_km_target numeric,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
@@ -192,3 +193,6 @@ insert into public.planned_sessions (athlete_code, title, session_type, planned_
 insert into public.training_session_logs (athlete_code, session_name, session_date, programmed_exercise, exercise_name, muscle_group)
 values ('JORDAN', 'Upper A', current_date - 7, 'Bench Press', 'Bench Press', 'Chest'),
        ('JORDAN', 'Upper A', current_date - 7, 'Lat Pulldown', 'Assisted Pull Up', 'Vertical pull');
+
+insert into public.nutrition_plans (athlete_code, week_label, weekly_km_target)
+values ('JORDAN', 'Week 4', 0);
