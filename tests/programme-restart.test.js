@@ -15,6 +15,7 @@ import {
   isIsoCalendarDate,
   programmeRestartDates,
   programmeWeekForDate,
+  relabelNutritionPlan,
   restartProgramme,
   restoreAlert,
   shiftIsoDate,
@@ -158,6 +159,27 @@ test('proxies nutrition prescriptions without exposing browser table access', as
   assert.equal(calls[0].options.body.forbidden, undefined);
   assert.match(calls[1].path, /athlete_code=eq\.ALVIN&week_label=eq\.Week%201/);
   assert.equal(calls[1].options.method, 'DELETE');
+});
+
+test('relabels a nutrition week in place and blocks duplicate programme weeks', async () => {
+  const calls = [];
+  const request = async (path, options = {}) => {
+    calls.push({ path, options });
+    if (path.includes('week_label=eq.Week%208') && path.includes('select=id')) return [];
+    return [{ id: 'plan-one', athlete_code: 'ALVIN', week_label: options.body?.week_label }];
+  };
+
+  const result = await relabelNutritionPlan(' alvin ', 'Week 3', 'Week 8', request);
+  assert.equal(result.rows[0].week_label, 'Week 8');
+  assert.match(calls[0].path, /athlete_code=eq\.ALVIN&week_label=eq\.Week%208&select=id/);
+  assert.match(calls[1].path, /athlete_code=eq\.ALVIN&week_label=eq\.Week%203/);
+  assert.equal(calls[1].options.method, 'PATCH');
+  assert.equal(calls[1].options.body.week_label, 'Week 8');
+
+  await assert.rejects(
+    relabelNutritionPlan('ALVIN', 'Week 3', 'Week 8', async () => [{ id: 'already-there' }]),
+    /already has nutrition targets for Week 8/
+  );
 });
 
 test('proxies only allowlisted programme settings', async () => {
