@@ -30,6 +30,24 @@ Save payload fields are `athlete_code`, `programme_week_id`, `sport`,
 `duration_target_minutes`, optional `coach_note`, and `publish_state`.
 `updated_by`, timestamps, and publication timestamps are server/database owned.
 
+## Coach workflow
+
+Sport targets appear in three clearly labelled **Running**, **Cycling**, and
+**Swimming** columns in each Nutrition week. Every sport remains visible to the
+coach, including an explicit "Set target" state when unused. Selecting any sport
+cell opens one editor for that exact canonical programme week and highlights the
+selected sport.
+
+When no coach-owned running row exists, the cell still shows the distance
+calculated from that week's planned running sessions. This is labelled **From
+plan · publish** and is only a suggestion until the coach publishes it. Opening
+the editor pre-fills that distance and selects Published, allowing the coach to
+make it the athlete's locked prescription with one action.
+
+Nutrition saves no longer write `nutrition_plans.weekly_km_target`. Legacy
+values remain preserved for the first-release compatibility period, while all
+new sport-target edits use `weekly_sport_targets`.
+
 ## Athlete read contract
 
 `GET /api/my-logs?resource=weekly-sport-targets` requires an athlete bearer
