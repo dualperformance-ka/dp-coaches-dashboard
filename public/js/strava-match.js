@@ -38,8 +38,7 @@ function rejectedKeys(session, opts) {
   return direct;
 }
 
-// Seed only. A future per-athlete calibration can replace this through
-// opts.relativeEffortPerKmThreshold without changing the matching rules.
+// Fallback seed for athletes without usable configured HR zones.
 export const DEFAULT_RELATIVE_EFFORT_PER_KM_THRESHOLD = 3.0;
 export const UNDERRUN_TOLERANCE_PERCENT = 0.15;
 export const MIN_DISTANCE_TOLERANCE_KM = 1.5;
@@ -72,8 +71,21 @@ export function classifyPrescribedIntensity(session) {
   return 'unknown';
 }
 
-function classifyExecutedIntensity(activity, threshold) {
-  var effort = Number(activity && activity.relative_effort);
+function qualityHeartRateFloor(athleteZones) {
+  var heartRate = athleteZones && (athleteZones.heart_rate || athleteZones.heartrate || athleteZones.heartRate);
+  var zones = heartRate && heartRate.zones;
+  if (!Array.isArray(zones) || zones.length < 3) return null;
+  var floor = Number(zones[2] && zones[2].min);
+  return Number.isFinite(floor) && floor > 0 ? floor : null;
+}
+
+function classifyExecutedIntensity(activity, threshold, athleteZones) {
+  var heartRateFloor = qualityHeartRateFloor(athleteZones);
+  var averageHeartRate = Number(activity && activity.average_heartrate);
+  if (heartRateFloor && Number.isFinite(averageHeartRate) && averageHeartRate > 0) {
+    return averageHeartRate >= heartRateFloor ? 'quality' : 'easy';
+  }
+  var effort = Number(activity && activity.suffer_score);
   var distanceKm = Number(activity && activity.distance) / 1000;
   if (!Number.isFinite(effort) || effort <= 0 || !Number.isFinite(distanceKm) || distanceKm <= 0) return null;
   return effort / distanceKm >= threshold ? 'quality' : 'easy';
@@ -131,7 +143,7 @@ export function matchActivityToSession(session, activities, opts = {}) {
   var threshold = Number(opts.relativeEffortPerKmThreshold);
   if (!Number.isFinite(threshold) || threshold <= 0) threshold = DEFAULT_RELATIVE_EFFORT_PER_KM_THRESHOLD;
   var prescribed = opts.prescribedIntensity || classifyPrescribedIntensity(session);
-  var executed = classifyExecutedIntensity(selected, threshold);
+  var executed = classifyExecutedIntensity(selected, threshold, opts.athleteZones);
   var matchReasons = [];
   if (prescribed === 'quality' && executed === 'easy') {
     confidence = 'low';

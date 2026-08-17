@@ -368,8 +368,8 @@ window.closeEnhancedModal = closeEnhancedModal;
       + '?client_id=254938'
       + '&response_type=code'
       + '&redirect_uri=' + encodeURIComponent(window.location.origin + '/api/strava-callback')
-      + '&scope=activity:read_all'
-      + '&state=' + encodeURIComponent('');
+      + '&scope=activity:read_all,profile:read_all'
+      + '&state=' + encodeURIComponent(String(code).trim().toUpperCase());
 
     btn.href = connectUrl;
     btn.innerHTML = '<svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" style="flex-shrink:0"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066z"/><path d="M11.234 13.828L7.07 6h5.886l4.143 7.828z" opacity=".7"/></svg> Connect Strava';

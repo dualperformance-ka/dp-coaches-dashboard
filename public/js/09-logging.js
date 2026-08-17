@@ -310,18 +310,22 @@ function stravaMatchHtml(session,i,context){
 }
 function stravaFeedbackFormHtml(session,i){
   var entry=logs[session.id]||{},saved=!!entry.__stravaFeedbackAt;
-  return '<div class="strava-feedback"><div class="run-log-title">Add what Strava cannot know</div><div class="strava-feedback-grid"><div class="run-field"><label>RPE /10</label><input type="number" min="1" max="10" id="srpe_'+i+'" placeholder="..." value="'+esc(entry.rpe||'')+'" /></div><div class="run-field"><label>Pain or niggle?</label><select id="spain_'+i+'" class="li"><option value="no"'+(entry.pain!=='yes'?' selected':'')+'>No pain</option><option value="yes"'+(entry.pain==='yes'?' selected':'')+'>Yes — flag it</option></select></div></div><div class="run-field run-input-full" style="margin-bottom:8px"><label>Notes (Optional)</label><textarea id="snotes_'+i+'" class="li" placeholder="Anything your coaches should know...">'+esc(entry.notes||'')+'</textarea></div><button class="savebtn'+(saved?' saved':'')+'" id="sfb_'+i+'" onclick="saveStravaFeedback('+i+')">'+(saved?'Feedback saved ✓':'Save RPE, pain & notes')+'</button></div>';
+  var meta=entry.__stravaMatch||{},activity=meta.activity||{},stravaRpe=activity.perceived_exertion;
+  var rpeValue=entry.rpe||stravaRpe||'';
+  var rpeHint=!entry.rpe&&stravaRpe?' <span class="muted">pre-filled from Strava</span>':'';
+  return '<div class="strava-feedback"><div class="run-log-title">Add what Strava cannot know</div><div class="strava-feedback-grid"><div class="run-field"><label>RPE /10'+rpeHint+'</label><input type="number" min="1" max="10" id="srpe_'+i+'" placeholder="..." value="'+esc(rpeValue)+'" /></div><div class="run-field"><label>Pain or niggle?</label><select id="spain_'+i+'" class="li"><option value="no"'+(entry.pain!=='yes'?' selected':'')+'>No pain</option><option value="yes"'+(entry.pain==='yes'?' selected':'')+'>Yes — flag it</option></select></div></div><div class="run-field run-input-full" style="margin-bottom:8px"><label>Notes (Optional)</label><textarea id="snotes_'+i+'" class="li" placeholder="Anything your coaches should know...">'+esc(entry.notes||'')+'</textarea></div><button class="savebtn'+(saved?' saved':'')+'" id="sfb_'+i+'" onclick="saveStravaFeedback('+i+')">'+(saved?'Feedback saved ✓':'Save RPE, pain & notes')+'</button></div>';
 }
 function stravaLogPayload(session,activity,entry){
   var sum=stravaActivitySummary(activity),pain=entry&&entry.pain||'no',matchReasons=entry&&entry.__stravaMatch&&entry.__stravaMatch.reasons||[];
-  return {clientWriteId:stravaClientWriteId(activity),name:athlete.name+' — '+session.name+' — '+session.date,session:session.name,type:'Run',sessionCategory:'Run',distanceKm:sum.distance,durationMin:sum.duration,pace:sum.pace,rpe:entry&&entry.rpe||'',painFlag:pain==='yes',exerciseLog:'Matched from Strava | Distance: '+sum.distance+'km | Moving time: '+sum.duration+'min | Pace: '+sum.pace+(entry&&entry.rpe?' | RPE: '+entry.rpe+'/10':'')+(pain==='yes'?' | PAIN FLAGGED':''),notes:entry&&entry.notes||'',stravaActivityId:stravaMatchActivityKey(activity),stravaMatchReasons:matchReasons,ranAbovePrescription:matchReasons.indexOf('ran_above_prescription')>=0,athleteId:athlete.notionPageId,athleteName:athlete.name,athleteCode:athlete.code,date:session.date,submittedAt:entry&&entry.__submittedAt||new Date().toISOString()};
+  var portalRpe=Number(entry&&entry.rpe),stravaRpe=Number(activity&&activity.perceived_exertion),rpeMismatch=Number.isFinite(portalRpe)&&Number.isFinite(stravaRpe)&&Math.abs(portalRpe-stravaRpe)>=3;
+  return {clientWriteId:stravaClientWriteId(activity),name:athlete.name+' — '+session.name+' — '+session.date,session:session.name,type:'Run',sessionCategory:'Run',distanceKm:sum.distance,durationMin:sum.duration,pace:sum.pace,rpe:entry&&entry.rpe||'',stravaPerceivedExertion:Number.isFinite(stravaRpe)?stravaRpe:null,rpeMismatch:rpeMismatch,painFlag:pain==='yes',exerciseLog:'Matched from Strava | Distance: '+sum.distance+'km | Moving time: '+sum.duration+'min | Pace: '+sum.pace+(entry&&entry.rpe?' | RPE: '+entry.rpe+'/10':'')+(rpeMismatch?' | RPE MISMATCH VS STRAVA':'')+(pain==='yes'?' | PAIN FLAGGED':''),notes:entry&&entry.notes||'',stravaActivityId:stravaMatchActivityKey(activity),stravaMatchReasons:matchReasons,ranAbovePrescription:matchReasons.indexOf('ran_above_prescription')>=0,athleteId:athlete.notionPageId,athleteName:athlete.name,athleteCode:athlete.code,date:session.date,submittedAt:entry&&entry.__submittedAt||new Date().toISOString()};
 }
 async function completeStravaMatch(session,i,match){
   if(!session||!match||!match.activity||isSessionLogged(session.id)||_stravaAutoCompleting[session.id])return;
   _stravaAutoCompleting[session.id]=true;
   try{
     var activity=match.activity,sum=stravaActivitySummary(activity),previous=logs[session.id]||{};
-    logs[session.id]=Object.assign({},previous,{distance:String(sum.distance),duration:String(sum.duration),pace:sum.pace,pain:previous.pain||'no',__stravaMatch:{activityKey:stravaMatchActivityKey(activity),clientWriteId:stravaClientWriteId(activity),activity:activity,confidence:match.confidence,reasons:match.reasons||[],matchedAt:new Date().toISOString()}});
+    logs[session.id]=Object.assign({},previous,{distance:String(sum.distance),duration:String(sum.duration),pace:sum.pace,rpe:previous.rpe||activity.perceived_exertion||'',pain:previous.pain||'no',__stravaMatch:{activityKey:stravaMatchActivityKey(activity),clientWriteId:stravaClientWriteId(activity),activity:activity,confidence:match.confidence,reasons:match.reasons||[],matchedAt:new Date().toISOString()}});
     logs.__savedAt=Date.now();localStorage.setItem('dp_logs_'+athlete.code,JSON.stringify(logs));
     try{await portalStateWrite('logs',logs);}catch(e){}
     await coachWrite(WEBHOOK,stravaLogPayload(session,activity,logs[session.id]));
@@ -363,7 +367,7 @@ async function refreshStravaSessionMatches(){
   while(remaining.length){
     var best=null;
     remaining.forEach(function(s){
-      var planned=plannedRunKm(s),match=window.matchActivityToSession(stravaMatchableSession(s),activities,{plannedKm:planned,claimedActivityIds:claimed,rejections:stravaMatchRejections});
+      var planned=plannedRunKm(s),match=window.matchActivityToSession(stravaMatchableSession(s),activities,{plannedKm:planned,claimedActivityIds:claimed,rejections:stravaMatchRejections,athleteZones:strava.athleteZones});
       if(!match.matched||match.confidence!=='high')return;
       var delta=Math.abs(stravaDistanceKm(match.activity)-planned);
       if(!best||delta<best.delta)best={session:s,match:match,delta:delta};
@@ -373,7 +377,7 @@ async function refreshStravaSessionMatches(){
     remaining=remaining.filter(function(s){return s.id!==best.session.id;});
   }
   remaining.forEach(function(s){
-    var match=window.matchActivityToSession(stravaMatchableSession(s),activities,{plannedKm:plannedRunKm(s),claimedActivityIds:claimed,rejections:stravaMatchRejections});
+    var match=window.matchActivityToSession(stravaMatchableSession(s),activities,{plannedKm:plannedRunKm(s),claimedActivityIds:claimed,rejections:stravaMatchRejections,athleteZones:strava.athleteZones});
     if(match.matched){nextMatches[String(s.id)]=match;claimed.add(stravaMatchActivityKey(match.activity));}
   });
   stravaSessionMatches=nextMatches;

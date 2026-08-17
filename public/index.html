@@ -1646,6 +1646,13 @@ body[data-theme="light"] .wd-ext-swap{background:rgba(180,83,9,.1);color:#b45309
 .strava-wstat:first-child{border-bottom:2px solid rgba(252,76,2,.4)}
 .strava-wval{font-family:var(--cond);font-size:22px;font-weight:900;color:var(--run);line-height:1}
 .strava-wstat:first-child .strava-wval{font-size:26px;color:#fc4c02}
+.strava-insights{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:7px;margin:0 0 12px}
+.strava-insight{padding:9px 11px;border:1px solid var(--border);border-radius:9px;background:var(--surface2)}
+.strava-insight strong{display:block;color:var(--text);font-size:13px;margin-top:2px}
+.strava-insight.warn{border-color:rgba(245,158,11,.4);background:rgba(245,158,11,.08)}
+.strava-insight.alert{border-color:rgba(248,113,113,.4);background:rgba(248,113,113,.08)}
+.strava-insight-lbl{font-family:var(--mono);font-size:8px;text-transform:uppercase;letter-spacing:.08em;color:var(--dim)}
+.strava-insight-note{font-size:10px;color:var(--muted);margin-top:2px;line-height:1.35}
 .strava-wlbl{font-family:var(--mono);font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.07em;line-height:1.2}
 body[data-theme="light"] .strava-act{background:#fff}
 body[data-theme="light"] .strava-chip{background:#f4f3f0}
@@ -9619,6 +9626,26 @@ function _stravaApiUrl(a, { summaryOnly = false, selectedWeek = null } = {}) {
   return `/api/strava?${params}`;
 }
 
+async function loadStravaActivityDetail(athleteId, activityId, detailsElement) {
+  if (!detailsElement?.open || detailsElement.dataset.detailLoading === '1' || detailsElement.dataset.detailLoaded === '1') return;
+  const athlete = _allAthletes.find(item => item.id === athleteId) || _coaches.find(item => item.id === athleteId);
+  if (!athlete) return;
+  detailsElement.dataset.detailLoading = '1';
+  const selectedWeek = getSelectedWeekContext(athlete, _fpWeekOffset);
+  const url = new URL(_stravaApiUrl(athlete, { selectedWeek }), window.location.origin);
+  url.searchParams.set('activity_id', String(activityId));
+  try {
+    const response = await fetch(url.pathname + url.search);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    detailsElement.dataset.detailLoaded = '1';
+    await loadStravaData(athlete);
+  } catch (error) {
+    detailsElement.dataset.detailLoading = '0';
+    console.warn('Could not load Strava activity detail', error);
+  }
+}
+window.loadStravaActivityDetail = loadStravaActivityDetail;
+
 async function prefetchStravaKm(athletes) {
   // Reuse recent summaries across refreshes. A coach opening the dashboard
   // several times should not spend the shared Strava quota each time.
@@ -9821,9 +9848,31 @@ async function loadStravaData(a) {
         <div class="strava-wstat"><span class="strava-wval">${formatSummaryTime(selectedMoving)}</span><span class="strava-wlbl">moving time</span></div>
         <div class="strava-wstat"><span class="strava-wval">${Math.round(selectedElevation)}m</span><span class="strava-wlbl">elevation${selectedEffort ? ` · ${selectedEffort} effort` : ''}</span></div>
       </div>`;
+    const insightData = data.insights || {};
+    const zoneAudit = insightData.zoneDistribution;
+    const decoupling = (insightData.aerobicDecoupling || []).slice(-1)[0];
+    const lapAlert = (insightData.lapExecution || []).slice().sort((x, y) => y.paceDecayPercent - x.paceDecayPercent)[0];
+    const pbs = insightData.personalBests || [];
+    const shoe = (insightData.gear || []).find(item => item.retirementWarning);
+    const gapPoints = insightData.gapProgression || [];
+    const gapLatest = gapPoints[gapPoints.length - 1];
+    const fmtInsightPace = speed => {
+      if (!speed) return '—';
+      const seconds = Math.round(1000 / speed);
+      return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}/km`;
+    };
+    const insightCards = [
+      zoneAudit ? `<div class="strava-insight${zoneAudit.greyPercent > 20 ? ' warn' : ''}"><span class="strava-insight-lbl">80/20 audit</span><strong>${zoneAudit.easyPercent}% easy · ${zoneAudit.hardPercent}% hard</strong><div class="strava-insight-note">${zoneAudit.greyPercent}% in Z3 grey zone</div></div>` : '',
+      decoupling ? `<div class="strava-insight${decoupling.ready ? '' : ' alert'}"><span class="strava-insight-lbl">Aerobic decoupling</span><strong>${decoupling.percent}% HR drift</strong><div class="strava-insight-note">${decoupling.ready ? 'Aerobic base signal is under 5%' : 'Over 5% — review long-run readiness'}</div></div>` : '',
+      lapAlert ? `<div class="strava-insight${lapAlert.paceDecayPercent >= 5 ? ' warn' : ''}"><span class="strava-insight-lbl">Rep execution</span><strong>${lapAlert.paceDecayPercent}% pace decay</strong><div class="strava-insight-note">${lapAlert.lapCount} laps · ${lapAlert.consistencyCvPercent}% variation</div></div>` : '',
+      pbs.length ? `<div class="strava-insight"><span class="strava-insight-lbl">Personal best</span><strong>🏆 ${esc(pbs[0].effort)} PB</strong><div class="strava-insight-note">${esc(pbs[0].activityName)}${pbs.length > 1 ? ` · +${pbs.length - 1} more` : ''}</div></div>` : '',
+      shoe ? `<div class="strava-insight alert"><span class="strava-insight-lbl">Shoe mileage</span><strong>${esc(shoe.name)} · ${shoe.km}km</strong><div class="strava-insight-note">Retirement review recommended</div></div>` : '',
+      gapLatest ? `<div class="strava-insight"><span class="strava-insight-lbl">Grade-adjusted pace</span><strong>${fmtInsightPace(gapLatest.speed)}</strong><div class="strava-insight-note">Progression metric for hilly routes</div></div>` : '',
+    ].filter(Boolean).join('');
+    const coachingInsights = insightCards ? `<div class="strava-insights">${insightCards}</div>` : '';
 
     if (!acts.length) {
-      target.outerHTML = `<div>${weeklyStrip}<div class="strava-state">No Strava activities for ${selectedWeek.weekStartStr} → ${selectedWeek.weekEndStr}</div></div>`;
+      target.outerHTML = `<div>${weeklyStrip}${coachingInsights}<div class="strava-state">No Strava activities for ${selectedWeek.weekStartStr} → ${selectedWeek.weekEndStr}</div></div>`;
       return;
     }
 
@@ -10031,7 +10080,7 @@ async function loadStravaData(a) {
           })() : '';
 
       const distanceHtml = dist ? `${dist}<span>km</span>` : `<span>${esc(sport)}</span>`;
-      return `<details class="strava-act" data-atype="${esc(sport)}" style="display:block;padding:0">
+      return `<details class="strava-act" data-atype="${esc(sport)}" data-athlete-id="${esc(a.id)}" data-activity-id="${encodeURIComponent(act.id)}" data-detail-loaded="${act.laps?.length || act.hr_zones?.length || act.description ? '1' : '0'}" ontoggle="loadStravaActivityDetail(this.dataset.athleteId,this.dataset.activityId,this)" style="display:block;padding:0">
         <summary class="strava-act-summary">
           <div class="strava-act-left">
             <div class="strava-act-name">${esc(act.name)}</div>
@@ -10053,7 +10102,7 @@ async function loadStravaData(a) {
       </details>`;
     }).join('');
 
-    target.outerHTML = `<div>${weeklyStrip}<div class="strava-acts">${cards}</div></div>`;
+    target.outerHTML = `<div>${weeklyStrip}${coachingInsights}<div class="strava-acts">${cards}</div></div>`;
 
     // ── Populate day-by-day Strava columns ──────────────────────────────────
     // Use start_date_local (athlete's local timezone) so the date matches the
