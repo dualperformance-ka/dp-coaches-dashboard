@@ -13,6 +13,9 @@ Private coaching workspace for squad monitoring, programming, nutrition, applica
 - Duplicate weekly check-ins are surfaced as a data warning instead of being silently suppressed.
 - Coaches can restart any athlete's programme at Week 0 or Week 1 on a chosen
   Monday without deleting check-ins, activities, photos, or earlier programming.
+- Weekly running, cycling, and swimming targets are coach-owned, keyed to the
+  canonical programme week, draftable, publishable, and soft-removable. See
+  `docs/weekly-sport-targets.md` for the API and rollout contract.
 
 ## Restarting an athlete's programme
 

@@ -194,6 +194,7 @@ export async function logProgrammeChange(sb, entry) {
     await sb('programme_change_log', {
       method: 'POST',
       body: [{
+        programme_id: entry.programmeId || null,
         athlete_code: entry.athleteCode || null,
         changed_by: entry.changedBy || null,
         entity_type: entry.entityType,
