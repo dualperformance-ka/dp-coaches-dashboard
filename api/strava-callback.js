@@ -1,6 +1,6 @@
 /** Strava OAuth callback. Stores the connection under a canonical athlete code. */
 import { upsert } from './_lib/supabase-rest.js';
-import { canonicalAthleteCode } from '../server/strava-cache.js';
+import { stravaRedirectUri, verifyStravaState } from '../server/strava-oauth-state.js';
 
 const STRAVA_AUTH = 'https://www.strava.com/oauth/token';
 
@@ -23,11 +23,12 @@ export default async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).send('Method not allowed');
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.setHeader('Cache-Control', 'no-store');
-  const { code, state, error } = req.query || {};
+  const { code, state, error, scope } = req.query || {};
   if (error) return res.status(400).send(page({ error: 'Strava access was denied.' }));
-  const athleteCode = canonicalAthleteCode(state);
-  if (!code || !/^[A-Z0-9_-]{1,64}$/.test(athleteCode)) {
-    return res.status(400).send(page({ error: 'The connection link is missing a valid athlete identifier.' }));
+  const verifiedState = verifyStravaState(state);
+  const athleteCode = verifiedState?.code || '';
+  if (!code || !athleteCode) {
+    return res.status(400).send(page({ error: 'This connection link is invalid or has expired. Return to the portal and try again.' }));
   }
   if (!process.env.STRAVA_CLIENT_ID || !process.env.STRAVA_CLIENT_SECRET ||
       !process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY) {
@@ -36,16 +37,18 @@ export default async function handler(req, res) {
   try {
     const tokenResponse = await fetch(STRAVA_AUTH, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
         client_id: process.env.STRAVA_CLIENT_ID,
         client_secret: process.env.STRAVA_CLIENT_SECRET,
-        code,
+        code: String(code),
         grant_type: 'authorization_code',
+        redirect_uri: stravaRedirectUri(req),
       }),
     });
     if (!tokenResponse.ok) throw new Error(`Strava token exchange failed (${tokenResponse.status})`);
-    const { access_token, refresh_token, expires_at, athlete, scope } = await tokenResponse.json();
+    const { access_token, refresh_token, expires_at, athlete } = await tokenResponse.json();
+    const grantedScopes = String(scope || '').split(',').map(value => value.trim()).filter(Boolean);
     await upsert('athlete_data', {
       athlete_code: athleteCode,
       key: 'strava_tokens',
@@ -53,7 +56,7 @@ export default async function handler(req, res) {
         access_token,
         refresh_token,
         expires_at,
-        scope: scope || null,
+        scope: grantedScopes,
         strava_athlete_id: athlete?.id || null,
         athlete_name: athlete?.firstname
           ? `${athlete.firstname} ${athlete.lastname || ''}`.trim()

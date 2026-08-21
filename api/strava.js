@@ -6,15 +6,19 @@
  * GET/POST /api/strava?mode=webhook (rewritten from /api/strava-webhook)
  */
 import { coachError, requireCoach, setCoachCors } from '../server/coach-auth.js';
+import { getRequestAthlete } from './_lib/auth.js';
 import {
   cacheActivityDetail,
   cacheActivityStreams,
   canonicalAthleteCode,
   deleteCachedActivity,
-  findAthleteCodeByStravaId,
+  enqueueWebhookEvent,
   invalidateSyncState,
+  markWebhookEventFailed,
+  markWebhookEventProcessed,
   readActivityCache,
   readAthleteZonesCache,
+  readPendingWebhookEvents,
   readSyncState,
   removeStravaConnection,
   upsertActivitySummaries,
@@ -22,14 +26,14 @@ import {
   writeSyncState,
 } from '../server/strava-cache.js';
 import { aerobicDecoupling, buildCoachingInsights } from '../server/strava-insights.js';
+import { createStravaAuthorizeUrl } from '../server/strava-oauth-state.js';
 
 const STRAVA_API = 'https://www.strava.com/api/v3';
 const STRAVA_AUTH = 'https://www.strava.com/oauth/token';
+const STRAVA_REVOKE = 'https://www.strava.com/oauth/revoke';
 const LIST_CACHE_MS = 15 * 60 * 1000;
 const ZONES_CACHE_MS = 30 * 24 * 60 * 60 * 1000;
 const STREAM_KEYS = 'time,distance,heartrate,velocity_smooth,grade_smooth';
-
-let latestRateLimit = null;
 
 async function supabaseFetch(path, options = {}) {
   const base = (process.env.SUPABASE_URL || '').replace(/\/$/, '');
@@ -77,8 +81,8 @@ export function mergeRefreshedTokens(tokens, refreshed) {
 async function doRefreshToken(refreshToken) {
   const response = await fetch(STRAVA_AUTH, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
       client_id: process.env.STRAVA_CLIENT_ID,
       client_secret: process.env.STRAVA_CLIENT_SECRET,
       grant_type: 'refresh_token',
@@ -111,9 +115,9 @@ function rateLimitNear(limit) {
     near(limit?.overall, limit?.overallLimit, 0.9, 0.95);
 }
 
-async function stravaFetchJson(url, accessToken, { optional = false } = {}) {
+async function stravaFetchJson(url, accessToken, rateContext, { optional = false } = {}) {
   const response = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
-  latestRateLimit = parseRateLimit(response.headers) || latestRateLimit;
+  rateContext.latest = parseRateLimit(response.headers) || rateContext.latest;
   if (!response.ok) {
     if (optional && [401, 403, 404].includes(response.status)) return null;
     const error = new Error(`Strava request failed: ${response.status}`);
@@ -124,13 +128,13 @@ async function stravaFetchJson(url, accessToken, { optional = false } = {}) {
   return response.json();
 }
 
-async function fetchActivities(accessToken, { afterEpoch = null, perPage = 200 } = {}) {
+async function fetchActivities(accessToken, rateContext, { afterEpoch = null, perPage = 200 } = {}) {
   const activities = [];
   let page = 1;
   while (true) {
     const params = new URLSearchParams({ per_page: String(perPage), page: String(page) });
     if (afterEpoch != null) params.set('after', String(afterEpoch));
-    const batch = await stravaFetchJson(`${STRAVA_API}/athlete/activities?${params}`, accessToken);
+    const batch = await stravaFetchJson(`${STRAVA_API}/athlete/activities?${params}`, accessToken, rateContext);
     if (!Array.isArray(batch)) throw new Error('Strava activities returned an invalid response');
     activities.push(...batch);
     if (afterEpoch == null || batch.length < perPage) break;
@@ -139,25 +143,25 @@ async function fetchActivities(accessToken, { afterEpoch = null, perPage = 200 }
   return activities;
 }
 
-async function fetchActivityDetail(accessToken, id) {
-  return stravaFetchJson(`${STRAVA_API}/activities/${id}`, accessToken, { optional: true });
+async function fetchActivityDetail(accessToken, id, rateContext) {
+  return stravaFetchJson(`${STRAVA_API}/activities/${id}`, accessToken, rateContext, { optional: true });
 }
 
-async function fetchActivityZones(accessToken, id) {
-  const zones = await stravaFetchJson(`${STRAVA_API}/activities/${id}/zones`, accessToken, { optional: true });
+async function fetchActivityZones(accessToken, id, rateContext) {
+  const zones = await stravaFetchJson(`${STRAVA_API}/activities/${id}/zones`, accessToken, rateContext, { optional: true });
   const heartRate = Array.isArray(zones) ? zones.find(zone => zone.type === 'heartrate') : null;
   return heartRate && Array.isArray(heartRate.distribution_buckets)
     ? heartRate.distribution_buckets
     : null;
 }
 
-async function fetchActivityStreams(accessToken, id) {
+async function fetchActivityStreams(accessToken, id, rateContext) {
   const params = new URLSearchParams({ keys: STREAM_KEYS, key_by_type: 'true' });
-  return stravaFetchJson(`${STRAVA_API}/activities/${id}/streams?${params}`, accessToken, { optional: true });
+  return stravaFetchJson(`${STRAVA_API}/activities/${id}/streams?${params}`, accessToken, rateContext, { optional: true });
 }
 
-async function fetchAthleteZones(accessToken) {
-  return stravaFetchJson(`${STRAVA_API}/athlete/zones`, accessToken, { optional: true });
+async function fetchAthleteZones(accessToken, rateContext) {
+  return stravaFetchJson(`${STRAVA_API}/athlete/zones`, accessToken, rateContext, { optional: true });
 }
 
 export function activityLocalDate(activity) {
@@ -313,7 +317,7 @@ function isLongRun(activity) {
     Number(activity?.distance) >= 15000 || Number(activity?.moving_time) >= 90 * 60;
 }
 
-async function enrichSelectedActivities(athleteCode, accessToken, activities, cacheRows, toEnrich) {
+async function enrichSelectedActivities(athleteCode, accessToken, activities, cacheRows, toEnrich, rateContext) {
   const rowsById = new Map((cacheRows || []).map(row => [String(row.activity_id), row]));
   const detailMap = new Map();
   const zonesMap = new Map();
@@ -325,15 +329,15 @@ async function enrichSelectedActivities(athleteCode, accessToken, activities, ca
     let zones = cached?.hr_zones || null;
     let streams = cached?.streams || null;
     if (!cached?.detail_cached_at) {
-      detail = await fetchActivityDetail(accessToken, activity.id);
-      zones = activity.has_heartrate ? await fetchActivityZones(accessToken, activity.id) : null;
+      detail = await fetchActivityDetail(accessToken, activity.id, rateContext);
+      zones = activity.has_heartrate ? await fetchActivityZones(accessToken, activity.id, rateContext) : null;
       if (detail) await cacheActivityDetail(athleteCode, activity.id, detail, zones).catch(error => {
         console.warn('[strava-cache] detail cache unavailable:', error.message);
       });
     }
     const detailed = mergeActivityDetail(activity, detail, zones);
     if (!cached?.streams_cached_at && isLongRun(detailed) && detailed.has_heartrate !== false) {
-      streams = await fetchActivityStreams(accessToken, activity.id);
+      streams = await fetchActivityStreams(accessToken, activity.id, rateContext);
       await cacheActivityStreams(athleteCode, activity.id, streams).catch(error => {
         console.warn('[strava-cache] stream cache unavailable:', error.message);
       });
@@ -350,13 +354,101 @@ async function enrichSelectedActivities(athleteCode, accessToken, activities, ca
   });
 }
 
-async function athleteZones(athleteCode, accessToken) {
+async function athleteZones(athleteCode, accessToken, rateContext) {
   const cached = await readAthleteZonesCache(athleteCode).catch(() => null);
   const age = Date.now() - Date.parse(cached?.updated_at || '');
   if (cached && Number.isFinite(age) && age < ZONES_CACHE_MS) return cached.value || null;
-  const zones = await fetchAthleteZones(accessToken);
+  const zones = await fetchAthleteZones(accessToken, rateContext);
   await writeAthleteZonesCache(athleteCode, zones || null).catch(() => {});
   return zones || cached?.value || null;
+}
+
+export function normaliseScopes(value) {
+  const scopes = Array.isArray(value) ? value : String(value || '').split(',');
+  return [...new Set(scopes.map(scope => String(scope).trim().toLowerCase()).filter(Boolean))];
+}
+
+function connectionHealth(tokens, syncState, cacheRows, warning = null) {
+  const scopes = normaliseScopes(tokens?.scope);
+  const activityReadAll = scopes.includes('activity:read_all');
+  const profileReadAll = scopes.includes('profile:read_all');
+  const lastSyncAt = syncState?.last_list_sync || null;
+  const syncAgeMinutes = lastSyncAt && Number.isFinite(Date.parse(lastSyncAt))
+    ? Math.max(0, Math.round((Date.now() - Date.parse(lastSyncAt)) / 60000))
+    : null;
+  const rows = Array.isArray(cacheRows) ? cacheRows : [];
+  const status = warning === 'strava_reconnect_required'
+    ? 'needs_reconnect'
+    : (!activityReadAll || !profileReadAll ? 'limited' : 'healthy');
+  return {
+    status,
+    athleteName: tokens?.athlete_name || null,
+    connectedAt: tokens?.connected_at || null,
+    lastSyncAt,
+    syncAgeMinutes,
+    lastChangeAt: syncState?.invalidated_at || null,
+    lastChangeReason: syncState?.reason || null,
+    scopes: { granted: scopes, activityReadAll, profileReadAll },
+    coverage: {
+      cachedActivities: rows.length,
+      detailedActivities: rows.filter(row => row?.detail_cached_at).length,
+      streamedActivities: rows.filter(row => row?.streams_cached_at).length,
+      heartRateActivities: rows.filter(row => row?.summary?.has_heartrate || row?.hr_zones).length,
+    },
+  };
+}
+
+async function processPendingWebhookEvents(athleteCode, stravaAthleteId) {
+  if (!Number.isFinite(Number(stravaAthleteId))) return { processed: 0, deauthorized: false };
+  const events = await readPendingWebhookEvents(stravaAthleteId).catch(error => {
+    console.warn('[strava-webhook] pending event read unavailable:', error.message);
+    return [];
+  });
+  let processed = 0;
+  let deauthorized = false;
+  for (const event of events || []) {
+    try {
+      if (event.object_type === 'athlete' && event.aspect_type === 'update' &&
+          String(event.updates?.authorized) === 'false') {
+        await removeStravaConnection(athleteCode);
+        deauthorized = true;
+      } else if (event.object_type === 'activity' && event.aspect_type === 'delete') {
+        await deleteCachedActivity(athleteCode, event.object_id);
+        await invalidateSyncState(athleteCode, 'activity_deleted');
+      } else if (event.object_type === 'activity') {
+        await invalidateSyncState(athleteCode, `activity_${event.aspect_type || 'changed'}`);
+      }
+      await markWebhookEventProcessed(event.id, athleteCode);
+      processed += 1;
+    } catch (error) {
+      await markWebhookEventFailed(event.id, error, event.attempts).catch(() => {});
+      console.warn('[strava-webhook] event processing failed:', error.message);
+    }
+  }
+  return { processed, deauthorized };
+}
+
+async function revokeStravaConnection(athleteCode) {
+  let tokens = await getTokens(athleteCode);
+  if (!tokens?.access_token) return;
+  if (Date.now() / 1000 > Number(tokens.expires_at) - 300 && tokens.refresh_token) {
+    tokens = await updateTokens(athleteCode, await doRefreshToken(tokens.refresh_token), tokens);
+  }
+  const basic = Buffer.from(`${process.env.STRAVA_CLIENT_ID}:${process.env.STRAVA_CLIENT_SECRET}`).toString('base64');
+  const response = await fetch(STRAVA_REVOKE, {
+    method: 'POST',
+    headers: {
+      Authorization: `Basic ${basic}`,
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: new URLSearchParams({ token: tokens.access_token }),
+  });
+  if (!response.ok && response.status !== 401) {
+    const error = new Error(`Strava deauthorization failed: ${response.status}`);
+    error.status = response.status;
+    throw error;
+  }
+  await removeStravaConnection(athleteCode);
 }
 
 async function handleWebhook(req, res) {
@@ -376,27 +468,43 @@ async function handleWebhook(req, res) {
       String(event.subscription_id) !== String(process.env.STRAVA_WEBHOOK_SUBSCRIPTION_ID)) {
     return res.status(403).json({ error: 'Unknown subscription' });
   }
-  const athleteCode = await findAthleteCodeByStravaId(event.owner_id).catch(() => '');
-  if (!athleteCode) return res.status(200).json({ received: true });
-  if (event.object_type === 'athlete' && event.aspect_type === 'update' && String(event.updates?.authorized) === 'false') {
-    await removeStravaConnection(athleteCode);
-  } else if (event.object_type === 'activity' && event.aspect_type === 'delete') {
-    await deleteCachedActivity(athleteCode, event.object_id);
-    await invalidateSyncState(athleteCode, 'activity_deleted');
-  } else if (event.object_type === 'activity') {
-    await invalidateSyncState(athleteCode, `activity_${event.aspect_type || 'changed'}`);
+  if (!Number.isFinite(Number(event.owner_id)) || !Number.isFinite(Number(event.object_id)) ||
+      !['activity', 'athlete'].includes(String(event.object_type || '')) ||
+      !['create', 'update', 'delete'].includes(String(event.aspect_type || ''))) {
+    return res.status(400).json({ error: 'Invalid webhook event' });
   }
+  // A single durable insert keeps acknowledgement comfortably inside Strava's
+  // two-second requirement. Protected reads drain the inbox for that athlete.
+  await Promise.race([
+    enqueueWebhookEvent(event),
+    new Promise((_, reject) => setTimeout(() => reject(new Error('Webhook queue timeout')), 1200)),
+  ]).catch(error => console.error('[strava-webhook] queue failed:', error.message));
   return res.status(200).json({ received: true });
 }
 
 export default async function handler(req, res) {
-  if (String(req.query?.mode || '') === 'webhook') return handleWebhook(req, res);
-  setCoachCors(req, res, 'GET, OPTIONS');
-  if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
-  try { requireCoach(req); } catch (error) { return coachError(res, error); }
-  const athleteCode = canonicalAthleteCode(req.query.code || req.query.athlete);
-  if (!athleteCode) return res.status(400).json({ error: 'athlete/code param required' });
+  const mode = String(req.query?.mode || 'coach');
+  if (mode === 'webhook') return handleWebhook(req, res);
+  const portalMode = mode === 'athlete' || mode === 'athlete-disconnect';
+  if (!portalMode) {
+    setCoachCors(req, res, 'GET, OPTIONS');
+    if (req.method === 'OPTIONS') return res.status(200).end();
+  }
+  const allowedMethod = mode === 'athlete-disconnect' ? 'POST' : 'GET';
+  if (req.method !== allowedMethod) return res.status(405).json({ error: 'Method not allowed' });
+
+  let athleteCode = '';
+  if (portalMode) {
+    const identity = await getRequestAthlete(req);
+    if (!identity?.athlete?.code) return res.status(401).json({ error: 'Athlete session required' });
+    athleteCode = canonicalAthleteCode(identity.athlete.code);
+  } else {
+    try { requireCoach(req); } catch (error) { return coachError(res, error); }
+    return res.status(403).json({
+      error: 'Direct Strava activity display is athlete-only. Use athlete-submitted training logs for coaching.',
+      code: 'strava_athlete_only',
+    });
+  }
   if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY) {
     return res.status(500).json({ error: 'SUPABASE_URL / SUPABASE_SERVICE_KEY not set' });
   }
@@ -404,13 +512,41 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'STRAVA_CLIENT_ID / STRAVA_CLIENT_SECRET not set' });
   }
 
+  res.setHeader('Cache-Control', 'no-store');
+  if (mode === 'athlete-disconnect') {
+    try {
+      await revokeStravaConnection(athleteCode);
+      return res.status(200).json({ ok: true, connected: false });
+    } catch (error) {
+      console.error('[strava-disconnect]', error);
+      return res.status(502).json({ error: 'Strava could not be disconnected. Please try again.' });
+    }
+  }
+
+  let tokens = null;
+  let syncState = null;
+  let cacheRows = [];
   try {
-    let tokens = await getTokens(athleteCode);
-    if (!tokens?.access_token) return res.status(200).json({ connected: false });
+    const authorizeUrl = portalMode ? createStravaAuthorizeUrl(req, athleteCode) : null;
+    tokens = await getTokens(athleteCode);
+    if (!tokens?.access_token) return res.status(200).json({
+      connected: false,
+      connection: { status: 'disconnected' },
+      authorizeUrl,
+      connectUrl: authorizeUrl,
+    });
+    const pending = await processPendingWebhookEvents(athleteCode, tokens.strava_athlete_id);
+    if (pending.deauthorized) return res.status(200).json({
+      connected: false,
+      connection: { status: 'disconnected', lastChangeReason: 'deauthorized' },
+      authorizeUrl,
+      connectUrl: authorizeUrl,
+    });
     if (Date.now() / 1000 > Number(tokens.expires_at) - 300) {
       tokens = await updateTokens(athleteCode, await doRefreshToken(tokens.refresh_token), tokens);
     }
     const accessToken = tokens.access_token;
+    const rateContext = { latest: null };
     const historyStart = String(req.query.history_start || '').trim();
     let afterEpoch = null;
     if (/^\d{4}-\d{2}-\d{2}$/.test(historyStart)) {
@@ -418,21 +554,26 @@ export default async function handler(req, res) {
       if (Number.isFinite(startMs)) afterEpoch = Math.floor((startMs - 86400000) / 1000);
     }
 
-    let cacheRows = await readActivityCache(athleteCode, historyStart).catch(() => []);
-    const syncState = await readSyncState(athleteCode).catch(() => null);
-    latestRateLimit = latestRateLimit || syncState?.rate_limit || null;
+    cacheRows = await readActivityCache(athleteCode, historyStart).catch(() => []);
+    syncState = await readSyncState(athleteCode).catch(() => null);
+    rateContext.latest = syncState?.rate_limit || null;
     let activities = cacheRowsToActivities(cacheRows);
     let warning = null;
-    if (!activities.length || !syncIsFresh(syncState)) {
+    let didRefresh = false;
+    const forceRefresh = !portalMode && String(req.query.force || '') === '1';
+    if (forceRefresh || !activities.length || !syncIsFresh(syncState)) {
       try {
-        activities = await fetchActivities(accessToken, { afterEpoch, perPage: 200 });
+        activities = await fetchActivities(accessToken, rateContext, { afterEpoch, perPage: 200 });
+        didRefresh = true;
         await upsertActivitySummaries(athleteCode, activities).catch(error => {
           console.warn('[strava-cache] summary cache unavailable:', error.message);
         });
         await writeSyncState(athleteCode, {
+          ...(syncState || {}),
           last_list_sync: new Date().toISOString(),
           activity_count: activities.length,
-          rate_limit: latestRateLimit,
+          rate_limit: rateContext.latest,
+          last_sync_source: forceRefresh ? 'coach_manual' : (pending.processed ? 'webhook' : 'scheduled_read'),
         }).catch(() => {});
         cacheRows = await readActivityCache(athleteCode, historyStart).catch(() => cacheRows);
         if (cacheRows.length) activities = cacheRowsToActivities(cacheRows);
@@ -462,34 +603,55 @@ export default async function handler(req, res) {
           !rowsById.get(String(activity.id))?.detail_cached_at).slice(0, 3)
       : [];
     const toEnrich = explicitlyRequested.length ? explicitlyRequested : recentForMatcher;
-    if (toEnrich.length && rateLimitNear(latestRateLimit)) {
+    if (toEnrich.length && rateLimitNear(rateContext.latest)) {
       warning = warning || 'strava_rate_limit_near';
     } else if (toEnrich.length) {
-      activities = await enrichSelectedActivities(athleteCode, accessToken, activities, cacheRows, toEnrich);
+      activities = await enrichSelectedActivities(athleteCode, accessToken, activities, cacheRows, toEnrich, rateContext);
     }
     const selectedActivities = hasDetailRange
       ? activitiesInLocalDateRange(activities, detailStart, detailEnd)
       : activities;
-    const zones = await athleteZones(athleteCode, accessToken).catch(() => null);
-    res.setHeader('Cache-Control', 's-maxage=600, stale-while-revalidate=120');
+    const grantedScopes = normaliseScopes(tokens.scope);
+    const zones = grantedScopes.includes('profile:read_all')
+      ? await athleteZones(athleteCode, accessToken, rateContext).catch(() => null)
+      : null;
+    const latestSyncState = didRefresh
+      ? { ...(syncState || {}), last_list_sync: new Date().toISOString(), rate_limit: rateContext.latest }
+      : syncState;
     return res.status(200).json({
       connected: true,
       activitiesAvailable: true,
       warning,
+      connection: connectionHealth(tokens, latestSyncState, cacheRows, warning),
+      authorizeUrl,
+      connectUrl: authorizeUrl,
       stats,
       activities: summaryOnly ? [] : activities,
       detailRange: hasDetailRange ? { start: detailStart, end: detailEnd } : null,
       athleteZones: zones,
       insights: summaryOnly ? null : buildCoachingInsights(selectedActivities),
-      rateLimit: latestRateLimit || syncState?.rate_limit || null,
-      cache: { list: syncIsFresh(syncState) ? 'hit' : 'refreshed', permanentDetail: true },
+      rateLimit: rateContext.latest || syncState?.rate_limit || null,
+      cache: { list: didRefresh ? 'refreshed' : 'hit', permanentDetail: true, webhookEventsProcessed: pending.processed },
     });
   } catch (error) {
-    console.error('[strava-coach]', error);
+    console.error(portalMode ? '[strava-athlete]' : '[strava-coach]', error);
+    if (error?.status === 401 || /refresh failed: 4\d\d/i.test(String(error?.message || ''))) {
+      return res.status(200).json({
+        connected: true,
+        activitiesAvailable: false,
+        warning: 'strava_reconnect_required',
+        connection: connectionHealth(tokens, syncState, cacheRows, 'strava_reconnect_required'),
+        authorizeUrl: portalMode ? createStravaAuthorizeUrl(req, athleteCode) : null,
+      });
+    }
     const unavailable = unavailableActivitiesResponse(error);
     if (unavailable) {
       if (error.retryAfter) res.setHeader('Retry-After', error.retryAfter);
-      return res.status(200).json(unavailable);
+      return res.status(200).json({
+        ...unavailable,
+        connection: connectionHealth(tokens, syncState, cacheRows, 'strava_rate_limited'),
+        authorizeUrl: portalMode ? createStravaAuthorizeUrl(req, athleteCode) : null,
+      });
     }
     return res.status(500).json({ error: error.message });
   }
