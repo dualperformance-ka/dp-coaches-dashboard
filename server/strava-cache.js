@@ -1,4 +1,4 @@
-import { remove, select, tablePath, supabaseRequest, upsert } from '../api/_lib/supabase-rest.js';
+import { insert, remove, select, tablePath, supabaseRequest, upsert } from '../api/_lib/supabase-rest.js';
 
 const SYNC_STATE_KEY = 'strava_sync_state';
 const ZONES_KEY = 'strava_athlete_zones';
@@ -118,4 +118,51 @@ export async function findAthleteCodeByStravaId(stravaAthleteId) {
     limit: '1',
   });
   return canonicalAthleteCode(rows?.[0]?.athlete_code);
+}
+
+export async function enqueueWebhookEvent(event) {
+  const epoch = Number(event?.event_time);
+  return insert('strava_webhook_events', {
+    subscription_id: Number.isFinite(Number(event?.subscription_id)) ? Number(event.subscription_id) : null,
+    owner_id: Number(event?.owner_id),
+    object_type: String(event?.object_type || ''),
+    object_id: Number(event?.object_id),
+    aspect_type: String(event?.aspect_type || ''),
+    updates: event?.updates && typeof event.updates === 'object' ? event.updates : {},
+    event_time: Number.isFinite(epoch) ? new Date(epoch * 1000).toISOString() : null,
+    received_at: new Date().toISOString(),
+  });
+}
+
+export async function readPendingWebhookEvents(stravaAthleteId, limit = 50) {
+  return select('strava_webhook_events', {
+    owner_id: `eq.${Number(stravaAthleteId)}`,
+    processed_at: 'is.null',
+    select: 'id,owner_id,object_type,object_id,aspect_type,updates,event_time,attempts',
+    order: 'received_at.asc',
+    limit: String(Math.max(1, Math.min(100, Number(limit) || 50))),
+  });
+}
+
+export async function markWebhookEventProcessed(eventId, athleteCode) {
+  return supabaseRequest(tablePath('strava_webhook_events', { id: `eq.${Number(eventId)}` }), {
+    method: 'PATCH',
+    prefer: 'return=minimal',
+    body: {
+      athlete_code: canonicalAthleteCode(athleteCode),
+      processed_at: new Date().toISOString(),
+      last_error: null,
+    },
+  });
+}
+
+export async function markWebhookEventFailed(eventId, error, attempts = 0) {
+  return supabaseRequest(tablePath('strava_webhook_events', { id: `eq.${Number(eventId)}` }), {
+    method: 'PATCH',
+    prefer: 'return=minimal',
+    body: {
+      attempts: Math.max(0, Number(attempts) || 0) + 1,
+      last_error: String(error?.message || error || 'Unknown webhook processing error').slice(0, 500),
+    },
+  });
 }

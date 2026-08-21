@@ -1611,6 +1611,19 @@ body[data-theme="light"] .wd-ext-swap{background:rgba(180,83,9,.1);color:#b45309
 /* ── Strava section ── */
 .strava-panel{min-height:80px}
 .strava-state{font-family:var(--mono);font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;padding:10px 0}
+.strava-command-bar{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:11px 12px;margin-bottom:10px;border:1px solid var(--border);border-radius:10px;background:linear-gradient(135deg,rgba(252,76,2,.09),var(--surface2) 48%)}
+.strava-command-main{display:flex;align-items:center;gap:9px;min-width:0}
+.strava-health-dot{width:9px;height:9px;border-radius:999px;background:var(--ok);box-shadow:0 0 0 4px rgba(74,222,128,.1);flex:none}
+.strava-command-bar.limited .strava-health-dot{background:var(--warn);box-shadow:0 0 0 4px rgba(245,158,11,.12)}
+.strava-command-bar.needs_reconnect .strava-health-dot{background:var(--alert);box-shadow:0 0 0 4px rgba(248,113,113,.12)}
+.strava-command-copy{min-width:0}
+.strava-command-title{font-size:12px;font-weight:850;color:var(--text);line-height:1.2}
+.strava-command-meta{font-family:var(--mono);font-size:8px;color:var(--dim);letter-spacing:.04em;margin-top:3px;line-height:1.4}
+.strava-command-actions{display:flex;align-items:center;gap:7px;flex:none}
+.strava-sync-btn{min-height:34px;padding:7px 11px;border:1px solid rgba(252,76,2,.35);border-radius:7px;background:rgba(252,76,2,.09);color:#fc4c02;font-family:var(--mono);font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;cursor:pointer}
+.strava-sync-btn:hover{background:rgba(252,76,2,.16)}
+.strava-sync-btn:disabled{opacity:.55;cursor:wait}
+.strava-scope-note{padding:8px 10px;margin:-2px 0 10px;border:1px solid rgba(245,158,11,.32);border-radius:8px;background:rgba(245,158,11,.07);color:var(--muted);font-size:10px;line-height:1.45}
 .strava-acts{display:flex;flex-direction:column;gap:10px;margin-top:8px}
 .strava-act{background:var(--surface2);border:1px solid var(--border);border-left:3px solid var(--border);border-radius:10px;overflow:hidden;transition:border-color .15s,box-shadow .15s}
 .strava-act:hover{box-shadow:0 2px 12px rgba(0,0,0,.18)}
@@ -1682,7 +1695,18 @@ body[data-theme="light"] .strava-splits th{background:rgba(0,0,0,.02)}
 body[data-theme="light"] .strava-splits tbody tr:nth-child(even) td{background:rgba(0,0,0,.02)}
 body[data-theme="light"] .strava-act-desc{background:rgba(0,0,0,.02)}
 body[data-theme="light"] .strava-weekly-strip{background:#fff}
+body[data-theme="light"] .strava-command-bar{background:linear-gradient(135deg,rgba(252,76,2,.08),#fff 52%)}
 .strava-linked-badge{background:rgba(252,76,2,.15);color:#fc4c02;border-color:rgba(252,76,2,.35)}
+@media(max-width:640px){
+  .strava-command-bar{align-items:flex-start;flex-direction:column;padding:12px}
+  .strava-command-actions,.strava-sync-btn{width:100%}
+  .strava-sync-btn{min-height:44px}
+  .strava-weekly-strip{display:grid;grid-template-columns:1fr 1fr}
+  .strava-wstat{min-width:0;border-bottom:1px solid var(--border)}
+  .strava-wstat:nth-child(2){border-right:none}
+  .strava-wstat:nth-last-child(-n+2){border-bottom:none}
+  .strava-insights{grid-template-columns:1fr}
+}
 
 /* ── Daily input ledger ── */
 .daily-ledger{display:flex;flex-direction:column;gap:8px}
@@ -7847,7 +7871,7 @@ function buildFPCard(a, weekOffset = 0) {
         <div class="fpc-train-block">
           <div class="fpc-train-label run">Run</div>
           <div class="fpc-train-stat"><strong>${rc}/${rp}</strong> sessions</div>
-          <div class="fpc-train-stat" data-fp-km="${a.id}"><strong>${esc(w['Weekly Run KM'] || '—')} km</strong> <span style="font-size:10px;color:var(--dim)">notion</span> this week</div>
+          <div class="fpc-train-stat" data-fp-km="${a.id}"><strong>${esc(w['Weekly Run KM'] || '—')} km</strong> <span style="font-size:10px;color:var(--dim)">athlete log</span> this week</div>
           <div class="fpc-pbar"><div class="fpc-pfill run" style="width:${rPct}%"></div></div>
           <div class="fpc-train-stat">Feel: <strong>${esc(w['Run Feel /10'] || '—')}/10</strong></div>
           ${isBad(w['Run Niggles']) ? `<div class="fpc-train-note bad">⚠ ${esc(w['Run Niggles'])}</div>` : ''}
@@ -8437,11 +8461,6 @@ function buildFPCard(a, weekOffset = 0) {
     <div id="photo-comparison-${esc(a.id)}" class="progress-photo-state">Loading comparison…</div>
   </div>`;
 
-  const stravaHtml = `<div class="fpc-section strava-panel">
-    <div class="fpc-section-title">🟠 Strava Activities</div>
-    <div class="strava-state" data-strava-panel="${esc(a.id)}">Loading Strava data…</div>
-  </div>`;
-
   // ── Previous Check-ins (fully expanded in full-page view)
   let fpPrevCheckinsHtml = '';
   if (ctx.weekOffset === 0) {
@@ -8521,7 +8540,6 @@ function buildFPCard(a, weekOffset = 0) {
     ${trendsHtml}
     ${bodyNutrPart}
     ${progressPhotosHtml}
-    ${stravaHtml}
     ${fpPrevCheckinsHtml}
     ${callPrepHtml}
   </div>`;
@@ -9558,9 +9576,6 @@ async function load({ bust = false } = {}) {
     document.getElementById('updated').textContent =
       'Updated ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-    // Background-fetch Strava km for all athletes so squad cards update live.
-    // Fire-and-forget — failures are silent so they don't affect the main load.
-    prefetchStravaKm(athletes);
   } catch (e) {
     document.getElementById('loading').style.display = 'none';
     document.getElementById('err').style.display = 'block';
@@ -9813,7 +9828,6 @@ function _drawFP() {
   initCollapsibleSections();
   requestAnimationFrame(() => _positionCurrentProgrammeWeek(document.getElementById('fp-body')));
   loadProgressPhotoComparison(a.id);
-  loadStravaData(a);
 
   // Restore saved note (fpc-note textarea uses onchange so pre-fill here)
   const ta = document.querySelector('#fp-body textarea.fpc-note');
@@ -9863,6 +9877,31 @@ async function loadStravaActivityDetail(athleteId, activityId, detailsElement) {
   }
 }
 window.loadStravaActivityDetail = loadStravaActivityDetail;
+
+async function refreshStravaData(athleteId, button) {
+  const athlete = _allAthletes.find(item => item.id === athleteId) || _coaches.find(item => item.id === athleteId);
+  if (!athlete) return;
+  const original = button?.textContent || 'Sync now';
+  if (button) { button.disabled = true; button.textContent = 'Syncing…'; button.setAttribute('aria-busy', 'true'); }
+  try {
+    const selectedWeek = getSelectedWeekContext(athlete, _fpWeekOffset);
+    const url = new URL(_stravaApiUrl(athlete, { selectedWeek }), window.location.origin);
+    url.searchParams.set('force', '1');
+    const response = await fetch(url.pathname + url.search, { cache: 'no-store' });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    await loadStravaData(athlete);
+  } catch (error) {
+    console.warn('Could not refresh Strava', error);
+    if (button) button.textContent = 'Try again';
+  } finally {
+    if (button?.isConnected) {
+      button.disabled = false;
+      button.removeAttribute('aria-busy');
+      if (button.textContent !== 'Try again') button.textContent = original;
+    }
+  }
+}
+window.refreshStravaData = refreshStravaData;
 
 async function prefetchStravaKm(athletes) {
   // Reuse recent summaries across refreshes. A coach opening the dashboard
@@ -10021,7 +10060,7 @@ async function loadStravaData(a) {
     if (!res.ok) {
       const e = await res.json().catch(() => ({}));
       if (res.status === 429) {
-        target.outerHTML = `<div class="strava-state">Strava rate limit reached — the rest of the athlete data is available. Retry Strava shortly.</div>`;
+        target.outerHTML = `<div class="strava-state" data-strava-panel="${esc(a.id)}">Strava rate limit reached — the rest of the athlete data is available. Retry Strava shortly.</div>`;
         return;
       }
       throw new Error(e.error || `HTTP ${res.status}`);
@@ -10029,14 +10068,33 @@ async function loadStravaData(a) {
     const data = await res.json();
 
     if (!data.connected) {
-      target.outerHTML = `<div>
-        <div class="strava-connect-note" style="margin-bottom:8px">Athlete hasn't connected Strava yet. Once they authorise via the athlete portal, their activities will appear here automatically.</div>
+      target.outerHTML = `<div data-strava-panel="${esc(a.id)}">
+        <div class="strava-command-bar needs_reconnect"><div class="strava-command-main"><span class="strava-health-dot"></span><div class="strava-command-copy"><div class="strava-command-title">Strava not connected</div><div class="strava-command-meta">Ask ${esc(a.name || a.id)} to connect securely from their athlete portal</div></div></div></div>
+        <div class="strava-connect-note" style="margin-bottom:8px">Activities will appear automatically after authorisation. Coaches never need an athlete's Strava password.</div>
       </div>`;
       return;
     }
 
     // Weekly summary strip
     const s = data.stats || {};
+    const connection = data.connection || {};
+    const coverage = connection.coverage || {};
+    const syncLabel = connection.lastSyncAt
+      ? `Synced ${new Date(connection.lastSyncAt).toLocaleString('en-AU', { day:'numeric', month:'short', hour:'numeric', minute:'2-digit' })}`
+      : 'First sync pending';
+    const coverageLabel = `${coverage.cachedActivities || 0} cached · ${coverage.detailedActivities || 0} detailed · ${coverage.heartRateActivities || 0} with HR`;
+    const statusTitle = connection.status === 'needs_reconnect' ? 'Reconnect required'
+      : connection.status === 'limited' ? 'Connected with limited access'
+      : 'Strava sync healthy';
+    const commandBar = `<div class="strava-command-bar ${esc(connection.status || 'healthy')}">
+      <div class="strava-command-main"><span class="strava-health-dot"></span><div class="strava-command-copy"><div class="strava-command-title">${statusTitle}</div><div class="strava-command-meta">${syncLabel} · ${coverageLabel}</div></div></div>
+      <div class="strava-command-actions"><button class="strava-sync-btn" type="button" onclick="refreshStravaData('${esc(a.id)}',this)">Sync now</button></div>
+    </div>`;
+    const scopeNote = connection.status === 'limited'
+      ? `<div class="strava-scope-note"><strong>Limited coaching view.</strong> This athlete should reconnect from the portal so activity history and profile zones can be read in full.</div>`
+      : connection.status === 'needs_reconnect'
+        ? `<div class="strava-scope-note"><strong>Sync paused.</strong> Ask the athlete to reconnect from the portal; cached history remains available here.</div>`
+        : '';
 
     // Push Strava km into training section + squad card bar
     if (s.weeklyKm != null) {
@@ -10090,7 +10148,7 @@ async function loadStravaData(a) {
     const coachingInsights = insightCards ? `<div class="strava-insights">${insightCards}</div>` : '';
 
     if (!acts.length) {
-      target.outerHTML = `<div>${weeklyStrip}${coachingInsights}<div class="strava-state">No Strava activities for ${selectedWeek.weekStartStr} → ${selectedWeek.weekEndStr}</div></div>`;
+      target.outerHTML = `<div data-strava-panel="${esc(a.id)}">${commandBar}${scopeNote}${weeklyStrip}${coachingInsights}<div class="strava-state">No Strava activities for ${selectedWeek.weekStartStr} → ${selectedWeek.weekEndStr}</div></div>`;
       return;
     }
 
@@ -10320,7 +10378,7 @@ async function loadStravaData(a) {
       </details>`;
     }).join('');
 
-    target.outerHTML = `<div>${weeklyStrip}${coachingInsights}<div class="strava-acts">${cards}</div></div>`;
+    target.outerHTML = `<div data-strava-panel="${esc(a.id)}">${commandBar}${scopeNote}${weeklyStrip}${coachingInsights}<div class="strava-acts">${cards}</div></div>`;
 
     // ── Populate day-by-day Strava columns ──────────────────────────────────
     // Use start_date_local (athlete's local timezone) so the date matches the
@@ -10479,7 +10537,7 @@ async function loadStravaData(a) {
     });
 
   } catch (err) {
-    if (target) target.outerHTML = `<div class="strava-state">Could not load Strava data — check /api/strava is configured</div>`;
+    if (target) target.outerHTML = `<div class="strava-state" data-strava-panel="${esc(a.id)}">Could not load Strava data — check /api/strava is configured</div>`;
   }
 }
 

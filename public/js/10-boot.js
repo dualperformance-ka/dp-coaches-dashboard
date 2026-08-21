@@ -363,29 +363,51 @@ window.closeEnhancedModal = closeEnhancedModal;
   var btn = document.getElementById('dp-strava-btn');
 
   window.initStrava = async function(code) {
-    if (!code) return;
-    var connectUrl = 'https://www.strava.com/oauth/authorize'
-      + '?client_id=254938'
-      + '&response_type=code'
-      + '&redirect_uri=' + encodeURIComponent(window.location.origin + '/api/strava-callback')
-      + '&scope=activity:read_all,profile:read_all'
-      + '&state=' + encodeURIComponent(String(code).trim().toUpperCase());
-
-    btn.href = connectUrl;
+    if (!code || !btn) return { connected:false, activities:[] };
+    btn.href = '#';
+    btn.onclick = null;
     btn.innerHTML = '<svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" style="flex-shrink:0"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066z"/><path d="M11.234 13.828L7.07 6h5.886l4.143 7.828z" opacity=".7"/></svg> Connect Strava';
     btn.style.cssText = 'display:inline-flex;align-items:center;gap:5px;background:#fc4c02;color:#fff;border-color:#fc4c02;box-shadow:0 0 12px rgba(252,76,2,.6);text-decoration:none;font-weight:700;';
 
     try {
-      var res  = await fetch('/api/strava',{headers:authHeaders({}),cache:'no-store'});
+      var res  = await fetch('/api/strava?mode=athlete',{headers:authHeaders({}),cache:'no-store'});
+      if(res.status===401){handleAuthSessionLost();throw new Error('Athlete session required');}
       var data = await res.json();
-      if(data.authorizeUrl)btn.href=data.authorizeUrl;
+      if(!res.ok)throw new Error(data.error||('Strava status failed '+res.status));
+      var connectUrl=data.authorizeUrl||data.connectUrl||'';
+      if(connectUrl)btn.href=connectUrl;
       if (data.connected) {
-        btn.innerHTML = '<span class="btn-ic"><svg class="icon"><use href="#i-check"/></svg></span>Strava connected';
-        btn.style.cssText = 'display:inline-flex;align-items:center;background:transparent;color:rgba(74,222,128,.9);border-color:rgba(74,222,128,.35);box-shadow:none;text-decoration:none;pointer-events:none;';
-        btn.title = data.activitiesAvailable === false
-          ? 'Strava is connected. Activity sync is temporarily unavailable and will retry automatically.'
-          : 'Strava is connected';
+        var reconnect=data.connection&&data.connection.status==='needs_reconnect';
+        var limited=data.connection&&data.connection.status==='limited';
+        btn.innerHTML = reconnect||limited
+          ? '<svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066z"/></svg> Reconnect Strava'
+          : '<span class="btn-ic"><svg class="icon"><use href="#i-check"/></svg></span>Strava connected';
+        btn.style.cssText = reconnect||limited
+          ? 'display:inline-flex;align-items:center;gap:5px;background:#fc4c02;color:#fff;border-color:#fc4c02;text-decoration:none;font-weight:700;'
+          : 'display:inline-flex;align-items:center;background:transparent;color:rgba(74,222,128,.95);border-color:rgba(74,222,128,.38);box-shadow:none;text-decoration:none;';
+        btn.title = reconnect ? 'Reconnect Strava to resume activity sync.'
+          : limited ? 'Reconnect Strava to grant the activity and profile permissions coaching uses.'
+          : data.activitiesAvailable === false
+            ? 'Connected. Activity sync will retry automatically.'
+            : 'Connected. Select to disconnect Strava.';
         btn.setAttribute('aria-label', btn.title);
+        if(!reconnect&&!limited){
+          btn.href='#';
+          btn.onclick=async function(event){
+            event.preventDefault();
+            if(!window.confirm('Disconnect Strava from Dual Performance? Your existing coaching history will stay saved.'))return;
+            btn.textContent='Disconnecting…';
+            btn.setAttribute('aria-busy','true');
+            try{
+              var disconnect=await fetch('/api/strava?mode=athlete-disconnect',{method:'POST',headers:authHeaders({}),cache:'no-store'});
+              if(!disconnect.ok)throw new Error('Disconnect failed');
+              window._stravaLoadPromise=window.initStrava(code);
+            }catch(error){
+              btn.textContent='Try disconnect again';
+              btn.removeAttribute('aria-busy');
+            }
+          };
+        }
         // Check if the athlete has acknowledged the connection.
         window._stravaAthCode = code;
         if (_authToken) {
@@ -400,11 +422,13 @@ window.closeEnhancedModal = closeEnhancedModal;
           } catch(e) { /* silently skip banner on error */ }
         }
       } else {
-        btn.href = data.connectUrl || connectUrl;
+        btn.href = connectUrl||'#';
+        btn.title=connectUrl?'Connect your Strava account securely.':'Strava connection is temporarily unavailable.';
       }
       return data;
     } catch(e) {
-      btn.href = connectUrl; // keep orange connect state on error
+      btn.href = '#';
+      btn.title = 'Strava connection is temporarily unavailable. Please try again shortly.';
       return { connected:false, activities:[] };
     }
   };
