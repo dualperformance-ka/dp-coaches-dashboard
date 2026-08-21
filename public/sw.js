@@ -12,7 +12,7 @@
       would risk showing stale or cross-coach data offline)
    ============================================================ */
 
-const VERSION = 'dp-coaches-v28-daily-macro-cta';
+const VERSION = 'dp-coaches-v29-mobile-detail-polish';
 const SHELL_CACHE = `${VERSION}-shell`;
 const STATIC_CACHE = `${VERSION}-static`;
 const FONT_CACHE = `${VERSION}-fonts`;
@@ -31,7 +31,7 @@ const SHELL_ASSETS = [
   '/dashboard-comprehensive.css?v=2',
   '/dashboard-theme-system.css?v=20260810-2',
   '/dashboard-desktop.css',
-  '/dashboard-mobile-polish.css',
+  '/dashboard-mobile-polish.css?v=20260821-2',
   '/dashboard-mobilenav.js',
   '/triage.css?v=23',
   '/triage.js?v=21',

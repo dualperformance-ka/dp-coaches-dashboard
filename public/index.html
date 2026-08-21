@@ -1997,7 +1997,7 @@ body[data-theme="light"] .theme-btn.active{background:rgba(255,255,255,.22);colo
 </style>
 <link rel="stylesheet" href="/dashboard-theme-system.css?v=20260810-2">
 <link rel="stylesheet" href="/dashboard-desktop.css">
-<link rel="stylesheet" href="/dashboard-mobile-polish.css">
+<link rel="stylesheet" href="/dashboard-mobile-polish.css?v=20260821-2">
 <link rel="stylesheet" href="/triage.css?v=23">
 <link rel="stylesheet" href="/programming.css?v=4">
 <link rel="stylesheet" href="/weekly-sport-targets.css?v=3">
@@ -7697,10 +7697,10 @@ function buildWeekJump(a, ctx) {
         <div class="week-jump-sub">${fmtDate(ctx.weekStartStr)} → ${fmtDate(ctx.weekEndStr)}</div>
       </div>
     </div>
-    <div class="week-jump-controls">
+    <div class="week-jump-controls" role="group" aria-label="Programme week navigation">
       <button class="week-jump-btn secondary" onclick="fpWeekNav(-1)">← Previous Week</button>
-      <button class="week-jump-btn secondary" onclick="fpWeekNav(1)" ${ctx.selectedWeekNum !== null && ctx.selectedWeekNum >= programmeEnd ? 'disabled' : ''}>Next Week →</button>
       <button class="week-jump-btn" onclick="fpWeekReset()" ${ctx.weekOffset === 0 ? 'disabled' : ''}>Current Week</button>
+      <button class="week-jump-btn secondary" onclick="fpWeekNav(1)" ${ctx.selectedWeekNum !== null && ctx.selectedWeekNum >= programmeEnd ? 'disabled' : ''}>Next Week →</button>
     </div>
   </div>`;
 }

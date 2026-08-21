@@ -535,6 +535,55 @@
     padding: 10px 8px calc(24px + var(--dp-safe-bottom)) !important;
     overflow-x: clip;
   }
+
+  /* The week context is the first orientation cue for a coach opening an
+     athlete. Give it a full-width reading order instead of squeezing the
+     athlete, week and state into one desktop row. */
+  #fp-overlay .week-jump {
+    top: calc(56px + var(--dp-safe-top)) !important;
+    gap: 10px !important;
+    padding: 12px !important;
+    border-radius: 14px !important;
+    box-shadow: 0 12px 32px rgba(0,0,0,.24) !important;
+  }
+  #fp-overlay .week-jump-identity {
+    display: block !important;
+    min-width: 0;
+  }
+  #fp-overlay .week-jump-athlete {
+    max-width: 100% !important;
+    margin-bottom: 8px;
+    color: var(--brand-text);
+    font-family: var(--font-data) !important;
+    font-size: 10px !important;
+    font-weight: 800 !important;
+    letter-spacing: .1em !important;
+    line-height: 1.2 !important;
+    text-overflow: clip !important;
+  }
+  #fp-overlay .week-jump-athlete::before {
+    content: 'Athlete · ';
+    color: var(--dim);
+    font-weight: 650;
+  }
+  #fp-overlay .week-jump-divider { display: none !important; }
+  #fp-overlay .week-jump-main-row {
+    align-items: center !important;
+    justify-content: space-between;
+    gap: 8px !important;
+  }
+  #fp-overlay .week-jump-main {
+    min-width: 0;
+    font-size: clamp(19px, 6vw, 24px) !important;
+    line-height: 1.05 !important;
+    overflow-wrap: anywhere;
+  }
+  #fp-overlay .week-jump-status {
+    flex: 0 0 auto;
+    max-width: 42%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
   #fp-overlay .fpc-hero {
     margin-bottom: 9px !important;
     padding: 14px 12px !important;
@@ -564,7 +613,11 @@
   #fp-overlay .fpc-section-title {
     margin-bottom: 11px !important;
     padding-bottom: 9px !important;
-    font-size: 9px !important;
+    font-family: var(--font-ui) !important;
+    font-size: 15px !important;
+    font-weight: 800 !important;
+    letter-spacing: -.01em !important;
+    line-height: 1.2 !important;
   }
   #fp-overlay .fpc-scores {
     grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
@@ -597,8 +650,87 @@
   #fp-overlay .dwn-btn,
   #fp-overlay .week-jump-btn {
     min-width: 0;
-    padding-inline: 4px !important;
+    min-height: 42px;
+    padding: 8px 4px !important;
     white-space: normal !important;
+    line-height: 1.2;
+  }
+
+  /* Strength sets keep the scan-friendly four-column table on phones, but the
+     exercise cell owns two internal rows: name/set first, swap context second.
+     A nowrap swap badge previously collapsed the exercise name to zero width. */
+  #fp-overlay .wd-ex-table {
+    width: calc(100% + 16px);
+    max-width: none;
+    margin: 10px -8px 0;
+    border-radius: 10px;
+  }
+  #fp-overlay .wd-ext-head,
+  #fp-overlay .wd-ext-row {
+    grid-template-columns: minmax(0, 1fr) 56px 38px 38px !important;
+    gap: 4px !important;
+    padding: 9px 8px !important;
+  }
+  #fp-overlay .wd-ext-head {
+    align-items: center;
+    font-size: 7px !important;
+    letter-spacing: .07em !important;
+  }
+  #fp-overlay .wd-ext-row {
+    min-height: 48px;
+    align-items: center !important;
+  }
+  #fp-overlay .wd-ext-ex {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-auto-rows: auto;
+    align-items: center !important;
+    gap: 4px 6px !important;
+    min-width: 0;
+    font-size: 12px !important;
+    line-height: 1.3 !important;
+  }
+  #fp-overlay .wd-ext-exname {
+    grid-column: 1;
+    grid-row: 1;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  #fp-overlay .wd-ext-setlbl {
+    grid-column: 2;
+    grid-row: 1;
+    align-self: center;
+    margin-left: 0 !important;
+    padding-right: 0 !important;
+    font-size: 7.5px !important;
+  }
+  #fp-overlay .wd-ext-swap {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    justify-self: start;
+    display: block;
+    width: auto;
+    max-width: 100%;
+    margin-top: 1px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  #fp-overlay .wd-ext-num {
+    min-width: 0;
+    font-size: 11.5px !important;
+  }
+  #fp-overlay .wd-ext-num.w em { font-size: 8px !important; }
+  #fp-overlay .wd-ext-pb {
+    display: block;
+    width: fit-content;
+    margin: 0 auto 3px;
+  }
+  #fp-overlay .wd-ext-missed {
+    min-width: 0;
+    overflow-wrap: normal;
+    white-space: normal;
+    line-height: 1.25;
   }
   #fp-overlay img,
   #fp-overlay svg,
@@ -614,6 +746,38 @@
   }
   #fp-overlay .wd-strava-col:empty {
     display: none !important;
+  }
+
+  /* Secondary editing surfaces behave like native sheets and remain clear of
+     the home indicator. Inputs stay at iOS' non-zooming text size. */
+  .po-modal,
+  .ma-card,
+  .wst-dialog,
+  .dmo-dialog {
+    max-width: 100vw !important;
+  }
+  .po-modal-body,
+  .ma-body,
+  .wst-grid,
+  .dmo-body {
+    min-width: 0;
+  }
+  .po-input,
+  .ma-card input,
+  .ma-card select,
+  .wst-field input,
+  .wst-field select,
+  .dmo-field input,
+  .dmo-field select,
+  .dmo-field textarea,
+  .cn-row input,
+  .cn-row select,
+  .cn-composer textarea {
+    font-size: 16px !important;
+  }
+  .wst-dialog,
+  .dmo-dialog {
+    padding-bottom: var(--dp-safe-bottom);
   }
 
   /* Long chip rails stay swipeable without clipping the selected athlete. */
@@ -701,6 +865,14 @@
     font-size: 11px !important;
   }
   body > .dp-app-toast[role="status"] button { min-height: 34px; }
+
+  /* Authentication and athlete detail are focused flows. Update/install
+     prompts wait until the coach returns to the dashboard instead of covering
+     the primary action or logged set data. */
+  .dp-access-gate:not(.is-hidden) ~ .dp-app-toast,
+  #fp-overlay[aria-hidden="false"] ~ .dp-app-toast {
+    display: none !important;
+  }
 }
 
 @media (max-width: 380px) {
