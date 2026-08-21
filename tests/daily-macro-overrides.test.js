@@ -306,14 +306,14 @@ test('a failed editor load stops retrying, surfaces the error, and offers a manu
   assert.match(editorRoot.innerHTML, /class="dmo-retry"/);
 });
 
-test('dashboard ships the daily fuelling fix under a fresh PWA asset version', () => {
+test('dashboard ships daily fuelling and theme parity under the current PWA asset version', () => {
   const dashboard = fs.readFileSync(new URL('../public/index.html', import.meta.url), 'utf8');
   const worker = fs.readFileSync(new URL('../public/sw.js', import.meta.url), 'utf8');
   assert.match(dashboard, /daily-macro-overrides\.css\?v=3/);
   assert.match(dashboard, /daily-macro-overrides\.js\?v=3/);
   assert.match(worker, /daily-macro-overrides\.css\?v=3/);
   assert.match(worker, /daily-macro-overrides\.js\?v=3/);
-  assert.match(worker, /dp-coaches-v28-daily-macro-cta/);
+  assert.match(worker, /dp-coaches-v30-theme-parity/);
 });
 
 test('coach links and notification forwarding default to the canonical athlete portal', () => {
