@@ -18,6 +18,12 @@
   --elevated: #151d24;
   --elevated-2: #1a242d;
   --shadow-soft: 0 14px 36px rgba(0,0,0,.28);
+  --chart-blue: #79b8ff;
+  --chart-red: #ff8f8f;
+  --chart-amber: #f8c15c;
+  --chart-orange: #ff9b57;
+  --chart-green: #58d89d;
+  --chart-weight: #e7f2f8;
 }
 
 body[data-theme="light"] {
@@ -45,6 +51,12 @@ body[data-theme="light"] {
   --alert: #b83f50;
   --run: #136d98;
   --str: #334d69;
+  --chart-blue: #1d5fbf;
+  --chart-red: #b42332;
+  --chart-amber: #94600b;
+  --chart-orange: #b9470d;
+  --chart-green: #117a4b;
+  --chart-weight: #101d27;
   background: linear-gradient(180deg,#f8fbfd 0%,#edf3f7 46%,#e8f0f4 100%);
 }
 
@@ -210,8 +222,8 @@ body[data-theme="light"] .week-jump {
   background:var(--surface);
 }
 
-/* The athlete-history overlay has its own Dark / Light toggle. Keep it
-   independent from the dashboard theme selected underneath the overlay. */
+/* Athlete history uses the same theme contract as the dashboard. Its local
+   controls stay visible so coaches can switch modes without closing it. */
 #wh-overlay:not(.wh-light) .wh-section {
   color:var(--wh-text);
   background:var(--wh-surface);
@@ -316,6 +328,57 @@ body[data-theme="light"] .plan-action-btn { color:#0d6288; background:rgba(31,13
 body[data-theme="light"] .nut-row.current td { background:rgba(31,139,184,.08); }
 body[data-theme="light"] .nut-row.current .nut-wk { color:#0d6288; }
 
+/* Theme-aware semantic surfaces and data accents. */
+.action-ribbon {
+  color:var(--alert);
+  background:linear-gradient(90deg,rgba(248,113,113,.11),rgba(248,113,113,.035));
+  border-left-color:var(--alert);
+}
+.action-ribbon.amber {
+  color:var(--warn);
+  background:linear-gradient(90deg,rgba(245,158,11,.12),rgba(245,158,11,.035));
+  border-left-color:var(--warn);
+}
+.action-ribbon-list { color:var(--text); }
+.fpc-action-section { padding:18px 24px; }
+.fpc-action-section.is-acked { opacity:.65; }
+.fpc-action-section.is-critical {
+  background:rgba(248,113,113,.075);
+  border-color:rgba(248,113,113,.28);
+}
+.fpc-action-section.is-watch {
+  background:rgba(245,158,11,.075);
+  border-color:rgba(245,158,11,.28);
+}
+.fpc-action-section.is-critical .fpc-section-title,
+.fpc-action-item.is-critical { color:var(--alert); }
+.fpc-action-section.is-watch .fpc-section-title,
+.fpc-action-item.is-watch { color:var(--warn); }
+.fpc-action-group.has-following { margin-bottom:10px; }
+.fpc-action-item {
+  display:flex;
+  align-items:flex-start;
+  gap:8px;
+  padding:4px 0;
+  font-family:var(--font-data);
+  font-size:11px;
+}
+.fpc-action-item.is-watch { padding-block:3px; font-size:10px; }
+.fpc-action-dot { font-weight:900; }
+.wip-banner.is-upcoming { border-color:rgba(29,95,191,.30); }
+.wip-banner.is-upcoming .wip-label { color:var(--chart-blue); }
+.fp.streak { color:var(--chart-amber); background:rgba(248,193,92,.10); border-color:rgba(248,193,92,.30); }
+.wd-strava-stat.is-achievement { color:var(--chart-amber); border-color:currentColor; }
+
+body[data-theme="light"] .action-ribbon {
+  background:linear-gradient(90deg,rgba(184,63,80,.10),rgba(255,255,255,.72));
+}
+body[data-theme="light"] .action-ribbon.amber {
+  background:linear-gradient(90deg,rgba(153,96,13,.11),rgba(255,255,255,.72));
+}
+body[data-theme="light"] .fpc-action-section.is-critical { background:rgba(184,63,80,.07); }
+body[data-theme="light"] .fpc-action-section.is-watch { background:rgba(153,96,13,.07); }
+
 /* Notify, pipeline and action queue. */
 body[data-theme="light"] .notif-mark-seen,
 body[data-theme="light"] .app-reject-btn,
@@ -376,6 +439,61 @@ body[data-theme="light"] .ps-mode-btn.active {
   color:#0d6288;
   background:rgba(31,139,184,.10);
   border-color:rgba(31,139,184,.42);
+}
+
+body[data-theme="light"] .ps-ex-preview-list,
+body[data-theme="light"] .ps-lib-results,
+body[data-theme="light"] .ps-disc-day {
+  color:var(--text);
+  background:var(--surface2);
+  border-color:var(--border-mid);
+}
+body[data-theme="light"] .ps-ex-preview-row,
+body[data-theme="light"] .ps-lib-result {
+  color:var(--muted);
+  border-color:var(--border);
+}
+body[data-theme="light"] .ps-ex-preview-row span:first-child,
+body[data-theme="light"] .ps-lib-result { color:var(--text); }
+body[data-theme="light"] .ps-ex-preview-hint,
+body[data-theme="light"] .ps-lib-result span,
+body[data-theme="light"] .ps-disc-day .ps-disc-dom,
+body[data-theme="light"] .ps-disc-hint { color:var(--dim); }
+body[data-theme="light"] .ps-disc-day.on {
+  color:#12688f;
+  background:var(--brand-bg);
+  border-color:var(--brand-border);
+}
+body[data-theme="light"] .ps-disc-day.on .ps-disc-dom { color:#12688f; }
+
+/* Authentication, workflow and install/update states follow the saved theme. */
+body[data-theme="light"] .dp-access-gate {
+  color:var(--text);
+  background:radial-gradient(circle at 50% 20%,rgba(31,139,184,.13),transparent 34%),var(--bg);
+}
+body[data-theme="light"] .dp-access-card {
+  color:var(--text);
+  background:var(--surface);
+  border-color:var(--brand-border);
+  box-shadow:0 30px 80px rgba(20,48,66,.16);
+}
+body[data-theme="light"] .dp-access-logo { mix-blend-mode:multiply; filter:none; }
+body[data-theme="light"] .dp-access-card input,
+body[data-theme="light"] .dp-access-card select {
+  color:var(--control-text);
+  background:var(--control-bg);
+  border-color:var(--border-mid);
+}
+.workflow-toast {
+  color:var(--ok);
+  background:var(--elevated);
+  border-color:rgba(74,222,128,.35);
+  box-shadow:var(--shadow-soft);
+}
+.workflow-toast.is-error {
+  color:var(--alert);
+  background:var(--elevated);
+  border-color:rgba(248,113,113,.35);
 }
 
 /* Athlete detail top bar is chrome; the content below follows the active theme. */

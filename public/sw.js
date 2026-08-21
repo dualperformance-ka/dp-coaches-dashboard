@@ -12,7 +12,7 @@
       would risk showing stale or cross-coach data offline)
    ============================================================ */
 
-const VERSION = 'dp-coaches-v29-mobile-detail-polish';
+const VERSION = 'dp-coaches-v30-theme-parity';
 const SHELL_CACHE = `${VERSION}-shell`;
 const STATIC_CACHE = `${VERSION}-static`;
 const FONT_CACHE = `${VERSION}-fonts`;
@@ -21,7 +21,7 @@ const FONT_CACHE = `${VERSION}-fonts`;
 const SHELL_ASSETS = [
   '/',
   '/index.html',
-  '/app.js',
+  '/app.js?v=2',
   '/coach-auth.js',
   '/coaching-actions.js?v=3',
   '/dashboard-redesign.js?v=20260810-3',
@@ -29,7 +29,7 @@ const SHELL_ASSETS = [
   '/dashboard-detail-cleanup.css',
   '/dashboard-mobile.css',
   '/dashboard-comprehensive.css?v=2',
-  '/dashboard-theme-system.css?v=20260810-2',
+  '/dashboard-theme-system.css?v=20260821-1',
   '/dashboard-desktop.css',
   '/dashboard-mobile-polish.css?v=20260821-2',
   '/dashboard-mobilenav.js',

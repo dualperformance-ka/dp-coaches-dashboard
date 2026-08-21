@@ -1995,7 +1995,7 @@ body[data-theme="light"] .theme-btn.active{background:rgba(255,255,255,.22);colo
   .sum-card{flex:1 1 100%}
 }
 </style>
-<link rel="stylesheet" href="/dashboard-theme-system.css?v=20260810-2">
+<link rel="stylesheet" href="/dashboard-theme-system.css?v=20260821-1">
 <link rel="stylesheet" href="/dashboard-desktop.css">
 <link rel="stylesheet" href="/dashboard-mobile-polish.css?v=20260821-2">
 <link rel="stylesheet" href="/triage.css?v=23">
@@ -2079,7 +2079,7 @@ async function maPost(payload) {
 
 function maStatus(msg, ok) {
   const el = document.getElementById('ma-status');
-  el.style.color = ok ? '#4ade80' : '#f87171';
+  el.style.color = ok ? 'var(--ok)' : 'var(--alert)';
   el.textContent = msg || '';
   if (msg) setTimeout(() => { if (el.textContent === msg) el.textContent = ''; }, 4000);
 }
@@ -2365,7 +2365,7 @@ function refreshRosterDrivenUI() {
     </div>
     <div id="err" class="state-box" style="display:none">
       <div class="state-txt" style="color:var(--alert)" id="err-msg"></div>
-      <button class="refresh-btn" style="color:#0a0a0a;border-color:#ccc;margin-top:14px" onclick="load()">↻ Retry</button>
+      <button class="refresh-btn" style="color:var(--text);border-color:var(--border-mid);margin-top:14px" onclick="load()">↻ Retry</button>
     </div>
     <div id="content" style="display:none">
       <div id="dash-week-nav" style="display:none"></div>
@@ -4935,7 +4935,7 @@ function trendDelta(series, inv = false) {
 }
 
 // ── Mini sparkline SVG ───────────────────────────────────────────────────────
-function sparkSVG(series, color = '#0a0a0a', height = 18) {
+function sparkSVG(series, color = 'var(--chart-weight)', height = 18) {
   const w = 100, h = height;
   const vals = series.map(p => p.value);
   const valid = vals.filter(v => v !== null);
@@ -4963,7 +4963,7 @@ function sparkSVG(series, color = '#0a0a0a', height = 18) {
 }
 
 // ── Larger trend SVG with area fill ──────────────────────────────────────────
-function trendSVG(series, color = '#0a0a0a', height = 42) {
+function trendSVG(series, color = 'var(--chart-weight)', height = 42) {
   const w = 200, h = height;
   const vals = series.map(p => p.value);
   const valid = vals.filter(v => v !== null);
@@ -7103,10 +7103,10 @@ function buildCard(a, weekOffset = 0) {
   let sparkStripHtml = '';
   if (a.trends) {
     const cells = [
-      { key: 'sleep',  lbl: 'Sleep',  inv: false, color: '#3b82f6' },
-      { key: 'stress', lbl: 'Stress', inv: true,  color: '#dc2626' },
-      { key: 'energy', lbl: 'Energy', inv: false, color: '#f59e0b' },
-      { key: 'weight', lbl: 'Weight', inv: false, color: '#0a0a0a' },
+      { key: 'sleep',  lbl: 'Sleep',  inv: false, color: 'var(--chart-blue)' },
+      { key: 'stress', lbl: 'Stress', inv: true,  color: 'var(--chart-red)' },
+      { key: 'energy', lbl: 'Energy', inv: false, color: 'var(--chart-amber)' },
+      { key: 'weight', lbl: 'Weight', inv: false, color: 'var(--chart-weight)' },
     ];
     const cellsHtml = cells.map(c => {
       const series = a.trends[c.key] || [];
@@ -7150,8 +7150,8 @@ function buildCard(a, weekOffset = 0) {
     const fPlan = futCtx.plan || [];
     const fRun = fPlan.filter(r => RUN_SESSION_TYPES.has(r['Session Type'] || r['SessionType'] || ''));
     const fStr = fPlan.filter(r => !RUN_SESSION_TYPES.has(r['Session Type'] || r['SessionType'] || '') && (r['Session Type'] || r['SessionType']));
-    weekInProgress = `<div class="wip-banner" style="border-color:rgba(99,102,241,.3)">
-      <div class="wip-label" style="color:#a5b4fc">Week ${fWkNum ?? ''} upcoming <span class="wip-ends">${fmtDate(futCtx.weekStartStr)} → ${fmtDate(futCtx.weekEndStr)}</span></div>
+    weekInProgress = `<div class="wip-banner is-upcoming">
+      <div class="wip-label">Week ${fWkNum ?? ''} upcoming <span class="wip-ends">${fmtDate(futCtx.weekStartStr)} → ${fmtDate(futCtx.weekEndStr)}</span></div>
       ${fPlan.length ? `<div class="sess-row" style="margin:6px 0 2px">
         <div class="scard"><div class="snum run-c">${fRun.length}</div><div class="slbl">Run planned</div></div>
         <div class="scard"><div class="snum str-c">${fStr.length}</div><div class="slbl">Strength planned</div></div>
@@ -7425,7 +7425,7 @@ function buildCard(a, weekOffset = 0) {
         <div>
           <div class="aname">${esc(a.id)}</div>
           <div class="ameta ${isHistorical ? '' : a.isStale ? 'nocheckin' : ''}">${metaText}</div>
-          <div class="pcard-tags">${fps}${actDotHtml ? `<span style="display:inline-flex;align-items:center;gap:4px;margin-left:${fps?'2':'0'}px">${actDotHtml}</span>` : ''}${a.checkinStreak >= 2 ? `<span class="fp" style="background:rgba(251,191,36,.15);color:#fbbf24;border-color:rgba(251,191,36,.3)">🔥 ${a.checkinStreak}wk</span>` : ''}<span data-strava-tag="${esc(a.id)}"></span></div>
+          <div class="pcard-tags">${fps}${actDotHtml ? `<span style="display:inline-flex;align-items:center;gap:4px;margin-left:${fps?'2':'0'}px">${actDotHtml}</span>` : ''}${a.checkinStreak >= 2 ? `<span class="fp streak">🔥 ${a.checkinStreak}wk</span>` : ''}<span data-strava-tag="${esc(a.id)}"></span></div>
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">
           <div style="display:flex;gap:6px">
@@ -8257,19 +8257,19 @@ function buildFPCard(a, weekOffset = 0) {
       const ackLabel = a.acked
         ? ` · Acknowledged${ackRecord.by ? ` by ${esc(ackRecord.by)}` : ''}${ackRecord.at ? ` on ${fmtDate(ackRecord.at.slice(0, 10))}` : ''}`
         : '';
-      fpActionHtml = `<div class="fpc-section" style="padding:18px 24px;background:${a.actions.severity === 'red' ? '#fef2f2' : '#fffbeb'};border-color:${a.actions.severity === 'red' ? 'rgba(220,38,38,.25)' : 'rgba(217,119,6,.25)'};${a.acked ? 'opacity:.65' : ''}">
-        <div class="fpc-section-title" style="color:${a.actions.severity === 'red' ? '#991b1b' : '#92400e'};margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+      fpActionHtml = `<div class="fpc-section fpc-action-section ${a.actions.severity === 'red' ? 'is-critical' : 'is-watch'}${a.acked ? ' is-acked' : ''}">
+        <div class="fpc-section-title">
           <span>${a.actions.severity === 'red' ? '⚠ Action Required' : '⚠ Watch List'}${ackLabel}</span>
           <button class="fpc-ack-btn" onclick="${a.acked ? 'unackAlert' : 'ackAlert'}('${esc(a.id)}')" ${_ackPending.has(a.id) ? 'disabled' : ''}>${_ackPending.has(a.id) ? 'Saving…' : a.acked ? '↩ Restore' : '✓ Acknowledge'}</button>
         </div>
-        ${a.actions.critical.length ? `<div style="margin-bottom:${a.actions.watch.length ? '10px' : '0'}">
-          ${a.actions.critical.map(t => `<div style="font-family:var(--mono);font-size:11px;color:#991b1b;padding:4px 0;display:flex;align-items:flex-start;gap:8px">
-            <span style="color:var(--alert);font-weight:900">●</span><span>${esc(t)}</span>
+        ${a.actions.critical.length ? `<div class="fpc-action-group${a.actions.watch.length ? ' has-following' : ''}">
+          ${a.actions.critical.map(t => `<div class="fpc-action-item is-critical">
+            <span class="fpc-action-dot">●</span><span>${esc(t)}</span>
           </div>`).join('')}
         </div>` : ''}
         ${a.actions.watch.length ? `<div>
-          ${a.actions.watch.map(t => `<div style="font-family:var(--mono);font-size:10px;color:#92400e;padding:3px 0;display:flex;align-items:flex-start;gap:8px">
-            <span style="color:var(--warn)">●</span><span>${esc(t)}</span>
+          ${a.actions.watch.map(t => `<div class="fpc-action-item is-watch">
+            <span class="fpc-action-dot">●</span><span>${esc(t)}</span>
           </div>`).join('')}
         </div>` : ''}
       </div>`;
@@ -8308,12 +8308,12 @@ function buildFPCard(a, weekOffset = 0) {
   let trendsHtml = '';
   if (a.trends) {
     const cards = [
-      { key: 'sleep',    lbl: 'Sleep',    inv: false, color: '#3b82f6', unit: '/10' },
-      { key: 'stress',   lbl: 'Stress',   inv: true,  color: '#dc2626', unit: '/10' },
-      { key: 'energy',   lbl: 'Energy',   inv: false, color: '#f59e0b', unit: '/10' },
-      { key: 'soreness', lbl: 'Soreness', inv: true,  color: '#ea580c', unit: '/10' },
-      { key: 'weight',   lbl: 'Weight',   inv: false, color: '#0a0a0a', unit: 'kg' },
-      { key: 'calories', lbl: 'Calories', inv: false, color: '#15803d', unit: 'kcal' },
+      { key: 'sleep',    lbl: 'Sleep',    inv: false, color: 'var(--chart-blue)', unit: '/10' },
+      { key: 'stress',   lbl: 'Stress',   inv: true,  color: 'var(--chart-red)', unit: '/10' },
+      { key: 'energy',   lbl: 'Energy',   inv: false, color: 'var(--chart-amber)', unit: '/10' },
+      { key: 'soreness', lbl: 'Soreness', inv: true,  color: 'var(--chart-orange)', unit: '/10' },
+      { key: 'weight',   lbl: 'Weight',   inv: false, color: 'var(--chart-weight)', unit: 'kg' },
+      { key: 'calories', lbl: 'Calories', inv: false, color: 'var(--chart-green)', unit: 'kcal' },
     ];
     const cardsHtml = cards.map(c => {
       const series = a.trends[c.key] || [];
@@ -10368,8 +10368,8 @@ async function loadStravaData(a) {
           dist                 ? `<span class="wd-strava-stat primary"><strong>${dist}</strong>km</span>` : '',
           hr                   ? `<span class="wd-strava-stat">♥ <strong>${hr}</strong>${maxHr ? `–${maxHr}` : ''}</span>` : '',
           `<span class="wd-strava-stat"><strong>${timeStr}</strong></span>`,
-          prCount ? `<span class="wd-strava-stat" style="color:#f59e0b;border-color:#f59e0b">🏆 ${prCount} PR</span>` : '',
-          wtypeLabel ? `<span class="wd-strava-stat" style="color:#f59e0b;border-color:#f59e0b">${esc(wtypeLabel)}</span>` : '',
+          prCount ? `<span class="wd-strava-stat is-achievement">🏆 ${prCount} PR</span>` : '',
+          wtypeLabel ? `<span class="wd-strava-stat is-achievement">${esc(wtypeLabel)}</span>` : '',
         ].filter(Boolean).join('');
 
         // Expanded detail chips
@@ -10593,7 +10593,10 @@ function swapProgressPhotoWeeks(athleteId) {
 // ── Weight History Overlay ────────────────────────────────────────────────────
 let _whId = null;
 let _whRange = 28;
-let _whTheme = (typeof localStorage !== 'undefined' && localStorage.getItem('dp_wh_theme')) || 'dark';
+let _whTheme = 'dark';
+try {
+  _whTheme = localStorage.getItem('dp_dash_theme') === 'light' ? 'light' : 'dark';
+} catch(e) {}
 
 function showWH(id) {
   _whId = id;
@@ -10609,13 +10612,29 @@ function hideWH() {
   document.body.style.overflow = '';
 }
 
-function setWHTheme(t) {
-  _whTheme = t;
-  try { localStorage.setItem('dp_wh_theme', t); } catch(e) {}
+function syncWHTheme(t, persist = true) {
+  _whTheme = t === 'light' ? 'light' : 'dark';
+  if (persist) {
+    try { localStorage.setItem('dp_wh_theme', _whTheme); } catch(e) {}
+  }
   const ol = document.getElementById('wh-overlay');
-  ol.classList.toggle('wh-light', t === 'light');
-  document.getElementById('wh-btn-dark').classList.toggle('wh-active', t === 'dark');
-  document.getElementById('wh-btn-light').classList.toggle('wh-active', t === 'light');
+  if (ol) ol.classList.toggle('wh-light', _whTheme === 'light');
+  const darkBtn = document.getElementById('wh-btn-dark');
+  const lightBtn = document.getElementById('wh-btn-light');
+  if (darkBtn) {
+    const active = _whTheme === 'dark';
+    darkBtn.classList.toggle('wh-active', active);
+    darkBtn.setAttribute('aria-pressed', String(active));
+  }
+  if (lightBtn) {
+    const active = _whTheme === 'light';
+    lightBtn.classList.toggle('wh-active', active);
+    lightBtn.setAttribute('aria-pressed', String(active));
+  }
+}
+
+function setWHTheme(t) {
+  setTheme(t);
 }
 
 // ── Global dashboard theme ────────────────────────────────────────────────────
@@ -10631,17 +10650,24 @@ function setTheme(t) {
   try { localStorage.setItem('dp_dash_theme', _dashTheme); } catch(e) {}
   document.body.setAttribute('data-theme', _dashTheme);
   document.querySelectorAll('.theme-btn').forEach(btn => {
-    btn.classList.toggle('active', btn.getAttribute('data-theme') === _dashTheme);
+    const active = btn.getAttribute('data-theme') === _dashTheme;
+    btn.classList.toggle('active', active);
+    btn.setAttribute('aria-pressed', String(active));
   });
+  syncWHTheme(_dashTheme);
 }
 
 // Apply saved theme on load
 (function() {
   document.body.setAttribute('data-theme', _dashTheme);
+  syncWHTheme(_dashTheme, false);
   document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('.theme-btn').forEach(btn => {
-      btn.classList.toggle('active', btn.getAttribute('data-theme') === _dashTheme);
+      const active = btn.getAttribute('data-theme') === _dashTheme;
+      btn.classList.toggle('active', active);
+      btn.setAttribute('aria-pressed', String(active));
     });
+    syncWHTheme(_dashTheme, false);
   });
 })();
 
@@ -11190,6 +11216,6 @@ document.getElementById('gen-btn').addEventListener('click', generateAI);
 <script src="/weekly-sport-targets.js?v=3" defer></script>
 <script src="/daily-macro-overrides.js?v=3" defer></script>
 <script src="/programming.js?v=4" defer></script>
-<script src="/app.js" defer></script>
+<script src="/app.js?v=2" defer></script>
 </body>
 </html>

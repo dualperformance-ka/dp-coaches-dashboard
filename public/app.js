@@ -32,12 +32,12 @@
     toast.style.cssText = [
       'position:fixed', 'bottom:18px', 'right:18px', 'z-index:9999',
       'display:flex', 'align-items:center', 'gap:14px',
-      'background:#161616',
-      'border:1px solid rgba(121,195,232,.34)',
+      'background:var(--elevated,#161616)',
+      'border:1px solid var(--brand-border,rgba(121,195,232,.34))',
       'border-radius:8px', 'padding:12px 14px',
-      'box-shadow:0 8px 30px rgba(0,0,0,.5)',
-      "font-family:'Geist Mono','SF Mono',monospace",
-      'font-size:11px', 'letter-spacing:.04em', 'color:#f0ede8',
+      'box-shadow:var(--shadow-soft,0 8px 30px rgba(0,0,0,.5))',
+      'font-family:var(--font-ui,Geist,sans-serif)',
+      'font-size:11px', 'letter-spacing:.02em', 'color:var(--text,#f0ede8)',
       'opacity:0', 'transform:translateY(6px)',
       'transition:opacity .2s ease,transform .2s ease',
       'max-width:calc(100vw - 36px)'
@@ -50,9 +50,9 @@
     const btn = document.createElement('button');
     btn.textContent = actionLabel;
     btn.style.cssText = [
-      'background:rgba(121,195,232,.10)',
-      'border:1px solid rgba(121,195,232,.34)',
-      'color:#a9dbf5', 'font:inherit', 'font-weight:600',
+      'background:var(--brand-bg,rgba(121,195,232,.10))',
+      'border:1px solid var(--brand-border,rgba(121,195,232,.34))',
+      'color:var(--brand-text,#a9dbf5)', 'font:inherit', 'font-weight:700',
       'text-transform:uppercase', 'letter-spacing:.08em',
       'padding:6px 14px', 'border-radius:5px', 'cursor:pointer',
       'white-space:nowrap'
@@ -64,7 +64,7 @@
     close.textContent = '\u2715';
     close.setAttribute('aria-label', 'Dismiss');
     close.style.cssText =
-      'background:none;border:none;color:#777;cursor:pointer;font:inherit;padding:2px 4px';
+      'background:none;border:none;color:var(--dim,#777);cursor:pointer;font:inherit;padding:2px 4px';
     close.addEventListener('click', dismissToast);
     toast.appendChild(close);
 
