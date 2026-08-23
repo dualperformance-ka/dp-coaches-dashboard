@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import handler, { mapSession, sessionWasStravaConfirmed } from '../api/coach-data.js';
+import handler, { mapSession, sessionWasStravaConfirmed, submittedStravaSummary } from '../api/coach-data.js';
 
 function responseRecorder() {
   return {
@@ -22,7 +22,7 @@ test('coach session mapping exposes only safe Strava confirmation provenance', (
     session_name: 'Easy Run',
     session_category: 'Run',
     session_date: '2026-08-20',
-    exercise_log: 'Matched from Strava | Distance: 5km | Moving time: 30min',
+    exercise_log: 'Matched from Strava | Distance: 5km | Moving time: 30min | Pace: 6:00/km | RPE: 7/10 | PAIN FLAGGED',
     raw_payload: {
       stravaActivityId: '123456789',
       access_token: 'must-not-leave-the-server',
@@ -32,6 +32,17 @@ test('coach session mapping exposes only safe Strava confirmation provenance', (
   assert.equal(sessionWasStravaConfirmed(row), true);
   const mapped = mapSession(row);
   assert.equal(mapped._stravaConfirmed, true);
+  assert.deepEqual(submittedStravaSummary(row), {
+    type: 'Run',
+    name: 'Easy Run',
+    distance: '5km',
+    movingTime: '30min',
+    pace: '6:00/km',
+    rpe: '7/10',
+    painFlagged: true,
+    rpeMismatch: false,
+  });
+  assert.deepEqual(mapped._stravaSummary, submittedStravaSummary(row));
   assert.equal('raw_payload' in mapped, false);
   assert.equal('stravaActivityId' in mapped, false);
   assert.equal(JSON.stringify(mapped).includes('must-not-leave-the-server'), false);

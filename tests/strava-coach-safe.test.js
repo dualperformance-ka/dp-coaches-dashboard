@@ -39,7 +39,8 @@ test('coach Strava endpoint remains blocked while safe submitted-log provenance 
   }
 
   const index = readFileSync(join(root, 'public', 'index.html'), 'utf8');
-  assert.match(index, /Strava-confirmed training/);
+  assert.match(index, /Strava activity ·/);
   assert.match(index, /Athlete confirmed via Strava/);
-  assert.match(index, /raw Strava activity data remains private to the athlete/);
+  assert.match(index, /Matched and submitted by the athlete in the Dual Performance portal/);
+  assert.match(index, /submittedStravaHtml/);
 });
