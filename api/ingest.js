@@ -14,6 +14,12 @@
 import { upsert } from './_lib/supabase-rest.js';
 import { getRequestAthlete } from './_lib/auth.js';
 import { allowPortalRequest } from './_lib/http.js';
+import { createHash } from 'node:crypto';
+import {
+  activityFormat,
+  decodeBase64File,
+  parseActivityFile,
+} from '../server/activity-file.js';
 
 function send(res, status, payload) {
   return res.status(status).json(payload);
@@ -84,10 +90,116 @@ function weekKey(payload) {
   return payload.clientWriteId || null;
 }
 
+function safeFileName(value) {
+  return String(value || 'activity')
+    .replace(/[\u0000-\u001f\u007f]/g, '')
+    .replace(/[/\\]/g, '_')
+    .trim()
+    .slice(0, 180) || 'activity';
+}
+
+function activityContentType(format, provided) {
+  const value = text(provided, 120);
+  if (value && /^[a-z0-9.+-]+\/[a-z0-9.+-]+$/i.test(value)) return value;
+  return format === 'gpx' ? 'application/gpx+xml'
+    : format === 'tcx' ? 'application/vnd.garmin.tcx+xml'
+      : 'application/vnd.ant.fit';
+}
+
+async function storeOriginalActivity({ path, buffer, contentType }) {
+  const baseUrl = String(process.env.SUPABASE_URL || '').replace(/\/+$/, '');
+  const key = process.env.SUPABASE_SERVICE_KEY;
+  if (!baseUrl || !key) throw new Error('Supabase service credentials not configured');
+  const encodedPath = path.split('/').map(encodeURIComponent).join('/');
+  const response = await fetch(`${baseUrl}/storage/v1/object/athlete-activity-files/${encodedPath}`, {
+    method: 'POST',
+    headers: {
+      apikey: key,
+      Authorization: `Bearer ${key}`,
+      'Content-Type': contentType,
+      'x-upsert': 'true',
+    },
+    body: buffer,
+  });
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.message || data.error || `Activity file storage failed (${response.status})`);
+  }
+}
+
+export async function persistActivityFile(payload, write = upsert, store = storeOriginalActivity) {
+  if (payload.coachAccessConsent !== true) {
+    const error = new Error('Coach access consent is required for an activity-file upload');
+    error.status = 400;
+    throw error;
+  }
+  const code = athleteCode(payload);
+  if (!code) throw new Error('Authenticated athlete identity is required');
+  const originalFilename = safeFileName(payload.fileName);
+  const format = activityFormat(originalFilename, payload.mimeType);
+  if (!format) {
+    const error = new Error('Choose a FIT, TCX or GPX activity file');
+    error.status = 400;
+    throw error;
+  }
+  const buffer = decodeBase64File(payload.fileBase64);
+  const hash = createHash('sha256').update(buffer).digest('hex');
+  const parsed = parseActivityFile({ buffer, fileName: originalFilename, mimeType: payload.mimeType });
+  const contentType = activityContentType(format, payload.mimeType);
+  const rawFilePath = `${code}/${hash}.${format}`;
+
+  await store({ path: rawFilePath, buffer, contentType });
+  const rows = await write('athlete_activity_uploads', {
+    athlete_code: code,
+    athlete_name: athleteName(payload),
+    client_write_id: text(payload.clientWriteId, 120) || `activity-${hash}`,
+    content_hash: hash,
+    source_format: parsed.sourceFormat,
+    original_filename: originalFilename,
+    content_type: contentType,
+    file_size_bytes: buffer.length,
+    raw_file_path: rawFilePath,
+    activity_name: text(payload.sessionName, 240) || parsed.activityName,
+    sport_type: parsed.sportType,
+    activity_date: date(payload.activityDate) || parsed.activityDate,
+    start_time: parsed.startTime,
+    device_name: parsed.deviceName,
+    summary: parsed.summary,
+    laps: parsed.laps,
+    splits: parsed.splits,
+    streams: parsed.streams,
+    parse_warnings: parsed.warnings,
+    athlete_notes: text(payload.notes, 2000),
+    coach_access_granted_at: new Date().toISOString(),
+    consent_version: 'activity-file-coach-access-v1',
+    submitted_at: submittedAt(payload),
+    updated_at: new Date().toISOString(),
+  }, 'athlete_code,content_hash');
+
+  return {
+    rows,
+    activity: {
+      name: text(payload.sessionName, 240) || parsed.activityName,
+      sportType: parsed.sportType,
+      activityDate: date(payload.activityDate) || parsed.activityDate,
+      sourceFormat: parsed.sourceFormat,
+      summary: parsed.summary,
+      lapCount: parsed.laps.length,
+      splitCount: parsed.splits.length,
+      storedStreamPoints: parsed.streams.length,
+      warnings: parsed.warnings,
+    },
+  };
+}
+
 async function persistStructured(payload) {
   const type = text(payload.type, 80);
   const code = athleteCode(payload);
   if (!code) return null;
+
+  if (type === 'activity_file_import') {
+    return persistActivityFile(payload);
+  }
 
   if (type === 'goals') {
     return upsert('athlete_goals', {
@@ -292,8 +404,12 @@ export default async function handler(req, res) {
   try {
     const persisted = await persistStructured(payload);
     if (!persisted) return send(res, 400, { ok: false, error: 'unsupported_write_type' });
+    if (text(payload.type, 80) === 'activity_file_import') {
+      return send(res, 200, { ok: true, queued: false, activity: persisted.activity });
+    }
   } catch (error) {
-    return send(res, 502, { ok: false, stage: 'supabase', error: error.message });
+    const status = Number(error?.status) || 502;
+    return send(res, status, { ok: false, stage: status < 500 ? 'validation' : 'supabase', error: error.message });
   }
 
   // Best-effort GHL tag on a weekly check-in — never let it fail the write.

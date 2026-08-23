@@ -10,6 +10,7 @@ const TABLES = {
   weekly: 'weekly_checkins',
   goals: 'athlete_goals',
   plans: 'nutrition_plans',
+  activityUploads: 'athlete_activity_uploads',
 };
 
 const PAGE_SIZE = 1000;
@@ -248,6 +249,31 @@ export function mapSession(row) {
     _source: 'portal_supabase',
     _submittedAt: row.submitted_at,
     _updatedAt: row.updated_at,
+  };
+}
+
+export function mapActivityUpload(row) {
+  const summary = row?.summary && typeof row.summary === 'object' && !Array.isArray(row.summary)
+    ? row.summary : {};
+  return {
+    AthleteID: row.athlete_code || '',
+    AthleteName: row.athlete_name || '',
+    Date: row.activity_date || '',
+    'date:Date:start': row.activity_date || '',
+    activityName: row.activity_name || 'Uploaded activity',
+    sportType: row.sport_type || 'Activity',
+    startTime: row.start_time || '',
+    deviceName: row.device_name || '',
+    sourceFormat: row.source_format || '',
+    summary,
+    laps: Array.isArray(row.laps) ? row.laps.slice(0, 500) : [],
+    splits: Array.isArray(row.splits) ? row.splits.slice(0, 500) : [],
+    streams: Array.isArray(row.streams) ? row.streams.slice(0, 2400) : [],
+    warnings: Array.isArray(row.parse_warnings) ? row.parse_warnings.slice(0, 20) : [],
+    notes: row.athlete_notes || '',
+    coachAccessGrantedAt: row.coach_access_granted_at || '',
+    submittedAt: row.submitted_at || '',
+    _source: 'athlete_activity_upload',
   };
 }
 
@@ -936,7 +962,8 @@ export default async function handler(req, res) {
       return res.status(400).json({ ok: false, error: `Unknown coach-data mode: ${mode}` });
     }
 
-    const [body, nutrition, sessions, weeklyRaw, goals, nutritionPlans, athleteSettings, sessionLibrary, workoutSplits, applicationDecisions, plannedRows, athletes] = await Promise.all([
+    const activityCutoff = new Date(Date.now() - 120 * 86400000).toISOString().slice(0, 10);
+    const [body, nutrition, sessions, weeklyRaw, goals, nutritionPlans, athleteSettings, sessionLibrary, workoutSplits, applicationDecisions, plannedRows, athletes, activityUploads] = await Promise.all([
       selectAll(TABLES.body, 'log_date'),
       selectAll(TABLES.nutrition, 'log_date'),
       selectAll(TABLES.sessions, 'session_date'),
@@ -949,6 +976,15 @@ export default async function handler(req, res) {
       selectAll('application_decisions', 'decided_at').catch(() => []),
       selectAll('planned_sessions', 'planned_date').catch(() => []),
       selectAll('athletes').catch(() => []),
+      selectRows(TABLES.activityUploads, {
+        select: 'athlete_code,athlete_name,activity_name,sport_type,activity_date,start_time,device_name,source_format,summary,laps,splits,streams,parse_warnings,athlete_notes,coach_access_granted_at,submitted_at',
+        activity_date: `gte.${activityCutoff}`,
+        order: 'activity_date.desc,start_time.desc',
+        limit: 500,
+      }).catch(error => {
+        console.warn('[coach-data] athlete activity uploads unavailable:', error.message);
+        return [];
+      }),
     ]);
     const sessionState = athleteSettings.filter(
       row => row.key === 'ticked' || row.key === 'logs' || row.key === 'ex_picks'
@@ -983,6 +1019,7 @@ export default async function handler(req, res) {
         sessionLibrary: sessionLibrary.length,
         workoutSplits: workoutSplits.length,
         applicationDecisions: applicationDecisions.length,
+        activityUploads: activityUploads.length,
       },
       integrity: {
         weeklyConflicts: weeklyIntegrity.conflicts,
@@ -1001,6 +1038,7 @@ export default async function handler(req, res) {
       sessionLibrary: sessionLibrary.filter(row => row.archived !== true),
       workoutSplits: workoutSplits.filter(row => row.archived !== true),
       applicationDecisions,
+      activityUploads: activityUploads.map(mapActivityUpload),
     });
   } catch (error) {
     console.error('[coach-data]', error);
@@ -1010,7 +1048,7 @@ export default async function handler(req, res) {
       source: 'portal_supabase',
       generatedAt: new Date().toISOString(),
       error: error.message,
-      counts: { body: 0, nutrition: 0, sessions: 0, weekly: 0, goals: 0, planning: 0, nutritionPlans: 0, athleteSettings: 0, sessionLibrary: 0, workoutSplits: 0, applicationDecisions: 0 },
+      counts: { body: 0, nutrition: 0, sessions: 0, weekly: 0, goals: 0, planning: 0, nutritionPlans: 0, athleteSettings: 0, sessionLibrary: 0, workoutSplits: 0, applicationDecisions: 0, activityUploads: 0 },
       body: [],
       nutrition: [],
       sessions: [],
@@ -1023,6 +1061,7 @@ export default async function handler(req, res) {
       sessionLibrary: [],
       workoutSplits: [],
       applicationDecisions: [],
+      activityUploads: [],
     });
   }
 }
