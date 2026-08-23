@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import handler from '../api/coach-data.js';
+import handler, { mapSession, sessionWasStravaConfirmed } from '../api/coach-data.js';
 
 function responseRecorder() {
   return {
@@ -14,6 +14,40 @@ function responseRecorder() {
     end() { return undefined; },
   };
 }
+
+test('coach session mapping exposes only safe Strava confirmation provenance', () => {
+  const row = {
+    athlete_code: 'ALVIN',
+    athlete_name: 'Alvin',
+    session_name: 'Easy Run',
+    session_category: 'Run',
+    session_date: '2026-08-20',
+    exercise_log: 'Matched from Strava | Distance: 5km | Moving time: 30min',
+    raw_payload: {
+      stravaActivityId: '123456789',
+      access_token: 'must-not-leave-the-server',
+    },
+  };
+
+  assert.equal(sessionWasStravaConfirmed(row), true);
+  const mapped = mapSession(row);
+  assert.equal(mapped._stravaConfirmed, true);
+  assert.equal('raw_payload' in mapped, false);
+  assert.equal('stravaActivityId' in mapped, false);
+  assert.equal(JSON.stringify(mapped).includes('must-not-leave-the-server'), false);
+});
+
+test('ordinary athlete-submitted sessions are not labelled as Strava confirmed', () => {
+  const mapped = mapSession({
+    athlete_code: 'ALVIN',
+    session_name: 'Gym',
+    session_category: 'Strength',
+    session_date: '2026-08-20',
+    exercise_log: 'Squat: Set 1: 100kg x 5',
+    raw_payload: {},
+  });
+  assert.equal(mapped._stravaConfirmed, false);
+});
 
 test('protected coach-data returns every dashboard data collection', async () => {
   const originalFetch = global.fetch;
