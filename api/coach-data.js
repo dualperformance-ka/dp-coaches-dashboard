@@ -187,6 +187,33 @@ export function sessionWasStravaConfirmed(row) {
     /^\s*matched from strava\b/i.test(log);
 }
 
+export function submittedStravaSummary(row) {
+  if (!sessionWasStravaConfirmed(row)) return null;
+
+  const log = String(row?.exercise_log || '');
+  const fields = {};
+  log.split('|').slice(1).forEach(part => {
+    const value = String(part || '').trim();
+    const separator = value.indexOf(':');
+    if (separator > 0) {
+      fields[value.slice(0, separator).trim().toLowerCase()] = value.slice(separator + 1).trim();
+    } else if (value) {
+      fields[value.toLowerCase()] = true;
+    }
+  });
+
+  return {
+    type: row.session_category || 'Run',
+    name: row.session_name || 'Strava activity',
+    distance: fields.distance || '',
+    movingTime: fields['moving time'] || '',
+    pace: fields.pace || '',
+    rpe: fields.rpe || '',
+    painFlagged: fields['pain flagged'] === true,
+    rpeMismatch: fields['rpe mismatch vs strava'] === true,
+  };
+}
+
 export function mapSession(row) {
   const code = row.athlete_code || '';
 
@@ -213,6 +240,7 @@ export function mapSession(row) {
     // Safe coach-facing provenance only. Raw Strava payloads, activity ids,
     // tokens, routes and activity detail remain server-side/athlete-only.
     _stravaConfirmed: sessionWasStravaConfirmed(row),
+    _stravaSummary: submittedStravaSummary(row),
     _clientWriteId: row.client_write_id,
     _source: 'portal_supabase',
     _submittedAt: row.submitted_at,
