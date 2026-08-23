@@ -177,7 +177,17 @@ function mapNutrition(row) {
   };
 }
 
-function mapSession(row) {
+export function sessionWasStravaConfirmed(row) {
+  const payload = row?.raw_payload;
+  const sourceId = payload && typeof payload === 'object'
+    ? (payload.stravaActivityId ?? payload.strava_activity_id)
+    : null;
+  const log = String(row?.exercise_log || '');
+  return sourceId !== null && sourceId !== undefined && String(sourceId).trim() !== '' ||
+    /^\s*matched from strava\b/i.test(log);
+}
+
+export function mapSession(row) {
   const code = row.athlete_code || '';
 
   return {
@@ -200,6 +210,9 @@ function mapSession(row) {
     'Muscle Group': row.muscle_group || '',
     'Is Swap': row.is_swap === true,
     'Rep Mode': row.rep_mode || '',
+    // Safe coach-facing provenance only. Raw Strava payloads, activity ids,
+    // tokens, routes and activity detail remain server-side/athlete-only.
+    _stravaConfirmed: sessionWasStravaConfirmed(row),
     _clientWriteId: row.client_write_id,
     _source: 'portal_supabase',
     _submittedAt: row.submitted_at,
