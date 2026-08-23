@@ -191,6 +191,7 @@ export function submittedStravaSummary(row) {
   if (!sessionWasStravaConfirmed(row)) return null;
 
   const log = String(row?.exercise_log || '');
+  const payload = row?.raw_payload && typeof row.raw_payload === 'object' ? row.raw_payload : {};
   const fields = {};
   log.split('|').slice(1).forEach(part => {
     const value = String(part || '').trim();
@@ -205,12 +206,14 @@ export function submittedStravaSummary(row) {
   return {
     type: row.session_category || 'Run',
     name: row.session_name || 'Strava activity',
-    distance: fields.distance || '',
-    movingTime: fields['moving time'] || '',
-    pace: fields.pace || '',
-    rpe: fields.rpe || '',
-    painFlagged: fields['pain flagged'] === true,
-    rpeMismatch: fields['rpe mismatch vs strava'] === true,
+    distance: row.distance_km != null ? `${row.distance_km}km` : (fields.distance || ''),
+    movingTime: row.duration_min != null ? `${row.duration_min}min` : (fields['moving time'] || ''),
+    pace: row.pace || fields.pace || '',
+    rpe: row.rpe != null ? `${row.rpe}/10` : (fields.rpe || ''),
+    feel: row.feel != null ? String(row.feel) : '',
+    painFlagged: payload.painFlag === true || fields['pain flagged'] === true,
+    notes: row.notes || '',
+    submittedAt: row.submitted_at || '',
   };
 }
 
