@@ -1304,6 +1304,23 @@ body[data-theme="light"] .plan-chip.coach::before{color:#92400e}
 .wd-strava-col{border-left:1px solid var(--border);padding-left:14px;display:flex;flex-direction:column;gap:6px;min-height:1px}
 .wd-strava-act{background:var(--surface2);border-left:3px solid #fc4c02;border-radius:8px;padding:8px 10px}
 .wd-strava-act.submitted{background:linear-gradient(135deg,rgba(252,76,2,.08),var(--surface2));border:1px solid rgba(252,76,2,.2);border-left:3px solid #fc4c02}
+.wd-submitted-summary{list-style:none;cursor:pointer;user-select:none;display:block}
+.wd-submitted-summary::-webkit-details-marker{display:none}
+.wd-submitted-headline{display:flex;align-items:flex-start;gap:8px}
+.wd-submitted-title{min-width:0;flex:1}
+.wd-submitted-chevron{font-family:var(--mono);font-size:9px;color:#fc4c02;transition:transform .18s;margin-top:3px}
+.wd-strava-act.submitted[open] .wd-submitted-chevron{transform:rotate(180deg)}
+.wd-submitted-detail{margin-top:9px;padding-top:9px;border-top:1px solid var(--border)}
+.wd-submitted-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-bottom:8px}
+.wd-submitted-metric{background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:7px 8px;min-width:0}
+.wd-submitted-lbl{display:block;font-family:var(--mono);font-size:7px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px}
+.wd-submitted-val{display:block;font-family:var(--mono);font-size:10px;color:var(--text);font-weight:700;overflow-wrap:anywhere}
+.wd-submitted-section{margin-top:8px;padding-top:8px;border-top:1px solid var(--border)}
+.wd-submitted-section-title{font-family:var(--mono);font-size:8px;font-weight:800;color:var(--dim);text-transform:uppercase;letter-spacing:.09em;margin-bottom:4px}
+.wd-submitted-copy{font-size:10px;color:var(--muted);line-height:1.5}
+.wd-submitted-copy.alert{color:var(--alert)}
+.wd-submitted-plan{display:flex;flex-wrap:wrap;gap:4px}
+.wd-submitted-limit{font-family:var(--mono);font-size:8px;line-height:1.45;color:var(--dim);margin-top:8px;padding:7px 8px;border-radius:6px;background:rgba(255,255,255,.025)}
 .wd-strava-provenance{font-family:var(--mono);font-size:8px;color:var(--dim);line-height:1.45;margin-top:7px;padding-top:7px;border-top:1px solid var(--border)}
 .wd-strava-act-type{font-family:var(--mono);font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-bottom:2px}
 .wd-strava-act-name{font-family:var(--cond);font-size:14px;font-weight:900;text-transform:uppercase;letter-spacing:.04em;line-height:1.2;color:var(--text);margin-bottom:5px}
@@ -8064,16 +8081,66 @@ function buildFPCard(a, weekOffset = 0) {
               summary.pace ? `<span class="wd-strava-stat"><strong>${esc(summary.pace)}</strong> pace</span>` : '',
               summary.rpe ? `<span class="wd-strava-stat"><strong>${esc(summary.rpe)}</strong> RPE</span>` : '',
               summary.painFlagged ? '<span class="wd-strava-stat" style="color:var(--alert)"><strong>⚠ Pain flagged</strong></span>' : '',
-              summary.rpeMismatch ? '<span class="wd-strava-stat" style="color:var(--warn)"><strong>RPE mismatch</strong></span>' : '',
             ].filter(Boolean).join('');
             const activityName = summary.name || session.Session || 'Strava activity';
             const activityType = summary.type || session._cat || 'Run';
-            return `<div class="wd-strava-act submitted">
-              <div class="wd-strava-act-type" style="color:#fc4c02">Strava activity · ${esc(activityType)}</div>
-              <div class="wd-strava-act-name">${esc(activityName)}</div>
-              ${chips ? `<div class="wd-strava-stats">${chips}</div>` : ''}
-              <div class="wd-strava-provenance">Matched and submitted by the athlete in the Dual Performance portal</div>
-            </div>`;
+            const normaliseTitle = value => String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+            const matchedPlan = dayPlan.find(plan => {
+              const planId = plan._id || plan.id || '';
+              const planOverride = planId ? getPlanOverride(planId) : null;
+              const planName = planOverride?.name || plan.Session || plan.Title || plan['Session Type'] || '';
+              return normaliseTitle(planName) === normaliseTitle(activityName);
+            }) || null;
+            const matchedPlanId = matchedPlan?._id || matchedPlan?.id || '';
+            const planOverride = matchedPlanId ? getPlanOverride(matchedPlanId) : null;
+            const planParts = matchedPlan ? [
+              planOverride?.dist ? `${planOverride.dist}km planned` : '',
+              planOverride?.pace || matchedPlan['Target Pace'] || matchedPlan.Intensity || '',
+              planOverride?.warmup ? `${planOverride.warmup} warmup` : '',
+              planOverride?.intervals ? `${planOverride.intervals}${planOverride.workpace ? ` @ ${planOverride.workpace}` : ''}` : '',
+              planOverride?.rest ? `${planOverride.rest} rest` : '',
+              planOverride?.cooldown ? `${planOverride.cooldown} cooldown` : '',
+            ].filter(Boolean) : [];
+            const loggedAt = summary.submittedAt && Number.isFinite(Date.parse(summary.submittedAt))
+              ? new Date(summary.submittedAt).toLocaleString('en-AU', { day:'numeric', month:'short', hour:'numeric', minute:'2-digit' })
+              : '';
+            const detailMetrics = [
+              ['Distance', summary.distance],
+              ['Moving time', summary.movingTime],
+              ['Average pace', summary.pace],
+              ['Athlete RPE', summary.rpe],
+              ['Athlete feel', summary.feel ? `${summary.feel}/10` : ''],
+              ['Submitted', loggedAt],
+            ].filter(([, value]) => value).map(([label, value]) => `<div class="wd-submitted-metric"><span class="wd-submitted-lbl">${esc(label)}</span><span class="wd-submitted-val">${esc(value)}</span></div>`).join('');
+            const planHtml = matchedPlan ? `<div class="wd-submitted-section">
+              <div class="wd-submitted-section-title">Prescribed workout</div>
+              <div class="wd-submitted-copy"><strong>${esc(activityName)}</strong></div>
+              ${planParts.length ? `<div class="wd-submitted-plan">${planParts.map(part => `<span class="wd-strava-stat">${esc(part)}</span>`).join('')}</div>` : '<div class="wd-submitted-copy">No additional prescription fields recorded.</div>'}
+            </div>` : '';
+            const feedbackHtml = summary.notes || summary.painFlagged ? `<div class="wd-submitted-section">
+              <div class="wd-submitted-section-title">Athlete feedback</div>
+              ${summary.painFlagged ? '<div class="wd-submitted-copy alert"><strong>⚠ Pain or niggle flagged</strong></div>' : ''}
+              ${summary.notes ? `<div class="wd-submitted-copy">${esc(summary.notes)}</div>` : ''}
+            </div>` : '';
+            return `<details class="wd-strava-act submitted">
+              <summary class="wd-submitted-summary" aria-label="Open submitted activity details for ${esc(activityName)}">
+                <div class="wd-submitted-headline">
+                  <div class="wd-submitted-title">
+                    <div class="wd-strava-act-type" style="color:#fc4c02">Strava activity · ${esc(activityType)}</div>
+                    <div class="wd-strava-act-name">${esc(activityName)}</div>
+                  </div>
+                  <span class="wd-submitted-chevron" aria-hidden="true">▾</span>
+                </div>
+                ${chips ? `<div class="wd-strava-stats">${chips}</div>` : ''}
+              </summary>
+              <div class="wd-submitted-detail">
+                ${detailMetrics ? `<div class="wd-submitted-grid">${detailMetrics}</div>` : ''}
+                ${planHtml}
+                ${feedbackHtml}
+                <div class="wd-strava-provenance">Matched and submitted by the athlete in the Dual Performance portal</div>
+                <div class="wd-submitted-limit">Kilometre splits, laps, heart-rate zones, streams and routes remain in the athlete-authenticated Strava view.</div>
+              </div>
+            </details>`;
           }).join('');
 
         const hasData = daySessions.length > 0 || dayPlan.length > 0 || dayBody || dayNutr;
