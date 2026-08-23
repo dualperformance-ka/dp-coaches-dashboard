@@ -1303,6 +1303,8 @@ body[data-theme="light"] .plan-chip.coach::before{color:#92400e}
 .wd-day-content{display:flex;flex-direction:column;gap:8px;padding-right:14px}
 .wd-strava-col{border-left:1px solid var(--border);padding-left:14px;display:flex;flex-direction:column;gap:6px;min-height:1px}
 .wd-strava-act{background:var(--surface2);border-left:3px solid #fc4c02;border-radius:8px;padding:8px 10px}
+.wd-strava-act.submitted{background:linear-gradient(135deg,rgba(252,76,2,.08),var(--surface2));border:1px solid rgba(252,76,2,.2);border-left:3px solid #fc4c02}
+.wd-strava-provenance{font-family:var(--mono);font-size:8px;color:var(--dim);line-height:1.45;margin-top:7px;padding-top:7px;border-top:1px solid var(--border)}
 .wd-strava-act-type{font-family:var(--mono);font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-bottom:2px}
 .wd-strava-act-name{font-family:var(--cond);font-size:14px;font-weight:900;text-transform:uppercase;letter-spacing:.04em;line-height:1.2;color:var(--text);margin-bottom:5px}
 .wd-strava-stats{display:flex;flex-wrap:wrap;gap:3px}
@@ -1502,7 +1504,7 @@ body[data-theme="light"] .wd-ext-swap{background:rgba(180,83,9,.1);color:#b45309
   .wd-row.empty{display:grid;grid-template-columns:72px 1fr;align-items:baseline}
   .wd-date{width:auto;font-size:10px;color:var(--muted);padding:0;letter-spacing:.1em}
   .wd-day-content{padding-right:0;gap:10px}
-  .wd-strava-col{display:none}
+  .wd-strava-col{display:flex;border-left:none;border-top:1px solid var(--border);padding:10px 0 0;margin-top:2px}
   .wd-session{padding:12px}
   .wd-sess-name{font-size:17px}
 
@@ -5552,6 +5554,7 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [
       sessionMap[k] = { ...r, _d: ds, _cat, _isRun, _isStr, _isDisc, _stravaConfirmed, _exercises: [], _swaps: {} };
     } else if (_stravaConfirmed) {
       sessionMap[k]._stravaConfirmed = true;
+      if (!sessionMap[k]._stravaSummary && r._stravaSummary) sessionMap[k]._stravaSummary = r._stravaSummary;
     }
     // Accumulate each exercise's log line into _exercises
     // Note: the Exercise Log field from Make.com already starts with "ExerciseName: Set 1:…"
@@ -7757,21 +7760,6 @@ function buildFPCard(a, weekOffset = 0) {
   const hW = !!w?.Name;
   const fps = a.flags.map(f => `<span class="fp ${f.t}">${esc(f.l)}</span>`).join('');
   const programmeVolumeHtml = buildProgrammeVolume(a);
-  const stravaConfirmedSessions = (a.sessions || []).filter(session =>
-    session._stravaConfirmed === true &&
-    session._d >= ctx.weekStartStr && session._d <= ctx.weekEndStr
-  );
-  const stravaConfirmedHtml = stravaConfirmedSessions.length ? `<div class="fpc-section strava-confirmed-summary">
-    <div class="strava-confirmed-head">
-      <div>
-        <div class="fpc-section-title" style="margin-bottom:0">🟠 Strava-confirmed training</div>
-        <div class="strava-confirmed-copy">${stravaConfirmedSessions.length} athlete-confirmed session${stravaConfirmedSessions.length === 1 ? '' : 's'} for ${esc(ctx.weekLabel || 'the selected week')}. This coach view uses the submitted Dual Performance training log; raw Strava activity data remains private to the athlete.</div>
-      </div>
-      <span class="fp strava-linked-badge">Strava confirmed</span>
-    </div>
-    <div class="strava-confirmed-list">${stravaConfirmedSessions.map(session => `<span class="strava-confirmed-item">${fmtDate(session._d)} · ${esc(session.Session || 'Run')}</span>`).join('')}</div>
-  </div>` : '';
-
   // Meta text (same logic as buildCard)
   let metaText;
   const wkEndDisplay = fmtDate(ctx.weekEndStr);
@@ -8063,13 +8051,38 @@ function buildFPCard(a, weekOffset = 0) {
         // Nutrition log for this day
         const dayNutr = a.nutrition.find(r => (r['date:Date:start'] || r.Date || '').split('T')[0] === dateStr);
 
+        // Restore the original side-by-side placement using the summary the
+        // athlete submitted with their workout. This deliberately never calls
+        // the coach Strava endpoint or exposes activity ids, routes or tokens.
+        const submittedStravaHtml = daySessions
+          .filter(session => session._stravaConfirmed === true)
+          .map(session => {
+            const summary = session._stravaSummary || {};
+            const chips = [
+              summary.distance ? `<span class="wd-strava-stat primary"><strong>${esc(summary.distance)}</strong></span>` : '',
+              summary.movingTime ? `<span class="wd-strava-stat"><strong>${esc(summary.movingTime)}</strong> moving</span>` : '',
+              summary.pace ? `<span class="wd-strava-stat"><strong>${esc(summary.pace)}</strong> pace</span>` : '',
+              summary.rpe ? `<span class="wd-strava-stat"><strong>${esc(summary.rpe)}</strong> RPE</span>` : '',
+              summary.painFlagged ? '<span class="wd-strava-stat" style="color:var(--alert)"><strong>⚠ Pain flagged</strong></span>' : '',
+              summary.rpeMismatch ? '<span class="wd-strava-stat" style="color:var(--warn)"><strong>RPE mismatch</strong></span>' : '',
+            ].filter(Boolean).join('');
+            const activityName = summary.name || session.Session || 'Strava activity';
+            const activityType = summary.type || session._cat || 'Run';
+            return `<div class="wd-strava-act submitted">
+              <div class="wd-strava-act-type" style="color:#fc4c02">Strava activity · ${esc(activityType)}</div>
+              <div class="wd-strava-act-name">${esc(activityName)}</div>
+              ${chips ? `<div class="wd-strava-stats">${chips}</div>` : ''}
+              <div class="wd-strava-provenance">Matched and submitted by the athlete in the Dual Performance portal</div>
+            </div>`;
+          }).join('');
+
         const hasData = daySessions.length > 0 || dayPlan.length > 0 || dayBody || dayNutr;
 
         if (!hasData) {
           return `<div class="wd-row empty">
             <div class="wd-date">${dayLabel}</div>
             <div class="wd-rest">${isFuture ? '—' : 'No data logged'}</div>
-            <div class="wd-strava-col" data-wd-strava-id="${esc(a.id)}" data-wd-strava-date="${dateStr}"></div>
+            <div class="wd-strava-col" data-wd-strava-id="${esc(a.id)}" data-wd-strava-date="${dateStr}">${submittedStravaHtml}</div>
           </div>`;
         }
 
@@ -8266,7 +8279,7 @@ function buildFPCard(a, weekOffset = 0) {
             ${bodyRowHtml}
             ${nutrRowHtml}
           </div>
-          <div class="wd-strava-col" data-wd-strava-id="${esc(a.id)}" data-wd-strava-date="${dateStr}"></div>
+          <div class="wd-strava-col" data-wd-strava-id="${esc(a.id)}" data-wd-strava-date="${dateStr}">${submittedStravaHtml}</div>
         </div>`;
       });
 
@@ -8570,7 +8583,6 @@ function buildFPCard(a, weekOffset = 0) {
     ${fpActionHtml}
     ${clientProfileHtml}
     ${wipHtml}
-    ${stravaConfirmedHtml}
     ${programmeVolumeHtml}
     ${scoresHtml}
     ${trainingHtml}
