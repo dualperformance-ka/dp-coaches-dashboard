@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#08111e">
+  <link rel="icon" href="/icons/icon-192.png" sizes="192x192">
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+  <title>Upload workout · Dual Performance</title>
+  <style>
+    :root{--ink:#0b1728;--muted:#64748b;--line:#dce5ee;--blue:#0ea5e9;--navy:#08111e;--ok:#047857;--bad:#b91c1c;--card:#fff}
+    *{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(circle at 12% 0,#dff4ff 0,transparent 36%),#eef4f7;color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+    header{height:74px;background:var(--navy);display:flex;align-items:center;padding:0 max(22px,calc((100vw - 920px)/2));color:#fff}.mark{font-weight:950;letter-spacing:-.04em;font-size:21px}.mark span{color:#7dd3fc}.header-note{margin-left:auto;font:700 10px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.1em;text-transform:uppercase;color:#94a3b8}
+    main{width:min(920px,calc(100% - 28px));margin:34px auto 60px}.hero{margin-bottom:22px}.eyebrow{font:800 10px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.14em;text-transform:uppercase;color:#0284c7}.hero h1{font-size:clamp(30px,5vw,48px);letter-spacing:-.05em;line-height:1;margin:9px 0 12px}.hero p{margin:0;max-width:720px;color:#526378;line-height:1.6;font-size:15px}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:18px;box-shadow:0 16px 42px rgba(15,23,42,.08);padding:24px}.card+.card{margin-top:16px}.section-title{font:850 11px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.1em;text-transform:uppercase;color:#334155;margin-bottom:15px}
+    .login-row{display:flex;gap:10px}.login-row input{flex:1;text-transform:uppercase;letter-spacing:.12em}.field{display:flex;flex-direction:column;gap:7px;margin-bottom:15px}.field label{font-size:12px;font-weight:800;color:#334155}.field input,.field textarea{width:100%;border:1px solid #cbd5e1;border-radius:10px;padding:12px 13px;font:inherit;color:var(--ink);background:#fff;outline:none}.field input:focus,.field textarea:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(14,165,233,.12)}.field textarea{min-height:84px;resize:vertical}
+    button{border:0;border-radius:10px;padding:12px 18px;background:var(--navy);color:#fff;font-weight:850;cursor:pointer}button:hover{background:#13233b}button:disabled{opacity:.48;cursor:wait}.secondary{background:#e0f2fe;color:#075985}.secondary:hover{background:#bae6fd}
+    .drop{display:block;border:2px dashed #9ccfe7;border-radius:15px;padding:28px 20px;text-align:center;background:#f5fbfe;cursor:pointer;transition:.15s}.drop:hover,.drop.drag{border-color:#0284c7;background:#eaf8ff}.drop input{position:absolute;opacity:0;pointer-events:none}.drop strong{display:block;font-size:17px}.drop span{display:block;color:var(--muted);font-size:12px;margin-top:7px}.file-name{margin-top:10px;font:750 11px ui-monospace,SFMono-Regular,Menlo,monospace;color:#0369a1;word-break:break-all}
+    .consent{display:flex;gap:11px;align-items:flex-start;padding:13px;border:1px solid #bae6fd;background:#f0f9ff;border-radius:11px;margin:16px 0}.consent input{width:18px;height:18px;margin:1px 0 0;accent-color:#0284c7;flex:0 0 auto}.consent label{font-size:12px;line-height:1.5;color:#334155}.submit-row{display:flex;align-items:center;gap:12px}.status{font-size:12px;color:var(--muted);line-height:1.5}.status.good{color:var(--ok)}.status.bad{color:var(--bad)}
+    .athlete{display:flex;align-items:center;gap:10px}.athlete-badge{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:#e0f2fe;color:#0369a1;font-weight:900}.athlete-copy strong{display:block}.athlete-copy span{font-size:11px;color:var(--muted)}
+    .result{display:none}.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:14px}.metric{padding:12px;border:1px solid var(--line);border-radius:10px}.metric strong{display:block;font-size:19px}.metric span{font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}.privacy{font-size:11px;color:var(--muted);line-height:1.6;margin-top:16px;padding-top:14px;border-top:1px solid var(--line)}
+    [hidden]{display:none!important}@media(max-width:620px){header{padding:0 18px}.header-note{display:none}main{margin-top:24px}.card{padding:18px}.login-row{flex-direction:column}.metrics{grid-template-columns:repeat(2,1fr)}.submit-row{align-items:stretch;flex-direction:column}}
+  </style>
+</head>
+<body>
+  <header><div class="mark">DUAL<span>PERFORMANCE</span></div><div class="header-note">Athlete-owned workout data</div></header>
+  <main>
+    <section class="hero"><div class="eyebrow">Full activity import</div><h1>Send the complete workout to your coach.</h1><p>Upload the original file from Garmin, COROS, Apple, Polar, Suunto or another training device. FIT carries the most detail; TCX and GPX are also supported.</p></section>
+
+    <section class="card" id="loginCard">
+      <div class="section-title">Athlete sign in</div>
+      <form id="loginForm" class="login-row"><input id="code" autocomplete="one-time-code" maxlength="80" placeholder="Your athlete access code" aria-label="Athlete access code"><button type="submit">Continue</button></form>
+      <div class="status" id="loginStatus" aria-live="polite">If you already signed in on this device, we’ll restore that secure session automatically.</div>
+    </section>
+
+    <section class="card" id="uploadCard" hidden>
+      <div class="athlete"><div class="athlete-badge" id="initials">DP</div><div class="athlete-copy"><strong id="athleteName">Athlete</strong><span>Verified athlete session</span></div><button class="secondary" id="switchBtn" type="button" style="margin-left:auto">Switch</button></div>
+      <hr style="border:0;border-top:1px solid var(--line);margin:18px 0">
+      <form id="uploadForm">
+        <div class="section-title">Workout file</div>
+        <label class="drop" id="dropZone"><input id="file" type="file" accept=".fit,.tcx,.gpx,application/vnd.ant.fit,application/gpx+xml,application/xml,text/xml" required><strong>Choose or drop a FIT, TCX or GPX file</strong><span>Maximum 3 MB · the original is retained privately for accurate reprocessing</span><div class="file-name" id="fileName"></div></label>
+        <div style="height:16px"></div>
+        <div class="field"><label for="sessionName">Workout name (optional)</label><input id="sessionName" maxlength="240" placeholder="e.g. 6 × 1 km threshold"></div>
+        <div class="field"><label for="notes">Note for your coach (optional)</label><textarea id="notes" maxlength="2000" placeholder="How it felt, conditions, niggles, or anything the file cannot show"></textarea></div>
+        <div class="consent"><input id="consent" type="checkbox" required><label for="consent">I choose to share this workout file and its parsed GPS, laps, splits, heart rate, cadence, power, elevation, temperature and device data with my Dual Performance coaches. I understand the original file will be stored privately.</label></div>
+        <div class="submit-row"><button id="uploadBtn" type="submit">Upload full workout</button><div class="status" id="uploadStatus" aria-live="polite">Nothing is shared until you press upload.</div></div>
+      </form>
+      <div class="privacy">Your identity comes from the signed-in athlete session—not from the file name or a typed athlete code. Coaches receive the parsed workout through their protected dashboard; the original file is not public.</div>
+    </section>
+
+    <section class="card result" id="resultCard">
+      <div class="section-title">Uploaded successfully</div><strong id="resultName"></strong><div class="metrics" id="metrics"></div><p class="status good" id="resultNote"></p>
+    </section>
+  </main>
+  <script>
+    (function(){
+      var token='';
+      var loginCard=document.getElementById('loginCard'),uploadCard=document.getElementById('uploadCard');
+      var loginStatus=document.getElementById('loginStatus'),uploadStatus=document.getElementById('uploadStatus');
+      function findAccessToken(value){
+        if(!value||typeof value!=='object')return '';
+        if(typeof value.access_token==='string')return value.access_token;
+        for(var key in value){var found=findAccessToken(value[key]);if(found)return found;}return '';
+      }
+      function storedToken(){
+        try{var legacy=localStorage.getItem('dp_legacy_session');if(legacy)return legacy;}catch(e){}
+        try{return findAccessToken(JSON.parse(localStorage.getItem('dp-portal-auth')||'null'));}catch(e){return '';}
+      }
+      function setAthlete(data){
+        token=token||data.access_token||'';
+        var name=data.name||data.code||'Athlete';document.getElementById('athleteName').textContent=name;
+        document.getElementById('initials').textContent=String(name).split(/\s+/).slice(0,2).map(function(v){return v[0]||'';}).join('').toUpperCase();
+        loginCard.hidden=true;uploadCard.hidden=false;
+      }
+      async function verify(candidate){
+        if(!candidate)return false;
+        var response=await fetch('/api/auth-athlete',{headers:{Authorization:'Bearer '+candidate},cache:'no-store'});
+        if(!response.ok)return false;token=candidate;setAthlete(await response.json());return true;
+      }
+      document.getElementById('loginForm').addEventListener('submit',async function(event){
+        event.preventDefault();var button=event.currentTarget.querySelector('button');button.disabled=true;loginStatus.textContent='Checking your secure access…';loginStatus.className='status';
+        try{
+          var response=await fetch('/api/auth-athlete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'legacy-login',code:document.getElementById('code').value})});
+          var data=await response.json().catch(function(){return {};});if(!response.ok)throw new Error(data.error==='access_paused'?'Your athlete access is paused.':'That access code was not recognised.');
+          token=data.access_token;try{localStorage.setItem('dp_legacy_session',token);}catch(e){}setAthlete(data);
+        }catch(error){loginStatus.textContent=error.message;loginStatus.className='status bad';}finally{button.disabled=false;}
+      });
+      document.getElementById('switchBtn').addEventListener('click',function(){token='';try{localStorage.removeItem('dp_legacy_session');}catch(e){}uploadCard.hidden=true;loginCard.hidden=false;document.getElementById('code').value='';});
+      var input=document.getElementById('file'),drop=document.getElementById('dropZone');
+      input.addEventListener('change',function(){document.getElementById('fileName').textContent=input.files[0]?input.files[0].name+' · '+(input.files[0].size/1024).toFixed(0)+' KB':'';});
+      ['dragenter','dragover'].forEach(function(name){drop.addEventListener(name,function(event){event.preventDefault();drop.classList.add('drag');});});
+      ['dragleave','drop'].forEach(function(name){drop.addEventListener(name,function(event){event.preventDefault();drop.classList.remove('drag');});});
+      drop.addEventListener('drop',function(event){if(event.dataTransfer.files.length){input.files=event.dataTransfer.files;input.dispatchEvent(new Event('change'));}});
+      function base64(file){return file.arrayBuffer().then(function(buffer){var bytes=new Uint8Array(buffer),binary='';for(var i=0;i<bytes.length;i+=32768)binary+=String.fromCharCode.apply(null,bytes.subarray(i,Math.min(i+32768,bytes.length)));return btoa(binary);});}
+      function fmtTime(seconds){var total=Math.round(Number(seconds)||0),h=Math.floor(total/3600),m=Math.floor(total%3600/60),s=total%60;return h?h+':'+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0'):m+':'+String(s).padStart(2,'0');}
+      document.getElementById('uploadForm').addEventListener('submit',async function(event){
+        event.preventDefault();var file=input.files[0],button=document.getElementById('uploadBtn');
+        if(!file)return;if(file.size>3*1024*1024){uploadStatus.textContent='That file is larger than 3 MB.';uploadStatus.className='status bad';return;}
+        button.disabled=true;uploadStatus.textContent='Reading, verifying and importing every available field…';uploadStatus.className='status';
+        try{
+          var response=await fetch('/api/ingest',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify({type:'activity_file_import',clientWriteId:'activity-upload-'+Date.now(),fileName:file.name,mimeType:file.type||'application/octet-stream',fileBase64:await base64(file),sessionName:document.getElementById('sessionName').value,notes:document.getElementById('notes').value,coachAccessConsent:document.getElementById('consent').checked,submittedAt:new Date().toISOString()})});
+          var data=await response.json().catch(function(){return {};});if(response.status===401)throw new Error('Your session expired. Sign in again.');if(!response.ok)throw new Error(data.error||'The workout could not be uploaded.');
+          var activity=data.activity||{},summary=activity.summary||{};document.getElementById('resultName').textContent=activity.name||file.name;
+          var metrics=[[(Number(summary.distanceM||0)/1000).toFixed(2),'Distance (km)'],[fmtTime(summary.movingTimeS),'Moving time'],[String(activity.lapCount||0),'Device laps'],[String(activity.splitCount||0),'KM splits'],[String(summary.avgHr?Math.round(summary.avgHr):'—'),'Average HR'],[String(summary.avgPower?Math.round(summary.avgPower):'—'),'Average watts'],[String(activity.storedStreamPoints||0),'Stored points'],[String(activity.sourceFormat||'').toUpperCase(),'File type']];
+          document.getElementById('metrics').innerHTML=metrics.map(function(metric){return '<div class="metric"><strong>'+metric[0]+'</strong><span>'+metric[1]+'</span></div>';}).join('');
+          document.getElementById('resultNote').textContent='Your coach can now open the activity beside this workout and review its splits and sensor trends.';document.getElementById('resultCard').style.display='block';document.getElementById('resultCard').scrollIntoView({behavior:'smooth'});uploadStatus.textContent='Upload complete.';uploadStatus.className='status good';
+        }catch(error){uploadStatus.textContent=error.message;uploadStatus.className='status bad';}finally{button.disabled=false;}
+      });
+      var existing=storedToken();if(existing){loginStatus.textContent='Restoring your secure session…';verify(existing).then(function(ok){if(!ok){loginStatus.textContent='Sign in with your athlete access code.';}}).catch(function(){loginStatus.textContent='Sign in with your athlete access code.';});}
+    })();
+  </script>
+</body>
+</html>

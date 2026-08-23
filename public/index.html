@@ -1772,6 +1772,16 @@ body[data-theme="light"] .strava-command-bar{background:linear-gradient(135deg,r
 <link rel="stylesheet" href="/dashboard-mobile.css">
 <link rel="stylesheet" href="/dashboard-comprehensive.css?v=2">
 <script src="/coach-auth.js"></script>
+<style>
+  .wd-strava-act.direct-upload{border-left-color:#0ea5e9;background:linear-gradient(135deg,rgba(14,165,233,.06),rgba(255,255,255,.02))}
+  .wd-import-charts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px}
+  .wd-import-chart{border:1px solid var(--line);border-radius:8px;padding:7px 8px;background:rgba(255,255,255,.45);min-width:0}
+  .wd-import-chart-head{display:flex;align-items:baseline;gap:6px;font-family:var(--mono);font-size:8px;text-transform:uppercase;color:var(--muted)}
+  .wd-import-chart-head strong{font-size:11px;color:var(--ink);margin-left:auto}
+  .wd-import-chart-head em{font-style:normal;font-size:7px;color:var(--dim)}
+  .wd-import-chart svg{display:block;width:100%;height:46px;margin-top:3px;overflow:visible}
+  @media(max-width:760px){.wd-import-charts{grid-template-columns:1fr}.wd-strava-act.direct-upload{max-width:100%}}
+</style>
 </head>
 <body>
 
@@ -5189,6 +5199,7 @@ async function fetchCoachDataSB() {
       sessionLibrary: [],
       workoutSplits: [],
       applicationDecisions: [],
+      activityUploads: [],
       counts: {},
   };
 
@@ -5213,6 +5224,7 @@ async function fetchCoachDataSB() {
       sessionLibrary: Array.isArray(data.sessionLibrary) ? data.sessionLibrary : [],
       workoutSplits: Array.isArray(data.workoutSplits) ? data.workoutSplits : [],
       applicationDecisions: Array.isArray(data.applicationDecisions) ? data.applicationDecisions : [],
+      activityUploads: Array.isArray(data.activityUploads) ? data.activityUploads : [],
       counts: data.counts || {},
       integrity: data.integrity || { weeklyConflicts: [], weeklySuppressed: 0 },
       generatedAt: data.generatedAt || null,
@@ -5379,7 +5391,7 @@ function mergeWeekly(supaRows, notionRows) {
 }
 
 // ── Build ─────────────────────────────────────────────────────────────────────
-function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [], planning = [], applications = [], roster = []) {
+function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [], planning = [], applications = [], roster = [], activityUploads = []) {
   const c90 = dago(90), c7 = dago(7);
   const map = {};
   const masterIds = new Set();
@@ -5396,7 +5408,7 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [
 
   function ens(id) {
     if (!id || id.length < 2) return;
-    if (!map[id]) map[id] = { id, weekly: null, body: [], nutrition: [], sessions: [] };
+    if (!map[id]) map[id] = { id, weekly: null, body: [], nutrition: [], sessions: [], activities: [] };
   }
 
   // Coach cards are a fixed part of the dashboard, not a side effect of a
@@ -5597,6 +5609,16 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [
     s['Exercise Log'] = s._exercises.join('\n');
     if (s._isStr) applyExPickSwaps(s, id);
     map[id].sessions.push(s);
+  });
+
+  // Athlete-owned FIT/TCX/GPX imports are independent of Strava's coach-display
+  // restrictions. They carry the original device's laps and sensor streams and
+  // are matched onto the athlete's day by server-resolved identity and date.
+  (activityUploads || []).forEach(activity => {
+    const id = nid(activity.AthleteID || activity.athleteCode || '');
+    const ds = parseSessionDate(activity['date:Date:start'] || activity.Date || activity.startTime);
+    if (!id || !ds || !map[id] || new Date(ds) < c90) return;
+    map[id].activities.push({ ...activity, _d: ds });
   });
 
   planning.forEach(r => {
@@ -7771,6 +7793,98 @@ function buildWeekJump(a, ctx) {
   </div>`;
 }
 
+function importedActivityTime(seconds) {
+  const value = Math.max(0, Math.round(Number(seconds) || 0));
+  const hours = Math.floor(value / 3600);
+  const minutes = Math.floor((value % 3600) / 60);
+  const secs = value % 60;
+  return hours ? `${hours}:${String(minutes).padStart(2,'0')}:${String(secs).padStart(2,'0')}`
+    : `${minutes}:${String(secs).padStart(2,'0')}`;
+}
+
+function importedActivityPace(speed) {
+  const value = Number(speed);
+  if (!Number.isFinite(value) || value <= 0) return '—';
+  const seconds = Math.round(1000 / value);
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2,'0')}`;
+}
+
+function importedSensorChart(streams, key, label, colour, unit) {
+  const values = (streams || []).map(point => Number(point?.[key])).filter(Number.isFinite);
+  if (values.length < 3) return '';
+  const min = Math.min(...values), max = Math.max(...values), range = max - min || 1;
+  const sample = values.length > 160
+    ? Array.from({length:160}, (_,i) => values[Math.round(i * (values.length - 1) / 159)])
+    : values;
+  const points = sample.map((value, index) => {
+    const x = sample.length === 1 ? 0 : index * 220 / (sample.length - 1);
+    const y = 42 - ((value - min) / range) * 38;
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(' ');
+  const avg = Math.round(values.reduce((sum,value)=>sum+value,0) / values.length);
+  return `<div class="wd-import-chart">
+    <div class="wd-import-chart-head"><span>${esc(label)}</span><strong>${avg}${esc(unit)}</strong><em>${Math.round(min)}–${Math.round(max)}</em></div>
+    <svg viewBox="0 0 220 46" role="img" aria-label="${esc(label)} trend"><polyline points="${points}" fill="none" stroke="${colour}" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>
+  </div>`;
+}
+
+function renderImportedActivity(activity) {
+  const summary = activity?.summary || {};
+  const laps = Array.isArray(activity?.laps) ? activity.laps : [];
+  const splits = Array.isArray(activity?.splits) ? activity.splits : [];
+  const streams = Array.isArray(activity?.streams) ? activity.streams : [];
+  const name = activity?.activityName || 'Uploaded activity';
+  const sport = activity?.sportType || 'Activity';
+  const distance = Number(summary.distanceM) > 0 ? (Number(summary.distanceM) / 1000).toFixed(2) : '';
+  const chips = [
+    distance ? `<span class="wd-strava-stat primary"><strong>${distance}</strong>km</span>` : '',
+    summary.movingTimeS ? `<span class="wd-strava-stat"><strong>${importedActivityTime(summary.movingTimeS)}</strong> moving</span>` : '',
+    summary.avgSpeedMps ? `<span class="wd-strava-stat"><strong>${importedActivityPace(summary.avgSpeedMps)}</strong>/km</span>` : '',
+    summary.avgHr ? `<span class="wd-strava-stat">♥ <strong>${Math.round(summary.avgHr)}</strong>${summary.maxHr ? `–${Math.round(summary.maxHr)}` : ''}</span>` : '',
+    summary.avgPower ? `<span class="wd-strava-stat"><strong>${Math.round(summary.avgPower)}</strong>W</span>` : '',
+  ].filter(Boolean).join('');
+  const detailChips = [
+    summary.elapsedTimeS ? `<span class="wd-strava-stat"><strong>${importedActivityTime(summary.elapsedTimeS)}</strong> elapsed</span>` : '',
+    summary.totalElevationGainM ? `<span class="wd-strava-stat">↑ <strong>${Math.round(summary.totalElevationGainM)}</strong>m</span>` : '',
+    summary.avgCadence ? `<span class="wd-strava-stat">⟳ <strong>${Math.round(summary.avgCadence)}</strong> cadence</span>` : '',
+    summary.maxPower ? `<span class="wd-strava-stat"><strong>${Math.round(summary.maxPower)}</strong>W max</span>` : '',
+    summary.calories ? `<span class="wd-strava-stat">🔥 <strong>${Math.round(summary.calories)}</strong> kcal</span>` : '',
+    summary.temperatureC != null ? `<span class="wd-strava-stat"><strong>${Math.round(summary.temperatureC)}°C</strong></span>` : '',
+    activity.deviceName ? `<span class="wd-strava-stat">⌚ ${esc(activity.deviceName)}</span>` : '',
+    summary.hasGps ? `<span class="wd-strava-stat">GPS · <strong>${Number(summary.recordCount)||streams.length}</strong> points</span>` : '',
+  ].filter(Boolean).join('');
+  const rowsSource = laps.length > 1 ? laps : splits;
+  const rowsLabel = laps.length > 1 ? 'Device laps / intervals' : 'Kilometre splits';
+  const rows = rowsSource.map((row,index) => {
+    const rowDistance = Number(row.distanceM) > 0 ? (Number(row.distanceM)/1000).toFixed(2) : '—';
+    const speed = Number(row.avgSpeedMps);
+    const elevation = row.ascentM !== null && row.ascentM !== undefined ? row.ascentM : row.elevationDifferenceM;
+    return `<tr><td>${esc(row.lap || row.split || index+1)}</td><td>${rowDistance}km</td><td><strong>${importedActivityPace(speed)}</strong></td><td>${row.avgHr ? Math.round(row.avgHr) : '—'}</td><td>${elevation != null && elevation !== '' ? `${Number(elevation)>0?'+':''}${Math.round(Number(elevation))}m` : '—'}</td><td>${row.avgCadence ? Math.round(row.avgCadence) : '—'}</td><td>${row.avgPower ? `${Math.round(row.avgPower)}W` : '—'}</td></tr>`;
+  }).join('');
+  const splitHtml = rows ? `<div style="margin-top:8px"><div class="strava-laps-toggle" style="cursor:default;pointer-events:none;margin-bottom:4px">${rowsLabel}</div><div class="wd-splits-scroll"><table class="strava-splits"><thead><tr><th>#</th><th>dist</th><th>pace</th><th>hr</th><th>elev</th><th>cad</th><th>power</th></tr></thead><tbody>${rows}</tbody></table></div></div>` : '';
+  const charts = [
+    importedSensorChart(streams,'hr','Heart rate','#ef4444',' bpm'),
+    importedSensorChart(streams,'power','Power','#f59e0b',' W'),
+    importedSensorChart(streams,'elev','Elevation','#22c55e',' m'),
+    importedSensorChart(streams,'cad','Cadence','#3b82f6',''),
+  ].filter(Boolean).join('');
+  const submitted = activity.submittedAt && Number.isFinite(Date.parse(activity.submittedAt))
+    ? new Date(activity.submittedAt).toLocaleString('en-AU',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'}) : '';
+  return `<details class="wd-strava-act direct-upload" open>
+    <summary class="wd-submitted-summary" aria-label="Open full imported activity details for ${esc(name)}">
+      <div class="wd-submitted-headline"><div class="wd-submitted-title"><div class="wd-strava-act-type" style="color:#0ea5e9">Athlete file · ${esc(String(activity.sourceFormat||'file').toUpperCase())} · ${esc(sport)}</div><div class="wd-strava-act-name">${esc(name)}</div></div><span class="wd-submitted-chevron" aria-hidden="true">▾</span></div>
+      ${chips ? `<div class="wd-strava-stats">${chips}</div>` : ''}
+    </summary>
+    <div class="wd-submitted-detail">
+      ${detailChips ? `<div class="wd-strava-stats">${detailChips}</div>` : ''}
+      ${charts ? `<div class="wd-import-charts">${charts}</div>` : ''}
+      ${splitHtml}
+      ${activity.notes ? `<div class="wd-submitted-section"><div class="wd-submitted-section-title">Athlete note</div><div class="wd-submitted-copy">${esc(activity.notes)}</div></div>` : ''}
+      <div class="wd-strava-provenance">Original athlete-consented workout file · parsed by Dual Performance${submitted ? ` · uploaded ${esc(submitted)}` : ''}</div>
+    </div>
+  </details>`;
+}
+
 function buildFPCard(a, weekOffset = 0) {
   const ctx = getSelectedWeekContext(a, weekOffset);
   const w = ctx.weekly || (weekOffset === 0 ? a.weekly : null);
@@ -8068,11 +8182,17 @@ function buildFPCard(a, weekOffset = 0) {
         // Nutrition log for this day
         const dayNutr = a.nutrition.find(r => (r['date:Date:start'] || r.Date || '').split('T')[0] === dateStr);
 
-        // Restore the original side-by-side placement using the summary the
-        // athlete submitted with their workout. This deliberately never calls
-        // the coach Strava endpoint or exposes activity ids, routes or tokens.
+        // Original device files take priority: unlike a third-party API summary,
+        // they include the athlete-consented laps and sensor streams we own.
+        const importedForDay = (a.activities || []).filter(activity => activity._d === dateStr);
+        const importedActivityHtml = importedForDay.map(renderImportedActivity).join('');
+        const normaliseActivityTitle = value => String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+        const importedNames = new Set(importedForDay.map(activity => normaliseActivityTitle(activity.activityName)));
+
+        // Keep the submitted Strava confirmation as a fallback when no original
+        // FIT/TCX/GPX has been uploaded for the same workout.
         const submittedStravaHtml = daySessions
-          .filter(session => session._stravaConfirmed === true)
+          .filter(session => session._stravaConfirmed === true && !importedNames.has(normaliseActivityTitle(session._stravaSummary?.name || session.Session)))
           .map(session => {
             const summary = session._stravaSummary || {};
             const chips = [
@@ -8138,18 +8258,19 @@ function buildFPCard(a, weekOffset = 0) {
                 ${planHtml}
                 ${feedbackHtml}
                 <div class="wd-strava-provenance">Matched and submitted by the athlete in the Dual Performance portal</div>
-                <div class="wd-submitted-limit">Kilometre splits, laps, heart-rate zones, streams and routes remain in the athlete-authenticated Strava view.</div>
+                <div class="wd-submitted-limit">For full splits and sensor streams, ask the athlete to upload the original FIT/TCX/GPX at /activity-upload.html.</div>
               </div>
             </details>`;
           }).join('');
 
-        const hasData = daySessions.length > 0 || dayPlan.length > 0 || dayBody || dayNutr;
+        const activityColumnHtml = importedActivityHtml + submittedStravaHtml;
+        const hasData = daySessions.length > 0 || dayPlan.length > 0 || importedForDay.length > 0 || dayBody || dayNutr;
 
         if (!hasData) {
           return `<div class="wd-row empty">
             <div class="wd-date">${dayLabel}</div>
             <div class="wd-rest">${isFuture ? '—' : 'No data logged'}</div>
-            <div class="wd-strava-col" data-wd-strava-id="${esc(a.id)}" data-wd-strava-date="${dateStr}">${submittedStravaHtml}</div>
+            <div class="wd-strava-col" data-wd-strava-id="${esc(a.id)}" data-wd-strava-date="${dateStr}" data-direct-activity-count="${importedForDay.length}">${activityColumnHtml}</div>
           </div>`;
         }
 
@@ -8346,7 +8467,7 @@ function buildFPCard(a, weekOffset = 0) {
             ${bodyRowHtml}
             ${nutrRowHtml}
           </div>
-          <div class="wd-strava-col" data-wd-strava-id="${esc(a.id)}" data-wd-strava-date="${dateStr}">${submittedStravaHtml}</div>
+          <div class="wd-strava-col" data-wd-strava-id="${esc(a.id)}" data-wd-strava-date="${dateStr}" data-direct-activity-count="${importedForDay.length}">${activityColumnHtml}</div>
         </div>`;
       });
 
@@ -9656,7 +9777,7 @@ async function load({ bust = false } = {}) {
     // Auto-fill weekly KM from the training plan where no manual target is set
     _fillTargetsKm(targets);
 
-    const { athletes, coaches, syncAudit } = buildAll(weekly, sessions, body, nutrition, athleteDb, targets, planning, applications, roster);
+    const { athletes, coaches, syncAudit } = buildAll(weekly, sessions, body, nutrition, athleteDb, targets, planning, applications, roster, coachDataSB.activityUploads);
     const dataHealth = {
       weekly: weekly.length,
       sessions: sessions.length,
@@ -10509,6 +10630,8 @@ async function loadStravaData(a) {
     });
 
     document.querySelectorAll(`[data-wd-strava-id="${a.id}"]`).forEach(col => {
+      // Never overwrite athlete-owned file detail with a third-party API result.
+      if (Number(col.dataset.directActivityCount || 0) > 0) return;
       const dateStr = col.dataset.wdStravaDate;
       if (!dateStr) return;
       const dayActs = _actsByDate[dateStr] || [];
