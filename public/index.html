@@ -1697,6 +1697,12 @@ body[data-theme="light"] .strava-act-desc{background:rgba(0,0,0,.02)}
 body[data-theme="light"] .strava-weekly-strip{background:#fff}
 body[data-theme="light"] .strava-command-bar{background:linear-gradient(135deg,rgba(252,76,2,.08),#fff 52%)}
 .strava-linked-badge{background:rgba(252,76,2,.15);color:#fc4c02;border-color:rgba(252,76,2,.35)}
+.strava-confirmed-summary{border-color:rgba(252,76,2,.32);background:linear-gradient(135deg,rgba(252,76,2,.08),var(--surface) 58%)}
+.strava-confirmed-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.strava-confirmed-copy{font-size:11px;color:var(--muted);line-height:1.5;margin-top:4px}
+.strava-confirmed-list{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
+.strava-confirmed-item{font-family:var(--mono);font-size:9px;color:var(--text);padding:5px 8px;border:1px solid rgba(252,76,2,.24);border-radius:999px;background:rgba(252,76,2,.07)}
+.strava-source-chip{display:inline-flex;align-items:center;gap:4px;margin-left:6px;padding:2px 6px;border:1px solid rgba(252,76,2,.3);border-radius:999px;background:rgba(252,76,2,.09);color:#fc4c02;font-family:var(--mono);font-size:8px;font-weight:750;letter-spacing:.03em;text-transform:none;vertical-align:middle}
 @media(max-width:640px){
   .strava-command-bar{align-items:flex-start;flex-direction:column;padding:12px}
   .strava-command-actions,.strava-sync-btn{width:100%}
@@ -5540,8 +5546,12 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [
     const _isDisc = DISCOVERY_TYPES.has(_cat.toLowerCase());
     const sessionName = r.Session || '';
     const k = `${id}|${sessionName}|${_cat}|${ds}`;
+    const _stravaConfirmed = r._stravaConfirmed === true ||
+      /^\s*matched from strava\b/i.test(String(r['Exercise Log'] || r.exerciseLog || ''));
     if (!sessionMap[k]) {
-      sessionMap[k] = { ...r, _d: ds, _cat, _isRun, _isStr, _isDisc, _exercises: [], _swaps: {} };
+      sessionMap[k] = { ...r, _d: ds, _cat, _isRun, _isStr, _isDisc, _stravaConfirmed, _exercises: [], _swaps: {} };
+    } else if (_stravaConfirmed) {
+      sessionMap[k]._stravaConfirmed = true;
     }
     // Accumulate each exercise's log line into _exercises
     // Note: the Exercise Log field from Make.com already starts with "ExerciseName: Set 1:…"
@@ -6736,6 +6746,10 @@ function buildTableRow(a) {
   const hY = !hR && a.flags.some(f => f.t === 'yellow');
   const rowCls = hR ? 'trow-red' : hY ? 'trow-amber' : '';
   const fps = a.flags.map(f => `<span class="tflag ${f.t}">${esc(f.l)}</span>`).join('');
+  const stravaConfirmedCount = (a.currRunS || []).filter(session => session._stravaConfirmed === true).length;
+  const stravaConfirmedBadge = stravaConfirmedCount
+    ? `<span class="fp strava-linked-badge" title="${stravaConfirmedCount} athlete-confirmed Strava session${stravaConfirmedCount === 1 ? '' : 's'} this week">🟠 Strava · ${stravaConfirmedCount}</span>`
+    : '';
 
   // Previous weekly check-in (for week-on-week deltas)
   const prevW = a.weekly
@@ -6846,7 +6860,7 @@ function buildTableRow(a) {
     aria-label="Open ${esc(a.id)} athlete details"
     onclick="toggleTableRow('${safeId}')"
     onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleTableRow('${safeId}')}">
-    <td><div class="tname">${esc(a.id)}${fps}</div><div class="tmeta">${metaStr}</div></td>
+    <td><div class="tname">${esc(a.id)}${fps}${stravaConfirmedBadge}</div><div class="tmeta">${metaStr}</div></td>
     <td>${a.weekNum !== null ? `<span class="twkbadge">${a.weekNum === 0 ? 'D' : a.weekNum}</span>` : '<span class="tdim">—</span>'}</td>
     <td>${recovHtml}</td>
     <td ${kmTdAttr}>${kmHtml}</td>
@@ -7018,6 +7032,14 @@ function buildCard(a, weekOffset = 0) {
   const isFuture = weekOffset > 0;
   const histCtx = isHistorical ? getSelectedWeekContext(a, weekOffset) : null;
   const futCtx  = isFuture     ? getSelectedWeekContext(a, weekOffset) : null;
+  const selectedCtx = histCtx || futCtx || getSelectedWeekContext(a, 0);
+  const stravaConfirmedCount = (a.sessions || []).filter(session =>
+    session._stravaConfirmed === true &&
+    session._d >= selectedCtx.weekStartStr && session._d <= selectedCtx.weekEndStr
+  ).length;
+  const stravaConfirmedBadge = stravaConfirmedCount
+    ? `<span class="fp strava-linked-badge" title="${stravaConfirmedCount} athlete-confirmed Strava session${stravaConfirmedCount === 1 ? '' : 's'} in this view">🟠 Strava confirmed · ${stravaConfirmedCount}</span>`
+    : '';
   const w = isHistorical ? (histCtx.weekly || null) : isFuture ? null : a.weekly;
   const hW = !!w?.Name;
   const hR = a.flags.some(f => f.t === 'red');
@@ -7449,7 +7471,7 @@ function buildCard(a, weekOffset = 0) {
         <div>
           <div class="aname">${esc(a.id)}</div>
           <div class="ameta ${isHistorical ? '' : a.isStale ? 'nocheckin' : ''}">${metaText}</div>
-          <div class="pcard-tags">${fps}${actDotHtml ? `<span style="display:inline-flex;align-items:center;gap:4px;margin-left:${fps?'2':'0'}px">${actDotHtml}</span>` : ''}${a.checkinStreak >= 2 ? `<span class="fp streak">🔥 ${a.checkinStreak}wk</span>` : ''}<span data-strava-tag="${esc(a.id)}"></span></div>
+          <div class="pcard-tags">${fps}${actDotHtml ? `<span style="display:inline-flex;align-items:center;gap:4px;margin-left:${fps?'2':'0'}px">${actDotHtml}</span>` : ''}${a.checkinStreak >= 2 ? `<span class="fp streak">🔥 ${a.checkinStreak}wk</span>` : ''}${stravaConfirmedBadge}</div>
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">
           <div style="display:flex;gap:6px">
@@ -7735,6 +7757,20 @@ function buildFPCard(a, weekOffset = 0) {
   const hW = !!w?.Name;
   const fps = a.flags.map(f => `<span class="fp ${f.t}">${esc(f.l)}</span>`).join('');
   const programmeVolumeHtml = buildProgrammeVolume(a);
+  const stravaConfirmedSessions = (a.sessions || []).filter(session =>
+    session._stravaConfirmed === true &&
+    session._d >= ctx.weekStartStr && session._d <= ctx.weekEndStr
+  );
+  const stravaConfirmedHtml = stravaConfirmedSessions.length ? `<div class="fpc-section strava-confirmed-summary">
+    <div class="strava-confirmed-head">
+      <div>
+        <div class="fpc-section-title" style="margin-bottom:0">🟠 Strava-confirmed training</div>
+        <div class="strava-confirmed-copy">${stravaConfirmedSessions.length} athlete-confirmed session${stravaConfirmedSessions.length === 1 ? '' : 's'} for ${esc(ctx.weekLabel || 'the selected week')}. This coach view uses the submitted Dual Performance training log; raw Strava activity data remains private to the athlete.</div>
+      </div>
+      <span class="fp strava-linked-badge">Strava confirmed</span>
+    </div>
+    <div class="strava-confirmed-list">${stravaConfirmedSessions.map(session => `<span class="strava-confirmed-item">${fmtDate(session._d)} · ${esc(session.Session || 'Run')}</span>`).join('')}</div>
+  </div>` : '';
 
   // Meta text (same logic as buildCard)
   let metaText;
@@ -8056,6 +8092,9 @@ function buildFPCard(a, weekOffset = 0) {
           }
           const cls = isRun ? 'run' : isStr ? 'str' : 'other';
           const catLabel = 'Completed ' + (isRun ? 'run' : isStr ? 'lift' : (esc(s._cat || 'session').toLowerCase()));
+          const stravaSource = s._stravaConfirmed === true
+            ? '<span class="strava-source-chip">🟠 Athlete confirmed via Strava</span>'
+            : '';
           const rawName = s.Session || (s.Name || '').split('—').slice(1, -1).join('—').trim() || '';
           const exLog = s['Exercise Log'] || s.exerciseLog || s['Exercises'] || '';
           const notes = s.Notes || s.notes || '';
@@ -8070,7 +8109,7 @@ function buildFPCard(a, weekOffset = 0) {
           const plannedExs = isStr ? (splitForTitle(rawName, a.id)?.exercises || null) : null;
           const logHtml = renderExerciseLog(exLog, isRun, priorBests, plannedExs, s._swaps);
           return `<div class="wd-session ${cls}">
-            <div class="wd-sess-cat">${catLabel}</div>
+            <div class="wd-sess-cat">${catLabel}${stravaSource}</div>
             ${rawName ? `<div class="wd-sess-name">${esc(rawName)}</div>` : ''}
             ${logHtml}
             ${notes ? `<div class="wd-sess-reflect"><span class="wd-reflect-lbl">Athlete note</span><span class="wd-reflect-txt">${esc(notes)}</span></div>` : ''}
@@ -8531,6 +8570,7 @@ function buildFPCard(a, weekOffset = 0) {
     ${fpActionHtml}
     ${clientProfileHtml}
     ${wipHtml}
+    ${stravaConfirmedHtml}
     ${programmeVolumeHtml}
     ${scoresHtml}
     ${trainingHtml}
