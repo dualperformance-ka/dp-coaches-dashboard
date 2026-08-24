@@ -1,23 +1,22 @@
 // api/progress-photos.js — Cloudinary progress photo lookup
-// Reads Cloudinary credentials server-side and returns matched athlete/week assets.
-// Note: week 0 === Discovery Week. The backend always stores/reads it as 0
-// (folder `week0`). The "Discovery Week" label is applied on the frontend only.
+// Uses the Admin API resources endpoint with prefix filtering (works with path-based public IDs).
+import { coachError, requireCoach, setCoachCors } from '../server/coach-auth.js';
 
 function parseCloudinaryUrl() {
   const raw = process.env.CLOUDINARY_URL;
   if (raw) {
     try {
       const url = new URL(raw);
-      return {
-        cloudName: url.hostname,
-        apiKey: decodeURIComponent(url.username),
-        apiSecret: decodeURIComponent(url.password),
-      };
+      const cloudName = url.hostname;
+      const apiKey = decodeURIComponent(url.username);
+      const apiSecret = decodeURIComponent(url.password);
+      if (cloudName && apiKey && apiSecret) {
+        return { cloudName, apiKey, apiSecret };
+      }
     } catch {
-      throw new Error('CLOUDINARY_URL is not valid');
+      // Fall through to individual env vars
     }
   }
-
   return {
     cloudName: process.env.CLOUDINARY_CLOUD_NAME,
     apiKey: process.env.CLOUDINARY_API_KEY,
@@ -26,18 +25,14 @@ function parseCloudinaryUrl() {
 }
 
 function cleanSegment(value) {
-  return String(value || '')
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9_-]/g, '');
+  return String(value || '').toLowerCase().trim().replace(/[^a-z0-9_-]/g, '');
 }
 
 function inferPhotoType(publicId) {
   const name = String(publicId || '').split('/').pop() || '';
   const raw = name
-    .replace(/^[a-z0-9_-]+_week\d+_/i, '')
+    .replace(/^[a-z0-9_-]+_week\d+_?/i, '')
     .replace(/\.(jpg|jpeg|png|webp)$/i, '');
-
   return raw
     .split(/[_-]+/)
     .filter(Boolean)
@@ -45,12 +40,11 @@ function inferPhotoType(publicId) {
     .join(' ') || 'Progress Photo';
 }
 
-module.exports = async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+export default async function handler(req, res) {
+  setCoachCors(req, res, 'GET, OPTIONS');
   if (req.method === 'OPTIONS') { res.status(200).end(); return; }
   if (req.method !== 'GET') { res.status(405).json({ error: 'Method not allowed' }); return; }
+  try { requireCoach(req); } catch (error) { return coachError(res, error); }
 
   const { athlete, week } = req.query;
   const athleteSlug = cleanSegment(athlete);
@@ -67,46 +61,43 @@ module.exports = async function handler(req, res) {
     return;
   }
 
-  // week 0 (Discovery Week) maps to folder `week0`. Only a valid, non-negative
-  // integer resolves to a specific week folder — anything else (NaN, missing,
-  // garbage) falls back to the athlete root instead of silently dumping every
-  // week's photos into the wrong view.
-  const folder = Number.isInteger(weekNum) && weekNum >= 0
+  // The trailing slash is significant: without it, `week2` also matches
+  // Cloudinary public IDs under `week20`, `week21`, `week22`, and so on.
+  const folder = weekNum >= 0
     ? `dp_progress/${athleteSlug}/week${weekNum}`
     : `dp_progress/${athleteSlug}`;
+  const prefix = `${folder}/`;
 
-  const expression = `folder="${folder}"`;
   const auth = Buffer.from(`${apiKey}:${apiSecret}`).toString('base64');
+  const qs = new URLSearchParams({
+    type: 'upload',
+    prefix,
+    max_results: '30',
+  });
 
   try {
-    const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/resources/search`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Basic ${auth}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        expression,
-        max_results: 30,
-        sort_by: [{ public_id: 'asc' }],
-      }),
-    });
+    const response = await fetch(
+      `https://api.cloudinary.com/v1_1/${cloudName}/resources/image?${qs}`,
+      { headers: { Authorization: `Basic ${auth}` } }
+    );
 
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
       throw new Error(data.error?.message || `Cloudinary API ${response.status}`);
     }
 
-    const photos = (data.resources || []).map(asset => ({
-      publicId: asset.public_id,
-      type: inferPhotoType(asset.public_id),
-      url: asset.secure_url,
-      thumbUrl: asset.secure_url?.replace('/upload/', '/upload/f_auto,q_auto,c_fill,g_auto,w_420,h_560/'),
-      width: asset.width,
-      height: asset.height,
-      createdAt: asset.created_at,
-      format: asset.format,
-    }));
+    const photos = (data.resources || [])
+      .filter(asset => asset.public_id?.startsWith(prefix))
+      .map(asset => ({
+        publicId: asset.public_id,
+        type: inferPhotoType(asset.public_id),
+        url: asset.secure_url,
+        thumbUrl: asset.secure_url?.replace('/upload/', '/upload/f_auto,q_auto,c_fill,g_auto,w_420,h_560/'),
+        width: asset.width,
+        height: asset.height,
+        createdAt: asset.created_at,
+        format: asset.format,
+      }));
 
     res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=300');
     res.status(200).json({ athlete: athleteSlug, week: weekNum, folder, photos });
@@ -114,4 +105,4 @@ module.exports = async function handler(req, res) {
     console.error('[progress-photos]', e.message);
     res.status(500).json({ error: e.message });
   }
-};
+}
