@@ -16,6 +16,9 @@
     "api/analyse.js": {
       "maxDuration": 45
     },
+    "api/ingest.js": {
+      "maxDuration": 30
+    },
     "api/strava.js": {
       "maxDuration": 30
     }

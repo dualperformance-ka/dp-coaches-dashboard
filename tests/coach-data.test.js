@@ -22,10 +22,18 @@ test('coach session mapping exposes only safe Strava confirmation provenance', (
     session_name: 'Easy Run',
     session_category: 'Run',
     session_date: '2026-08-20',
+    distance_km: 5,
+    duration_min: 30,
+    pace: '6:00/km',
+    rpe: 7,
+    feel: 8,
+    notes: 'Felt controlled',
+    submitted_at: '2026-08-20T08:00:00Z',
     exercise_log: 'Matched from Strava | Distance: 5km | Moving time: 30min | Pace: 6:00/km | RPE: 7/10 | PAIN FLAGGED',
     raw_payload: {
       stravaActivityId: '123456789',
       access_token: 'must-not-leave-the-server',
+      painFlag: true,
     },
   };
 
@@ -39,8 +47,10 @@ test('coach session mapping exposes only safe Strava confirmation provenance', (
     movingTime: '30min',
     pace: '6:00/km',
     rpe: '7/10',
+    feel: '8',
     painFlagged: true,
-    rpeMismatch: false,
+    notes: 'Felt controlled',
+    submittedAt: '2026-08-20T08:00:00Z',
   });
   assert.deepEqual(mapped._stravaSummary, submittedStravaSummary(row));
   assert.equal('raw_payload' in mapped, false);
@@ -93,6 +103,10 @@ test('protected coach-data returns every dashboard data collection', async () =>
     if (url.includes('/application_decisions?')) return [{ notion_id: 'application-one', decision: 'accepted' }];
     if (url.includes('/planned_sessions?')) return [{ id: 'session-one', athlete_code: 'ALVIN', planned_date: '2026-08-03', title: 'Run' }];
     if (url.includes('/athletes?')) return [{ code: 'ALVIN', name: 'Alvin' }];
+    if (url.includes('/athlete_activity_uploads?')) return [{
+      athlete_code: 'ALVIN', activity_date: '2026-08-20', activity_name: 'Tempo',
+      source_format: 'fit', summary: { distanceM: 5000 }, laps: [], splits: [], streams: [],
+    }];
     throw new Error(`Unexpected Supabase request: ${url}`);
   };
 
@@ -114,6 +128,8 @@ test('protected coach-data returns every dashboard data collection', async () =>
     assert.equal(res.body.sessionLibrary.length, 1);
     assert.equal(res.body.workoutSplits.length, 1);
     assert.equal(res.body.applicationDecisions.length, 1);
+    assert.equal(res.body.activityUploads.length, 1);
+    assert.equal(res.body.activityUploads[0].summary.distanceM, 5000);
     assert.equal(res.body.athleteSettings.some(row => row.key === 'call_notes'), true);
     assert.equal(res.body.athleteSettings.some(row => row.key === 'ack_alert'), true);
   } finally {
