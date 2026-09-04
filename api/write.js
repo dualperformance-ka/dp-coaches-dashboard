@@ -22,6 +22,8 @@
 // weekly check-in (and all other writes) failed with 500 before reaching Notion.
 // Now a missing module only disables the best-effort GHL tag; Notion writes work.
 
+import { requireCoach } from '../server/coach-auth.js';
+
 const NOTION_TOKEN = process.env.NOTION_TOKEN;
 const NOTION_VERSION = '2022-06-28';
 
@@ -368,13 +370,34 @@ async function readBody(req) {
 }
 
 // ── Handler ─────────────────────────────────────────────────────────────────
+// SECURITY: this endpoint had no authentication of any kind. It is the only
+// mutating function in api/ that never called requireCoach or resolved an
+// athlete identity, and it ran with the Supabase service key and the Notion
+// token. Anyone could POST {type:'weekly_checkin', athleteCode:'<anyone>'} and
+// overwrite a real check-in (the upsert merges on athlete_code + week_key), or
+// PATCH any Notion page whose id they supplied via {type:'goals'}.
+//
+// /api/ingest is the authenticated replacement and is what public/config.js
+// points every portal webhook at. Nothing in this repo calls /api/write. It is
+// gated rather than deleted so a forgotten caller fails loudly with a 401
+// instead of silently writing forged data.
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Dashboard-Key, X-Coach-Name');
 
   if (req.method === 'OPTIONS') return res.status(204).end();
   if (req.method !== 'POST') return res.status(405).json({ ok: false, error: 'Method not allowed' });
+
+  try {
+    requireCoach(req);
+  } catch (error) {
+    return res.status(error?.status || 401).json({
+      ok: false,
+      error: 'This endpoint is retired. Portal writes go to /api/ingest, which authenticates the athlete.',
+      code: 'write_endpoint_retired',
+    });
+  }
 
   let p;
   try { p = await readBody(req); } catch { return res.status(400).json({ ok: false, error: 'Invalid JSON' }); }

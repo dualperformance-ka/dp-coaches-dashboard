@@ -24,11 +24,20 @@ function date(value) {
   return clean;
 }
 
+// `fallback` is for a field that was not supplied at all. An explicitly empty
+// value used to fall through to it, so a PATCH carrying status:"" silently reset
+// a completed action to 'open' and wiped completed_at / completed_by.
 function enumValue(value, allowed, fallback) {
   const clean = text(value, 40).toLowerCase();
   if (!clean) return fallback;
   if (!allowed.has(clean)) throw Object.assign(new Error(`Invalid value: ${clean}`), { status: 400 });
   return clean;
+}
+
+// Present AND meaningful. A key sent as "" or null is a cleared form field, not
+// an instruction to reset the column to its default.
+function supplied(value) {
+  return value !== undefined && value !== null && String(value).trim() !== '';
 }
 
 async function sb(path, { method = 'GET', body, prefer } = {}) {
@@ -84,8 +93,8 @@ export function updatePayload(input, coach, now = new Date()) {
   }
   if ('athlete_code' in input) out.athlete_code = code(input.athlete_code);
   if ('category' in input) out.category = text(input.category, 60) || 'coaching';
-  if ('priority' in input) out.priority = enumValue(input.priority, PRIORITIES, 'normal');
-  if ('status' in input) out.status = enumValue(input.status, STATUSES, 'open');
+  if (supplied(input.priority)) out.priority = enumValue(input.priority, PRIORITIES, 'normal');
+  if (supplied(input.status)) out.status = enumValue(input.status, STATUSES, 'open');
   if ('owner' in input) out.owner = text(input.owner, 80) || null;
   if ('due_at' in input) out.due_at = date(input.due_at);
   if ('notes' in input) out.notes = text(input.notes, 4000) || null;

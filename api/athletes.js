@@ -36,6 +36,10 @@ const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
 const ADMIN_KEY = String(process.env.ADMIN_KEY || '').trim();
 const ATHLETE_PORTAL_URL = 'https://portal.dualperformance.au';
 
+// Every athlete-scoped table. A hard delete is only allowed when all of these
+// are empty; missing six of them meant a recently-onboarded athlete with
+// uploads or published targets could be deleted, orphaning rows keyed to a code
+// that no longer exists — unreachable by every read path and undeletable in the UI.
 const HISTORY_TABLES = [
   'daily_body_logs',
   'daily_nutrition_logs',
@@ -45,6 +49,12 @@ const HISTORY_TABLES = [
   'athlete_data',
   'planned_sessions',
   'nutrition_plans',
+  'athlete_activity_uploads',
+  'weekly_sport_targets',
+  'daily_macro_overrides',
+  'coach_actions',
+  'push_subscriptions',
+  'session_logs',
 ];
 
 function ensureConfig() {
@@ -838,8 +848,19 @@ export default async function handler(req, res) {
       return res.status(200).json(await updateAthlete(req.body.code, req.body.fields || {}));
     }
 
+    // Athlete-scoped guard for the destructive branches below. Everything here
+    // used to run on requireCoach() alone — the shared dashboard key — so a coach
+    // narrowed by coach_athletes could still wipe another coach's athlete's
+    // programme, nutrition plans or roster row.
+    const assertScoped = async code => {
+      const coachRow = await resolveCoachIdentity(req, sb);
+      await assertAthleteAllowed(coachRow, code, sb);
+      return coachRow;
+    };
+
     if (action === 'reset_programme') {
       if (!req.body?.code) return res.status(400).json({ ok: false, error: 'Athlete code is required' });
+      await assertScoped(req.body.code);
       return res.status(200).json(await restartProgramme(
         req.body.code,
         req.body.effective_date,
@@ -860,10 +881,12 @@ export default async function handler(req, res) {
     }
 
     if (action === 'nutrition_upsert') {
+      await assertScoped(req.body?.row?.athlete_code);
       return res.status(200).json(await upsertNutritionPlan(req.body?.row || {}));
     }
 
     if (action === 'nutrition_relabel') {
+      await assertScoped(req.body?.code);
       return res.status(200).json(await relabelNutritionPlan(
         req.body?.code,
         req.body?.from_week_label,
@@ -872,14 +895,17 @@ export default async function handler(req, res) {
     }
 
     if (action === 'nutrition_delete') {
+      await assertScoped(req.body?.code);
       return res.status(200).json(await deleteNutritionPlan(req.body?.code, req.body?.week_label));
     }
 
     if (action === 'setting_upsert') {
+      await assertScoped(req.body?.code);
       return res.status(200).json(await upsertAthleteSetting(req.body?.code, req.body?.key, req.body?.value));
     }
 
     if (action === 'setting_delete') {
+      await assertScoped(req.body?.code);
       return res.status(200).json(await deleteAthleteSetting(req.body?.code, req.body?.key));
     }
 
@@ -900,16 +926,19 @@ export default async function handler(req, res) {
     if (action === 'recode') {
       if (!req.body?.code) return res.status(400).json({ ok: false, error: 'Athlete code is required' });
       if (!req.body?.new_code) return res.status(400).json({ ok: false, error: 'New code is required' });
+      await assertScoped(req.body.code);
       return res.status(200).json(await recodeAthlete(req.body.code, req.body.new_code));
     }
 
     if (action === 'archive' || action === 'remove') {
       if (!req.body?.code) return res.status(400).json({ ok: false, error: 'Athlete code is required' });
+      await assertScoped(req.body.code);
       return res.status(200).json(await archiveAthlete(req.body.code));
     }
 
     if (action === 'delete') {
       if (!req.body?.code) return res.status(400).json({ ok: false, error: 'Athlete code is required' });
+      await assertScoped(req.body.code);
       return res.status(200).json(await deleteAthlete(req.body.code));
     }
 

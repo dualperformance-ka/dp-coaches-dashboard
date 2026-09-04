@@ -67,13 +67,36 @@ function dateFields(name, val) {
 }
 
 // ─── Supabase (PostgREST) fetch ───────────────────────────────────────────
-async function sbFetch(path) {
-  if (!SUPABASE_KEY) throw new Error('SUPABASE_SERVICE_ROLE_KEY not set');
+const SB_PAGE_SIZE = 1000;
+const SB_MAX_PAGES = 25;
+
+async function sbFetchPage(path, from, to) {
   const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-    headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
+    headers: {
+      apikey: SUPABASE_KEY,
+      Authorization: `Bearer ${SUPABASE_KEY}`,
+      Range: `${from}-${to}`,
+      'Range-Unit': 'items',
+    },
   });
   if (!res.ok) throw new Error(`Supabase ${res.status}: ${await res.text().catch(() => '')}`);
   return res.json();
+}
+
+// Pages until a short page comes back. Without this every caller silently got
+// only the first 1000 rows and presented it as the complete history.
+async function sbFetch(path) {
+  if (!SUPABASE_KEY) throw new Error('SUPABASE_SERVICE_ROLE_KEY not set');
+  const out = [];
+  for (let page = 0; page < SB_MAX_PAGES; page += 1) {
+    const from = page * SB_PAGE_SIZE;
+    const rows = await sbFetchPage(path, from, from + SB_PAGE_SIZE - 1);
+    if (!Array.isArray(rows)) return rows;   // single-object endpoints
+    out.push(...rows);
+    if (rows.length < SB_PAGE_SIZE) return out;
+  }
+  console.warn(`[data] ${path} hit the ${SB_MAX_PAGES * SB_PAGE_SIZE}-row page ceiling; results are truncated`);
+  return out;
 }
 
 // ─── Mappers: Supabase row → Notion-shaped row the dashboard expects ──────

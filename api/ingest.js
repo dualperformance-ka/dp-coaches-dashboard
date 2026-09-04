@@ -70,6 +70,34 @@ function date(value) {
   return /^\d{4}-\d{2}-\d{2}/.test(v || '') ? v.slice(0, 10) : null;
 }
 
+// Dual Performance coaches and athletes are in South Australia. new Date()
+// .toISOString() returns a UTC date, so between midnight and ~09:30 local it
+// names YESTERDAY — and because these logs upsert on (athlete_code, log_date),
+// an early-morning entry with no explicit date overwrote the previous day's
+// real body or nutrition log rather than creating a new one.
+const LOCAL_TIME_ZONE = process.env.DP_TIME_ZONE || 'Australia/Adelaide';
+function localToday(now = new Date()) {
+  try {
+    return new Intl.DateTimeFormat('en-CA', {
+      timeZone: LOCAL_TIME_ZONE, year: 'numeric', month: '2-digit', day: '2-digit',
+    }).format(now);
+  } catch {
+    return now.toISOString().slice(0, 10);
+  }
+}
+
+// client_write_id carries a UNIQUE constraint that is not scoped to the athlete,
+// and the portal's scheme ("strava_<activity id>") is guessable, so one athlete
+// could upsert straight over another's session log. Namespacing by athlete code
+// closes that; the random suffix keeps a missing id from inserting a duplicate
+// row on every retry, since NULLs never conflict in a Postgres unique index.
+function scopedWriteId(code, raw) {
+  const id = text(raw, 90);
+  const prefix = String(code || 'UNKNOWN').toUpperCase();
+  if (!id) return `${prefix}:auto:${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  return id.startsWith(`${prefix}:`) ? id : `${prefix}:${id}`;
+}
+
 function submittedAt(payload) {
   return text(payload.submittedAt || payload.savedAt, 80) || new Date().toISOString();
 }
@@ -266,7 +294,7 @@ async function persistStructured(payload) {
       athlete_code: code,
       athlete_name: athleteName(payload),
       athlete_notion_id: text(payload.athleteId, 120),
-      log_date: date(payload.date) || new Date().toISOString().slice(0, 10),
+      log_date: date(payload.date) || localToday(),
       submitted_at: submittedAt(payload),
       weight: number(payload.weight),
       sleep: number(payload.sleep),
@@ -284,7 +312,7 @@ async function persistStructured(payload) {
       athlete_code: code,
       athlete_name: athleteName(payload),
       athlete_notion_id: text(payload.athleteId, 120),
-      log_date: date(payload.date) || new Date().toISOString().slice(0, 10),
+      log_date: date(payload.date) || localToday(),
       submitted_at: submittedAt(payload),
       calories: number(payload.calories),
       protein: number(payload.protein),
@@ -299,7 +327,12 @@ async function persistStructured(payload) {
 
   if (type === 'Run' || type === 'Strength' || type === 'training_log') {
     return upsertTolerant('training_session_logs', {
-      client_write_id: text(payload.clientWriteId, 120),
+      // client_write_id is globally unique, not per athlete, and the client's
+      // scheme ("strava_<activity id>") is guessable. Namespacing it by athlete
+      // stops one athlete's log from upserting over another's, and the random
+      // fallback stops a missing id from inserting duplicates every retry
+      // (NULLs are distinct in a Postgres unique index).
+      client_write_id: scopedWriteId(code, payload.clientWriteId),
       athlete_code: code,
       athlete_name: athleteName(payload),
       athlete_notion_id: text(payload.athleteId, 120),

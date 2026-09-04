@@ -268,7 +268,10 @@ export function mapActivityUpload(row) {
     summary,
     laps: Array.isArray(row.laps) ? row.laps.slice(0, 500) : [],
     splits: Array.isArray(row.splits) ? row.splits.slice(0, 500) : [],
+    // Left empty on the bulk load — see the select above. The client fetches an
+    // individual activity's streams when the coach opens it.
     streams: Array.isArray(row.streams) ? row.streams.slice(0, 2400) : [],
+    hasStreams: row.streams === undefined ? undefined : Array.isArray(row.streams) && row.streams.length > 0,
     warnings: Array.isArray(row.parse_warnings) ? row.parse_warnings.slice(0, 20) : [],
     notes: row.athlete_notes || '',
     coachAccessGrantedAt: row.coach_access_granted_at || '',
@@ -977,7 +980,12 @@ export default async function handler(req, res) {
       selectAll('planned_sessions', 'planned_date').catch(() => []),
       selectAll('athletes').catch(() => []),
       selectRows(TABLES.activityUploads, {
-        select: 'athlete_code,athlete_name,activity_name,sport_type,activity_date,start_time,device_name,source_format,summary,laps,splits,streams,parse_warnings,athlete_notes,coach_access_granted_at,submitted_at',
+        // `streams` is up to 2400 sample objects per activity — 200-290KB each.
+        // Selecting it for up to 500 activities on every dashboard load could
+        // exceed Vercel's 4.5MB response cap, and the client then rendered the
+        // whole squad as having logged nothing. The client only needs streams
+        // when a coach expands one activity, so it is fetched on demand.
+        select: 'id,athlete_code,athlete_name,activity_name,sport_type,activity_date,start_time,device_name,source_format,summary,laps,splits,parse_warnings,athlete_notes,coach_access_granted_at,submitted_at',
         activity_date: `gte.${activityCutoff}`,
         order: 'activity_date.desc,start_time.desc',
         limit: 500,

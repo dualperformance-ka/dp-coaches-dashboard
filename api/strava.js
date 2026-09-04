@@ -503,6 +503,9 @@ export default async function handler(req, res) {
     return res.status(403).json({
       error: 'Direct Strava activity display is athlete-only. Use athlete-submitted training logs for coaching.',
       code: 'strava_athlete_only',
+      // The dashboard now sends mode=athlete explicitly. Anything reaching here
+      // is a caller that forgot to, which should be obvious rather than silent.
+      hint: 'Pass mode=athlete with an athlete session, or read training logs instead.',
     });
   }
   if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY) {
