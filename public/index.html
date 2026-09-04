@@ -1125,7 +1125,8 @@ body[data-theme="light"] .plan-chip.coach::before{color:#92400e}
 .prog-context b{color:var(--text)}
 .prog-body[hidden],.prog-toolbar[hidden]{display:none!important}
 .nut-row.selected td{box-shadow:inset 0 1px 0 var(--brand-border),inset 0 -1px 0 var(--brand-border)}
-.nut-row{cursor:pointer}
+.nut-open{flex:0 0 auto;margin-left:auto;font-family:var(--mono);font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:2px 6px;border-radius:4px;border:1px solid var(--border-mid);background:transparent;color:var(--dim);cursor:pointer;transition:all .15s}
+.nut-open:hover{color:var(--brand-text);border-color:var(--brand-border);background:var(--brand-bg)}
 .nut-row:hover td{background:var(--surface2)}
 .plan-action-btn{font-family:var(--mono);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:6px 12px;border-radius:6px;border:1px solid rgba(245,158,11,.4);background:rgba(245,158,11,.08);color:#fbbf24;cursor:pointer;transition:all .15s}
 .plan-action-btn:hover{background:rgba(245,158,11,.18)}
@@ -1134,7 +1135,8 @@ body[data-theme="light"] .plan-chip.coach::before{color:#92400e}
 @media(max-width:980px){.plan-grid{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:560px){.plan-grid{grid-template-columns:1fr}}
 @media(max-width:760px){
-  .nut-table{display:block;min-width:0}.nut-table thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+  .nut-table{display:block;min-width:0;table-layout:auto}
+  .nut-table th:first-child,.nut-table th:last-child,.nut-table td:first-child,.nut-table td:last-child{position:static;background:transparent;border-left:0;border-right:0}.nut-table thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
   .nut-table tbody,.nut-table tr,.nut-table td{display:block;width:100%}
   .nut-table tr{margin:0 0 10px;padding:10px;border:1px solid var(--border);border-radius:10px;background:var(--surface)}
   .nut-table td{display:grid;grid-template-columns:90px minmax(0,1fr);align-items:center;gap:8px;padding:6px 0;border:0!important;box-shadow:none!important;background:transparent!important}
@@ -1146,24 +1148,71 @@ body[data-theme="light"] .plan-chip.coach::before{color:#92400e}
 
 /* ── Nutrition planning tab ── */
 .nut-meta{font-family:var(--mono);font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px}
-.nut-table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow-x:auto}
-.nut-table{width:100%;border-collapse:collapse;min-width:780px}
+.nut-table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow-x:auto;scrollbar-width:thin;scrollbar-color:var(--border-mid) transparent}
+.nut-table-wrap::-webkit-scrollbar{height:10px}
+.nut-table-wrap::-webkit-scrollbar-track{background:transparent}
+.nut-table-wrap::-webkit-scrollbar-thumb{background:var(--border-mid);border-radius:6px}
+.nut-table-wrap::-webkit-scrollbar-thumb:hover{background:var(--dim)}
+/* Fixed layout keeps every column predictable and lets long values ellipsis
+   instead of pushing Save off the right edge. Widths sum to the min-width. */
+.nut-table{width:100%;border-collapse:collapse;table-layout:fixed;min-width:1150px}
+.nut-table th:nth-child(1){width:200px}
+.nut-table th:nth-child(2){width:78px}
+.nut-table th:nth-child(3),.nut-table th:nth-child(4),.nut-table th:nth-child(5),.nut-table th:nth-child(6){width:70px}
+.nut-table th:nth-child(7){width:68px}
+.nut-table th:nth-child(8){width:74px}
+.nut-table th:nth-child(9){width:120px}
+.nut-table th:nth-child(10){width:82px}
+.nut-table th:nth-child(11){width:auto}
+.nut-table th:nth-child(12){width:108px}
+/* Week and Actions pin to the edges so the row label and Save stay reachable
+   however narrow the window is. Backgrounds must be opaque or the scrolling
+   columns show through, hence the gradient-over-surface for current rows. */
+.nut-table th:first-child,.nut-table th:last-child{position:sticky;z-index:3;background:var(--surface)}
+.nut-table td:first-child,.nut-table td:last-child{position:sticky;z-index:2;background:var(--surface)}
+.nut-table th:first-child,.nut-table td:first-child{left:0}
+.nut-table th:last-child,.nut-table td:last-child{right:0}
+.nut-table th:first-child,.nut-table td:first-child{border-right:1px solid var(--border)}
+.nut-table th:last-child,.nut-table td:last-child{border-left:1px solid var(--border)}
+.nut-row.current td:first-child,.nut-row.current td:last-child{background:linear-gradient(var(--amber-bg),var(--amber-bg)),var(--surface)}
+.nut-row:hover td:first-child,.nut-row:hover td:last-child{background:var(--surface2)}
+.nut-row.current:hover td:first-child,.nut-row.current:hover td:last-child{background:linear-gradient(var(--amber-bg),var(--amber-bg)),var(--surface2)}
+/* Soft edge shadow so it reads as a pinned column, not a layout glitch.
+   The selected-row rule repeats its inset borders because box-shadow is
+   a single property and would otherwise be overwritten here. */
+.nut-table tbody td:first-child{box-shadow:10px 0 12px -10px rgba(0,0,0,.45)}
+.nut-table tbody td:last-child{box-shadow:-10px 0 12px -10px rgba(0,0,0,.45)}
+.nut-row.selected td:first-child{box-shadow:inset 0 1px 0 var(--brand-border),inset 0 -1px 0 var(--brand-border),10px 0 12px -10px rgba(0,0,0,.45)}
+.nut-row.selected td:last-child{box-shadow:inset 0 1px 0 var(--brand-border),inset 0 -1px 0 var(--brand-border),-10px 0 12px -10px rgba(0,0,0,.45)}
+/* Card view on phones: this block must sit AFTER the desktop table rules or
+   the min-width above wins on source order and the cards scroll sideways. */
+@media(max-width:760px){
+  .nut-table-wrap{overflow-x:visible}
+  .nut-table{table-layout:auto;min-width:0}
+  .nut-table th:first-child,.nut-table th:last-child,
+  .nut-table td:first-child,.nut-table td:last-child{position:static;background:transparent;border-left:0;border-right:0}
+  .nut-table td:first-child{border-right:0}
+  .nut-table tbody td:first-child,.nut-table tbody td:last-child{box-shadow:none}
+  .nut-table td:first-child .nut-week-cap{grid-column:1/-1;overflow:visible;margin-top:6px}
+}
 .nut-table th{font-family:var(--mono);font-size:9px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:.07em;padding:10px 8px;border-bottom:1px solid var(--border-mid);text-align:left;white-space:nowrap}
 .nut-table td{padding:7px 8px;border-bottom:1px solid var(--border);vertical-align:middle}
 .nut-table tr:last-child td{border-bottom:none}
 .nut-wk{font-family:var(--cond);font-size:15px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text);white-space:nowrap}
-.nut-week-select{font-family:var(--cond);font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--text);background:var(--surface2);border:1px solid var(--border-mid);border-radius:6px;padding:5px 7px;max-width:155px}
+.nut-week-select{font-family:var(--cond);font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.02em;color:var(--text);background:var(--surface2);border:1px solid var(--border-mid);border-radius:6px;padding:5px 6px;width:100%;min-width:0;max-width:100%;text-overflow:ellipsis}
 .nut-week-select:focus{outline:none;border-color:var(--amber)}
-.nut-week-cap{display:block;font-family:var(--mono);font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.05em;margin-top:3px;white-space:nowrap}
+.nut-week-cap{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.05em;margin-top:4px;white-space:nowrap;overflow:hidden}
 .nut-row.current td{background:var(--amber-bg)}
 .nut-row.current .nut-wk{color:var(--amber-dim)}
-.nut-now{font-family:var(--mono);font-size:8px;color:var(--amber);border:1px solid var(--amber-border);border-radius:4px;padding:1px 5px;margin-left:6px;vertical-align:middle;letter-spacing:.06em}
+.nut-now{flex:0 0 auto;font-family:var(--mono);font-size:8px;color:var(--amber);border:1px solid var(--amber-border);border-radius:4px;padding:1px 5px;vertical-align:middle;letter-spacing:.06em}
 .nut-input{font-family:var(--mono);font-size:12px;color:var(--text);background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:6px 8px;width:84px;transition:border-color .15s}
 .nut-input:focus{outline:none;border-color:var(--amber)}
 .nut-input.wide{width:160px}
 .nut-input.km{width:64px}
-.nut-km-auto{font-family:var(--mono);font-size:11px;color:var(--muted);white-space:nowrap}
-.nut-km-auto .src{font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;display:block}
+/* Inside the table every input flexes to its column instead of forcing width. */
+.nut-table .nut-input,.nut-table .nut-input.wide{width:100%;min-width:0}
+.nut-km-auto{display:block;max-width:100%;font-family:var(--mono);font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nut-km-auto .src{font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .nut-km-cap{font-family:var(--mono);font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.05em;margin-top:3px;white-space:nowrap}
 .nut-km-cap b{color:var(--amber);font-weight:500}
 .nut-save{font-family:var(--mono);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:6px 10px;border-radius:6px;border:1px solid var(--border-mid);background:transparent;color:var(--dim);cursor:pointer;transition:all .15s;white-space:nowrap}
@@ -1924,8 +1973,10 @@ body[data-theme="light"] .strava-command-bar{background:linear-gradient(135deg,r
 .ma-result code{font-family:var(--mono);color:#92d2ed;font-size:12px}
 /* Two-line rows: identity (name/code/status) on top, actions below — so long
    names are never crushed by the button cluster. */
-.ma-row{display:block;padding:11px 4px;border-bottom:1px solid rgba(255,255,255,.06)}
-.ma-row:last-child{border-bottom:none}
+#ma-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:8px;align-content:start}
+#ma-list .ma-empty{grid-column:1/-1}
+.ma-row{display:block;padding:10px 12px;border:1px solid rgba(255,255,255,.07);border-radius:10px;background:rgba(255,255,255,.02)}
+.ma-row:hover{border-color:rgba(146,210,237,.28)}
 .ma-row-top{display:flex;align-items:center;gap:9px;min-width:0}
 .ma-row-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px;padding-left:17px}
 .ma-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;background:#92d2ed;box-shadow:0 0 8px rgba(146,210,237,.6)}
@@ -1945,6 +1996,29 @@ body[data-theme="light"] .strava-command-bar{background:linear-gradient(135deg,r
 .ma-mail.linked{color:#4ade80;background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.3)}
 .ma-mail.invited{color:#fbbf24;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.25)}
 @media(max-width:560px){.ma-add-grid{grid-template-columns:1fr}}
+/* Desktop: the roster used to be a 600px column of stacked rows, so a dozen
+   athletes meant scrolling the whole page. Give the card the width to run three
+   or four athletes abreast, pack the add form onto three rows instead of six,
+   and scroll only the roster so the form and heading stay put. */
+@media(min-width:900px){
+  .ma-backdrop{padding:4vh 24px 24px}
+  .ma-card{max-width:min(1320px,calc(100vw - 48px));max-height:92vh;display:flex;flex-direction:column;padding:22px 24px}
+  .ma-add{flex:0 0 auto}
+  .ma-add-grid{grid-template-columns:repeat(4,1fr);gap:9px}
+  /* #id beats the .ma-add-name full-row rule below 900px */
+  #ma-name{grid-column:span 2}
+  #ma-code,#ma-start{grid-column:span 1}
+  #ma-race,#ma-email,#ma-coach,#ma-add-btn{grid-column:span 2}
+  #ma-list{flex:1 1 auto;min-height:0;overflow-y:auto;padding-right:4px;margin-right:-4px;
+           scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.18) transparent}
+  #ma-list::-webkit-scrollbar{width:10px}
+  #ma-list::-webkit-scrollbar-track{background:transparent}
+  #ma-list::-webkit-scrollbar-thumb{background:rgba(255,255,255,.18);border-radius:6px}
+  .ma-status{flex:0 0 auto}
+}
+@media(min-width:1500px){
+  #ma-list{grid-template-columns:repeat(auto-fill,minmax(320px,1fr))}
+}
 
 /* ═══════════════ DP REFRESH — branding, accents & mobile flow ═══════════════ */
 /* Header brand treatment */
@@ -3162,10 +3236,18 @@ async function restartProgramme() {
   }
 
   const label = startWeek === 0 ? 'Discovery Week' : 'Week 1';
+  // Nutrition targets are keyed by athlete + week label with no notion of which
+  // block they belong to, so the old block's Week 1 IS the new block's Week 1.
+  // Nothing here deletes or renumbers them; the coach is told so they can review
+  // the carried-over macros rather than discover them on the athlete's plate.
+  const carriedWeeks = _nutPlans.filter(p => p.athlete_code === _progAthlete).length;
   if (!confirm(
     `Restart ${_progAthlete} at ${label} from ${date}?\n\n` +
     'Their check-ins, activity, photos and previous programme history will not be deleted. ' +
-    'Any sessions already planned from that Monday onward will be renumbered to the new programme weeks.'
+    'Any sessions already planned from that Monday onward will be renumbered to the new programme weeks.' +
+    (carriedWeeks
+      ? `\n\nNutrition targets are stored per programme week, so their existing ${carriedWeeks} week${carriedWeeks === 1 ? '' : 's'} of macros will carry over to the new block. Review them in Block view afterwards.`
+      : '')
   )) return;
 
   const button = document.getElementById('nut-restart-btn');
@@ -3183,7 +3265,8 @@ async function restartProgramme() {
     alert(
       `${_progAthlete} will restart at ${label} on ${date}.\n` +
       `${result.updatedSessions || 0} planned session${result.updatedSessions === 1 ? '' : 's'} relabelled.\n` +
-      'Existing history was kept.'
+      'Existing history was kept.' +
+      (carriedWeeks ? `\n\nTheir ${carriedWeeks} existing week${carriedWeeks === 1 ? '' : 's'} of nutrition targets now apply to the new block — check them in Block view before the athlete's week starts.` : '')
     );
   } catch (error) {
     console.warn('programme restart failed', error);
@@ -3212,16 +3295,29 @@ async function saveStartDateOverride(value) {
 }
 
 async function saveProgWeeks(v) {
-  if (!_progAthlete) return;
+  if (!_progAthlete) return false;
+  const code = _progAthlete;
   const n = parseInt(v, 10);
   const weeks = (!isNaN(n) && n > 0 && n <= 52) ? n : DEFAULT_PROG_WEEKS;
-  _progWeeks[_progAthlete] = weeks;
+  const previous = _progWeeks[code];
+  _progWeeks[code] = weeks;
   const el = document.getElementById('nut-prog-weeks');
   if (el) el.value = weeks;
   renderNutTable();
   try {
-    await maPost({ action: 'setting_upsert', code: _progAthlete, key: 'programme_weeks', value: weeks });
-  } catch (e) { console.warn('programme_weeks save failed', e); }
+    await maPost({ action: 'setting_upsert', code, key: 'programme_weeks', value: weeks });
+    return true;
+  } catch (e) {
+    // Used to be swallowed with a console.warn, which left the UI claiming a
+    // length the server had never accepted until the next refresh snapped it
+    // back. Revert and say so, the way saveStartDateOverride already does.
+    console.warn('programme_weeks save failed', e);
+    if (previous === undefined) delete _progWeeks[code]; else _progWeeks[code] = previous;
+    if (el && code === _progAthlete) el.value = getProgWeeks(code);
+    if (code === _progAthlete) renderNutTable();
+    alert(`Programme length could not be saved for ${code} — it is still ${getProgWeeks(code)} weeks. Please try again.`);
+    return false;
+  }
 }
 
 // nutrition_plans and programme settings are read by the protected coach-data
@@ -3504,10 +3600,55 @@ function _nutCurrentWeekLabel(code) {
   return week === null ? null : `Week ${week}`;
 }
 
+// Unsaved macro edits used to die on every re-render: renderNutTable() rebuilds
+// the table from _nutPlans, so adding a week, deleting a row, switching athlete
+// or a background load() all wiped whatever the coach had typed. Drafts are now
+// held here, keyed by athlete + week label rather than row index, so they also
+// survive load() replacing _nutPlans with fresh objects and a relabel renumbering
+// the rows. A draft is cleared only when its row saves or is deleted.
+const NUT_FIELDS = { cal: 'calories', pro: 'protein', carb: 'carbs', fat: 'fats', fib: 'fibre', notes: 'notes' };
+const _nutDrafts = new Map();
+const _nutDraftKey = (code, weekLabel) => `${code}||${weekLabel}`;
+
+function _readNutInputs(i) {
+  const draft = {};
+  let found = false;
+  for (const [id, field] of Object.entries(NUT_FIELDS)) {
+    const el = document.getElementById(`nut-${i}-${id}`);
+    if (!el) continue;
+    found = true;
+    draft[field] = el.value;
+  }
+  return found ? draft : null;
+}
+
 function _captureNutInputs(i, row) {
-  const read = id => document.getElementById(`nut-${i}-${id}`)?.value ?? '';
-  row.calories = read('cal'); row.protein = read('pro'); row.carbs = read('carb');
-  row.fats = read('fat'); row.fibre = read('fib'); row.notes = read('notes');
+  const draft = _readNutInputs(i);
+  if (draft) Object.assign(row, draft);
+  return draft;
+}
+
+// Called before anything replaces the table markup. Only rows whose Save button
+// is still dirty are stored — a clean row has nothing worth preserving, and
+// keeping it would shadow fresher server values on the next load.
+function _captureNutDrafts() {
+  if (!_nutRenderRows.length) return;
+  _nutRenderRows.forEach((row, i) => {
+    const draft = _readNutInputs(i);
+    if (!draft) return;
+    const key = _nutDraftKey(row.athlete_code, row.week_label);
+    if (document.getElementById(`nut-${i}-save`)?.classList.contains('dirty')) _nutDrafts.set(key, draft);
+    else _nutDrafts.delete(key);
+  });
+}
+
+function _clearNutDraft(code, weekLabel) { _nutDrafts.delete(_nutDraftKey(code, weekLabel)); }
+
+function _moveNutDraft(code, fromLabel, toLabel) {
+  const draft = _nutDrafts.get(_nutDraftKey(code, fromLabel));
+  _nutDrafts.delete(_nutDraftKey(code, fromLabel));
+  if (draft) _nutDrafts.set(_nutDraftKey(code, toLabel), draft);
+  return draft;
 }
 
 function _nutWeekOptions(row) {
@@ -3518,9 +3659,27 @@ function _nutWeekOptions(row) {
   const last = Math.max(getProgWeeks(row.athlete_code), highestSaved, current);
   return Array.from({ length: last + 1 }, (_, week) => {
     const label = `Week ${week}`;
-    const text = `${displayWeekLabel(label)}${week === current ? ' — current' : ''}`;
+    const text = displayWeekLabel(label);
     return `<option value="${label}"${label === row.week_label ? ' selected' : ''}>${esc(text)}</option>`;
   }).join('');
+}
+
+// The week the "+" button will add next. Shared by the button label and
+// addNutWeek() so the button always names exactly what it is about to create:
+// + Discovery Week, then + Week 1, + Week 2 ... never a vague "+ Week".
+function _nextNutWeekNum(code) {
+  const rows = _nutPlans.filter(r => r.athlete_code === code);
+  const has = wk => rows.some(r => _nutWkNum(r.week_label) === wk);
+  const currentWk = _nutWkNum(_progSelectedWeekLabel(code));
+  if (currentWk >= 0 && !has(currentWk)) return currentWk;
+  // Fill gaps inside the block before running off the end. Going straight to
+  // max+1 meant a coach who had skipped Week 5 was offered Week 13 instead, and
+  // after a programme restart it offered a week past the end of a fresh block.
+  // Week 0 is deliberately excluded here — Discovery Week is only ever offered
+  // when it is the athlete's actual current week, which the branch above covers.
+  const progWeeks = getProgWeeks(code);
+  for (let wk = 1; wk <= progWeeks; wk++) if (!has(wk)) return wk;
+  return rows.reduce((m, r) => Math.max(m, _nutWkNum(r.week_label)), 0) + 1;
 }
 
 function _renderProgBlockControls() {
@@ -3563,8 +3722,15 @@ function _progSelectedWeekLabel(code) {
   return current >= 0 ? `Week ${Math.max(0, current + _progWeekOffset)}` : null;
 }
 
+// Set while a relabel or delete is in flight. _nutPlans and the DOM disagree for
+// the length of that round trip, so a "+ Week" or delete landing in the window
+// could mint a second row with the same week label — and deleting by label then
+// removed both, server side included.
+let _nutBusy = false;
+
 let _nutRenderRows = [];
 function renderNutTable() {
+  _captureNutDrafts();
   const wrap = document.getElementById('nut-table-wrap');
   const meta = document.getElementById('nut-meta');
   if (!_progAthlete) { wrap.innerHTML = '<div class="nut-empty">No athletes found</div>'; meta.textContent = ''; return; }
@@ -3575,9 +3741,16 @@ function renderNutTable() {
     .sort((a, b) => _nutWkNum(a.week_label) - _nutWkNum(b.week_label));
 
   const curNum = curWk ? _nutWkNum(curWk) : null;
-  const hasCurrent = !!(curWk && _nutRenderRows.some(r => r.week_label === curWk));
   const addButton = document.getElementById('nut-add-week-btn');
-  if (addButton) addButton.textContent = !hasCurrent && curWk ? `+ ${displayWeekLabel(curWk)}` : '+ Week';
+  if (addButton) {
+    const nextWk = _nextNutWeekNum(_progAthlete);
+    const nextLabel = displayWeekLabel(`Week ${nextWk}`);
+    const progWeeks = getProgWeeks(_progAthlete);
+    addButton.textContent = `+ ${nextLabel}`;
+    addButton.title = nextWk > progWeeks
+      ? `Adds ${nextLabel} for ${_progAthlete} and extends the programme to ${nextWk} weeks.`
+      : `Adds ${nextLabel} for ${_progAthlete}. Each click adds the next week in the block.`;
+  }
   meta.textContent = `${_progAthlete} — ${curNum != null ? `${fmtWk(curNum, true)} of ${getProgWeeks(_progAthlete)} from programming` : `${getProgWeeks(_progAthlete)}-week programme`} · nutrition and sport targets use the same programme week · publish a sport target to lock it for the athlete`;
 
   if (_nutPlansLoadError) {
@@ -3592,31 +3765,33 @@ function renderNutTable() {
 
   const iv = v => esc(v == null ? '' : String(v));
   const rowsHtml = _nutRenderRows.map((r, i) => {
+    const draft = _nutDrafts.get(_nutDraftKey(r.athlete_code, r.week_label));
+    const fv = field => iv(draft && field in draft ? draft[field] : r[field]);
     const isCur = curWk && r.week_label === curWk;
     const autoKm = _plannedKmForWeek(r.athlete_code, r.week_label);
     const plannedSessions = _plannedSessionsForWeek(r.athlete_code, r.week_label);
     const keySession = _keySessionForWeek(r.athlete_code, r.week_label);
     const adjustedDays = window.DailyMacroOverridesEditor?.publishedCountForWeek(r.week_label) || 0;
-    return `<tr class="nut-row${isCur ? ' current selected' : ''}" onclick="if(event.target.closest('input,button,select'))return;openProgWeek('${esc(r.week_label)}')" title="Open ${esc(displayWeekLabel(r.week_label))} in Week view">
-      <td data-label="Week"><select class="nut-week-select" id="nut-${i}-week" onchange="relabelNutWeek(${i},this.value)">${_nutWeekOptions(r)}</select>${isCur ? '<span class="nut-now">OPEN</span>' : ''}<span class="nut-week-cap">Programme week</span></td>
-      <td data-label="Calories"><input class="nut-input" id="nut-${i}-cal" value="${iv(r.calories)}" placeholder="kcal" oninput="nutDirty(${i})"></td>
-      <td data-label="Protein"><input class="nut-input" id="nut-${i}-pro" value="${iv(r.protein)}" placeholder="g" oninput="nutDirty(${i})"></td>
-      <td data-label="Carbs"><input class="nut-input" id="nut-${i}-carb" value="${iv(r.carbs)}" placeholder="g" oninput="nutDirty(${i})"></td>
-      <td data-label="Fats"><input class="nut-input" id="nut-${i}-fat" value="${iv(r.fats)}" placeholder="g" oninput="nutDirty(${i})"></td>
-      <td data-label="Fibre"><input class="nut-input" id="nut-${i}-fib" value="${iv(r.fibre)}" placeholder="g" oninput="nutDirty(${i})"></td>
+    return `<tr class="nut-row${isCur ? ' current selected' : ''}">
+      <td data-label="Week"><select class="nut-week-select" id="nut-${i}-week" title="${esc(displayWeekLabel(r.week_label))}" onchange="relabelNutWeek(${i},this.value)">${_nutWeekOptions(r)}</select><span class="nut-week-cap">Programme week${isCur ? '<span class="nut-now">OPEN</span>' : ''}<button type="button" class="nut-open" onclick="openProgWeek('${esc(r.week_label)}')" title="Open ${esc(displayWeekLabel(r.week_label))} in Week view">View &#8599;</button></span></td>
+      <td data-label="Calories"><input class="nut-input" id="nut-${i}-cal" value="${fv('calories')}" placeholder="kcal" oninput="nutDirty(${i})"></td>
+      <td data-label="Protein"><input class="nut-input" id="nut-${i}-pro" value="${fv('protein')}" placeholder="g" oninput="nutDirty(${i})"></td>
+      <td data-label="Carbs"><input class="nut-input" id="nut-${i}-carb" value="${fv('carbs')}" placeholder="g" oninput="nutDirty(${i})"></td>
+      <td data-label="Fats"><input class="nut-input" id="nut-${i}-fat" value="${fv('fats')}" placeholder="g" oninput="nutDirty(${i})"></td>
+      <td data-label="Fibre"><input class="nut-input" id="nut-${i}-fib" value="${fv('fibre')}" placeholder="g" oninput="nutDirty(${i})"></td>
       <td data-label="Sessions"><span class="nut-km-auto">${plannedSessions.length}<span class="src">planned</span></span></td>
       <td data-label="Load"><span class="nut-km-auto">${autoKm > 0 ? iv(autoKm) + ' km' : '—'}<span class="src">week load</span></span></td>
-      <td data-label="Key session"><span class="nut-km-auto">${keySession ? esc(keySession.title || 'Session') : '—'}${keySession && _sessionKm(keySession) ? `<span class="src">${iv(_sessionKm(keySession))} km</span>` : ''}</span></td>
+      <td data-label="Key session"><span class="nut-km-auto" title="${keySession ? esc(keySession.title || 'Session') : ''}">${keySession ? esc(keySession.title || 'Session') : '—'}${keySession && _sessionKm(keySession) ? `<span class="src">${iv(_sessionKm(keySession))} km</span>` : ''}</span></td>
       <td data-label="Days adjusted"><button class="nut-save" onclick="openProgWeek('${esc(r.week_label)}')">${adjustedDays} day${adjustedDays === 1 ? '' : 's'}</button></td>
-      <td data-label="Notes"><input class="nut-input wide" id="nut-${i}-notes" value="${iv(r.notes)}" placeholder="Coach note" oninput="nutDirty(${i})"></td>
-      <td data-label="Actions" class="nut-actions"><button class="nut-save" id="nut-${i}-save" onclick="saveNutRow(${i})">Save</button><button class="nut-del" id="nut-${i}-del" onclick="deleteNutRow(${i})" title="Delete this week">&#10005;</button></td>
+      <td data-label="Notes"><input class="nut-input wide" id="nut-${i}-notes" value="${fv('notes')}" placeholder="Coach note" oninput="nutDirty(${i})"></td>
+      <td data-label="Actions" class="nut-actions"><button class="nut-save${draft ? ' dirty' : ''}" id="nut-${i}-save" onclick="saveNutRow(${i})">Save</button><button class="nut-del" id="nut-${i}-del" onclick="deleteNutRow(${i})" title="Delete this week">&#10005;</button></td>
     </tr>`;
   }).join('');
 
   wrap.innerHTML = `<table class="nut-table">
     <thead><tr>
       <th>Week</th><th>Calories</th><th>Protein</th><th>Carbs</th><th>Fats</th><th>Fibre</th>
-      <th>Sessions</th><th>Load</th><th>Key session</th><th>Days adj.</th><th>Notes</th><th></th>
+      <th>Sessions</th><th>Load</th><th>Key session</th><th>Days adj.</th><th>Notes</th><th>Actions</th>
     </tr></thead>
     <tbody>${rowsHtml}</tbody>
   </table>`;
@@ -3631,15 +3806,26 @@ async function relabelNutWeek(i, nextLabel) {
   const r = _nutRenderRows[i]; if (!r) return;
   const previousLabel = r.week_label;
   if (nextLabel === previousLabel) return;
+  if (_nutBusy) {
+    const select = document.getElementById(`nut-${i}-week`);
+    if (select) select.value = previousLabel;
+    alert('Still saving the last week change — try again in a moment.');
+    return;
+  }
   if (_nutPlans.some(p => p !== r && p.athlete_code === r.athlete_code && p.week_label === nextLabel)) {
     alert(`${r.athlete_code} already has nutrition targets for ${displayWeekLabel(nextLabel)}.`);
     document.getElementById(`nut-${i}-week`).value = previousLabel;
     return;
   }
 
-  _captureNutInputs(i, r);
+  // Capture BEFORE the round trip, and hold it: the relabel endpoint returns the
+  // full stored row, so Object.assign below would otherwise overwrite the values
+  // that were just rescued with whatever the server still had.
+  _captureNutDrafts();
+  const typed = _captureNutInputs(i, r);
   const select = document.getElementById(`nut-${i}-week`);
   if (select) select.disabled = true;
+  _nutBusy = true;
   try {
     if (r.id) {
       const result = await maPost({
@@ -3647,15 +3833,20 @@ async function relabelNutWeek(i, nextLabel) {
         from_week_label: previousLabel, to_week_label: nextLabel,
       });
       Object.assign(r, result.rows?.[0] || { week_label: nextLabel });
+      if (typed) Object.assign(r, typed);
+      r.week_label = nextLabel;
     } else {
       r.week_label = nextLabel;
     }
+    _moveNutDraft(r.athlete_code, previousLabel, nextLabel);
     renderNutTable();
   } catch (error) {
     console.warn('nutrition week relabel failed', error);
     r.week_label = previousLabel;
     if (select) { select.value = previousLabel; select.disabled = false; }
     alert(error.message || 'Nutrition week could not be relabelled. Please try again.');
+  } finally {
+    _nutBusy = false;
   }
 }
 
@@ -3674,6 +3865,11 @@ async function saveNutRow(i) {
   try {
     const result = await maPost({ action: 'nutrition_upsert', row: patch });
     Object.assign(r, result.rows?.[0] || patch);
+    _clearNutDraft(r.athlete_code, r.week_label);
+    // The week exists server side now, so it is safe to extend the block to cover
+    // it. Doing this in addNutWeek instead left the two writes able to disagree.
+    const savedWk = _nutWkNum(r.week_label);
+    if (savedWk > getProgWeeks(r.athlete_code)) await saveProgWeeks(savedWk);
     if (btn) {
       btn.textContent = '✓ Saved'; btn.classList.remove('dirty');
       setTimeout(() => { btn.textContent = 'Save'; btn.disabled = false; }, 1400);
@@ -3681,6 +3877,7 @@ async function saveNutRow(i) {
   } catch (e) {
     console.warn('nutrition_plans save failed', e);
     if (btn) { btn.textContent = 'Retry'; btn.disabled = false; }
+    alert(`${r.athlete_code} ${displayWeekLabel(r.week_label)} could not be saved. Your numbers are still here — press Retry.`);
   }
 }
 
@@ -3689,32 +3886,44 @@ async function saveNutRow(i) {
 // rows too — the DB delete simply matches nothing.
 async function deleteNutRow(i) {
   const r = _nutRenderRows[i]; if (!r) return;
+  if (_nutBusy) { alert('Still saving the last week change — try again in a moment.'); return; }
   if (!confirm(`Delete ${displayWeekLabel(r.week_label)} nutrition plan for ${r.athlete_code}?\nPublished sport targets are preserved separately.`)) return;
+  _captureNutDrafts();
   const btn = document.getElementById(`nut-${i}-del`);
   if (btn) { btn.textContent = '…'; btn.disabled = true; }
+  _nutBusy = true;
   try {
     await maPost({ action: 'nutrition_delete', code: r.athlete_code, week_label: r.week_label });
     _nutPlans = _nutPlans.filter(p => !(p.athlete_code === r.athlete_code && p.week_label === r.week_label));
+    _clearNutDraft(r.athlete_code, r.week_label);
     renderNutTable();
   } catch (e) {
     console.warn('nutrition_plans delete failed', e);
     if (btn) { btn.textContent = '✕'; btn.disabled = false; }
     alert('Delete failed — please try again.');
+  } finally {
+    _nutBusy = false;
   }
 }
 
 function addNutWeek() {
   if (!_progAthlete) return;
-  const athleteRows = _nutPlans.filter(r => r.athlete_code === _progAthlete);
-  const maxWk = athleteRows
-    .reduce((m, r) => Math.max(m, _nutWkNum(r.week_label)), 0);
-  const currentWk = _nutWkNum(_progSelectedWeekLabel(_progAthlete));
-  const hasCurrent = currentWk >= 0 && athleteRows.some(r => _nutWkNum(r.week_label) === currentWk);
-  const nextWk = currentWk >= 0 && !hasCurrent ? currentWk : maxWk + 1;
-  // Extending past the programme end bumps the programme length automatically
-  if (nextWk > getProgWeeks(_progAthlete)) saveProgWeeks(nextWk);
+  if (_nutBusy) { alert('Still saving the last week change — try again in a moment.'); return; }
+  const nextWk = _nextNutWeekNum(_progAthlete);
+  const weekLabel = `Week ${nextWk}`;
+  // _nextNutWeekNum reads _nutPlans, which a restart or a stale render can leave
+  // holding this week already. Adding it twice produced two rows with the same
+  // label, and deleting either then removed both.
+  if (_nutPlans.some(p => p.athlete_code === _progAthlete && p.week_label === weekLabel)) {
+    renderNutTable();
+    return;
+  }
+  // The programme length is no longer bumped here. It used to be written to the
+  // server immediately while the row itself stayed in memory, so a refresh before
+  // Save left the athlete on a longer programme with nothing to show for it.
+  // saveNutRow extends the length once the week actually exists.
   _nutPlans.push({
-    athlete_code: _progAthlete, week_label: `Week ${nextWk}`,
+    athlete_code: _progAthlete, week_label: weekLabel,
     calories: null, protein: null, carbs: null, fats: null, fibre: null,
     weekly_km_target: null, notes: null,
   });
@@ -3769,6 +3978,9 @@ function renderProgramming() {
   document.getElementById('prog-view-block')?.classList.toggle('active', _progView === 'block');
   _renderProgBlockControls();
   _mountProgrammingEditors();
+  // Switching away from Block view leaves its table in the DOM, so rescue any
+  // unsaved edits before the branch below replaces it. No-ops in Week view.
+  _captureNutDrafts();
   if (_progView === 'block') renderNutTable();
   else if (_planLibOpen) renderPlanLibrary();
   else renderPlanGrid();
@@ -6541,6 +6753,7 @@ function buildTableExpandPanel(a) {
     return vals.length ? (vals.reduce((s,v) => s+v, 0) / vals.length) : null;
   };
   const avgWt   = _avgVal(cwBodyEntries, 'Weight');
+  const avgCal  = _avgVal(cwN avgWt   = _avgVal(cwBodyEntries, 'Weight');
   const avgCal  = _avgVal(cwNutrEntries, 'Calories');
   const avgPro  = _avgVal(cwNutrEntries, 'Protein');
   const avgEn   = _avgVal(cwBodyEntries, 'Energy');
@@ -11515,7 +11728,4 @@ document.getElementById('gen-btn').addEventListener('click', generateAI);
 <script src="/triage.js?v=21" defer></script>
 <script src="/weekly-sport-targets.js?v=3" defer></script>
 <script src="/daily-macro-overrides.js?v=3" defer></script>
-<script src="/programming.js?v=4" defer></script>
-<script src="/app.js?v=2" defer></script>
-</body>
-</html>
+<script src="/programming.js?v=4" 
