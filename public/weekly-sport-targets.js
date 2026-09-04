@@ -118,20 +118,56 @@
     return 'Not set';
   }
 
+  // Saving one sport re-renders all three rows from state.targets, which used to
+  // blank whatever had been typed into the other two. Unsaved values are captured
+  // before every render and replayed here.
+  var drafts = {};
+  function captureDrafts() {
+    var el = root();
+    if (!el) return;
+    el.querySelectorAll('.wst-row').forEach(function (row) {
+      var sport = row.getAttribute('data-sport');
+      if (!sport) return;
+      var enabled = row.querySelector('.wst-enabled');
+      if (enabled && !enabled.checked) { delete drafts[sport]; return; }
+      drafts[sport] = {
+        distance: (row.querySelector('.wst-distance') || {}).value,
+        sessions: (row.querySelector('.wst-sessions') || {}).value,
+        duration: (row.querySelector('.wst-duration') || {}).value,
+        note: (row.querySelector('.wst-coach-note') || {}).value,
+        publish: (row.querySelector('.wst-publish-state') || {}).value,
+      };
+    });
+  }
+  function clearDraft(sport) { delete drafts[sport]; }
+  function clearAllDrafts() { drafts = {}; }
+
   function sportRow(sport) {
+    var draft = drafts[sport.key] || null;
     var target = targetFor(state.weekIdentifier, sport.key);
     var suggested = !target && sport.key === 'running' && state.planRunningKm !== null && state.planRunningKm > 0;
     var enabled = !!target || suggested;
     var disabled = enabled ? '' : ' disabled';
     var distance = target ? distanceInputValue(target, sport.key) : (suggested ? String(state.planRunningKm) : '');
     var publishState = target ? target.state : (suggested ? 'published' : 'draft');
+    var sessionsValue = target && target.sessionTarget != null ? target.sessionTarget : '';
+    var durationValue = target && target.durationTargetMinutes != null ? target.durationTargetMinutes : '';
+    var noteValue = target ? target.coachNote || '' : '';
+    if (draft) {
+      enabled = true; disabled = '';
+      if (draft.distance !== undefined) distance = draft.distance;
+      if (draft.sessions !== undefined) sessionsValue = draft.sessions;
+      if (draft.duration !== undefined) durationValue = draft.duration;
+      if (draft.note !== undefined) noteValue = draft.note;
+      if (draft.publish !== undefined) publishState = draft.publish;
+    }
     return '<div class="wst-row' + (state.focusSport === sport.key ? ' focused' : '') + '" data-sport="' + sport.key + '">' +
       '<div class="wst-sport"><label><input type="checkbox" class="wst-enabled"' + (enabled ? ' checked' : '') + '> ' + esc(sport.label) + '</label>' +
         '<span class="wst-state ' + (target && target.state === 'published' ? 'published' : '') + '">' + esc(editorStatus(target, suggested)) + '</span></div>' +
       '<label class="wst-field"><span>Distance</span><div><input class="wst-distance" type="number" min="0" step="' + sport.step + '" value="' + esc(distance) + '"' + disabled + '><b>' + sport.unit + '</b></div></label>' +
-      '<label class="wst-field"><span>Sessions <i>optional</i></span><input class="wst-sessions" type="number" min="0" step="1" value="' + esc(target && target.sessionTarget != null ? target.sessionTarget : '') + '"' + disabled + '></label>' +
-      '<label class="wst-field"><span>Duration <i>min · optional</i></span><input class="wst-duration" type="number" min="0" step="1" value="' + esc(target && target.durationTargetMinutes != null ? target.durationTargetMinutes : '') + '"' + disabled + '></label>' +
-      '<label class="wst-field wst-note"><span>Coach note</span><input class="wst-coach-note" maxlength="2000" value="' + esc(target ? target.coachNote || '' : '') + '" placeholder="Optional guidance"' + disabled + '></label>' +
+      '<label class="wst-field"><span>Sessions <i>optional</i></span><input class="wst-sessions" type="number" min="0" step="1" value="' + esc(sessionsValue) + '"' + disabled + '></label>' +
+      '<label class="wst-field"><span>Duration <i>min · optional</i></span><input class="wst-duration" type="number" min="0" step="1" value="' + esc(durationValue) + '"' + disabled + '></label>' +
+      '<label class="wst-field wst-note"><span>Coach note</span><input class="wst-coach-note" maxlength="2000" value="' + esc(noteValue) + '" placeholder="Optional guidance"' + disabled + '></label>' +
       '<label class="wst-field wst-publish"><span>Visibility</span><select class="wst-publish-state"' + disabled + '><option value="draft"' + (publishState !== 'published' ? ' selected' : '') + '>Draft</option><option value="published"' + (publishState === 'published' ? ' selected' : '') + '>Published</option></select></label>' +
       '<div class="wst-actions"><button type="button" class="wst-save"' + disabled + '>' + (suggested ? 'Publish target' : 'Save') + '</button>' +
         (target ? '<button type="button" class="wst-remove">Remove</button>' : '') + '</div>' +
@@ -145,6 +181,7 @@
   function renderEditor() {
     var el = root();
     if (!el) return;
+    captureDrafts();
     if (!state.openWeekLabel) { el.innerHTML = ''; return; }
     if (state.loading) {
       el.innerHTML = dialogShell('<div class="wst-head"><div><strong id="wst-title">' + esc(state.openWeekLabel) + ' sport targets</strong><span>Loading coach targets…</span></div><button type="button" class="wst-close" aria-label="Close">×</button></div>');
@@ -175,10 +212,30 @@
     row.querySelectorAll('input:not(.wst-enabled),select,.wst-save').forEach(function (control) {
       control.disabled = !enabled;
     });
-    if (!enabled) {
-      var target = targetFor(state.weekIdentifier, row.getAttribute('data-sport'));
-      if (target) removeTarget(row);
+    var sport = row.getAttribute('data-sport');
+    if (enabled) return;
+    clearDraft(sport);
+    var target = targetFor(state.weekIdentifier, sport);
+    if (!target) return;
+    // Unticking used to delete a published prescription the athlete is locked to
+    // with no confirm and no undo. The checkbox reads as "show this row", so the
+    // deletion has to be asked for.
+    var sportDef = SPORTS.find(function (item) { return item.key === sport; }) || { label: sport };
+    var published = target.state === 'published';
+    var ok = window.confirm(
+      'Remove the ' + sportDef.label.toLowerCase() + ' target for ' + state.openWeekLabel + '?' +
+      (published ? '\n\nIt is published, so the athlete is currently locked to it.' : '') +
+      '\n\nIts audit history is kept, but the prescription has to be re-entered to restore it.'
+    );
+    if (!ok) {
+      var box = row.querySelector('.wst-enabled');
+      if (box) box.checked = true;
+      row.querySelectorAll('input:not(.wst-enabled),select,.wst-save').forEach(function (control) {
+        control.disabled = false;
+      });
+      return;
     }
+    removeTarget(row);
   }
 
   function message(text, bad) {
@@ -223,6 +280,7 @@
         return !(item.weekIdentifier === state.weekIdentifier && item.sport === sport);
       });
       state.targets.push(result.target);
+      clearDraft(sport);
       renderEditor();
       notifyNutritionRows();
       message(sportDef.label + ' target saved' + (publishState === 'published' ? ' and locked for the athlete.' : ' as a draft.'));
@@ -248,6 +306,7 @@
         return !(item.weekIdentifier === state.weekIdentifier && item.sport === sport);
       });
       if (result.target) state.targets.push(result.target);
+      clearDraft(sport);
       renderEditor();
       notifyNutritionRows();
       message(sportDef.label + ' target removed. Its audit history was preserved.');
@@ -275,6 +334,7 @@
   }
 
   function closeEditor() {
+    clearAllDrafts();
     state.openWeekLabel = null;
     state.weekIdentifier = null;
     state.planRunningKm = null;

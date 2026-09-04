@@ -141,7 +141,41 @@
     '</div>';
   }
 
+  // Saving, copying or removing one day re-rendered all seven rows from state,
+  // blanking every other day the coach had filled in. Unsaved values are captured
+  // before each render and replayed after it.
+  var dmoDrafts = {};
+  function dmoFields(row) { return row.querySelectorAll('[data-field]'); }
+  function dmoCapture() {
+    var el = root();
+    if (!el) return;
+    el.querySelectorAll('.dmo-row').forEach(function (row) {
+      var date = row.getAttribute('data-date');
+      if (!date) return;
+      var draft = {};
+      dmoFields(row).forEach(function (control) {
+        draft[control.getAttribute('data-field')] = control.value;
+      });
+      if (Object.keys(draft).length) dmoDrafts[date] = draft;
+    });
+  }
+  function dmoClearDraft(date) { delete dmoDrafts[date]; }
+  function dmoClearAllDrafts() { dmoDrafts = {}; }
+  function dmoApplyDrafts() {
+    var el = root();
+    if (!el) return;
+    el.querySelectorAll('.dmo-row').forEach(function (row) {
+      var draft = dmoDrafts[row.getAttribute('data-date')];
+      if (!draft) return;
+      dmoFields(row).forEach(function (control) {
+        var key = control.getAttribute('data-field');
+        if (key in draft) control.value = draft[key];
+      });
+    });
+  }
+
   function renderEditor() {
+    dmoCapture();
     var element = root();
     if (!element) return;
     if (!state.openDate) { element.innerHTML = ''; return; }
@@ -160,6 +194,7 @@
     for (var index = 0; index < 7; index += 1) rows.push(editorRow(addDays(state.weekStart, index)));
     element.innerHTML = shell('<div class="dmo-head"><div><strong id="dmo-title">' + esc(state.openWeekLabel) + ' daily macros</strong><span>Published rows are locked for the athlete. Weekly macros remain the fallback.</span></div><button class="dmo-close">×</button></div><div class="dmo-grid">' + rows.join('') + '</div><div class="dmo-message" role="status"></div>');
     bindEditor();
+    dmoApplyDrafts();
   }
   function shell(content) { return '<div class="dmo-overlay"><section class="dmo-dialog" role="dialog" aria-modal="true" aria-labelledby="dmo-title">' + content + '</section></div>'; }
   function message(text, bad) { var box = root() && root().querySelector('.dmo-message'); if (box) { box.textContent = text || ''; box.className = 'dmo-message' + (bad ? ' bad' : ''); } }
@@ -190,7 +225,7 @@
     if (needsOutlierConfirm(payload) && !window.confirm('Calories differ from the weekly baseline by more than 60%. Publish this outlier?')) return;
     try {
       var result = await apiPost(Object.assign({ action: 'daily_macro_override_save' }, payload));
-      replaceSaved(result.override); renderEditor(); notify(); message('Daily override saved.');
+      replaceSaved(result.override); dmoClearDraft(payload.override_date); renderEditor(); notify(); message('Daily override saved.');
     } catch (error) { message(error.message || 'Daily override could not be saved', true); }
   }
   async function copyRow(row) {
@@ -207,6 +242,7 @@
   async function removeRow(row) {
     try {
       var result = await apiPost({ action: 'daily_macro_override_remove', athlete_code: state.athleteCode, override_date: row.getAttribute('data-date') });
+      dmoClearDraft(row.getAttribute('data-date'));
       replaceSaved(result.override); renderEditor(); notify(); message('Override removed; the weekly targets apply again.');
     } catch (error) { message(error.message || 'Override could not be removed', true); }
   }
@@ -226,7 +262,7 @@
       output.textContent = difference; output.className = 'dmo-delta' + (difference && difference !== 'same as week' ? (difference.charAt(0) === '+' ? ' up' : ' down') : '');
     });
   }
-  function closeEditor() { state.openDate = null; state.openWeekLabel = null; renderEditor(); }
+  function closeEditor() { dmoClearAllDrafts(); state.openDate = null; state.openWeekLabel = null; renderEditor(); }
   function bindEditor() {
     var element = root(); if (!element) return;
     var overlay = element.querySelector('.dmo-overlay'); if (overlay) overlay.addEventListener('click', function (event) { if (event.target === overlay) closeEditor(); });

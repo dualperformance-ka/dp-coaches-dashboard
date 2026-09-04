@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test tests/*.test.js"
+    "test": "node --test tests/*.test.js",
+    "bump-sw": "node scripts/bump-sw-version.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "0.39.0",

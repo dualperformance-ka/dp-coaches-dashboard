@@ -12,7 +12,11 @@
       would risk showing stale or cross-coach data offline)
    ============================================================ */
 
-const VERSION = 'dp-coaches-v30-theme-parity';
+// IMPORTANT: bump this on every deploy. There is no build step, so nothing does
+// it for you — and if sw.js is byte-identical the browser never installs a new
+// worker, no "Update available" toast appears, and the activate purge never runs.
+// scripts/bump-sw-version.mjs does it for you: `node scripts/bump-sw-version.mjs`.
+const VERSION = 'dp-coaches-v33-strava-and-block-fixes';
 const SHELL_CACHE = `${VERSION}-shell`;
 const STATIC_CACHE = `${VERSION}-static`;
 const FONT_CACHE = `${VERSION}-fonts`;
@@ -159,7 +163,7 @@ self.addEventListener('fetch', (event) => {
   const isOwnStatic = url.origin === self.location.origin;
   const isAllowedCdn = CDN_HOSTS.includes(url.hostname);
   if (isOwnStatic || isAllowedCdn) {
-    event.respondWith(staleWhileRevalidate(req, STATIC_CACHE));
+    event.respondWith(staleWhileRevalidate(req, STATIC_CACHE, event));
     return;
   }
 
@@ -180,12 +184,21 @@ function cacheFirst(req, cacheName) {
   );
 }
 
-function staleWhileRevalidate(req, cacheName) {
+// The revalidating fetch used to run outside event.waitUntil(), so once
+// respondWith settled the worker could be terminated before cache.put resolved.
+// Combined with VERSION being a hand-edited constant, unversioned assets such as
+// /coach-auth.js could stay pinned to an old build indefinitely while navigations
+// (network-first) served the new index.html — new HTML against old JS.
+// `event` is passed so the write is kept alive.
+function staleWhileRevalidate(req, cacheName, event) {
   return caches.open(cacheName).then((cache) =>
     cache.match(req).then((cached) => {
       const network = fetch(req)
         .then((res) => {
-          if (res.ok || res.type === 'opaque') cache.put(req, res.clone());
+          if (res.ok || res.type === 'opaque') {
+            const write = cache.put(req, res.clone());
+            if (event && typeof event.waitUntil === 'function') event.waitUntil(write);
+          }
           return res;
         })
         .catch(() => cached); // offline: fall back to cache if we have it

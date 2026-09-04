@@ -209,11 +209,17 @@
   }
 
   async function load() {
-    var data = await apiGet({ action: 'prescription', session_id: state.sessionId });
+    var requestedId = state.sessionId;
+    var data = await apiGet({ action: 'prescription', session_id: requestedId });
+    // Close the drawer or open another session mid-request and this response is
+    // for a session the coach is no longer looking at. Writing it into state let
+    // "+ Add exercise" post against the wrong session.
+    if (state.sessionId !== requestedId) return;
     state.session = data.session;
     state.exercises = data.exercises || [];
     state.runSteps = data.runSteps || [];
     state.legacySplit = data.legacySplit || null;
+    state.skipSync = true;   // the body still shows the previous session
     render();
   }
 
@@ -243,9 +249,43 @@
     return !/strength/.test(type) && !/upper|lower|glute|push|pull/i.test(String(session && session.title) || '');
   }
 
+  // Pull whatever is currently in the DOM back into state before it is thrown
+  // away. render() rebuilds #rx-body from state, so without this every + Step,
+  // step delete, exercise reorder and preview toggle discarded typed values.
+  function syncFromDom() {
+    if (state.skipSync) { state.skipSync = false; return; }
+    var body = document.getElementById('rx-body');
+    if (!body) return;
+    Array.prototype.forEach.call(body.querySelectorAll('.rx-step'), function (row) {
+      var id = row.getAttribute('data-step');
+      var step = state.runSteps.find(function (item) { return item.id === id; });
+      if (!step) return;
+      Array.prototype.forEach.call(row.querySelectorAll('[data-step-field]'), function (input) {
+        var field = input.getAttribute('data-step-field');
+        var raw = input.value;
+        if (field === 'duration_min') {
+          step.duration_sec = raw === '' ? null : Math.round(Number(raw) * 60);
+        } else if (field === 'distance_km' || field === 'repeat_count') {
+          step[field] = raw === '' ? null : Number(raw);
+        } else {
+          step[field] = raw;
+        }
+      });
+    });
+    Array.prototype.forEach.call(body.querySelectorAll('.rx-ex'), function (row) {
+      var id = row.getAttribute('data-id');
+      var ex = state.exercises.find(function (item) { return item.id === id; });
+      if (!ex) return;
+      Array.prototype.forEach.call(row.querySelectorAll('[data-field]'), function (input) {
+        ex[input.getAttribute('data-field')] = valueOf(input);
+      });
+    });
+  }
+
   function render() {
     var session = state.session;
     if (!session) return;
+    syncFromDom();
 
     el('rx-title').textContent = session.title || 'Session';
     el('rx-sub').textContent = [
@@ -1000,10 +1040,16 @@
       if (!window._psEditingId) {
         return alert('Save this session first, then open its prescription.');
       }
+      // The drawer opens over the modal, so the coach never saw the discard.
+      if (typeof window.planSessionIsDirty === 'function' && window.planSessionIsDirty()) {
+        if (!window.confirm('This session has unsaved changes. Opening the prescription will discard them.\n\nSave the session first, or continue and lose them?')) return;
+      }
       if (typeof window.closePlanSession === 'function') window.closePlanSession();
       open(window._psEditingId);
     });
-    footer.insertBefore(button, footer.firstChild);
+    // Appended, not prepended: it used to sit to the LEFT of Save, so the button
+    // a coach reaches for first was the one that threw their edits away.
+    footer.appendChild(button);
   }
 
   // _psEditingId lives in the dashboard's inline scope. Mirroring it onto window

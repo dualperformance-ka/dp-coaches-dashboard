@@ -41,6 +41,9 @@ header{background:#0a0a0a;padding:0 18px;height:62px;display:flex;align-items:ce
 .h-mid{display:none}
 .h-right{display:flex;align-items:center;gap:10px;flex-shrink:0}
 .updated{font-family:var(--mono);font-size:9px;color:rgba(255,255,255,.32);white-space:nowrap}
+.updated.stale{color:#fca5a5;font-weight:700}
+.stale-banner{margin:0;padding:10px 16px;background:rgba(220,38,38,.12);border-bottom:1px solid rgba(248,113,113,.4);color:#fca5a5;font-family:var(--mono);font-size:11px;line-height:1.5;text-align:center}
+.stale-banner[hidden]{display:none}
 .coach-select{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);color:#fff;font-family:var(--mono);font-size:10px;padding:5px 10px 5px 8px;border-radius:6px;cursor:pointer;outline:none;letter-spacing:.04em}
 .coach-select:hover{background:rgba(255,255,255,.1)}
 .coach-select option{background:#0a0a0a;color:#fff}
@@ -1155,12 +1158,12 @@ body[data-theme="light"] .plan-chip.coach::before{color:#92400e}
 .nut-table-wrap::-webkit-scrollbar-thumb:hover{background:var(--dim)}
 /* Fixed layout keeps every column predictable and lets long values ellipsis
    instead of pushing Save off the right edge. Widths sum to the min-width. */
-.nut-table{width:100%;border-collapse:collapse;table-layout:fixed;min-width:1150px}
+.nut-table{width:100%;border-collapse:collapse;table-layout:fixed;min-width:1210px}
 .nut-table th:nth-child(1){width:200px}
 .nut-table th:nth-child(2){width:78px}
 .nut-table th:nth-child(3),.nut-table th:nth-child(4),.nut-table th:nth-child(5),.nut-table th:nth-child(6){width:70px}
 .nut-table th:nth-child(7){width:68px}
-.nut-table th:nth-child(8){width:74px}
+.nut-table th:nth-child(8){width:130px}
 .nut-table th:nth-child(9){width:120px}
 .nut-table th:nth-child(10){width:82px}
 .nut-table th:nth-child(11){width:auto}
@@ -1203,6 +1206,10 @@ body[data-theme="light"] .plan-chip.coach::before{color:#92400e}
 .nut-week-select:focus{outline:none;border-color:var(--amber)}
 .nut-week-cap{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.05em;margin-top:4px;white-space:nowrap;overflow:hidden}
 .nut-row.current td{background:var(--amber-bg)}
+.nut-row.current td:first-child{box-shadow:inset 3px 0 0 var(--amber),10px 0 12px -10px rgba(0,0,0,.45)}
+.nut-row.current .nut-week-select{border-color:var(--amber-border)}
+/* Card view: keep the amber rail, drop the sticky-column shadow. */
+@media(max-width:760px){.nut-row.current td:first-child{box-shadow:inset 3px 0 0 var(--amber)}}
 .nut-row.current .nut-wk{color:var(--amber-dim)}
 .nut-now{flex:0 0 auto;font-family:var(--mono);font-size:8px;color:var(--amber);border:1px solid var(--amber-border);border-radius:4px;padding:1px 5px;vertical-align:middle;letter-spacing:.06em}
 .nut-input{font-family:var(--mono);font-size:12px;color:var(--text);background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:6px 8px;width:84px;transition:border-color .15s}
@@ -2230,6 +2237,9 @@ function closeManageAthletes() {
 }
 
 function maEsc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+// See jsq() above — maEsc alone leaves an apostrophe that breaks the inline
+// handler, which is why Remove and ✕ did nothing for an athlete named O'Brien.
+function maJsq(s) { return maEsc(String(s == null ? '' : s).replace(/\\/g, '\\\\').replace(/'/g, "\\'")); }
 
 function renderManageList() {
   const el = document.getElementById('ma-list');
@@ -2255,8 +2265,8 @@ function renderManageList() {
         <button class="ma-btn" onclick="maRename('${maEsc(a.code)}')" title="Edit athlete name">✎ Edit</button>
         <button class="ma-btn" onclick="maCopyLink('${maEsc(a.code)}', this)" title="${maEsc(a.portalLink || '')}">⧉ Link</button>
         <button class="ma-btn" onclick="maToggleActive('${maEsc(a.code)}', ${paused})">${paused ? '▶ Resume' : '⏸ Pause'}</button>
-        <button class="ma-btn danger" onclick="maRemove('${maEsc(a.code)}', '${maEsc(a.name)}')">Remove</button>
-        <button class="ma-btn danger" onclick="maDelete('${maEsc(a.code)}', '${maEsc(a.name)}')" title="Hard delete — only allowed when the athlete has no history">✕</button>
+        <button class="ma-btn danger" onclick="maRemove('${maEsc(a.code)}', '${maJsq(a.name)}')">Remove</button>
+        <button class="ma-btn danger" onclick="maDelete('${maEsc(a.code)}', '${maJsq(a.name)}')" title="Hard delete — only allowed when the athlete has no history">✕</button>
       </div>
     </div>`;
   }).join('');
@@ -2391,6 +2401,7 @@ function refreshRosterDrivenUI() {
 }
 </script>
 
+<div class="stale-banner" id="stale-banner" role="alert" hidden></div>
 <div class="tab-bar" role="tablist" aria-label="Dashboard sections">
   <button class="tab active" id="tab-triage-btn" onclick="switchTab('triage')">
     Today <span class="tab-badge" id="tab-triage-count">—</span>
@@ -2558,7 +2569,7 @@ function refreshRosterDrivenUI() {
 </div>
 
 <!-- Planning session editor modal -->
-<div class="po-overlay hidden" id="ps-overlay" role="dialog" aria-modal="true" aria-label="Plan session" onclick="if(event.target===this)closePlanSession()">
+<div class="po-overlay hidden" id="ps-overlay" role="dialog" aria-modal="true" aria-label="Plan session" onclick="if(event.target===this)confirmDiscardModal('ps-overlay',closePlanSession)">
   <div class="po-modal" style="max-width:460px">
     <div class="po-modal-head">
       <div>
@@ -2692,7 +2703,7 @@ function refreshRosterDrivenUI() {
 </div>
 
 <!-- Library template editor modal -->
-<div class="po-overlay hidden" id="pl-overlay" role="dialog" aria-modal="true" aria-label="Session library editor" onclick="if(event.target===this)closeLibEditor()">
+<div class="po-overlay hidden" id="pl-overlay" role="dialog" aria-modal="true" aria-label="Session library editor" onclick="if(event.target===this)confirmDiscardModal('pl-overlay',closeLibEditor)">
   <div class="po-modal" style="max-width:460px">
     <div class="po-modal-head">
       <div>
@@ -2763,7 +2774,7 @@ function refreshRosterDrivenUI() {
 </div>
 
 <!-- Workout split editor modal -->
-<div class="po-overlay hidden" id="pw-overlay" role="dialog" aria-modal="true" aria-label="Workout split editor" onclick="if(event.target===this)closeSplitEditor()">
+<div class="po-overlay hidden" id="pw-overlay" role="dialog" aria-modal="true" aria-label="Workout split editor" onclick="if(event.target===this)confirmDiscardModal('pw-overlay',closeSplitEditor)">
   <div class="po-modal" style="max-width:680px">
     <div class="po-modal-head">
       <div>
@@ -3005,6 +3016,7 @@ function isSessionSubmitted(athleteCode, notionPageId) {
 function getPlanOverride(id) { return _ovCache[id] || null; }
 
 async function setPlanOverride(id, data) {
+  const previousOverride = Object.prototype.hasOwnProperty.call(_ovCache, id) ? _ovCache[id] : undefined;
   if (data === null) {
     delete _ovCache[id];
     try {
@@ -3018,7 +3030,13 @@ async function setPlanOverride(id, data) {
       });
       const row = _planRowsSB.find(r => r.notion_page_id === id || r.id === id);
       if (row && result.rows?.[0]) Object.assign(row, result.rows[0]);
-    } catch(e) { console.warn('Override clear failed', e); }
+    } catch(e) {
+      console.warn('Override clear failed', e);
+      if (previousOverride !== undefined) _ovCache[id] = previousOverride;
+      rerenderPlanRows?.();
+      alert('That override could not be cleared — the athlete still has the previous prescription. Please try again.');
+      throw e;
+    }
   } else {
     _ovCache[id] = { ..._ovCache[id], ...data };
     try {
@@ -3037,7 +3055,13 @@ async function setPlanOverride(id, data) {
       const result = await maPost({ action: 'plan_update', id, fields: patch });
       const row = _planRowsSB.find(r => r.notion_page_id === id || r.id === id);
       if (row) Object.assign(row, result.rows?.[0] || patch);
-    } catch(e) { console.warn('Override save failed', e); }
+    } catch(e) {
+      console.warn('Override save failed', e);
+      if (previousOverride === undefined) delete _ovCache[id]; else _ovCache[id] = previousOverride;
+      rerenderPlanRows?.();
+      alert('That session override could not be saved — the athlete still has the original prescription. Please try again.');
+      throw e;
+    }
   }
 }
 
@@ -3165,7 +3189,14 @@ function _progAthleteCodes() {
   if (_roster.length) {
     const codes = new Set(_roster.filter(a => a.active !== false).map(a => String(a.code || '').toUpperCase()));
     COACHES.forEach(c => codes.add(c));
-    _nutPlans.forEach(r => codes.add(String(r.athlete_code || '').toUpperCase()));
+    // Codes carried by nutrition plans are added back only when the roster has
+    // never heard of them (legacy athletes). Adding them unconditionally is what
+    // kept paused athletes on the chips despite the filter above.
+    const known = new Set(_roster.map(a => String(a.code || '').toUpperCase()));
+    _nutPlans.forEach(r => {
+      const code = String(r.athlete_code || '').toUpperCase();
+      if (code && !known.has(code)) codes.add(code);
+    });
     return [...codes].filter(Boolean).sort();
   }
   const codes = new Set(_planRowsSB.map(r => r.athlete_code));
@@ -3365,7 +3396,7 @@ function _plannedKmForWeek(code, weekLabel) {
   if (!code || !weekLabel) return 0;
   let sum = 0, declared = 0;
   _planRowsSB.forEach(r => {
-    if (r.athlete_code !== code || (r.week_label || '').trim() !== weekLabel) return;
+    if (r.athlete_code !== code || !_sameWeek(r.week_label, weekLabel)) return;
     if (r.session_type === 'Weekly KM Total' || /km total/i.test(r.title || '')) {
       const m = (r.title || '').match(/(\d+(?:\.\d+)?)\s*km/i);
       if (m) declared = Math.max(declared, parseFloat(m[1]));
@@ -3378,7 +3409,7 @@ function _plannedKmForWeek(code, weekLabel) {
 
 function _plannedSessionsForWeek(code, weekLabel) {
   return _planRowsSB.filter(r => r.athlete_code === code
-    && String(r.week_label || '').trim() === weekLabel
+    && _sameWeek(r.week_label, weekLabel)
     && r.session_type !== 'Weekly KM Total'
     && !/km total/i.test(r.title || ''));
 }
@@ -3576,6 +3607,14 @@ function _fillTargetsKm(targets) {
   return targets;
 }
 
+// Week labels are stored inconsistently ("Week 0" vs "Discovery Week", stray
+// whitespace), so every comparison goes through the week NUMBER. Raw === on the
+// label is what stopped Discovery Week from being recognised as the open week.
+function _sameWeek(a, b) {
+  const na = _nutWkNum(a);
+  return na >= 0 && na === _nutWkNum(b);
+}
+
 function _nutWkNum(label) { if (isDiscoveryWeek(label)) return 0; const m = String(label || '').match(/(\d+)/); return m ? parseInt(m[1], 10) : -1; }
 
 // One programme-week resolver is shared by the athlete cards and Nutrition.
@@ -3660,8 +3699,8 @@ function _nutWeekOptions(row) {
   const last = Math.max(getProgWeeks(row.athlete_code), highestSaved, current);
   return Array.from({ length: last + 1 }, (_, week) => {
     const label = `Week ${week}`;
-    const text = displayWeekLabel(label);
-    return `<option value="${label}"${label === row.week_label ? ' selected' : ''}>${esc(text)}</option>`;
+    const text = `${displayWeekLabel(label)}${week === current ? ' · open' : ''}`;
+    return `<option value="${label}"${_sameWeek(label, row.week_label) ? ' selected' : ''}>${esc(text)}</option>`;
   }).join('');
 }
 
@@ -3768,7 +3807,7 @@ function renderNutTable() {
   const rowsHtml = _nutRenderRows.map((r, i) => {
     const draft = _nutDrafts.get(_nutDraftKey(r.athlete_code, r.week_label));
     const fv = field => iv(draft && field in draft ? draft[field] : r[field]);
-    const isCur = curWk && r.week_label === curWk;
+    const isCur = curWk && _sameWeek(r.week_label, curWk);
     const autoKm = _plannedKmForWeek(r.athlete_code, r.week_label);
     const plannedSessions = _plannedSessionsForWeek(r.athlete_code, r.week_label);
     const keySession = _keySessionForWeek(r.athlete_code, r.week_label);
@@ -3781,7 +3820,9 @@ function renderNutTable() {
       <td data-label="Fats"><input class="nut-input" id="nut-${i}-fat" value="${fv('fats')}" placeholder="g" oninput="nutDirty(${i})"></td>
       <td data-label="Fibre"><input class="nut-input" id="nut-${i}-fib" value="${fv('fibre')}" placeholder="g" oninput="nutDirty(${i})"></td>
       <td data-label="Sessions"><span class="nut-km-auto">${plannedSessions.length}<span class="src">planned</span></span></td>
-      <td data-label="Load"><span class="nut-km-auto">${autoKm > 0 ? iv(autoKm) + ' km' : '—'}<span class="src">week load</span></span></td>
+      <td data-label="Run goal">${window.WeeklySportTargetsEditor?.sportCellHtml({
+        weekLabel: r.week_label, sport: 'running', planKm: autoKm, legacyKm: r.weekly_km_target,
+      }) || `<span class="nut-km-auto">${autoKm > 0 ? iv(autoKm) + ' km' : '—'}<span class="src">week load</span></span>`}</td>
       <td data-label="Key session"><span class="nut-km-auto" title="${keySession ? esc(keySession.title || 'Session') : ''}">${keySession ? esc(keySession.title || 'Session') : '—'}${keySession && _sessionKm(keySession) ? `<span class="src">${iv(_sessionKm(keySession))} km</span>` : ''}</span></td>
       <td data-label="Days adjusted"><button class="nut-save" onclick="openProgWeek('${esc(r.week_label)}')">${adjustedDays} day${adjustedDays === 1 ? '' : 's'}</button></td>
       <td data-label="Notes"><input class="nut-input wide" id="nut-${i}-notes" value="${fv('notes')}" placeholder="Coach note" oninput="nutDirty(${i})"></td>
@@ -3792,10 +3833,12 @@ function renderNutTable() {
   wrap.innerHTML = `<table class="nut-table">
     <thead><tr>
       <th>Week</th><th>Calories</th><th>Protein</th><th>Carbs</th><th>Fats</th><th>Fibre</th>
-      <th>Sessions</th><th>Load</th><th>Key session</th><th>Days adj.</th><th>Notes</th><th>Actions</th>
+      <th>Sessions</th><th>Run goal</th><th>Key session</th><th>Days adj.</th><th>Notes</th><th>Actions</th>
     </tr></thead>
     <tbody>${rowsHtml}</tbody>
   </table>`;
+  // Wires the run-goal cells to the same dialog the Week view opens.
+  window.WeeklySportTargetsEditor?.bindCells(wrap);
 }
 
 function nutDirty(i) {
@@ -3813,7 +3856,7 @@ async function relabelNutWeek(i, nextLabel) {
     alert('Still saving the last week change — try again in a moment.');
     return;
   }
-  if (_nutPlans.some(p => p !== r && p.athlete_code === r.athlete_code && p.week_label === nextLabel)) {
+  if (_nutPlans.some(p => p !== r && p.athlete_code === r.athlete_code && _sameWeek(p.week_label, nextLabel))) {
     alert(`${r.athlete_code} already has nutrition targets for ${displayWeekLabel(nextLabel)}.`);
     document.getElementById(`nut-${i}-week`).value = previousLabel;
     return;
@@ -3915,7 +3958,7 @@ function addNutWeek() {
   // _nextNutWeekNum reads _nutPlans, which a restart or a stale render can leave
   // holding this week already. Adding it twice produced two rows with the same
   // label, and deleting either then removed both.
-  if (_nutPlans.some(p => p.athlete_code === _progAthlete && p.week_label === weekLabel)) {
+  if (_nutPlans.some(p => p.athlete_code === _progAthlete && _sameWeek(p.week_label, weekLabel))) {
     renderNutTable();
     return;
   }
@@ -4011,7 +4054,7 @@ function _planRowsForWeek(code, ws) {
 }
 
 function _weeklyMacrosForWeek(code, weekLabel) {
-  const row = _nutPlans.find(r => r.athlete_code === code && r.week_label === weekLabel) || null;
+  const row = _nutPlans.find(r => r.athlete_code === code && _sameWeek(r.week_label, weekLabel)) || null;
   return row ? {
     calories: row.calories,
     proteinG: row.protein,
@@ -4046,7 +4089,7 @@ function renderPlanGrid() {
       weekStart: _isoDate(ws),
       baseline,
     }) || '<div class="dmo-week-bar"></div>';
-    const weeklyRow = _nutPlans.find(r => r.athlete_code === _progAthlete && r.week_label === rawWeekLabel) || null;
+    const weeklyRow = _nutPlans.find(r => r.athlete_code === _progAthlete && _sameWeek(r.week_label, rawWeekLabel)) || null;
     const sports = document.createElement('div');
     sports.className = 'dmo-week-sports';
     sports.innerHTML = ['running','cycling','swimming'].map(sport =>
@@ -4282,10 +4325,41 @@ function openPlanSession(id, dateISO) {
     document.getElementById('ps-save').style.display = 'none';
   }
   document.getElementById('ps-overlay').classList.remove('hidden');
+  _snapshotModal('ps-overlay');
   if (row) setTimeout(() => document.getElementById('ps-name').focus(), 60);
 }
+// Snapshot of a modal's fields taken when it opens, so we can tell whether the
+// coach has actually typed anything before throwing the form away.
+const _modalSnapshots = {};
+function _modalFields(overlayId) {
+  const overlay = document.getElementById(overlayId);
+  return overlay ? [...overlay.querySelectorAll('input,select,textarea')] : [];
+}
+function _snapshotModal(overlayId) {
+  _modalSnapshots[overlayId] = _modalFields(overlayId)
+    .map(el => (el.type === 'checkbox' || el.type === 'radio') ? String(el.checked) : el.value).join('\u0000');
+}
+function _modalDirty(overlayId) {
+  const before = _modalSnapshots[overlayId];
+  if (before === undefined) return false;
+  const now = _modalFields(overlayId)
+    .map(el => (el.type === 'checkbox' || el.type === 'radio') ? String(el.checked) : el.value).join('\u0000');
+  return now !== before;
+}
+// Called from each overlay's backdrop handler. A deliberate Close/Save still
+// goes straight through; only the accidental click on the edge is challenged.
+function confirmDiscardModal(overlayId, closeFn) {
+  if (_modalDirty(overlayId) &&
+      !confirm('You have unsaved changes here. Close and lose them?')) return;
+  delete _modalSnapshots[overlayId];
+  closeFn();
+}
+// Used by the prescription drawer's entry-point button.
+function planSessionIsDirty() { return _modalDirty('ps-overlay'); }
+
 function closePlanSession() {
   document.getElementById('ps-overlay').classList.add('hidden');
+  delete _modalSnapshots['ps-overlay'];
   _psEditingId = null;
 }
 // ── Run template typeahead ────────────────────────────────────────────────────
@@ -4571,9 +4645,11 @@ function openSplitEditor(id) {
   (s?.exercises || []).forEach(ex => addSplitExRow(ex));
   if (!s) addSplitExRow();
   document.getElementById('pw-overlay').classList.remove('hidden');
+  _snapshotModal('pw-overlay');
   setTimeout(() => document.getElementById('pw-name').focus(), 60);
 }
 function closeSplitEditor() {
+  delete _modalSnapshots['pw-overlay'];
   document.getElementById('pw-overlay').classList.add('hidden');
   _pwEditingId = null;
 }
@@ -4682,9 +4758,11 @@ function openLibEditor(id) {
   document.getElementById('pl-goal').value        = l?.goal || '';
   document.getElementById('pl-description').value = l?.description || '';
   document.getElementById('pl-overlay').classList.remove('hidden');
+  _snapshotModal('pl-overlay');
   setTimeout(() => document.getElementById('pl-name').focus(), 60);
 }
 function closeLibEditor() {
+  delete _modalSnapshots['pl-overlay'];
   document.getElementById('pl-overlay').classList.add('hidden');
   _plEditingId = null;
 }
@@ -5035,7 +5113,20 @@ function scoreClass(v, inv) {
 function esc(s) {
   return String(s || '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+    // Apostrophes terminate the single-quoted JS string inside every inline
+    // onclick="fn('${esc(name)}')" in this file. Without this, an athlete or
+    // applicant named O'Brien makes those buttons throw and do nothing.
+    .replace(/'/g, '&#39;');
+}
+
+// For values interpolated into a JS string literal inside an HTML attribute —
+// onclick="fn('${jsq(name)}')". Backslash-escape for the JS parser, then
+// HTML-escape for the attribute; the parser undoes the second layer and hands
+// the JS parser a correctly escaped literal. Using esc() alone here is what made
+// Accept/Pass and Remove/Delete dead buttons for names containing an apostrophe.
+function jsq(s) {
+  return esc(String(s == null ? '' : s).replace(/\\/g, '\\\\').replace(/'/g, "\\'"));
 }
 function fmtDate(s) {
   if (!s) return '';
@@ -7672,7 +7763,7 @@ function buildCard(a, weekOffset = 0) {
         ${!callPrep.wins.length && !callPrep.issues.length && !callPrep.ask.length ? `<div class="cp-none">No check-in data to prep from yet.</div>` : ''}
         <div class="cp-block">
           <div class="cp-block-lbl note-lbl">📝 Call Notes</div>
-          <textarea class="cp-note" placeholder="Notes for this call…" onchange="saveNote('${a.id}', this.value)">${esc(savedNote)}</textarea>
+          <textarea class="cp-note" placeholder="Notes for this call…" oninput="noteInput('${a.id}', this.value)" onchange="saveNote('${a.id}', this.value)">${esc(savedNote)}</textarea>
         </div>
       </div>
     </div>`;
@@ -8041,6 +8132,52 @@ function importedSensorChart(streams, key, label, colour, unit) {
   </div>`;
 }
 
+// Fills a lazy chart placeholder once its <details> is opened. One request per
+// activity, cached for the session, and a real message on failure rather than a
+// silently empty panel.
+const _activityStreamCache = {};
+async function loadActivityStreams(box) {
+  const id = box?.getAttribute('data-activity-streams');
+  if (!id || box.dataset.loading === '1' || box.dataset.done === '1') return;
+  box.dataset.loading = '1';
+  try {
+    let streams = _activityStreamCache[id];
+    if (!streams) {
+      // coach-auth.js patches window.fetch to attach the dashboard key and coach
+      // headers to every same-origin /api/ call, so a plain fetch is authenticated.
+      const res = await fetch(`/api/coach-data?mode=activity_streams&id=${encodeURIComponent(id)}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      streams = Array.isArray(data.streams) ? data.streams : [];
+      _activityStreamCache[id] = streams;
+    }
+    const html = [
+      importedSensorChart(streams,'hr','Heart rate','#ef4444',' bpm'),
+      importedSensorChart(streams,'power','Power','#f59e0b',' W'),
+      importedSensorChart(streams,'elev','Elevation','#22c55e',' m'),
+      importedSensorChart(streams,'cad','Cadence','#3b82f6',''),
+    ].filter(Boolean).join('');
+    box.dataset.done = '1';
+    box.outerHTML = html || '<div class="wd-import-charts-lazy">No sensor samples in this file.</div>';
+  } catch (error) {
+    console.warn('activity streams load failed', error);
+    box.textContent = 'Sensor charts could not be loaded — the rest of this activity is complete.';
+  } finally {
+    box.dataset.loading = '0';
+  }
+}
+
+document.addEventListener('toggle', event => {
+  const details = event.target;
+  if (!details || details.tagName !== 'DETAILS' || !details.open) return;
+  details.querySelectorAll?.('[data-activity-streams]').forEach(loadActivityStreams);
+}, true);
+
+// The panel renders with open=true, so also sweep after any render that adds one.
+function hydrateActivityStreams(scope) {
+  (scope || document).querySelectorAll('[data-activity-streams]').forEach(loadActivityStreams);
+}
+
 function renderImportedActivity(activity) {
   const summary = activity?.summary || {};
   const laps = Array.isArray(activity?.laps) ? activity.laps : [];
@@ -8075,12 +8212,19 @@ function renderImportedActivity(activity) {
     return `<tr><td>${esc(row.lap || row.split || index+1)}</td><td>${rowDistance}km</td><td><strong>${importedActivityPace(speed)}</strong></td><td>${row.avgHr ? Math.round(row.avgHr) : '—'}</td><td>${elevation != null && elevation !== '' ? `${Number(elevation)>0?'+':''}${Math.round(Number(elevation))}m` : '—'}</td><td>${row.avgCadence ? Math.round(row.avgCadence) : '—'}</td><td>${row.avgPower ? `${Math.round(row.avgPower)}W` : '—'}</td></tr>`;
   }).join('');
   const splitHtml = rows ? `<div style="margin-top:8px"><div class="strava-laps-toggle" style="cursor:default;pointer-events:none;margin-bottom:4px">${rowsLabel}</div><div class="wd-splits-scroll"><table class="strava-splits"><thead><tr><th>#</th><th>dist</th><th>pace</th><th>hr</th><th>elev</th><th>cad</th><th>power</th></tr></thead><tbody>${rows}</tbody></table></div></div>` : '';
-  const charts = [
+  // Streams are no longer in the bulk dashboard payload (they were ~250KB per
+  // activity across up to 500 activities, which could exceed Vercel's response
+  // limit and take the whole load down with it). If this activity's samples are
+  // not in hand, the charts are fetched when the panel is opened.
+  const chartsHtml = [
     importedSensorChart(streams,'hr','Heart rate','#ef4444',' bpm'),
     importedSensorChart(streams,'power','Power','#f59e0b',' W'),
     importedSensorChart(streams,'elev','Elevation','#22c55e',' m'),
     importedSensorChart(streams,'cad','Cadence','#3b82f6',''),
   ].filter(Boolean).join('');
+  const charts = chartsHtml || (activity?.id
+    ? `<div class="wd-import-charts-lazy" data-activity-streams="${esc(activity.id)}">Sensor charts load when you open this activity…</div>`
+    : '');
   const submitted = activity.submittedAt && Number.isFinite(Date.parse(activity.submittedAt))
     ? new Date(activity.submittedAt).toLocaleString('en-AU',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'}) : '';
   return `<details class="wd-strava-act direct-upload" open>
@@ -8720,7 +8864,7 @@ function buildFPCard(a, weekOffset = 0) {
         ? `<div class="fpc-cp-none">No check-in data to prep from yet.</div>` : ''}
       <div>
         <div class="fpc-cp-section-lbl note">📝 Call Notes</div>
-        <textarea class="fpc-note" placeholder="Notes for this call…" onchange="saveNote('${esc(a.id)}', this.value)">${esc(savedNote)}</textarea>
+        <textarea class="fpc-note" placeholder="Notes for this call…" oninput="noteInput('${esc(a.id)}', this.value)" onchange="saveNote('${esc(a.id)}', this.value)">${esc(savedNote)}</textarea>
       </div>
     </div>
   </div>`;
@@ -9686,8 +9830,8 @@ function renderNotifications(applications, decisions = []) {
       </div>
       <div class="app-body">${buildAppCardBody(r)}</div>
       <div class="app-actions">
-        <button class="app-accept-btn" onclick="decideApplication('${notionId}','${esc(name)}','accepted')">✓ Accept</button>
-        <button class="app-reject-btn" onclick="decideApplication('${notionId}','${esc(name)}','rejected')">✕ Pass</button>
+        <button class="app-accept-btn" onclick="decideApplication('${notionId}','${jsq(name)}','accepted')">✓ Accept</button>
+        <button class="app-reject-btn" onclick="decideApplication('${notionId}','${jsq(name)}','rejected')">✕ Pass</button>
       </div>
     </div>`;
   }).join('');
@@ -9801,12 +9945,36 @@ function toggleCallPrep(id) {
   toggle.classList.toggle('open', !isOpen);
 }
 
+// Call notes are typed during a call, while a 12s poll repaints the grid and the
+// full-profile panel. `onchange` only fires on blur, so an innerHTML repaint used
+// to destroy the element — and the typed note — without ever firing it. Notes are
+// now captured on every keystroke into callNotes (which the repaint reads back),
+// with the network write debounced.
+let _noteSaveTimers = {};
+function noteInput(athleteId, value) {
+  callNotes[athleteId] = value;
+  try { localStorage.setItem('dp_call_notes', JSON.stringify(callNotes)); } catch {}
+  clearTimeout(_noteSaveTimers[athleteId]);
+  _noteSaveTimers[athleteId] = setTimeout(() => saveNote(athleteId, value), 900);
+}
+
 function saveNote(athleteId, value) {
   callNotes[athleteId] = value;
   try { localStorage.setItem('dp_call_notes', JSON.stringify(callNotes)); } catch {}
-  // Sync to Supabase so notes follow you between devices (local copy is the fallback)
-  maPost({ action: 'setting_upsert', code: athleteId, key: 'call_notes', value }).catch(() => {});
+  clearTimeout(_noteSaveTimers[athleteId]);
+  // Sync to Supabase so notes follow you between devices (local copy is the fallback).
+  // A failure used to be swallowed entirely, so notes written on a laptop simply
+  // were not there on the phone with nothing having said so.
+  maPost({ action: 'setting_upsert', code: athleteId, key: 'call_notes', value })
+    .catch(e => {
+      console.warn('call note sync failed', e);
+      _noteSyncWarned = _noteSyncWarned || {};
+      if (_noteSyncWarned[athleteId]) return;
+      _noteSyncWarned[athleteId] = true;
+      alert(`Call notes for ${athleteId} are saved on this device but could not sync. They will not appear on your other devices until the connection recovers.`);
+    });
 }
+let _noteSyncWarned = {};
 
 function useCallNoteRows(rows) {
   (rows || []).filter(r => r.key === 'call_notes').forEach(r => {
@@ -9873,7 +10041,29 @@ function applyAckState(rows) {
   return before !== JSON.stringify(_acks);
 }
 
+// True while the coach has focus in any text field. A background repaint that
+// replaces the focused element loses the caret and, before saveNote captured on
+// input, the text as well. Acks are not urgent enough to interrupt typing.
+function _isTyping() {
+  const el = document.activeElement;
+  if (!el) return false;
+  const tag = el.tagName;
+  return tag === 'TEXTAREA' || (tag === 'INPUT' && !['button','submit','checkbox','radio'].includes(el.type)) || el.isContentEditable;
+}
+
+let _ackRefreshDeferred = false;
 function _ackRefresh() {
+  if (_isTyping()) {
+    // Try again once the coach stops typing rather than repainting under them.
+    if (!_ackRefreshDeferred) {
+      _ackRefreshDeferred = true;
+      document.addEventListener('focusout', function once() {
+        document.removeEventListener('focusout', once);
+        setTimeout(() => { _ackRefreshDeferred = false; if (!_isTyping()) _ackRefresh(); }, 250);
+      });
+    }
+    return;
+  }
   ccCloseDetail(); // any open detail panel/popup is stale after an ack change
   renderCommandCenter(_allAthletes, _allApplications, _dataHealth);
   applyFilters();
@@ -10026,8 +10216,29 @@ async function load({ bust = false } = {}) {
     document.getElementById('loading').style.display = 'none';
     document.getElementById('content').style.display = 'block';
     if (todayLoading) todayLoading.hidden = true;
-    document.getElementById('updated').textContent =
-      'Updated ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    // The Supabase loaders all catch and return empty arrays, so a failure used
+    // to render as every athlete having logged nothing — under a normal
+    // "Updated HH:MM". dataHealth.portalSupabase recorded it and was never read.
+    // Zeros presented as real data are worse than an error, so say it plainly.
+    const stamp = 'Updated ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const supabaseDown = _dataHealth?.portalSupabase && _dataHealth.portalSupabase.ok === false;
+    const rosterDown = !Array.isArray(_roster) || !_roster.length;
+    const updatedEl = document.getElementById('updated');
+    updatedEl.textContent = supabaseDown ? 'STALE · load failed' : stamp;
+    updatedEl.classList.toggle('stale', !!supabaseDown);
+    updatedEl.title = supabaseDown
+      ? `Athlete data could not be loaded${_dataHealth.portalSupabase.error ? ' — ' + _dataHealth.portalSupabase.error : ''}. The figures on screen are incomplete.`
+      : '';
+    const staleBanner = document.getElementById('stale-banner');
+    if (staleBanner) {
+      const problems = [];
+      if (supabaseDown) problems.push(`athlete data could not be loaded${_dataHealth.portalSupabase.error ? ' (' + _dataHealth.portalSupabase.error + ')' : ''}`);
+      if (rosterDown) problems.push('the athlete roster could not be loaded');
+      staleBanner.hidden = !problems.length;
+      staleBanner.textContent = problems.length
+        ? `Showing incomplete data — ${problems.join(' and ')}. Check-ins, sessions and logs may read as zero. Press Refresh to try again.`
+        : '';
+    }
 
   } catch (e) {
     document.getElementById('loading').style.display = 'none';
@@ -10516,9 +10727,24 @@ async function loadStravaData(a) {
         target.outerHTML = `<div class="strava-state" data-strava-panel="${esc(a.id)}">Strava rate limit reached — the rest of the athlete data is available. Retry Strava shortly.</div>`;
         return;
       }
+      if (e.code === 'strava_athlete_only') {
+        // Deliberate: the API refuses to show one person's Strava data to
+        // another. Say so, rather than "check /api/strava is configured" beside
+        // a Sync button that can never work.
+        target.outerHTML = `<div class="strava-state" data-strava-panel="${esc(a.id)}">Strava activity is athlete-only — ${esc(a.name || a.id)} sees it in their portal. Coach view uses their submitted training logs.</div>`;
+        return;
+      }
       throw new Error(e.error || `HTTP ${res.status}`);
     }
     const data = await res.json();
+
+    // The server converts a Strava 429 into a 200 with empty arrays and a
+    // warning, so without this the strip printed "Strava sync healthy" above
+    // "No Strava activities for this week" — an affirmative false statement.
+    if (data.warning === 'strava_rate_limited' || data.activitiesAvailable === false) {
+      target.outerHTML = `<div class="strava-state" data-strava-panel="${esc(a.id)}">Strava is rate limiting right now, so this week's activities could not be read. Nothing is missing from ${esc(a.name || a.id)}'s account — try again shortly.</div>`;
+      return;
+    }
 
     if (!data.connected) {
       target.outerHTML = `<div data-strava-panel="${esc(a.id)}">
