@@ -81,8 +81,12 @@ test('Block view renders training context and published day-adjustment counts', 
   assert.match(table, /_plannedKmForWeek/);
   assert.match(table, /_keySessionForWeek/);
   assert.match(table, /publishedCountForWeek/);
-  assert.match(table, /<th>Sessions<\/th><th>Load<\/th><th>Key session<\/th><th>Days adj\.<\/th>/);
-  assert.doesNotMatch(table, /sportCellHtml/);
+  assert.match(table, /<th>Sessions<\/th><th>Run goal<\/th><th>Key session<\/th><th>Days adj\.<\/th>/);
+  // The run goal is the same weekly_sport_targets record the Week bar edits —
+  // one source of truth, so a goal set in either place shows in the other.
+  assert.match(table, /sportCellHtml/);
+  assert.match(table, /sport: 'running'/);
+  assert.match(table, /bindCells\(wrap\)/);
 });
 
 test('weekly sport targets mount from the Week bar and remain editable', () => {

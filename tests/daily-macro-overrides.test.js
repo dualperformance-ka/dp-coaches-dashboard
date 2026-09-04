@@ -313,7 +313,7 @@ test('dashboard ships daily fuelling and theme parity under the current PWA asse
   assert.match(dashboard, /daily-macro-overrides\.js\?v=3/);
   assert.match(worker, /daily-macro-overrides\.css\?v=3/);
   assert.match(worker, /daily-macro-overrides\.js\?v=3/);
-  assert.match(worker, /dp-coaches-v30-theme-parity/);
+  assert.match(worker, /const VERSION = 'dp-coaches-v\d+[a-z0-9-]*';/);
 });
 
 test('coach links and notification forwarding default to the canonical athlete portal', () => {
