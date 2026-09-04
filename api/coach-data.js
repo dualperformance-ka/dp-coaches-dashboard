@@ -268,10 +268,9 @@ export function mapActivityUpload(row) {
     summary,
     laps: Array.isArray(row.laps) ? row.laps.slice(0, 500) : [],
     splits: Array.isArray(row.splits) ? row.splits.slice(0, 500) : [],
-    // Left empty on the bulk load — see the select above. The client fetches an
-    // individual activity's streams when the coach opens it.
+    // Empty on the bulk load by design — see the select above. The detail panel
+    // fetches them per activity via mode=activity_streams.
     streams: Array.isArray(row.streams) ? row.streams.slice(0, 2400) : [],
-    hasStreams: row.streams === undefined ? undefined : Array.isArray(row.streams) && row.streams.length > 0,
     warnings: Array.isArray(row.parse_warnings) ? row.parse_warnings.slice(0, 20) : [],
     notes: row.athlete_notes || '',
     coachAccessGrantedAt: row.coach_access_granted_at || '',
@@ -960,6 +959,23 @@ export default async function handler(req, res) {
     const mode = String(req.query?.mode || '').trim().toLowerCase();
     if (mode === 'triage') {
       return res.status(200).json(await loadTriage());
+    }
+    // One activity's sensor streams. The bulk load deliberately omits them (they
+    // are ~250KB per activity and blew the response limit), so the detail panel
+    // asks for them only when a coach actually opens an activity.
+    if (mode === 'activity_streams') {
+      const id = String(req.query?.id || '').trim();
+      if (!/^[0-9a-f-]{36}$/i.test(id)) {
+        return res.status(400).json({ ok: false, error: 'A valid activity id is required' });
+      }
+      const rows = await selectRows(TABLES.activityUploads, { select: 'id,streams', id: `eq.${id}`, limit: 1 });
+      const row = Array.isArray(rows) ? rows[0] : null;
+      if (!row) return res.status(404).json({ ok: false, error: 'Activity not found' });
+      return res.status(200).json({
+        ok: true,
+        id: row.id,
+        streams: Array.isArray(row.streams) ? row.streams.slice(0, 2400) : [],
+      });
     }
     if (mode && mode !== 'full') {
       return res.status(400).json({ ok: false, error: `Unknown coach-data mode: ${mode}` });
