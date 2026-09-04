@@ -1977,11 +1977,11 @@ body[data-theme="light"] .strava-command-bar{background:linear-gradient(135deg,r
 #ma-list .ma-empty{grid-column:1/-1}
 .ma-row{display:block;padding:10px 12px;border:1px solid rgba(255,255,255,.07);border-radius:10px;background:rgba(255,255,255,.02)}
 .ma-row:hover{border-color:rgba(146,210,237,.28)}
-.ma-row-top{display:flex;align-items:center;gap:9px;min-width:0}
+.ma-row-top{display:flex;align-items:center;flex-wrap:wrap;gap:6px 9px;min-width:0}
 .ma-row-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px;padding-left:17px}
 .ma-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;background:#92d2ed;box-shadow:0 0 8px rgba(146,210,237,.6)}
 .ma-row.paused .ma-dot{background:#f59e0b;box-shadow:0 0 8px rgba(245,158,11,.5)}
-.ma-name{font-family:var(--cond);font-size:15px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:#f0ede8;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ma-name{font-family:var(--cond);font-size:15px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:#f0ede8;flex:1 1 auto;min-width:min-content;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ma-row.paused .ma-name{opacity:.55}
 .ma-code{font-family:var(--mono);font-size:10px;color:#92d2ed;background:rgba(146,210,237,.1);border:1px solid rgba(146,210,237,.22);border-radius:5px;padding:2px 7px;flex-shrink:0}
 .ma-paused-tag{font-family:var(--mono);font-size:8.5px;text-transform:uppercase;letter-spacing:.08em;color:#fbbf24;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.25);border-radius:10px;padding:2px 7px;flex-shrink:0}
@@ -2000,15 +2000,11 @@ body[data-theme="light"] .strava-command-bar{background:linear-gradient(135deg,r
    athletes meant scrolling the whole page. Give the card the width to run three
    or four athletes abreast, pack the add form onto three rows instead of six,
    and scroll only the roster so the form and heading stay put. */
-@media(min-width:900px){
+@media(min-width:760px){
   .ma-backdrop{padding:4vh 24px 24px}
   .ma-card{max-width:min(1320px,calc(100vw - 48px));max-height:92vh;display:flex;flex-direction:column;padding:22px 24px}
   .ma-add{flex:0 0 auto}
-  .ma-add-grid{grid-template-columns:repeat(4,1fr);gap:9px}
-  /* #id beats the .ma-add-name full-row rule below 900px */
-  #ma-name{grid-column:span 2}
-  #ma-code,#ma-start{grid-column:span 1}
-  #ma-race,#ma-email,#ma-coach,#ma-add-btn{grid-column:span 2}
+  /* Only the roster scrolls, so the heading and the add form stay put. */
   #ma-list{flex:1 1 auto;min-height:0;overflow-y:auto;padding-right:4px;margin-right:-4px;
            scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.18) transparent}
   #ma-list::-webkit-scrollbar{width:10px}
@@ -2016,8 +2012,13 @@ body[data-theme="light"] .strava-command-bar{background:linear-gradient(135deg,r
   #ma-list::-webkit-scrollbar-thumb{background:rgba(255,255,255,.18);border-radius:6px}
   .ma-status{flex:0 0 auto}
 }
-@media(min-width:1500px){
-  #ma-list{grid-template-columns:repeat(auto-fill,minmax(320px,1fr))}
+@media(min-width:1000px){
+  /* Add form drops from six rows to three. #id beats the .ma-add-name
+     full-row rule that still governs narrower screens. */
+  .ma-add-grid{grid-template-columns:repeat(4,1fr);gap:9px}
+  #ma-name{grid-column:span 2}
+  #ma-code,#ma-start{grid-column:span 1}
+  #ma-race,#ma-email,#ma-coach,#ma-add-btn{grid-column:span 2}
 }
 
 /* ═══════════════ DP REFRESH — branding, accents & mobile flow ═══════════════ */
@@ -6753,7 +6754,6 @@ function buildTableExpandPanel(a) {
     return vals.length ? (vals.reduce((s,v) => s+v, 0) / vals.length) : null;
   };
   const avgWt   = _avgVal(cwBodyEntries, 'Weight');
-  const avgCal  = _avgVal(cwN avgWt   = _avgVal(cwBodyEntries, 'Weight');
   const avgCal  = _avgVal(cwNutrEntries, 'Calories');
   const avgPro  = _avgVal(cwNutrEntries, 'Protein');
   const avgEn   = _avgVal(cwBodyEntries, 'Energy');
@@ -11728,4 +11728,7 @@ document.getElementById('gen-btn').addEventListener('click', generateAI);
 <script src="/triage.js?v=21" defer></script>
 <script src="/weekly-sport-targets.js?v=3" defer></script>
 <script src="/daily-macro-overrides.js?v=3" defer></script>
-<script src="/programming.js?v=4" 
+<script src="/programming.js?v=4" defer></script>
+<script src="/app.js?v=2" defer></script>
+</body>
+</html>
