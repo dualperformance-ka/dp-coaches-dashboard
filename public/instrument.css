@@ -1,0 +1,190 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   INSTRUMENT — shared design system with the athlete portal.
+
+   Loaded LAST so it settles the palette without editing eleven stylesheets
+   or the 1,800 lines of inline CSS in index.html. It re-points the dashboard's
+   OWN token names at the Instrument ramp, so every component that already
+   reads var(--bg)/var(--surface)/var(--elevated) follows automatically.
+
+   Deliberately NOT changed: the chart palette and the run/strength semantic
+   colours. Those encode information for a coach reading dense data, and
+   flattening them into one accent would cost real legibility.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+:root{
+  /* ─── GRAPHITE · SURFACE ─────────────────────────────────────────────── */
+  --g-well:#131312;   /* recessed — inputs, tracks, table beds */
+  --g-0:#1a1918;      /* chassis */
+  --g-1:#222120;      /* plate */
+  --g-2:#2a2927;      /* key */
+  --g-3:#33312e;      /* key pressed */
+
+  /* ─── EDGE LIGHT ─────────────────────────────────────────────────────── */
+  --edge-top:inset 0 1px 0 rgba(255,255,255,.07);
+  --edge-bottom:inset 0 -1px 0 rgba(0,0,0,.60);
+  --edge-plate:var(--edge-top),var(--edge-bottom);
+  --edge-well:inset 0 1px 2px rgba(0,0,0,.60);
+  --hairline:rgba(236,233,226,.08);
+
+  /* ─── TEXT ───────────────────────────────────────────────────────────── */
+  --t-1:#ece9e2;
+  --t-2:rgba(236,233,226,.66);
+  --t-3:rgba(236,233,226,.42);
+
+  /* ─── READOUT ────────────────────────────────────────────────────────── */
+  --readout:#92d2ed;          /* identical to the portal's live-number blue */
+  --readout-ink:#0b1a21;
+  --watch:#f0ad4e;
+  --done:#22c55e;
+
+  /* ─── TYPE / RADIUS / SPACE ──────────────────────────────────────────── */
+  --fs-readout:54px;--fs-1:30px;--fs-1-sm:24px;--fs-2:20px;
+  --fs-2-sm:17px;--fs-3:15px;--fs-data:13px;--fs-label:12px;
+  --tracking-readout:-.05em;--tracking-label:.14em;
+  --r-1:6px;--r-2:10px;--r-3:14px;--r-pill:999px;
+  --sp-1:4px;--sp-2:8px;--sp-3:12px;--sp-4:16px;--sp-5:24px;--sp-6:32px;
+
+  /* ═══ DASHBOARD TOKENS REMAPPED ═══════════════════════════════════════ */
+  --bg:var(--g-0);--surface:var(--g-1);--surface2:var(--g-2);
+  --border:var(--hairline);--border-mid:rgba(236,233,226,.14);
+  --text:var(--t-1);--muted:var(--t-2);--dim:var(--t-3);
+
+  /* Chrome and controls were cool navy (#081019/#0d141b); now graphite. */
+  --chrome:var(--g-well);--chrome-text:var(--t-1);
+  --control-bg:var(--g-well);--control-text:var(--t-1);
+  --control-placeholder:var(--t-3);
+  --elevated:var(--g-1);--elevated-2:var(--g-2);
+  --shadow-soft:var(--edge-plate);
+
+  /* Brand aligns exactly with the portal's readout so the two apps agree. */
+  --brand:var(--readout);--brand-dim:#4a9fc9;--brand-text:#bfe4f5;
+  --brand-bg:rgba(146,210,237,.10);--brand-border:rgba(146,210,237,.28);
+
+  /* Semantic states keep their meaning, warmed onto the Instrument palette. */
+  --ok:var(--done);--warn:var(--watch);--amber:var(--watch);--amber-dim:#f6c67a;
+  --green-text:var(--done);--amber-text:var(--watch);
+
+  /* Type families follow the portal. */
+  --mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+  --sans:'IBM Plex Sans',ui-sans-serif,system-ui,-apple-system,sans-serif;
+  --cond:var(--sans);
+  --font-ui:var(--sans);--font-data:var(--mono);
+}
+
+/* ─── SURFACES ──────────────────────────────────────────────────────────
+   One light source from above. Plates get edge light instead of ambient
+   shadow; the header and any recessed bed become wells. */
+body{background:var(--g-0);color:var(--t-1);font-family:var(--sans)}
+header{background:var(--g-well);box-shadow:var(--edge-bottom)}
+
+.card,.panel,.tile,.athlete-card,.session-card,.stat-card,.dash-card{
+  background:var(--g-1);border-color:transparent;border-radius:var(--r-3);
+  box-shadow:var(--edge-plate)
+}
+
+input,select,textarea{
+  background:var(--g-well);color:var(--t-1);border:1px solid var(--border);
+  border-radius:var(--r-2);box-shadow:var(--edge-well);font-family:var(--sans)
+}
+input:focus,select:focus,textarea:focus{
+  border-color:var(--brand-border);box-shadow:var(--edge-well),inset 0 0 0 1px var(--brand-border);outline:none
+}
+
+button{font-family:var(--sans)}
+
+/* Engraved micro-labels, the same grammar as the portal. */
+.label,.eyebrow,.kicker,.section-label,th{
+  font-family:var(--mono);font-size:var(--fs-label);
+  letter-spacing:var(--tracking-label);text-transform:uppercase;color:var(--t-3)
+}
+
+/* Numerals are readouts: Plex Mono, tight, and the only thing that glows. */
+.metric,.stat-value,.readout,.num,.value{
+  font-family:var(--mono);font-weight:500;letter-spacing:var(--tracking-readout)
+}
+
+/* Dense coach tables read as one plate of hairline rows. */
+table{border-collapse:collapse}
+td,th{border-bottom:1px solid var(--hairline)}
+tr:last-child td{border-bottom:0}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   LIGHT — the daylight half, matching the portal's outdoor mode exactly.
+   The dashboard's light theme was cool blue-grey (#edf3f7 on #ffffff); this
+   re-points it at warm paper so the two apps agree in BOTH themes. Selector
+   specificity matches body[data-theme="light"], and this file loads last.
+   ══════════════════════════════════════════════════════════════════════════ */
+body[data-theme="light"]{
+  --g-well:#dedbd3;--g-0:#e8e6e0;--g-1:#f4f2ed;--g-2:#eae7e0;--g-3:#dad6cd;
+  --edge-top:inset 0 1px 0 rgba(255,255,255,.90);
+  --edge-bottom:inset 0 -1px 0 rgba(19,19,18,.14);
+  --edge-well:inset 0 1px 2px rgba(19,19,18,.16);
+  --hairline:rgba(19,19,18,.12);
+  --t-1:#1b1a18;--t-2:rgba(27,26,24,.82);--t-3:rgba(27,26,24,.66);
+  /* Baby blue dies on paper (~1.6:1), so the readout role darkens while the
+     token itself stays constant — the same rule the portal follows. */
+  --readout:#0f7fae;--readout-ink:#ffffff;--watch:#a86a06;--done:#178048;
+
+  --bg:var(--g-0);--surface:var(--g-1);--surface2:var(--g-2);--surface3:var(--g-3);
+  --border:rgba(19,19,18,.10);--border-mid:rgba(19,19,18,.18);
+  --text:var(--t-1);--muted:var(--t-2);--dim:var(--t-3);
+  --chrome:var(--g-1);--chrome-text:var(--t-1);
+  --control-bg:var(--g-1);--control-text:var(--t-1);--control-placeholder:var(--t-3);
+  --elevated:var(--g-1);--elevated-2:var(--g-2);
+  --shadow-soft:var(--edge-plate);
+  --brand:var(--readout);--brand-text:#0a5f82;
+  --brand-bg:rgba(15,127,174,.10);--brand-border:rgba(15,127,174,.28);
+  --ok:var(--done);--warn:var(--watch);--amber:var(--watch);
+  /* Flat warm ground: Instrument has one light source and no colour wash. */
+  background:var(--g-0);
+}
+body[data-theme="light"] .card,body[data-theme="light"] .panel,
+body[data-theme="light"] .tile,body[data-theme="light"] .stat-card{
+  background:var(--g-1);box-shadow:var(--edge-plate)
+}
+body[data-theme="light"] input,body[data-theme="light"] select,
+body[data-theme="light"] textarea{background:var(--g-well);color:var(--t-1);box-shadow:var(--edge-well)}
+
+/* The chrome bar deliberately stays DARK in both themes — the dashboard states
+   that contract explicitly, and its children inherit it. So warm it rather
+   than lighten it: cool navy rgba(8,16,25,.97) becomes graphite. Selector
+   mirrors dashboard-theme-system.css so specificity matches and this wins on
+   load order alone. */
+header,body[data-theme="light"] header,
+.tab-bar,body[data-theme="light"] .tab-bar{
+  background:rgba(19,19,18,.97);color:var(--t-1);box-shadow:var(--edge-bottom)
+}
+.filter-bar,body[data-theme="light"] .filter-bar{background:rgba(19,19,18,.97)}
+/* Chrome text keeps its own light palette because the bar stays dark. */
+header .coach-select,header .refresh-btn,header .gen-btn,header .theme-btn,
+body[data-theme="light"] header .coach-select,
+body[data-theme="light"] header .refresh-btn,
+body[data-theme="light"] header .gen-btn,
+body[data-theme="light"] header .theme-btn{color:rgba(236,233,226,.78)}
+.tab,.tab-bar .tab,body[data-theme="light"] .tab{color:rgba(236,233,226,.62)}
+.tab.active,body[data-theme="light"] .tab.active{color:#ece9e2;border-bottom-color:var(--readout)}
+
+/* Instrument has one light source from above and no ambient colour wash.
+   triage.css paints a blue radial bloom behind the main page in both themes;
+   flatten it to the ground, matching what the portal already does. */
+main.triage-page,
+body[data-theme="light"] main.triage-page{background:var(--g-0)}
+
+/* ── Athlete call prep ──────────────────────────────────────────────────────
+   What the athlete wrote in the portal, shown above the derived prep. Their
+   words are the readout here: quoted verbatim, engraved question above. */
+.cp-athlete-prep .athlete-prep-lbl{
+  font-family:var(--mono);font-size:var(--fs-label);letter-spacing:var(--tracking-label);
+  text-transform:uppercase;color:var(--readout)
+}
+.cp-item.athlete-prep{
+  display:block;background:var(--g-well);border-radius:var(--r-2);
+  box-shadow:var(--edge-well);padding:10px 12px;margin-bottom:6px;border:0
+}
+.cp-item.athlete-prep .app-q{
+  display:block;font-family:var(--mono);font-size:var(--fs-label);
+  letter-spacing:var(--tracking-label);text-transform:uppercase;color:var(--t-3);margin-bottom:4px
+}
+.cp-item.athlete-prep .app-a{
+  display:block;font-size:var(--fs-3);line-height:1.5;color:var(--t-1);white-space:pre-line
+}

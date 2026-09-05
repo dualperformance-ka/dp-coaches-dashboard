@@ -1,66 +1,62 @@
 {
-  "styles.css": {
-    "version": 104,
-    "sha": "47cd37cf2fd0"
+  "dashboard-comprehensive.css": {
+    "version": "2",
+    "sha": "5b0fbb7f3973"
   },
-  "desktop.css": {
-    "version": 4,
-    "sha": "72ebde066d7d"
+  "dashboard-theme-system.css": {
+    "version": "20260821-1",
+    "sha": "0414a4e27411"
   },
-  "icons.css": {
-    "version": 3,
-    "sha": "d145afd663d9"
+  "dashboard-mobile-polish.css": {
+    "version": "20260821-2",
+    "sha": "c26f0f5e862a"
   },
-  "login.js": {
-    "version": 47,
-    "sha": "c8d6e79467a0"
+  "triage.css": {
+    "version": "23",
+    "sha": "6d8171c71188"
   },
-  "js/01-core.js": {
-    "version": 99,
-    "sha": "78d73ff3d637"
+  "programming.css": {
+    "version": "4",
+    "sha": "f68f686c7f5c"
   },
-  "js/02-login-goals.js": {
-    "version": 95,
-    "sha": "60d29978abfe"
+  "weekly-sport-targets.css": {
+    "version": "3",
+    "sha": "aa540e02473c"
   },
-  "js/03-nav-nudges.js": {
-    "version": 93,
-    "sha": "2cbc97084590"
+  "daily-macro-overrides.css": {
+    "version": "3",
+    "sha": "a4d055be95dd"
   },
-  "js/04-checkin.js": {
-    "version": 86,
-    "sha": "ad48be4c009b"
+  "instrument.css": {
+    "version": "1",
+    "sha": "77bc5a100002"
   },
-  "js/05-handbook.js": {
-    "version": 82,
-    "sha": "70252f0852de"
+  "dashboard-redesign.js": {
+    "version": "20260810-3",
+    "sha": "3d20db136c7b"
   },
-  "js/06-nutrition.js": {
-    "version": 86,
-    "sha": "c035a0a1960a"
+  "coaching-actions.js": {
+    "version": "3",
+    "sha": "3a2b5bda61f5"
   },
-  "js/07-progress.js": {
-    "version": 86,
-    "sha": "b4fe068e7abd"
+  "triage.js": {
+    "version": "21",
+    "sha": "6a3b050c77d8"
   },
-  "js/strava-match.js": {
-    "version": 4,
-    "sha": "8a51ef4a0416"
+  "weekly-sport-targets.js": {
+    "version": "3",
+    "sha": "233bb4b2ac21"
   },
-  "js/08-training.js": {
-    "version": 108,
-    "sha": "e2d7d8c1b0e6"
+  "daily-macro-overrides.js": {
+    "version": "3",
+    "sha": "67b1f679ceed"
   },
-  "js/09-logging.js": {
-    "version": 102,
-    "sha": "bbaf7c92d369"
+  "programming.js": {
+    "version": "4",
+    "sha": "c857d6a4fdf4"
   },
-  "accessibility.js": {
-    "version": 1,
-    "sha": "3e9bf44307a4"
-  },
-  "js/10-boot.js": {
-    "version": 92,
-    "sha": "d350f4d2502d"
+  "app.js": {
+    "version": "2",
+    "sha": "c9b8fca8356c"
   }
 }

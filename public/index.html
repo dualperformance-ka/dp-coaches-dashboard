@@ -8,7 +8,7 @@
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800;900&family=Geist+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{
   --bg:#0d0d0d;--surface:#161616;--surface2:#1e1e1e;
@@ -2143,6 +2143,7 @@ body[data-theme="light"] .theme-btn.active{background:rgba(255,255,255,.22);colo
 <link rel="stylesheet" href="/programming.css?v=4">
 <link rel="stylesheet" href="/weekly-sport-targets.css?v=3">
 <link rel="stylesheet" href="/daily-macro-overrides.css?v=3">
+<link rel="stylesheet" href="/instrument.css?v=1">
 <div class="ma-backdrop" id="ma-backdrop" role="dialog" aria-modal="true" aria-label="Manage athletes" onclick="if(event.target===this)closeManageAthletes()">
   <div class="ma-card">
     <div class="ma-head">
@@ -7745,6 +7746,7 @@ function buildCard(a, weekOffset = 0) {
         <span class="cp-toggle" id="${cpId}-toggle">▼</span>
       </div>
       <div class="cp-body" id="${cpId}">
+        ${athletePrepHtml(a.id)}
         ${callPrep.wins.length ? `
           <div class="cp-block">
             <div class="cp-block-lbl win">✓ Open With (Wins)</div>
@@ -8848,6 +8850,7 @@ function buildFPCard(a, weekOffset = 0) {
       <div class="fpc-cp-head-title">Call Prep</div>
     </div>
     <div class="fpc-cp-body" id="${cpId}">
+      ${athletePrepHtml(a.id)}
       ${callPrep.wins.length ? `<div>
         <div class="fpc-cp-section-lbl win">✓ Open With (Wins)</div>
         <div class="fpc-cp-items">${callPrep.wins.map(t => `<div class="fpc-cp-item win">${esc(t)}</div>`).join('')}</div>
@@ -9976,6 +9979,45 @@ function saveNote(athleteId, value) {
 }
 let _noteSyncWarned = {};
 
+// ── Athlete call prep ────────────────────────────────────────────────────────
+// The athlete answers three questions in the portal's Calls tab. Each answer
+// set is one athlete_data row keyed calls_prep_<ISO week>, so an athlete has
+// one row per call. We keep the most recent week per athlete — that is the
+// prep for the call the coach is about to take.
+const athletePrep = {}; // athlete_code -> { week, answers, updatedAt }
+const ATHLETE_PREP_QUESTIONS = [
+  'What went well this week?',
+  'Anything hurting or holding you back?',
+  'One thing to decide with your coaches',
+];
+function usePrepRows(rows) {
+  (rows || []).filter(r => typeof r.key === 'string' && r.key.startsWith('calls_prep_')).forEach(r => {
+    const week = r.key.slice('calls_prep_'.length);
+    const current = athletePrep[r.athlete_code];
+    if (current && current.week >= week) return;   // ISO week strings sort correctly
+    let answers = r.value;
+    if (typeof answers === 'string') { try { answers = JSON.parse(answers); } catch { answers = null; } }
+    if (!answers || typeof answers !== 'object') return;
+    athletePrep[r.athlete_code] = { week, answers, updatedAt: r.updated_at || '' };
+  });
+}
+function athletePrepHtml(athleteCode) {
+  const entry = athletePrep[athleteCode];
+  if (!entry) return '';
+  const filled = ATHLETE_PREP_QUESTIONS
+    .map((q, i) => ({ q, a: String(entry.answers[i] || entry.answers[String(i)] || '').trim() }))
+    .filter(x => x.a);
+  if (!filled.length) return '';
+  const when = entry.updatedAt ? fmtDate(entry.updatedAt) : '';
+  return `
+    <div class="cp-block cp-athlete-prep">
+      <div class="cp-block-lbl athlete-prep-lbl">${filled.length}/3 · In their words${when ? ' · ' + esc(when) : ''}</div>
+      <div class="cp-items">${filled.map(x =>
+        `<div class="cp-item athlete-prep"><span class="app-q">${esc(x.q)}</span><span class="app-a">${esc(x.a)}</span></div>`
+      ).join('')}</div>
+    </div>`;
+}
+
 function useCallNoteRows(rows) {
   (rows || []).filter(r => r.key === 'call_notes').forEach(r => {
     if (r.value) callNotes[r.athlete_code] = r.value;
@@ -10159,6 +10201,7 @@ async function load({ bust = false } = {}) {
     useSessionStateRows(coachDataSB.sessionState);
     useSessionLibraryRows(coachDataSB.sessionLibrary, coachDataSB.workoutSplits);
     useCallNoteRows(coachDataSB.athleteSettings);
+    usePrepRows(coachDataSB.athleteSettings);
     useAckRows(coachDataSB.athleteSettings);
     const targets = useNutritionPlanRows(
       coachDataSB.nutritionPlans,
