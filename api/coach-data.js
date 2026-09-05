@@ -133,7 +133,10 @@ async function selectAthleteSettings() {
   // to the slot it filled while training_session_logs.programmed_exercise is
   // still arriving null from older portal builds.
   const keys = 'programme_weeks,start_date_override,programme_restart,call_notes,ack_alert,ticked,logs,ex_picks';
-  const url = `${baseUrl}/rest/v1/athlete_data?select=athlete_code,key,value&key=in.(${keys})`;
+  // calls_prep_<ISO week> is one row per coaching call, written by the portal
+  // Calls tab. The key carries the week so it cannot be listed exactly —
+  // matched by prefix alongside the fixed keys. updated_at drives "last edited".
+  const url = `${baseUrl}/rest/v1/athlete_data?select=athlete_code,key,value,updated_at&or=(key.in.(${keys}),key.like.calls_prep*)`;
   const response = await fetch(url, {
     headers: { apikey: key, Authorization: `Bearer ${key}` },
   });
