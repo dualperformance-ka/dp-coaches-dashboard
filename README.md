@@ -84,12 +84,100 @@ only its own Strava data, and can revoke the connection without exposing either
 token. Webhooks are acknowledged through a durable inbox. Do not add coach-
 scoped reads of `strava_activities` to this dashboard.
 
+## Performance intelligence
+
+No migration and no new endpoint. Two ES modules carry the derived logic and are
+importable by tests as well as the browser:
+
+- `public/run-analysis.js` — pace parsing, run-log parsing, `run_steps`
+  flattening, lap-to-step matching, weekly load against a four-week baseline,
+  session-type classification and adherence, progression series.
+- `public/strength-analysis.js` — exercise history from the portal's `logs`
+  blob (with a free-text fallback), per-exercise summaries, weekly tonnage. It
+  imports `progressive-overload.js` and `overload-adapter.js`, which had been in
+  the repository unused since before this phase; neither was changed.
+
+Three things are worth knowing before reading the new tabs.
+
+**Prescribed vs actual is fetched per session, not bulk-loaded.** Opening an
+athlete's Training tab requests `?action=prescription` only for days that have
+both a structured run prescription and an uploaded activity file. Where the
+match cannot be made confidently the panel says so and falls back to session
+totals rather than inventing a pairing:
+
+- *auto-lap* — every lap is a ~1km device auto-lap, so the laps carry distance
+  but not the session's structure.
+- *lap-count-mismatch* — the athlete ran a different number of work reps than
+  were prescribed.
+
+**The progression engine only runs where the coach prescribed a rep range.**
+`progressive-overload.js` decides by asking whether the athlete owned the range
+before adding load, so without a range it cannot judge. Where a split has no
+sets and reps, the row reports the observed load trend instead (Rising / Flat /
+Steady, dotted underline) and says plainly that no recommendation is available.
+Adding sets and reps to the split turns those rows into real coaching output.
+
+**No analysis path reads `strava_activities`.** Everything derives from
+athlete-uploaded FIT/TCX/GPX files, submitted portal logs, weekly check-ins and
+`planned_sessions`, which keeps the compliance boundary documented above intact.
+There is a test asserting this.
+
+Signals added to the decision queue in this phase (load spike, wellness decline,
+strength stall, easy-run RPE) are computed client-side after the full roster
+load, because they need history the light triage endpoint deliberately does not
+fetch. They merge into the same queue and resolve through the same
+`coach_signal_state` row as everything else.
+
+## Session review and signal resolution rollout
+
+Apply `supabase/migrations/20260906000001_coach_review_and_signal_state.sql`
+**before** the code deploy. It adds two coach-owned tables and touches nothing
+the athlete portal reads or writes, so no portal release is needed.
+
+- `coach_session_reviews` — one row per athlete per day a coach has reviewed.
+  Absence of a row for a date with submitted training is what puts that day in
+  the review queue. The reviewable unit is the athlete's **day**, not a single
+  log row: strength writes one row per exercise, an athlete can log a run and a
+  lift on one date, and unplanned work has no planned session to flag.
+- `coach_signal_state` — durable, coach-shared resolution of triage rows,
+  replacing the single `ack_alert` blob in `athlete_data`. Each row stores the
+  fingerprint the signal was raised on, so a resolved row reappears by itself
+  when the underlying values move. The legacy blob is still read on load so
+  acknowledgements made before this release survive the deploy; nothing writes
+  it any more.
+
+Both reads are wrapped in `.catch()`. Deploying the code without the migration
+degrades cleanly — nothing is reviewed and nothing is suppressed, which is the
+pre-existing behaviour — but the write actions will fail until it is applied.
+
+Deliberately **not** added: `completed_at` / `submitted_at` columns on
+`planned_sessions`. Those would have to be written by the athlete portal. The
+dashboard derives completion and submission from `athlete_data` (keys `ticked`
+and `logs`) and `training_session_logs`, as it already does elsewhere. Promote
+them later if the portal is ready to populate them.
+
+After deploying:
+
+1. Confirm Today shows one decision queue rather than three lists, and that
+   `✓ Resolve` on a row removes it for both coaches.
+2. Resolve a row, then change the underlying value (for example raise a pain
+   score) and confirm the row returns.
+3. Mark a day reviewed from the review rail and confirm it leaves the queue and
+   shows `✓ Reviewed` on that day in the athlete's Training tab.
+
 ## Today triage rollout
 
 The default coach screen is a server-ranked queue from
-`GET /api/coach-data?mode=triage`. It currently ships the three non-Strava
-signals: pain/coach alert, gone quiet, and compliance drift. Opening Today does
-not load the full roster dashboard or prefetch Strava data.
+`GET /api/coach-data?mode=triage`. It ships four non-Strava signals: pain/coach
+alert, gone quiet, compliance drift, and awaiting review. Opening Today does not
+load the full roster dashboard or prefetch Strava data.
+
+Once the full roster load finishes, the dashboard's own `buildActionList`
+signals (niggle text, stress, motivation, sleep trend, nutrition against target,
+weight drift) are handed to the same queue as `client_alert` rows and deduped
+there by athlete — the server's ranking wins, and anything the client knows
+about that athlete becomes a sub-line. There is one list, one severity scale and
+one resolve verb; there is no second priority panel.
 
 Manual deployment order:
 
