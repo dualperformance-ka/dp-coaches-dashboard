@@ -41,12 +41,18 @@ test('shared controls wait for the server and periodically reconcile both coach 
   const dashboard = fs.readFileSync(new URL('../public/index.html', import.meta.url), 'utf8');
   const actions = fs.readFileSync(new URL('../public/coaching-actions.js', import.meta.url), 'utf8');
 
-  assert.match(dashboard, /await maPost\(\{ action: 'alert_acknowledge'/);
-  assert.match(dashboard, /result\.acknowledgement/);
+  // Resolution is one mechanism across the server triage queue and the
+  // client-computed alerts: a coach_signal_state row keyed by athlete and
+  // signal type, fingerprinted so it reopens when the situation moves.
+  assert.match(dashboard, /action: 'signal_resolve'/);
+  assert.match(dashboard, /signal_type: 'client_alert'/);
+  assert.match(dashboard, /action: 'signal_restore', code: id, signal_type: 'client_alert'/);
+  assert.match(dashboard, /fingerprint: signature/);
   assert.doesNotMatch(dashboard, /setting_upsert', code: id, key: 'ack_alert'/);
   assert.match(dashboard, /setInterval\(refreshSharedAcknowledgements, 12000\)/);
-  assert.match(dashboard, /class="cc-athlete-open"/);
-  assert.doesNotMatch(dashboard, /<button class="cc-athlete"[\s\S]{0,600}<button class="cc-ack-btn"/);
+  // Acknowledgements made before the migration are still honoured on read.
+  assert.match(dashboard, /function useAckRows\(rows, signalRows\)/);
+  assert.match(dashboard, /r\.key === 'ack_alert'/);
   assert.match(actions, /completed by \$\{payload\.action\.completed_by/);
   assert.match(actions, /`Completed \$\{completed\.length\}`/);
   assert.match(actions, /moved to Completed/);

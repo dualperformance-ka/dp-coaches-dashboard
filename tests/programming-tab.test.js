@@ -38,14 +38,28 @@ test('legacy tab aliases select the matching Programming view', () => {
 });
 
 test('view mode round-trips through dp_prog_view', () => {
-  const values = new Map();
-  const context = vm.createContext({
-    localStorage: { setItem: (key, value) => values.set(key, value) },
-    renderProgramming() {},
-  });
-  vm.runInContext(`let _progView = 'week'; ${functionSource('setProgView')}; setProgView('block'); selected = _progView;`, context);
-  assert.equal(context.selected, 'block');
-  assert.equal(values.get('dp_prog_view'), 'block');
+  const run = (requested) => {
+    const values = new Map();
+    const context = vm.createContext({
+      localStorage: { setItem: (key, value) => values.set(key, value) },
+      renderProgramming() {},
+    });
+    vm.runInContext(
+      `let _progView = 'week';`
+      + ` const PROG_VIEWS = new Set(['week', 'squad', 'block']);`
+      + ` ${functionSource('setProgView')};`
+      + ` setProgView(${JSON.stringify(requested)}); selected = _progView;`,
+      context
+    );
+    return { selected: context.selected, stored: values.get('dp_prog_view') };
+  };
+
+  for (const view of ['week', 'squad', 'block']) {
+    assert.deepEqual(run(view), { selected: view, stored: view }, `${view} view`);
+  }
+  // Anything unrecognised falls back to the single-athlete week rather than
+  // leaving the programming tab with no body visible.
+  assert.deepEqual(run('nonsense'), { selected: 'week', stored: 'week' });
 });
 
 test('clicking a Block row sets the week offset and flips to Week view', () => {

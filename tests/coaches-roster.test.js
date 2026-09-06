@@ -12,6 +12,13 @@ const buildStart = dashboardSource.indexOf('function buildAll(');
 const buildEnd = dashboardSource.indexOf('\nfunction buildSyncAudit(', buildStart);
 const buildSource = dashboardSource.slice(buildStart, buildEnd);
 
+// buildAll attaches race context to every athlete, so the real helpers come
+// along rather than being stubbed — a divergence there would otherwise only
+// show up in the browser.
+const raceStart = dashboardSource.indexOf('function buildRaceContext(');
+const raceEnd = dashboardSource.indexOf('\nfunction buildAll(', raceStart);
+const raceSource = dashboardSource.slice(raceStart, raceEnd);
+
 function buildContext(overrides = {}) {
   return {
     result: null,
@@ -46,6 +53,7 @@ function buildContext(overrides = {}) {
     }),
     getPlanningAthleteId: row => String(row.Athlete || '').trim().toUpperCase() || null,
     isSessionSubmitted: () => false,
+    getProgWeeks: () => 12,
     ...overrides,
   };
 }
@@ -56,7 +64,7 @@ test('dashboard builds a card model for every coach even with no activity rows',
   const context = buildContext();
 
   vm.runInNewContext(
-    `${buildSource}\nresult = buildAll([], [], [], [], [], [], [], []);`,
+    `${raceSource}\n${buildSource}\nresult = buildAll([], [], [], [], [], [], [], []);`,
     context
   );
 
@@ -79,7 +87,7 @@ test('roster aliases collapse a full-name legacy identity onto the portal code',
   vm.runInNewContext(
     `${aliasSource}\n${nidSource}\n` +
     `installRosterAliases([{ code: 'THOMAS', name: 'Thomas Trinh', active: true }], []);\n` +
-    `${buildSource}\n` +
+    `${raceSource}\n${buildSource}\n` +
     `result = buildAll(` +
       `[{ _athleteCode: 'THOMAS', Name: 'THOMAS', 'Week Ending': '2026-08-02' },` +
        `{ Name: 'Thomas Trinh', 'Week Ending': '2026-07-19' }],` +
@@ -100,7 +108,7 @@ test('current compliance counts submitted portal logs and overdue pending plans'
   });
 
   vm.runInNewContext(
-    `${buildSource}\nresult = buildAll(` +
+    `${raceSource}\n${buildSource}\nresult = buildAll(` +
       `[], [], [{ AthleteID: 'THOMAS', Date: '2026-08-05' }], [],` +
       `[{ Code: 'THOMAS', Name: 'Thomas Trinh' }], [],` +
       `[{ _id: 'done-session', Athlete: 'THOMAS', 'Planned Date': '2026-08-03', 'Status ': 'Planned' },` +

@@ -67,7 +67,10 @@ test('triage ranks coach alerts and pain above gone-quiet athletes', () => {
   assert.match(result.queue[1].signal, /Pain 7\/10.*after Easy Run/);
   assert.equal(result.queue[2].flag, 'gone_quiet');
   assert.match(result.queue[2].signal, /at least 5 days/);
-  assert.deepEqual(result.counts, { active: 4, flagged: 3, critical: 2, high: 1, medium: 0, clear: 1 });
+  assert.deepEqual(result.counts, {
+    active: 4, flagged: 3, critical: 2, high: 1, medium: 0,
+    resolved: 0, clear: 1, reviewPending: 1, reviewOverdue: 0,
+  });
 });
 
 test('gone quiet requires both completion and body sources to be stale', () => {
@@ -144,11 +147,18 @@ test('triage mode reads only the bounded coach snapshot sources', async () => {
     assert.equal(res.statusCode, 200);
     assert.equal(res.body.ok, true);
     assert.equal(res.body.queue[0].flag, 'gone_quiet');
-    assert.equal(requested.length, 5);
+    // Seven bounded reads: roster, body, session_logs, training logs, planned
+    // sessions, plus the two coach-owned tables carrying review and resolution
+    // state. Still no unbounded snapshot table.
+    assert.equal(requested.length, 7);
     assert.equal(requested.some(url => url.includes('/weekly_checkins?')), false);
     assert.equal(requested.some(url => url.includes('/daily_nutrition_logs?')), false);
     assert.equal(requested.some(url => url.includes('/session_logs?')), true);
     assert.equal(requested.some(url => url.includes('/coach_triage_last_activity?')), false);
+    assert.equal(requested.some(url => url.includes('/coach_signal_state?')), true);
+    const reviewUrl = requested.find(url => url.includes('/coach_session_reviews?'));
+    assert.ok(reviewUrl, 'the review queue source must be read');
+    assert.match(reviewUrl, /session_date=gte\./, 'the review read must stay date-bounded');
   } finally {
     global.fetch = originalFetch;
     Object.entries(originalEnv).forEach(([key, value]) => {
@@ -240,7 +250,7 @@ test('compliance drift fires below 60 percent and not at or above it', () => {
   assert.equal(row.flag, 'compliance_drift');
   assert.equal(row.severity, 'medium');
   assert.equal(row.action.type, 'review');
-  assert.equal(row.action.label, 'Review');
+  assert.equal(row.action.label, 'Adjust week');
   assert.equal(row.signal, 'Completed 2 of 6 sessions planned so far this week, with four days elapsed.');
   assert.equal(row.evidence.compliance.planned, 6);
   assert.equal(row.evidence.compliance.completed, 2);
@@ -328,6 +338,7 @@ test('Today is the default coach screen and owns the operational dashboard', () 
   assert.ok(commandCenter > todayStart && commandCenter < athletesStart);
   assert.ok(coachingActions > todayStart && coachingActions < athletesStart);
   assert.match(source, /await window\.DP_COACH_AUTH\?\.ready;\s*await load\(\);\s*startSharedResolutionSync\(\);/);
-  assert.match(source, /Paired signals that need a coaching decision\./);
+  assert.match(source, /One row per athlete\. Resolving a row keeps it out until the situation moves\./);
+  assert.ok(source.indexOf('id="review-queue"') > todayStart, 'the review rail belongs to Today');
   assert.doesNotMatch(source, /<header class="triage-hero">/);
 });
