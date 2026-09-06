@@ -1,8 +1,8 @@
 /* Cleaner athlete full-page day-by-day ledger */
 
 #fp-overlay .fp-body {
-  width: min(1180px, calc(100vw - 48px));
-  max-width: 1180px;
+  width: min(var(--athlete-max, 1440px), calc(100vw - 48px));
+  max-width: var(--athlete-max, 1440px);
   margin: 0 auto;
 }
 
@@ -35,7 +35,7 @@
 
 #fp-overlay .wd-date {
   position: sticky;
-  top: 76px;
+  top: calc(var(--fpa-topbar-h, 50px) + var(--fpa-sticky-h, 140px) + 8px);
   padding-top: 2px;
   font-size: 11px;
   font-weight: 700;
@@ -248,7 +248,10 @@
 }
 
 /* ============================================
-   PREMIUM TYPE POLISH — Geist Mono / Geist Sans
+   PREMIUM TYPE POLISH — IBM Plex Sans / Mono / Condensed
+   The families named here are the ones index.html actually fetches. This block
+   previously described Geist, which never had an @font-face rule, so the
+   tracking below was compensating for a face that never loaded.
    ============================================ */
 
 /* Tabular numerals: every metric aligns to the grid, numbers stop jittering on refresh */
@@ -260,11 +263,848 @@ body{
   text-rendering:optimizeLegibility;
 }
 
-/* Geist Mono runs slightly wide vs DM Mono — pull data tracking in for a tighter, engineered feel */
+/* IBM Plex Mono sets a little loose at small sizes; pull data tracking in. */
 [style*="var(--mono)"],.tval{letter-spacing:-0.01em}
 
-/* Condensed headings: semi-condensed needs a touch less squeeze-compensation than full condensed */
+/* Plex Sans Condensed carries uppercase display type; a touch of positive
+   tracking keeps it from reading as compressed. */
 h1,h2,h3,[style*="var(--cond)"]{letter-spacing:0.01em}
 
 /* Uppercase micro-labels get airline-ticket tracking — the single biggest premium tell */
 [class*="label"],[class*="eyebrow"],th{letter-spacing:0.09em}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   ATHLETE WORKSPACE — sticky coaching header + tabbed panels.
+
+   Replaces the sixteen stacked sections the athlete view used to render as one
+   scrolling document. Header and tab strip share one sticky wrapper so the
+   offset never depends on the header's own height, which changes with flags
+   and the next-action row.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* .fp-topbar is sticky at top:0 inside #fp-overlay, so everything sticky
+     below it has to clear that height. dashboard-mobile-polish.css makes the
+     bar taller on small screens, and overrides this token to match. */
+  --fpa-topbar-h: 50px;
+  /* Worst-case height of .fpa-sticky once condensed, used by anything that
+     needs to stick underneath it. */
+  --fpa-sticky-h: 140px;
+}
+
+.fpa-sticky {
+  position: sticky;
+  top: var(--fpa-topbar-h, 50px);
+  z-index: 8;
+  background: var(--bg);
+  margin: -22px -18px 0;
+  padding: 14px 18px 0;
+  border-bottom: 1px solid var(--border-mid);
+}
+
+.fpa-head { display: flex; flex-direction: column; gap: 12px; }
+
+/* Flex rather than a three-column grid: the action cluster is ~330px and the
+   race line needs ~360px, so on a 1000-1300px window a grid squeezed the race
+   context into four wrapped lines. This lets the actions drop to their own row
+   instead. */
+.fpa-head-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 22px;
+}
+.fpa-identity { flex: 0 0 auto; }
+.fpa-context { flex: 1 1 340px; }
+.fpa-head-actions { flex: 0 0 auto; margin-left: auto; }
+
+.fpa-identity { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; min-width: 0; }
+.fpa-name {
+  font-family: var(--cond);
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: .03em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+.fpa-flags { display: flex; gap: 5px; flex-wrap: wrap; }
+
+.fpa-context { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.fpa-context > * { white-space: nowrap; }
+
+.fpa-race {
+  display: flex; align-items: baseline; gap: 7px; flex-wrap: wrap;
+  font-size: 13px; color: var(--text); min-width: 0;
+}
+.fpa-race-icon { font-size: 11px; }
+.fpa-race-name { font-weight: 600; }
+.fpa-race-date { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+.fpa-dot { color: var(--dim); }
+.fpa-race.is-empty { font-size: 11px; color: var(--dim); font-style: italic; }
+
+.fpa-countdown {
+  font-family: var(--mono); font-size: 10px; font-weight: 600;
+  letter-spacing: .08em; text-transform: uppercase;
+  padding: 2px 8px; border-radius: 4px;
+  background: var(--brand-bg); color: var(--brand-text);
+  border: 1px solid var(--brand-border);
+}
+.fpa-countdown.is-close { background: var(--amber-bg); color: var(--amber-text); border-color: var(--amber-border); }
+.fpa-countdown.is-past  { background: transparent; color: var(--dim); border-color: var(--border-mid); }
+
+.fpa-week { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.fpa-week-main {
+  font-family: var(--mono); font-size: 11px; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--muted);
+}
+.fpa-chip {
+  font-family: var(--mono); font-size: 9px; font-weight: 700;
+  letter-spacing: .1em; text-transform: uppercase;
+  padding: 2px 7px; border-radius: 3px;
+}
+.fpa-chip.is-peak { background: var(--amber-bg); color: var(--amber-text); border: 1px solid var(--amber-border); }
+
+.fpa-head-actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+
+/* ── Vitals ── */
+.fpa-vitals {
+  display: grid;
+  grid-template-columns: auto repeat(6, minmax(0, 1fr));
+  gap: 0 14px;
+  align-items: center;
+  padding: 11px 0 13px;
+  border-top: 1px solid var(--border);
+}
+.fpa-vitals-lbl {
+  font-family: var(--mono); font-size: 9px; font-weight: 600;
+  letter-spacing: .13em; text-transform: uppercase; color: var(--dim);
+  writing-mode: horizontal-tb; padding-right: 6px; border-right: 1px solid var(--border);
+  align-self: stretch; display: flex; align-items: center;
+}
+.fpa-vital { min-width: 0; }
+.fpa-vital-lbl {
+  font-family: var(--mono); font-size: 9px; font-weight: 600;
+  letter-spacing: .1em; text-transform: uppercase; color: var(--dim);
+  margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.fpa-vital-val {
+  font-family: var(--mono); font-size: 21px; font-weight: 600; line-height: 1.05;
+  color: var(--text); font-variant-numeric: tabular-nums;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.fpa-vital-val.good { color: var(--ok); }
+.fpa-vital-val.mid  { color: var(--warn); }
+.fpa-vital-val.bad  { color: var(--alert); }
+.fpa-vital-unit { font-size: 11px; font-weight: 400; color: var(--dim); }
+.fpa-vital-val.is-text {
+  font-family: var(--sans);
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: 0;
+  padding-top: 4px;
+  padding-bottom: 3px;
+}
+.fpa-vital-sub {
+  font-family: var(--mono); font-size: 9.5px; color: var(--dim); margin-top: 3px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* ── Next action ── */
+.fpa-next {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 9px 13px; border-radius: 7px; margin-bottom: 12px;
+  border: 1px solid var(--amber-border); background: var(--amber-bg);
+}
+.fpa-next.is-critical { border-color: var(--red-border); background: var(--red-bg); }
+.fpa-next-lbl {
+  font-family: var(--mono); font-size: 9px; font-weight: 700;
+  letter-spacing: .12em; text-transform: uppercase; color: var(--amber-text); flex-shrink: 0;
+}
+.fpa-next.is-critical .fpa-next-lbl { color: var(--red-text); }
+.fpa-next-txt { font-size: 13px; color: var(--text); flex: 1 1 260px; min-width: 0; }
+.fpa-next-btn {
+  background: transparent; border: 1px solid var(--border-mid); color: var(--text);
+  font-family: var(--mono); font-size: 10px; letter-spacing: .06em; text-transform: uppercase;
+  padding: 5px 12px; border-radius: 5px; cursor: pointer; flex-shrink: 0;
+}
+.fpa-next-btn:hover { border-color: var(--brand-border); color: var(--brand-text); }
+
+/* ── Tabs ── */
+.fpa-tabs {
+  display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none;
+  border-top: 1px solid var(--border);
+}
+.fpa-tabs::-webkit-scrollbar { display: none; }
+.fpa-tab {
+  background: transparent; border: 0; border-bottom: 2px solid transparent;
+  color: var(--muted); font-family: var(--sans); font-size: 12.5px; font-weight: 500;
+  padding: 11px 14px; cursor: pointer; white-space: nowrap;
+  display: inline-flex; align-items: center; gap: 6px;
+  transition: color .12s ease, border-color .12s ease;
+}
+.fpa-tab:hover { color: var(--text); }
+.fpa-tab.is-active { color: var(--text); border-bottom-color: var(--brand); font-weight: 600; }
+.fpa-tab:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; border-radius: 3px; }
+.fpa-tab-badge {
+  font-family: var(--mono); font-size: 9px; font-weight: 600;
+  background: var(--surface2); color: var(--muted);
+  padding: 1px 5px; border-radius: 3px; min-width: 16px; text-align: center;
+}
+.fpa-tab.is-active .fpa-tab-badge { background: var(--brand-bg); color: var(--brand-text); }
+
+/* ── Panels ── */
+.fpa-panels { padding-top: 18px; }
+.fpa-panel[hidden] { display: none !important; }
+.fpa-empty {
+  padding: 44px 24px; text-align: center; color: var(--dim);
+  font-size: 13px; border: 1px dashed var(--border-mid); border-radius: 12px;
+}
+
+/* ── Condensed state — after the coach scrolls into a panel ── */
+.fpa-sticky.is-condensed .fpa-vital-sub,
+.fpa-sticky.is-condensed .fpa-vitals-lbl,
+.fpa-sticky.is-condensed .fpa-next,
+.fpa-sticky.is-condensed .fpa-head-actions { display: none; }
+.fpa-sticky.is-condensed .fpa-vitals {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  padding: 7px 0 8px;
+}
+.fpa-sticky.is-condensed .fpa-vital-val { font-size: 15px; }
+.fpa-sticky.is-condensed .fpa-vital-val.is-text { font-size: 12px; padding: 0; }
+.fpa-sticky.is-condensed .fpa-vital-lbl { font-size: 8px; margin-bottom: 1px; }
+.fpa-sticky.is-condensed .fpa-name { font-size: 21px; }
+.fpa-sticky.is-condensed .fpa-head { gap: 7px; }
+
+/* The weekly-mileage chart was previously only ever rendered inside
+   #wh-overlay, which defines its own --wh-* palette. Now that Running shows it
+   too, map those names onto the dashboard's own tokens — without this the bars,
+   gridlines and labels all render as unset (black) inside the workspace. */
+.fpa-panel[data-fpa-panel="running"] {
+  --wh-bg: var(--bg);
+  --wh-text: var(--text);
+  --wh-dim: var(--dim);
+  --wh-mid: var(--muted);
+  --wh-border: var(--border-mid);
+  --wh-surface: var(--surface);
+  --wh-bar: var(--surface2);
+  --wh-run: var(--run);
+  --wh-str: var(--str);
+}
+/* .wh-section brings its own card chrome; inside a panel it should match the
+   other sections rather than introduce a second card language. */
+.fpa-panel .wh-section { border-radius: 14px; margin-bottom: 16px; }
+
+/* ── Shared dense table (strength bests, and future tabular panels) ── */
+.fpa-table-wrap { overflow-x: auto; }
+.fpa-table { border-collapse: collapse; width: 100%; font-size: 12.5px; min-width: 420px; }
+.fpa-table th {
+  text-align: left; font-family: var(--mono); font-size: 9px; font-weight: 600;
+  letter-spacing: .11em; text-transform: uppercase; color: var(--dim);
+  padding: 8px 12px; border-bottom: 1px solid var(--border-mid); white-space: nowrap;
+}
+.fpa-table td { padding: 8px 12px; border-bottom: 1px solid var(--border); color: var(--text); }
+.fpa-table tbody tr:last-child td { border-bottom: 0; }
+.fpa-table .n { font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.fpa-table th.n { text-align: right; }
+.fpa-table td.n { text-align: right; color: var(--muted); }
+
+/* ── Narrow screens ── */
+@media (max-width: 900px) {
+  .fpa-head-actions { margin-left: 0; justify-content: flex-start; }
+  .fpa-context { flex-basis: 100%; }
+  .fpa-context > * { white-space: normal; }
+  .fpa-name { font-size: 24px; }
+  .fpa-vitals { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px 12px; }
+  .fpa-vitals-lbl { display: none; }
+  .fpa-vital-val { font-size: 17px; }
+  .fpa-sticky.is-condensed .fpa-vitals { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 560px) {
+  .fpa-vitals { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .fpa-sticky.is-condensed .fpa-vitals { display: none; }
+}
+
+/* The week strip sits inside the Overview and Training panels now, beneath the
+   sticky header. */
+.fpa .week-jump { margin-bottom: 16px; }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   GLOBAL NAVIGATION — four coaching destinations, search, and a Settings menu.
+
+   Applications / New / Notify were three top-level tabs for one funnel and are
+   now Pipeline sub-views; Sync, the coach team and roster management moved
+   behind Settings. Styling inherits the existing .tab and .sf languages so the
+   chrome still reads as one bar.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.tab-bar-spacer { flex: 1 1 auto; min-width: 12px; }
+
+.tab-search {
+  gap: 7px;
+  color: rgba(255, 255, 255, .48);
+  border-bottom-color: transparent !important;
+}
+.tab-search:hover { color: #fff; }
+.tab-kbd {
+  font-family: var(--mono);
+  font-size: 8.5px;
+  letter-spacing: .04em;
+  padding: 2px 5px;
+  border-radius: 3px;
+  border: 1px solid rgba(255, 255, 255, .18);
+  background: rgba(255, 255, 255, .06);
+  color: rgba(255, 255, 255, .55);
+}
+
+/* Fixed and positioned on open. The menu lives outside .tab-bar because the bar
+   combines backdrop-filter with overflow:auto, which both clips the menu and
+   makes the bar itself scroll when the menu takes focus. */
+.settings-dropdown {
+  position: fixed;
+  z-index: 200;
+  min-width: 190px;
+  padding: 5px;
+  border: 1px solid var(--border-mid);
+  border-radius: 8px;
+  background: var(--elevated, #161616);
+  box-shadow: var(--shadow-soft, 0 14px 36px rgba(0, 0, 0, .45));
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.settings-dropdown[hidden] { display: none; }
+.settings-dropdown button {
+  background: transparent;
+  border: 0;
+  border-radius: 5px;
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 12.5px;
+  text-align: left;
+  padding: 8px 11px;
+  cursor: pointer;
+}
+.settings-dropdown button:hover { background: var(--brand-bg); color: var(--brand-text); }
+.settings-dropdown button:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; }
+
+.pipeline-subnav {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+  padding: 12px clamp(14px, 3vw, 34px);
+  border-bottom: 1px solid var(--border);
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   COMMAND PALETTE (⌘K)
+   ══════════════════════════════════════════════════════════════════════════ */
+
+#cmdk { position: fixed; inset: 0; z-index: 500; }
+#cmdk[hidden] { display: none; }
+.cmdk-backdrop { position: absolute; inset: 0; background: rgba(0, 0, 0, .55); backdrop-filter: blur(2px); }
+.cmdk-panel {
+  position: relative;
+  width: min(560px, calc(100vw - 32px));
+  margin: min(14vh, 120px) auto 0;
+  border: 1px solid var(--border-mid);
+  border-radius: 12px;
+  background: var(--elevated, #161616);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, .55);
+  overflow: hidden;
+}
+.cmdk-input {
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 15px;
+  padding: 16px 18px;
+  outline: none;
+}
+.cmdk-input::placeholder { color: var(--dim); }
+.cmdk-list { max-height: min(50vh, 420px); overflow-y: auto; padding: 6px; }
+.cmdk-group {
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: .13em;
+  text-transform: uppercase;
+  color: var(--dim);
+  padding: 10px 12px 5px;
+}
+.cmdk-row {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 9px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.cmdk-row.is-active { background: var(--brand-bg); }
+.cmdk-label { font-size: 13.5px; font-weight: 500; color: var(--text); flex: 0 0 auto; }
+.cmdk-row.is-active .cmdk-label { color: var(--brand-text); }
+.cmdk-hint {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--dim);
+  margin-left: auto;
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cmdk-empty { padding: 28px 16px; text-align: center; color: var(--dim); font-size: 13px; }
+.cmdk-foot {
+  display: flex;
+  gap: 16px;
+  padding: 9px 16px;
+  border-top: 1px solid var(--border);
+  font-family: var(--mono);
+  font-size: 9.5px;
+  color: var(--dim);
+}
+.cmdk-foot kbd {
+  font-family: var(--mono);
+  border: 1px solid var(--border-mid);
+  border-radius: 3px;
+  padding: 1px 4px;
+  margin-right: 3px;
+}
+
+@media (max-width: 720px) {
+  .tab-search, .tab-bar-spacer { display: none; }
+  .cmdk-panel { margin-top: 8vh; }
+}
+
+/* A day opened from the review queue announces itself briefly, so a coach
+   landing mid-ledger can see which row they were sent to. */
+#fp-overlay .wd-row.is-focused {
+  border-color: var(--brand-border);
+  box-shadow: 0 0 0 2px var(--brand-bg);
+}
+@media (prefers-reduced-motion: no-preference) {
+  #fp-overlay .wd-row { transition: border-color .3s ease, box-shadow .3s ease; }
+}
+
+/* Mark-reviewed control on each day of the ledger. */
+.wd-review {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: 1px solid var(--border-mid);
+  border-radius: 6px;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  padding: 5px 10px;
+  cursor: pointer;
+}
+.wd-review:hover:not(:disabled) { border-color: var(--ok); color: var(--ok); }
+.wd-review:disabled { opacity: .55; cursor: default; }
+.wd-review.is-reviewed { border-color: var(--green-border); color: var(--green-text); background: var(--green-bg); }
+.wd-review-meta { font-family: var(--mono); font-size: 9px; color: var(--dim); margin-left: 8px; }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   SQUAD TABLE — expanded row preview.
+   Three things: why the athlete is flagged, what their week looks like, and
+   the two ways out. The full picture is one click away in the workspace.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.texp-preview { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 12px; }
+.texp-preview .texp-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  cursor: pointer;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.texp-preview .texp-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+
+.texp-signal {
+  border: 1px solid var(--border-mid);
+  border-left: 3px solid var(--border-mid);
+  border-radius: 8px;
+  padding: 10px 13px;
+  background: var(--surface2);
+}
+.texp-signal.is-critical { border-left-color: var(--alert); background: var(--red-bg); }
+.texp-signal.is-watch { border-left-color: var(--warn); background: var(--amber-bg); }
+.texp-signal.is-clear { border-left-color: var(--ok); background: transparent; }
+.texp-signal.is-acked { opacity: .62; }
+.texp-signal-head {
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.texp-signal.is-critical .texp-signal-head { color: var(--red-text); }
+.texp-signal.is-watch .texp-signal-head { color: var(--amber-text); }
+.texp-signal.is-clear .texp-signal-head { color: var(--green-text); }
+.texp-signal-list { margin: 7px 0 0; padding-left: 16px; font-size: 12.5px; color: var(--text); line-height: 1.5; }
+.texp-signal-list li::marker { color: var(--dim); }
+
+.texp-week-strip { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 5px; }
+.texp-day {
+  border: 1px solid var(--border);
+  border-top: 3px solid var(--border-mid);
+  border-radius: 7px;
+  padding: 7px 8px 8px;
+  min-width: 0;
+}
+.texp-day.is-done { border-top-color: var(--ok); background: var(--green-bg); }
+.texp-day.is-open { border-top-color: var(--run); }
+.texp-day.is-rest { border-top-color: var(--border-mid); opacity: .6; }
+.texp-day.is-none { border-style: dashed; opacity: .5; }
+.texp-day.is-today { box-shadow: inset 0 0 0 1px var(--brand-border); }
+.texp-day-name {
+  font-family: var(--mono);
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+.texp-day-label {
+  margin-top: 3px;
+  font-size: 11px;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.texp-day-mark { margin-top: 3px; font-family: var(--mono); font-size: 10px; color: var(--dim); }
+.texp-day.is-done .texp-day-mark { color: var(--ok); }
+.texp-day.is-open .texp-day-mark { color: var(--run); }
+.texp-day-review { color: var(--warn); margin-left: 4px; }
+
+.texp-week-summary-line {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: .05em;
+  color: var(--dim);
+}
+
+@media (max-width: 720px) {
+  .texp-week-strip { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   RUNNING ANALYSIS
+   Four charts, each answering one coaching question. Volume against the
+   four-week baseline is the one a coach opens the tab for.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.fpc-section-note { margin: -4px 0 12px; font-size: 11.5px; color: var(--dim); }
+
+.run-load-head {
+  display: flex;
+  align-items: baseline;
+  gap: 22px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.run-load-figure { display: flex; align-items: baseline; gap: 7px; }
+.run-load-num {
+  font-family: var(--mono);
+  font-size: 34px;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--run);
+  font-variant-numeric: tabular-nums;
+}
+.run-load-figure.is-spike .run-load-num { color: var(--alert); }
+.run-load-figure.is-drop .run-load-num { color: var(--warn); }
+.run-load-unit { font-family: var(--mono); font-size: 11px; color: var(--dim); }
+.run-load-meta { display: flex; flex-direction: column; gap: 3px; font-size: 12px; color: var(--muted); }
+.run-load-meta b { color: var(--text); font-family: var(--mono); }
+.run-load-meta .bad b { color: var(--alert); }
+.run-load-meta .warn b { color: var(--warn); }
+.run-load-meta .dim { color: var(--dim); }
+
+.run-chart { width: 100%; height: auto; display: block; }
+.rc-bar { fill: var(--run); opacity: .78; }
+.rc-bar.is-spike { fill: var(--alert); opacity: 1; }
+.rc-bar.is-drop { fill: var(--warn); opacity: .85; }
+.rc-planned { stroke: var(--str); stroke-width: 2; stroke-dasharray: 5 4; stroke-linejoin: round; }
+.rc-rolling { stroke: var(--muted); stroke-width: 1.5; }
+.rc-grid { stroke: var(--border); stroke-width: 1; }
+.rc-axis { fill: var(--dim); font-family: var(--mono); font-size: 8px; }
+
+.rc-key {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--dim);
+}
+.rc-key span { display: inline-flex; align-items: center; gap: 5px; }
+.rc-swatch { width: 11px; height: 11px; border-radius: 2px; display: inline-block; }
+.rc-swatch.bar { background: var(--run); }
+.rc-swatch.planned { background: transparent; border-top: 2px dashed var(--str); height: 0; border-radius: 0; }
+.rc-swatch.rolling { background: var(--muted); height: 2px; border-radius: 0; }
+.rc-swatch.spike { background: var(--alert); }
+.rc-swatch.str { background: var(--str); }
+
+.run-note {
+  margin-top: 12px;
+  padding: 9px 12px;
+  border-radius: 7px;
+  font-size: 12.5px;
+  border: 1px solid var(--amber-border);
+  background: var(--amber-bg);
+  color: var(--text);
+}
+.run-note.bad { border-color: var(--red-border); background: var(--red-bg); }
+
+/* ── Progression cards ── */
+.pg-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 12px; }
+.pg-card { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; background: var(--surface2); }
+.pg-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.pg-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+.pg-value { font-family: var(--mono); font-size: 16px; color: var(--text); }
+.pg-chart { width: 100%; height: auto; margin: 8px 0 4px; display: block; }
+.pg-line { stroke: var(--run); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.pg-dot { fill: var(--run); opacity: .7; }
+.pg-dot.is-last { opacity: 1; }
+.pg-foot { font-size: 11px; color: var(--muted); }
+.pg-foot b { color: var(--text); }
+.pg-thin { color: var(--dim); }
+
+/* ── Adherence by type ── */
+.adh-list { display: flex; flex-direction: column; gap: 8px; }
+.adh-row { display: grid; grid-template-columns: minmax(120px, 170px) minmax(0, 1fr) auto; gap: 12px; align-items: center; }
+.adh-label { font-size: 12.5px; color: var(--text); }
+.adh-track { height: 7px; border-radius: 4px; background: var(--surface2); overflow: hidden; }
+.adh-fill { height: 100%; background: var(--ok); border-radius: 4px; }
+.adh-row.is-low .adh-fill { background: var(--alert); }
+.adh-val { font-family: var(--mono); font-size: 11px; color: var(--muted); white-space: nowrap; }
+
+/* ── Concurrent load ── */
+.cc-load { display: flex; gap: 6px; align-items: flex-end; height: 110px; }
+.cc-load-week { flex: 1 1 0; display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.cc-load-bars { display: flex; gap: 2px; align-items: flex-end; height: 84px; }
+.cc-load-bar { flex: 1 1 0; border-radius: 2px 2px 0 0; min-height: 2px; }
+.cc-load-bar.run { background: var(--run); }
+.cc-load-bar.str { background: var(--str); }
+.cc-load-lbl {
+  font-family: var(--mono);
+  font-size: 8px;
+  color: var(--dim);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   STRENGTH ANALYSIS
+   The same logs, grouped by exercise instead of by day.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.st-range { display: inline-flex; gap: 2px; margin-left: auto; }
+.st-range-btn {
+  background: transparent;
+  border: 1px solid var(--border-mid);
+  border-radius: 5px;
+  color: var(--dim);
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: .06em;
+  padding: 3px 8px;
+  cursor: pointer;
+}
+.st-range-btn.is-active { border-color: var(--brand-border); background: var(--brand-bg); color: var(--brand-text); }
+
+.st-summary { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
+.st-stat { border: 1px solid var(--border); border-radius: 9px; padding: 10px 12px; background: var(--surface2); }
+.st-stat-num { font-family: var(--mono); font-size: 20px; line-height: 1; color: var(--text); font-variant-numeric: tabular-nums; }
+.st-stat-num.good { color: var(--ok); }
+.st-stat-num.bad { color: var(--alert); }
+.st-stat-of { font-size: 12px; color: var(--dim); }
+.st-stat-lbl {
+  margin-top: 5px;
+  font-family: var(--mono);
+  font-size: 8.5px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+
+.st-table tbody tr { cursor: pointer; }
+.st-table tbody tr:hover { background: var(--surface2); }
+.st-table tbody tr:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; }
+.st-row.is-skipped td:first-child { color: var(--alert); }
+.st-row.is-stalled td:first-child { color: var(--warn); }
+.st-warn { margin-left: 5px; }
+.st-of { color: var(--dim); }
+.st-delta { margin-left: 5px; font-size: 10px; }
+.st-delta.up { color: var(--ok); }
+.st-delta.dn { color: var(--alert); }
+
+.st-spark { width: 84px; height: 22px; display: block; }
+.st-spark polyline { stroke: var(--muted); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.st-spark.is-up polyline { stroke: var(--ok); }
+.st-spark-empty { color: var(--dim); font-family: var(--mono); font-size: 10px; }
+
+.st-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.st-status.is-good { color: var(--ok); }
+.st-status.is-bad { color: var(--alert); }
+.st-status.is-dim { color: var(--dim); }
+/* An observed trend is not the engine's coaching decision; the dotted underline
+   says the reading is inferred from the loads alone. */
+.st-status.is-inferred { text-decoration: underline dotted; text-underline-offset: 3px; opacity: .85; }
+
+.st-read {
+  margin-top: 14px;
+  border: 1px solid var(--border-mid);
+  border-left: 3px solid var(--warn);
+  border-radius: 8px;
+  padding: 11px 14px;
+  background: var(--surface2);
+}
+.st-read-head {
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--dim);
+  margin-bottom: 7px;
+}
+.st-read ul { margin: 0; padding-left: 16px; font-size: 12.5px; line-height: 1.55; color: var(--text); }
+.st-read li + li { margin-top: 5px; }
+.st-read li::marker { color: var(--dim); }
+
+/* ── Exercise history drawer ── */
+#ex-history.hidden { display: none; }
+.exh-head { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
+.exh-stat { border: 1px solid var(--border); border-radius: 9px; padding: 11px 12px; background: var(--surface2); }
+.exh-num { font-family: var(--mono); font-size: 21px; line-height: 1; color: var(--text); }
+.exh-num.good { color: var(--ok); }
+.exh-num.bad { color: var(--alert); }
+.exh-unit { font-size: 11px; color: var(--dim); }
+.exh-lbl {
+  margin-top: 5px;
+  font-family: var(--mono);
+  font-size: 8.5px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+.exh-verdict {
+  border: 1px solid var(--border-mid);
+  border-left: 3px solid var(--muted);
+  border-radius: 8px;
+  padding: 11px 13px;
+  margin-bottom: 14px;
+  background: var(--surface2);
+}
+.exh-verdict.is-progress_load, .exh-verdict.is-progress_reps { border-left-color: var(--ok); }
+.exh-verdict.is-stalled { border-left-color: var(--warn); }
+.exh-verdict-head { font-size: 13px; font-weight: 600; color: var(--text); }
+.exh-verdict-body { margin-top: 5px; font-size: 12px; color: var(--muted); line-height: 1.5; }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   PRESCRIBED VS ACTUAL
+   run_steps against the athlete's own device laps. Where the match cannot be
+   made confidently the panel says so rather than inventing a pairing.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.pva {
+  border: 1px solid var(--brand-border);
+  border-radius: 10px;
+  padding: 11px 13px;
+  margin-bottom: 9px;
+  background: var(--brand-bg);
+}
+.pva-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--brand-text);
+  margin-bottom: 9px;
+}
+.pva-conf { font-weight: 400; letter-spacing: .05em; text-transform: none; color: var(--dim); }
+.pva-conf.is-matched { color: var(--ok); }
+.pva-why { font-size: 11.5px; color: var(--muted); margin-bottom: 8px; line-height: 1.45; }
+
+.pva-table { border-collapse: collapse; width: 100%; font-size: 11.5px; }
+.pva-table th {
+  text-align: left;
+  font-family: var(--mono);
+  font-size: 8.5px;
+  font-weight: 600;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--dim);
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--border-mid);
+}
+.pva-table td { padding: 5px 8px; border-bottom: 1px solid var(--border); color: var(--muted); }
+.pva-table tbody tr:last-child td { border-bottom: 0; }
+.pva-table .n { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pva-table td:first-child { color: var(--text); }
+.pva-table tr.is-on .pva-delta { color: var(--ok); }
+.pva-table tr.is-slower .pva-delta { color: var(--warn); }
+.pva-table tr.is-faster .pva-delta { color: var(--str); }
+
+.pva-summary, .pva-totals {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-top: 9px;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+.pva-summary b, .pva-totals b { color: var(--text); font-family: var(--mono); }
+.pva-summary .warn b { color: var(--warn); }
+.pva-summary .bad b { color: var(--alert); }
+.pva-summary .good b { color: var(--ok); }
+.pva-pending { display: none; }
+
+@media (max-width: 720px) {
+  .st-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .pg-grid { grid-template-columns: 1fr; }
+  .exh-head { grid-template-columns: 1fr; }
+  .adh-row { grid-template-columns: 1fr; gap: 4px; }
+}

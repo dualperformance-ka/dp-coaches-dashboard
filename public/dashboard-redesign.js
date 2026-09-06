@@ -70,8 +70,8 @@
         </h1>
 
         <p class="dp-page-subtitle">
-          Start with this week's priorities and coaching actions, then review
-          the live triage signals.
+          Work the decision queue, clear the review backlog, and the squad is
+          covered for the day.
         </p>
       </div>
 

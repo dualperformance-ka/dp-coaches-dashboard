@@ -33,6 +33,14 @@ const COMPLIANCE_MIN_DAY_INDEX = 4;
 // session; reusing it to count completions would be wrong.
 const COMPLIANCE_DONE_STATUS = /^(done|complete|completed)$/i;
 
+// A submitted session is not "late for review" the moment it lands — coaches
+// review in batches, usually the next morning. Two days is the point where an
+// unreviewed submission stops being normal turnaround.
+const REVIEW_OVERDUE_DAYS = 2;
+// How far back the review queue looks. Anything older than this is history, not
+// a queue item, and listing it would make the count unclearable.
+const REVIEW_WINDOW_DAYS = 14;
+
 const ELAPSED_DAY_WORDS = ['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven'];
 
 function cleanBaseUrl(value) {
@@ -707,12 +715,137 @@ function painSignalCopy(signal, completed, planned, today, quietDays) {
   return `${sentence}.`;
 }
 
+// ── Signal fingerprints ──────────────────────────────────────────────────────
+// A resolved signal stays quiet only while its fingerprint holds. Each one is a
+// short, explainable statement of what the signal was raised on, so "resolve"
+// means "I have dealt with this situation" rather than "hide this athlete".
+function reviewSignalCopy(entries, today) {
+  const oldest = entries[0];
+  const days = oldest.days;
+  const when = days === 1 ? 'yesterday' : `${days} days ago`;
+  const names = oldest.sessions.map(s => s.name).filter(Boolean);
+  const what = names.length ? names.join(' and ') : 'training';
+  if (entries.length === 1) {
+    return `${what} submitted ${when} and not yet reviewed.`;
+  }
+  return `${entries.length} submitted sessions are waiting on review, the oldest ${what} from ${when}.`;
+}
+
+export function signalFingerprint(flag, evidence = {}, context = {}) {
+  if (flag === 'pain') {
+    const pain = evidence.pain || {};
+    return `pain|${pain.date || ''}|${pain.score ?? ''}|${pain.coachAlert ? 'alert' : 'none'}`;
+  }
+  if (flag === 'gone_quiet') {
+    // Resolving holds for the current week. The row also disappears on its own
+    // the moment the athlete logs anything, so this only covers "I have already
+    // chased them about this week".
+    return `quiet|${context.weekStart || ''}`;
+  }
+  if (flag === 'compliance_drift') {
+    const c = evidence.compliance || {};
+    return `drift|${c.weekStart || ''}|${c.completed ?? ''}/${c.planned ?? ''}`;
+  }
+  if (flag === 'awaiting_review') {
+    const r = evidence.review || {};
+    // A new submission changes the count, so the row returns rather than
+    // staying cleared through the rest of the week.
+    return `review|${r.oldestDate || ''}|${r.days ?? ''}`;
+  }
+  return `${flag}|${context.weekStart || ''}`;
+}
+
+function resolvedIndex(rows) {
+  const index = new Map();
+  for (const row of rows || []) {
+    const code = normaliseCode(row.athlete_code);
+    if (!code) continue;
+    index.set(`${code}|${String(row.signal_type || '').toLowerCase()}`, {
+      fingerprint: String(row.fingerprint || ''),
+      resolvedBy: row.resolved_by || null,
+      resolvedAt: row.resolved_at || null,
+    });
+  }
+  return index;
+}
+
+// ── Review queue ─────────────────────────────────────────────────────────────
+// One entry per athlete-day that has submitted training and no review row.
+// Grouped by day because that is the reviewable unit — see the migration note
+// on coach_session_reviews.
+export function buildReviewQueue({
+  athletes = [],
+  trainingRows = [],
+  reviewRows = [],
+  now = new Date(),
+  timeZone = TRIAGE_TIMEZONE,
+} = {}) {
+  const today = isoDateInTimeZone(now instanceof Date ? now : new Date(now), timeZone);
+  const windowStart = shiftDate(today, -(REVIEW_WINDOW_DAYS - 1));
+
+  const nameByCode = new Map();
+  for (const athlete of athletes || []) {
+    const code = normaliseCode(athlete.code);
+    if (code) nameByCode.set(code, athlete.name || code);
+  }
+
+  const reviewed = new Set(
+    (reviewRows || []).map(row => `${normaliseCode(row.athlete_code)}|${String(row.session_date || '').slice(0, 10)}`)
+  );
+
+  const byDay = new Map();
+  for (const row of trainingRows || []) {
+    const code = normaliseCode(row.athlete_code);
+    const date = String(row.session_date || '').slice(0, 10);
+    if (!code || !nameByCode.has(code)) continue;
+    if (!date || date < windowStart || date > today) continue;
+    if (reviewed.has(`${code}|${date}`)) continue;
+
+    const key = `${code}|${date}`;
+    const entry = byDay.get(key) || {
+      athleteCode: code,
+      athleteName: nameByCode.get(code),
+      date,
+      sessions: [],
+      days: dayDistance(date, today),
+    };
+    // Strength logs write one row per exercise, so collapse to distinct names.
+    const label = normaliseText(row.session_name || row.session_category || '');
+    if (label && !entry.sessions.some(s => normaliseText(s.name) === label)) {
+      entry.sessions.push({
+        name: row.session_name || row.session_category || 'Session',
+        category: row.session_category || null,
+      });
+    }
+    byDay.set(key, entry);
+  }
+
+  const queue = [...byDay.values()].sort((left, right) =>
+    // Oldest first: those are the ones a coach is actually late on.
+    left.date.localeCompare(right.date) || left.athleteName.localeCompare(right.athleteName)
+  );
+
+  const overdue = queue.filter(entry => entry.days >= REVIEW_OVERDUE_DAYS);
+  return {
+    queue,
+    counts: {
+      pending: queue.length,
+      overdue: overdue.length,
+      athletes: new Set(queue.map(entry => entry.athleteCode)).size,
+    },
+    windowStart,
+    overdueAfterDays: REVIEW_OVERDUE_DAYS,
+  };
+}
+
 export function buildTriageQueue({
   athletes = [],
   bodyRows = [],
   sessionRows = [],
   trainingRows = [],
   plannedRows = [],
+  reviewRows = [],
+  resolvedRows = [],
   now = new Date(),
   timeZone = TRIAGE_TIMEZONE,
 } = {}) {
@@ -754,6 +887,17 @@ export function buildTriageQueue({
     painByAthlete.set(code, candidates);
   }
 
+  const review = buildReviewQueue({ athletes: active, trainingRows, reviewRows, now: nowDate, timeZone });
+  const reviewByAthlete = new Map();
+  for (const entry of review.queue) {
+    const bucket = reviewByAthlete.get(entry.athleteCode) || [];
+    bucket.push(entry);
+    reviewByAthlete.set(entry.athleteCode, bucket);
+  }
+
+  const resolved = resolvedIndex(resolvedRows);
+  const suppressed = [];
+
   const queue = [];
   for (const athlete of active) {
     const code = athlete.code;
@@ -769,7 +913,15 @@ export function buildTriageQueue({
       ? complianceSignal({ plannedRows, trainingRows, athleteCode: code, weekStart, today })
       : null;
 
-    if (!painSignal && !goneQuiet && !compliance) continue;
+    // Unreviewed submitted training is the lowest-priority signal and, like the
+    // rest, only fires when nothing louder already put this athlete in the
+    // queue — one row per athlete is what keeps counts.flagged honest.
+    const pendingReview = (!painSignal && !goneQuiet && !compliance)
+      ? (reviewByAthlete.get(code) || []).filter(entry => entry.days >= REVIEW_OVERDUE_DAYS)
+      : [];
+    const awaitingReview = pendingReview.length ? pendingReview : null;
+
+    if (!painSignal && !goneQuiet && !compliance && !awaitingReview) continue;
 
     const painScore = painSignal ? numberOrNull(painSignal.pain) : null;
     const completed = painSignal
@@ -785,38 +937,53 @@ export function buildTriageQueue({
     // (row 5, not built). Pain and gone-quiet keep their original values so the
     // shipped rows and their tests do not move. The compliance shortfall term is
     // capped by the band width, so a drift row can never outrank a quiet one.
+    // Priority bands, highest first: pain 10000, load divergence 7000 (row 2,
+    // not built), gone quiet 5000, compliance drift 3000, awaiting review 2000,
+    // pace mismatch 1000 (row 5, not built).
     let priority;
     if (painSignal) priority = 10000 + (coachAlert ? 1000 : 0) + (painScore || 0) * 10;
     else if (goneQuiet) priority = 5000;
-    else priority = 3000 + Math.round((COMPLIANCE_MIN_RATIO - compliance.ratio) * 1000);
+    else if (compliance) priority = 3000 + Math.round((COMPLIANCE_MIN_RATIO - compliance.ratio) * 1000);
+    else priority = 2000 + Math.min(500, awaitingReview[0].days * 10);
 
-    let flag = 'compliance_drift';
+    let flag = 'awaiting_review';
     if (painSignal) flag = 'pain';
     else if (goneQuiet) flag = 'gone_quiet';
+    else if (compliance) flag = 'compliance_drift';
 
     let severity = 'medium';
     if (painSignal) severity = 'critical';
     else if (goneQuiet) severity = 'high';
+    else if (compliance) severity = 'medium';
+    else severity = 'medium';
 
     let signal;
     if (painSignal) signal = painSignalCopy(painSignal, completed, planned, today, goneQuiet ? quietDays : false);
     else if (goneQuiet) signal = `No completed session and no body log for at least ${QUIET_AFTER_DAYS} days.`;
-    else signal = complianceSignalCopy(compliance, dayIndex);
+    else if (compliance) signal = complianceSignalCopy(compliance, dayIndex);
+    else signal = reviewSignalCopy(awaitingReview, today);
 
-    queue.push({
+    let action;
+    if (awaitingReview) {
+      action = { type: 'open_review', label: 'Review session', athleteCode: code, date: awaitingReview[0].date };
+    } else if (compliance) {
+      action = { type: 'review', label: 'Adjust week', athleteCode: code };
+    } else {
+      action = {
+        type: painSignal ? 'open_athlete' : 'message',
+        label: painSignal ? 'Open session' : 'Check in',
+        athleteCode: code,
+      };
+    }
+
+    const row = {
       athleteCode: code,
       athleteName: athlete.name || code,
       flag,
       severity,
       priority,
       signal,
-      action: compliance
-        ? { type: 'review', label: 'Review', athleteCode: code }
-        : {
-          type: 'message',
-          label: painSignal ? 'Message athlete' : 'Check in',
-          athleteCode: code,
-        },
+      action,
       evidence: {
         pain: painSignal ? {
           date: painSignal.log_date,
@@ -847,8 +1014,35 @@ export function buildTriageQueue({
           threshold: COMPLIANCE_MIN_RATIO,
           sources: ['planned_sessions', 'training_session_logs'],
         } : null,
+        review: awaitingReview ? {
+          oldestDate: awaitingReview[0].date,
+          days: awaitingReview[0].days,
+          pending: awaitingReview.length,
+          sources: ['training_session_logs', 'coach_session_reviews'],
+        } : null,
       },
-    });
+    };
+
+    row.fingerprint = signalFingerprint(flag, row.evidence, { weekStart });
+
+    // A row a coach has already dealt with stays out of the queue until the
+    // values it was raised on move. It is still reported so the count of
+    // resolved rows is visible and a coach can put one back.
+    const cleared = resolved.get(`${code}|${flag}`);
+    if (cleared && cleared.fingerprint === row.fingerprint) {
+      suppressed.push({
+        athleteCode: code,
+        athleteName: row.athleteName,
+        flag,
+        signal,
+        fingerprint: row.fingerprint,
+        resolvedBy: cleared.resolvedBy,
+        resolvedAt: cleared.resolvedAt,
+      });
+      continue;
+    }
+
+    queue.push(row);
   }
 
   queue.sort((left, right) =>
@@ -876,9 +1070,16 @@ export function buildTriageQueue({
       critical: queue.filter(row => row.severity === 'critical').length,
       high: queue.filter(row => row.severity === 'high').length,
       medium: queue.filter(row => row.severity === 'medium').length,
-      clear: Math.max(0, active.length - queue.length),
+      resolved: suppressed.length,
+      // Resolved athletes are not "clear" — a coach dealt with them today and
+      // counting them as untouched would overstate how quiet the squad is.
+      clear: Math.max(0, active.length - queue.length - suppressed.length),
+      reviewPending: review.counts.pending,
+      reviewOverdue: review.counts.overdue,
     },
     queue,
+    resolved: suppressed,
+    review,
   };
 }
 
@@ -919,7 +1120,12 @@ async function loadTriage() {
   const planStart = mondayOnOrBefore(today);
   const quietSessionCutoff = new Date(now.getTime() - QUIET_AFTER_DAYS * 86400000).toISOString();
 
-  const [athletes, bodyRows, sessionRows, trainingRows, plannedRows] = await Promise.all([
+  // The review queue looks further back than the pain/compliance context does,
+  // so the training window is the wider of the two.
+  const reviewStart = shiftDate(today, -(REVIEW_WINDOW_DAYS - 1));
+  const trainingStart = contextStart < reviewStart ? contextStart : reviewStart;
+
+  const [athletes, bodyRows, sessionRows, trainingRows, plannedRows, reviewRows, resolvedRows] = await Promise.all([
     selectRows('athletes', {
       select: 'code,name,active,archived_at',
       active: 'eq.true',
@@ -933,7 +1139,7 @@ async function loadTriage() {
     }),
     selectRows('training_session_logs', {
       select: 'athlete_code,session_date,session_name,session_category',
-      session_date: `gte.${contextStart}`,
+      session_date: `gte.${trainingStart}`,
       order: 'session_date.desc',
     }),
     selectRows('planned_sessions', {
@@ -942,9 +1148,27 @@ async function loadTriage() {
       and: `(planned_date.lte.${planEnd})`,
       order: 'planned_date.asc',
     }).catch(() => []),
+    // Both tables arrive with 20260906000001_coach_review_and_signal_state. Until
+    // that migration is applied the endpoint still answers: the review queue is
+    // simply everything submitted, and no signal is suppressed.
+    selectRows('coach_session_reviews', {
+      select: 'athlete_code,session_date,reviewed_by,reviewed_at',
+      session_date: `gte.${reviewStart}`,
+    }).catch(error => {
+      console.warn('[coach-data:triage] coach_session_reviews unavailable:', error.message);
+      return [];
+    }),
+    selectRows('coach_signal_state', {
+      select: 'athlete_code,signal_type,fingerprint,resolved_by,resolved_at',
+    }).catch(error => {
+      console.warn('[coach-data:triage] coach_signal_state unavailable:', error.message);
+      return [];
+    }),
   ]);
 
-  return buildTriageQueue({ athletes, bodyRows, sessionRows, trainingRows, plannedRows, now });
+  return buildTriageQueue({
+    athletes, bodyRows, sessionRows, trainingRows, plannedRows, reviewRows, resolvedRows, now,
+  });
 }
 
 export default async function handler(req, res) {
@@ -985,7 +1209,7 @@ export default async function handler(req, res) {
     }
 
     const activityCutoff = new Date(Date.now() - 120 * 86400000).toISOString().slice(0, 10);
-    const [body, nutrition, sessions, weeklyRaw, goals, nutritionPlans, athleteSettings, sessionLibrary, workoutSplits, applicationDecisions, plannedRows, athletes, activityUploads] = await Promise.all([
+    const [body, nutrition, sessions, weeklyRaw, goals, nutritionPlans, athleteSettings, sessionLibrary, workoutSplits, applicationDecisions, plannedRows, athletes, sessionReviews, signalState, activityUploads] = await Promise.all([
       selectAll(TABLES.body, 'log_date'),
       selectAll(TABLES.nutrition, 'log_date'),
       selectAll(TABLES.sessions, 'session_date'),
@@ -998,6 +1222,17 @@ export default async function handler(req, res) {
       selectAll('application_decisions', 'decided_at').catch(() => []),
       selectAll('planned_sessions', 'planned_date').catch(() => []),
       selectAll('athletes').catch(() => []),
+      // Coach-owned review and resolution state. Both tolerate the migration not
+      // being applied yet: an empty set means nothing is reviewed and nothing is
+      // suppressed, which is exactly the pre-Phase-2 behaviour.
+      selectAll('coach_session_reviews', 'session_date').catch(error => {
+        console.warn('[coach-data] coach_session_reviews unavailable:', error.message);
+        return [];
+      }),
+      selectAll('coach_signal_state', 'athlete_code').catch(error => {
+        console.warn('[coach-data] coach_signal_state unavailable:', error.message);
+        return [];
+      }),
       selectRows(TABLES.activityUploads, {
         // `streams` is up to 2400 sample objects per activity — 200-290KB each.
         // Selecting it for up to 500 activities on every dashboard load could
@@ -1047,6 +1282,8 @@ export default async function handler(req, res) {
         workoutSplits: workoutSplits.length,
         applicationDecisions: applicationDecisions.length,
         activityUploads: activityUploads.length,
+        sessionReviews: sessionReviews.length,
+        signalState: signalState.length,
       },
       integrity: {
         weeklyConflicts: weeklyIntegrity.conflicts,
@@ -1065,6 +1302,8 @@ export default async function handler(req, res) {
       sessionLibrary: sessionLibrary.filter(row => row.archived !== true),
       workoutSplits: workoutSplits.filter(row => row.archived !== true),
       applicationDecisions,
+      sessionReviews,
+      signalState,
       activityUploads: activityUploads.map(mapActivityUpload),
     });
   } catch (error) {
@@ -1075,7 +1314,7 @@ export default async function handler(req, res) {
       source: 'portal_supabase',
       generatedAt: new Date().toISOString(),
       error: error.message,
-      counts: { body: 0, nutrition: 0, sessions: 0, weekly: 0, goals: 0, planning: 0, nutritionPlans: 0, athleteSettings: 0, sessionLibrary: 0, workoutSplits: 0, applicationDecisions: 0, activityUploads: 0 },
+      counts: { body: 0, nutrition: 0, sessions: 0, weekly: 0, goals: 0, planning: 0, nutritionPlans: 0, athleteSettings: 0, sessionLibrary: 0, workoutSplits: 0, applicationDecisions: 0, activityUploads: 0, sessionReviews: 0, signalState: 0 },
       body: [],
       nutrition: [],
       sessions: [],
@@ -1088,6 +1327,8 @@ export default async function handler(req, res) {
       sessionLibrary: [],
       workoutSplits: [],
       applicationDecisions: [],
+      sessionReviews: [],
+      signalState: [],
       activityUploads: [],
     });
   }

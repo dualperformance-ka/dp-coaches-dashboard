@@ -11,17 +11,17 @@
   // Primary destinations shown in the bar. Everything else lives in More.
   // key = the arg passed to switchTab(); label = short thumb-friendly name.
   var PRIMARY = [
-    { key: 'triage',    label: 'Today',  icon: 'today'  },
-    { key: 'athletes',  label: 'Squad',  icon: 'squad'  },
-    { key: 'programming', label: 'Program', icon: 'plan' }
+    { key: 'triage',      label: 'Today',    icon: 'today'    },
+    { key: 'athletes',    label: 'Squad',    icon: 'squad'    },
+    { key: 'programming', label: 'Calendar', icon: 'plan'     },
+    { key: 'applications', label: 'Pipeline', icon: 'pipeline' }
   ];
   var MORE = [
-    { key: 'send',          label: 'Notify',   icon: 'send'     },
-    { key: 'applications',  label: 'Pipeline', icon: 'pipeline' },
-    { key: 'notifications', label: 'New',      icon: 'bell'     },
-    { key: 'coaches',       label: 'Coaches',  icon: 'coaches'  },
-    { key: 'sync',          label: 'Sync',     icon: 'sync'     },
-    { key: 'lock',          label: 'Lock app', icon: 'lock'     }
+    { key: 'send',          label: 'Notify',    icon: 'send'    },
+    { key: 'notifications', label: 'New leads', icon: 'bell'    },
+    { key: 'coaches',       label: 'Coach team',icon: 'coaches' },
+    { key: 'sync',          label: 'Sync health', icon: 'sync'  },
+    { key: 'lock',          label: 'Lock app',  icon: 'lock'    }
   ];
 
   // Maps a tab key to its existing top-bar badge id (for live count mirror).
@@ -30,7 +30,7 @@
     athletes:     'tab-ath-count',
     programming:  'tab-programming-count',
     sync:         'tab-sync-count',
-    applications: 'tab-apps-count',
+    applications: 'tab-pipeline-count',
     notifications:'tab-notif-count'
   };
 

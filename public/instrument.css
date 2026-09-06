@@ -64,11 +64,14 @@
   --ok:var(--done);--warn:var(--watch);--amber:var(--watch);--amber-dim:#f6c67a;
   --green-text:var(--done);--amber-text:var(--watch);
 
-  /* Type families follow the portal. */
+  /* Type families follow the portal. --cond used to alias --sans, which meant
+     the condensed display face never applied anywhere: this file loads last, so
+     it overrode the contract set in dashboard-theme-system.css. */
   --mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
   --sans:'IBM Plex Sans',ui-sans-serif,system-ui,-apple-system,sans-serif;
-  --cond:var(--sans);
-  --font-ui:var(--sans);--font-data:var(--mono);
+  --display:'IBM Plex Sans Condensed','IBM Plex Sans',ui-sans-serif,system-ui,sans-serif;
+  --cond:var(--display);
+  --font-ui:var(--sans);--font-data:var(--mono);--font-display:var(--display);
 }
 
 /* ─── SURFACES ──────────────────────────────────────────────────────────

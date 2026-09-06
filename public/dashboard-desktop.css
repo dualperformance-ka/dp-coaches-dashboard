@@ -4,7 +4,7 @@
 @media (min-width: 1024px) {
   :root {
     --desktop-gutter: clamp(28px, 3.2vw, 52px);
-    --desktop-max: 1600px;
+    --desktop-max: var(--content-max, 1680px);
   }
 
   body {

@@ -8,7 +8,7 @@
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Condensed:wght@600;700&display=swap" rel="stylesheet">
 <style>
 :root{
   --bg:#0d0d0d;--surface:#161616;--surface2:#1e1e1e;
@@ -17,9 +17,9 @@
   --run:#f59e0b;--str:#60a5fa;
   --amber:#f59e0b;--amber-dim:#fcd34d;
   --ok:#4ade80;--warn:#f59e0b;--alert:#f87171;
-  --mono:'Geist Mono','SF Mono','Fira Code',monospace;
-  --sans:'Geist',system-ui,sans-serif;
-  --cond:'Geist',system-ui,sans-serif;
+  --mono:'IBM Plex Mono','SFMono-Regular','SF Mono',Consolas,monospace;
+  --sans:'IBM Plex Sans',system-ui,-apple-system,sans-serif;
+  --cond:'IBM Plex Sans Condensed','IBM Plex Sans',system-ui,sans-serif;
   --green-bg:rgba(74,222,128,.08);--green-border:rgba(74,222,128,.22);--green-text:#4ade80;
   --amber-bg:rgba(245,158,11,.08);--amber-border:rgba(245,158,11,.22);--amber-text:#fbbf24;
   --red-bg:rgba(248,113,113,.08);--red-border:rgba(248,113,113,.22);--red-text:#f87171;
@@ -347,7 +347,7 @@ body[data-theme="pride"] .dash-week-nav{border:2px solid transparent;border-imag
 @media(max-width:600px){.dash-week-nav{flex-direction:column;align-items:flex-start}.dwn-controls{flex-wrap:wrap}}
 
 /* ── Layout ── */
-.main{padding:14px 14px 40px;max-width:1400px;margin:0 auto}
+.main{padding:14px 14px 40px;max-width:var(--content-max,1680px);margin:0 auto}
 
 /* ── Summary bar ── */
 .summary-bar{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap}
@@ -860,7 +860,7 @@ body[data-theme="pride"] .texp-name{background:linear-gradient(90deg,#FF8C00,#FF
 .fpc-act-btn{background:transparent;border:1px solid rgba(255,255,255,.22);color:rgba(255,255,255,.75);border-radius:6px;padding:6px 14px;font-family:var(--mono);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;cursor:pointer;transition:all .15s}
 .fpc-act-btn:hover{color:#fff;border-color:rgba(255,255,255,.5)}
 .fpc-photo-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-.fp-body{max-width:900px;margin:0 auto;padding:22px 18px 60px}
+.fp-body{max-width:var(--athlete-max,1440px);margin:0 auto;padding:22px 18px 60px}
 
 /* ── Full-page card: clean layout ── */
 .fpc-hero{background:#0a0a0a;border-radius:16px;padding:28px 30px 24px;margin-bottom:18px}
@@ -1803,12 +1803,11 @@ body[data-theme="light"] .strava-command-bar{background:linear-gradient(135deg,r
 .daily-ledger-note{font-size:11px;color:var(--muted);line-height:1.45;margin-top:8px;border-left:2px solid var(--border-mid);padding-left:8px}
 .daily-ledger-empty{font-family:var(--mono);font-size:10px;color:var(--dim);font-style:italic}
 @media(max-width:720px){.daily-ledger-row{grid-template-columns:1fr}.daily-ledger-date{padding-top:0}}
-.week-jump{display:flex;align-items:center;justify-content:space-between;gap:14px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:10px 14px;margin-bottom:14px;position:sticky;top:58px;z-index:9;box-shadow:0 8px 24px rgba(0,0,0,.16)}
+/* The week strip is panel content now — the sticky role moved to .fpa-sticky, which carries the athlete identity and current-week vitals. */
+.week-jump{display:flex;align-items:center;justify-content:space-between;gap:14px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:10px 14px;margin-bottom:14px;box-shadow:0 8px 24px rgba(0,0,0,.16)}
 .week-jump.is-current{border-color:rgba(74,222,128,.34)}
 .week-jump.is-reviewing{border-color:var(--brand-border)}
 .week-jump-identity{display:flex;align-items:center;gap:14px;min-width:0}
-.week-jump-athlete{font-family:var(--cond);font-size:22px;font-weight:900;color:var(--text);text-transform:uppercase;letter-spacing:.05em;line-height:1;max-width:210px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.week-jump-divider{width:1px;height:36px;background:var(--border-mid);flex:0 0 auto}
 .week-jump-context{min-width:0}
 .week-jump-title{font-family:var(--mono);font-size:9px;font-weight:800;color:var(--dim);text-transform:uppercase;letter-spacing:.12em}
 .week-jump-main-row{display:flex;align-items:center;gap:8px;margin-top:2px;min-width:0}
@@ -1821,12 +1820,12 @@ body[data-theme="light"] .strava-command-bar{background:linear-gradient(135deg,r
 .week-jump-btn{background:#0a0a0a;border:1px solid #0a0a0a;color:#fff;font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.08em;border-radius:6px;padding:7px 10px;cursor:pointer}
 .week-jump-btn.secondary{background:transparent;color:var(--muted);border-color:var(--border-mid)}
 .week-jump-btn:disabled{opacity:.35;cursor:not-allowed}
-@media(max-width:720px){.week-jump{top:54px;align-items:stretch;flex-direction:column;gap:9px;padding:9px 11px}.week-jump-identity{gap:9px}.week-jump-athlete{font-size:18px;max-width:120px}.week-jump-divider{height:32px}.week-jump-main{font-size:18px}.week-jump-sub{display:none}.week-jump-controls{justify-content:stretch;flex-wrap:nowrap}.week-jump-btn{flex:1;padding:7px 5px;font-size:8px}}
+@media(max-width:720px){.week-jump{align-items:stretch;flex-direction:column;gap:9px;padding:9px 11px}.week-jump-identity{gap:9px}.week-jump-main{font-size:18px}.week-jump-sub{display:none}.week-jump-controls{justify-content:stretch;flex-wrap:nowrap}.week-jump-btn{flex:1;padding:7px 5px;font-size:8px}}
 </style>
-<link rel="stylesheet" href="/dashboard-redesign.css">
-<link rel="stylesheet" href="/dashboard-detail-cleanup.css">
+<link rel="stylesheet" href="/dashboard-redesign.css?v=20260906-17">
+<link rel="stylesheet" href="/dashboard-detail-cleanup.css?v=20260906-17">
 <link rel="stylesheet" href="/dashboard-mobile.css">
-<link rel="stylesheet" href="/dashboard-comprehensive.css?v=2">
+<link rel="stylesheet" href="/dashboard-comprehensive.css?v=20260906-17">
 <script src="/coach-auth.js"></script>
 <style>
   .wd-strava-act.direct-upload{border-left-color:#0ea5e9;background:linear-gradient(135deg,rgba(14,165,233,.06),rgba(255,255,255,.02))}
@@ -1948,7 +1947,9 @@ body[data-theme="light"] .strava-command-bar{background:linear-gradient(135deg,r
       <option value="ALEX">ALEX</option>
     </select>
     <span class="updated" id="updated"></span>
-    <button class="refresh-btn" id="manage-athletes-btn" onclick="openManageAthletes()">⚙ Manage Athletes</button>
+    <!-- Roster management moved into the Settings menu on the tab bar. It is
+         administration, not a coaching action, and does not need a slot in the
+         global header on every screen. -->
     <button class="refresh-btn" id="refresh-btn">↻ Refresh</button>
     <div class="theme-toggle" id="theme-toggle">
       <button class="theme-btn active" data-theme="dark" onclick="setTheme('dark')" title="Dark" aria-label="Use dark theme">Dark</button>
@@ -2136,14 +2137,14 @@ body[data-theme="light"] .theme-btn.active{background:rgba(255,255,255,.22);colo
   .sum-card{flex:1 1 100%}
 }
 </style>
-<link rel="stylesheet" href="/dashboard-theme-system.css?v=20260821-1">
-<link rel="stylesheet" href="/dashboard-desktop.css">
-<link rel="stylesheet" href="/dashboard-mobile-polish.css?v=20260821-2">
-<link rel="stylesheet" href="/triage.css?v=23">
-<link rel="stylesheet" href="/programming.css?v=4">
+<link rel="stylesheet" href="/dashboard-theme-system.css?v=20260906-17">
+<link rel="stylesheet" href="/dashboard-desktop.css?v=20260906-17">
+<link rel="stylesheet" href="/dashboard-mobile-polish.css?v=20260906-17">
+<link rel="stylesheet" href="/triage.css?v=20260906-17">
+<link rel="stylesheet" href="/programming.css?v=20260906-17">
 <link rel="stylesheet" href="/weekly-sport-targets.css?v=3">
 <link rel="stylesheet" href="/daily-macro-overrides.css?v=3">
-<link rel="stylesheet" href="/instrument.css?v=1">
+<link rel="stylesheet" href="/instrument.css?v=20260906-17">
 <div class="ma-backdrop" id="ma-backdrop" role="dialog" aria-modal="true" aria-label="Manage athletes" onclick="if(event.target===this)closeManageAthletes()">
   <div class="ma-card">
     <div class="ma-head">
@@ -2404,29 +2405,48 @@ function refreshRosterDrivenUI() {
 
 <div class="stale-banner" id="stale-banner" role="alert" hidden></div>
 <div class="tab-bar" role="tablist" aria-label="Dashboard sections">
-  <button class="tab active" id="tab-triage-btn" onclick="switchTab('triage')">
+  <button class="tab active" id="tab-triage-btn" role="tab" aria-selected="true" onclick="switchTab('triage')">
     Today <span class="tab-badge" id="tab-triage-count">—</span>
   </button>
-  <button class="tab" id="tab-athletes-btn" onclick="switchTab('athletes')">
-    Athletes <span class="tab-badge" id="tab-ath-count">—</span>
+  <button class="tab" id="tab-athletes-btn" role="tab" aria-selected="false" onclick="switchTab('athletes')">
+    Squad <span class="tab-badge" id="tab-ath-count">—</span>
   </button>
-  <button class="tab" id="tab-programming-btn" onclick="switchTab('programming')">
-    Programming <span class="tab-badge" id="tab-programming-count">—</span>
+  <button class="tab" id="tab-programming-btn" role="tab" aria-selected="false" onclick="switchTab('programming')">
+    Calendar <span class="tab-badge" id="tab-programming-count">—</span>
   </button>
-  <button class="tab" id="tab-coaches-btn" onclick="switchTab('coaches')">
-    Coaches <span class="tab-badge">3</span>
+  <button class="tab" id="tab-pipeline-btn" role="tab" aria-selected="false" onclick="switchTab('applications')">
+    Pipeline <span class="tab-badge" id="tab-pipeline-count">—</span>
   </button>
-  <button class="tab" id="tab-sync-btn" onclick="switchTab('sync')">
-    Sync <span class="tab-badge" id="tab-sync-count">—</span>
+  <div class="tab-bar-spacer"></div>
+  <button type="button" class="tab tab-search" id="tab-search-btn" onclick="openCommandPalette()"
+          aria-label="Search athletes" title="Search athletes and jump anywhere (⌘K)">
+    <span aria-hidden="true">⌕</span> Search <kbd class="tab-kbd">⌘K</kbd>
   </button>
-  <button class="tab" id="tab-apps-btn" onclick="switchTab('applications')">
-    Pipeline <span class="tab-badge" id="tab-apps-count">—</span>
+  <button type="button" class="tab tab-settings" id="settings-btn" aria-haspopup="true" aria-expanded="false"
+          onclick="toggleSettingsMenu(event)">⚙ Settings <span class="tab-badge" id="tab-sync-count">—</span></button>
+</div>
+
+<!-- Deliberately a sibling of .tab-bar, not a child: the bar carries
+     backdrop-filter (which makes it the containing block for fixed children)
+     together with overflow:auto for horizontal scrolling, so a menu nested
+     inside it is clipped to the bar's own height. -->
+<div class="settings-dropdown" id="settings-dropdown" role="menu" hidden>
+  <button type="button" role="menuitem" onclick="settingsGo('sync')">Sync health</button>
+  <button type="button" role="menuitem" onclick="settingsGo('coaches')">Coach team</button>
+  <button type="button" role="menuitem" onclick="settingsGo('manage')">Manage athletes</button>
+</div>
+
+<!-- Pipeline sub-navigation. Applications, new-lead notifications and the
+     message composer were three top-level tabs for one funnel. -->
+<div class="pipeline-subnav" id="pipeline-subnav" style="display:none" role="tablist" aria-label="Pipeline sections">
+  <button class="sf active" id="pipe-applications-btn" role="tab" aria-selected="true" onclick="switchTab('applications')">
+    Applications <span class="sf-count" id="tab-apps-count"></span>
   </button>
-  <button class="tab" id="tab-notif-btn" onclick="switchTab('notifications')">
-    New <span class="tab-badge" id="tab-notif-count">—</span>
+  <button class="sf" id="pipe-notifications-btn" role="tab" aria-selected="false" onclick="switchTab('notifications')">
+    New leads <span class="sf-count" id="tab-notif-count"></span>
   </button>
-  <button class="tab" id="tab-send-btn" onclick="switchTab('send')">
-    Notify 🔔
+  <button class="sf" id="pipe-send-btn" role="tab" aria-selected="false" onclick="switchTab('send')">
+    Notify athletes
   </button>
 </div>
 
@@ -2467,17 +2487,23 @@ function refreshRosterDrivenUI() {
 <!-- TODAY TRIAGE TAB -->
 <main id="tab-triage-content" class="triage-page">
   <div class="today-workspace">
-    <section class="today-operations" aria-label="Today coaching priorities">
-      <div id="today-dashboard-loading" class="today-dashboard-state" role="status">Loading weekly priorities…</div>
+    <!-- Squad vitals. Every tile is a filter into the queue or the roster, not
+         a headline number — the priority and overdue lists that used to sit
+         here duplicated the decision queue below with different rules. -->
+    <section class="today-operations" aria-label="Squad status">
+      <div id="today-dashboard-loading" class="today-dashboard-state" role="status">Loading squad status…</div>
       <div id="today-dashboard-error" class="today-dashboard-state is-error" role="alert" hidden></div>
       <div id="command-center"></div>
     </section>
+
+    <!-- The one decision queue: server-ranked signals merged with the
+         client-computed alerts, one row per athlete, one resolve verb. -->
     <section class="triage-shell" aria-labelledby="triage-title">
       <div class="triage-hero">
         <div>
           <div class="triage-eyebrow">Decision queue · Today</div>
-          <h1 id="triage-title">Live triage signals</h1>
-          <p>Paired signals that need a coaching decision.</p>
+          <h1 id="triage-title">Who needs me today</h1>
+          <p>One row per athlete. Resolving a row keeps it out until the situation moves.</p>
         </div>
         <div class="triage-date" id="triage-date" aria-label="Dashboard date"></div>
       </div>
@@ -2494,9 +2520,12 @@ function refreshRosterDrivenUI() {
         <div class="triage-summary" id="triage-summary"></div>
         <ol class="triage-queue" id="triage-queue" aria-label="Athletes needing attention"></ol>
         <div class="triage-clear" id="triage-clear"></div>
+        <div class="triage-resolved" id="triage-resolved"></div>
       </div>
     </section>
-    <section class="today-actions" aria-label="Coaching actions">
+
+    <section class="today-rail" aria-label="Coach workload">
+      <div id="review-queue"></div>
       <div id="coaching-actions"></div>
     </section>
   </div>
@@ -2534,6 +2563,7 @@ function refreshRosterDrivenUI() {
       <div class="plan-ath-chips" id="prog-ath-chips"></div>
       <div class="prog-view-toggle" id="prog-view-toggle" aria-label="Programming view">
         <button type="button" id="prog-view-week" onclick="setProgView('week')">Week</button>
+        <button type="button" id="prog-view-squad" onclick="setProgView('squad')">Squad</button>
         <button type="button" id="prog-view-block" onclick="setProgView('block')">Block</button>
       </div>
       <div class="plan-toolbar-right prog-toolbar" id="prog-week-toolbar">
@@ -2542,8 +2572,8 @@ function refreshRosterDrivenUI() {
           <button class="sf" id="plan-week-label" onclick="planWeekReset()">This Week</button>
           <button class="sf" onclick="planWeekNav(1)">Next →</button>
         </div>
-        <button class="plan-action-btn" onclick="copyPlanWeek()" title="Copy this week's sessions to next week">⧉ Copy → Next Wk</button>
-        <button class="plan-action-btn" onclick="openPlanSession(null)">+ Session</button>
+        <button class="plan-action-btn" id="plan-copy-btn" onclick="copyPlanWeek()" title="Copy this week's sessions to next week">⧉ Copy → Next Wk</button>
+        <button class="plan-action-btn" id="plan-add-btn" onclick="openPlanSession(null)">+ Session</button>
         <button class="plan-action-btn" id="plan-lib-btn" onclick="togglePlanLibrary()">Library</button>
       </div>
       <div class="plan-toolbar-right prog-toolbar" id="prog-block-toolbar" hidden>
@@ -2560,6 +2590,11 @@ function refreshRosterDrivenUI() {
       <div class="plan-grid" id="plan-grid"></div>
       <div class="plan-lib" id="plan-lib" style="display:none"></div>
     </div>
+    <!-- Squad board: every athlete's week on one screen, so a coach can plan or
+         audit the week in one pass instead of twelve. -->
+    <div class="prog-body" id="prog-squad-body" hidden>
+      <div class="squad-board-wrap"><div id="squad-board"></div></div>
+    </div>
     <div class="prog-body" id="prog-block-body" hidden>
       <div class="nut-meta" id="nut-meta"></div>
       <div class="nut-table-wrap" id="nut-table-wrap"></div>
@@ -2570,8 +2605,8 @@ function refreshRosterDrivenUI() {
 </div>
 
 <!-- Planning session editor modal -->
-<div class="po-overlay hidden" id="ps-overlay" role="dialog" aria-modal="true" aria-label="Plan session" onclick="if(event.target===this)confirmDiscardModal('ps-overlay',closePlanSession)">
-  <div class="po-modal" style="max-width:460px">
+<div class="po-overlay po-drawer hidden" id="ps-overlay" role="dialog" aria-modal="true" aria-label="Plan session" onclick="if(event.target===this)confirmDiscardModal('ps-overlay',closePlanSession)">
+  <div class="po-modal">
     <div class="po-modal-head">
       <div>
         <div class="po-modal-title" id="ps-title">Plan Session</div>
@@ -2698,6 +2733,10 @@ function refreshRosterDrivenUI() {
     </div>
     <div class="po-modal-foot">
       <button class="po-btn save" id="ps-save" onclick="savePlanSession()">Save Session</button>
+      <button class="po-btn" id="ps-duplicate" onclick="duplicatePlanSession()" style="display:none"
+              title="Create a copy of this session on another day">⧉ Duplicate</button>
+      <button class="po-btn" id="ps-move" onclick="movePlanSession()" style="display:none"
+              title="Move this session to another day">→ Move</button>
       <button class="po-btn clear" id="ps-delete" onclick="deletePlanSession()" style="display:none">Delete</button>
     </div>
   </div>
@@ -2917,6 +2956,11 @@ let _libCache     = []; // session_library rows
 let _splitsCache  = []; // workout_splits rows (strength)
 let _tickedMap = new Map(); // athleteCode → Set<sessionId>  (athlete tapped the tick box)
 let _loggedMap = new Map(); // athleteCode → Set<sessionId>  (athlete submitted a log with real data)
+// athleteCode → the portal's raw logs blob. progressive-overload.js was written
+// against this exact shape; useSessionStateRows used to read only the keys and
+// throw the sets away, which is why strength history had to be re-parsed out of
+// free text on every render.
+let _logBlobs = new Map();
 let _exPicksMap = new Map(); // athleteCode → Map<performedLower, programmedName>  (current swaps)
 
 // A log entry counts as "submitted" only if it actually holds data — not an
@@ -2934,6 +2978,7 @@ function _logHasRealData(v) {
 function useSessionStateRows(rows) {
   _tickedMap = new Map();
   _loggedMap = new Map();
+  _logBlobs = new Map();
   _exPicksMap = new Map();
   (rows || []).forEach(r => {
     const code = nid(r.athlete_code);
@@ -2945,6 +2990,7 @@ function useSessionStateRows(rows) {
       _loggedMap.set(code, new Set(
         Object.keys(val).filter(k => k !== '__savedAt' && _logHasRealData(val[k]))
       ));
+      _logBlobs.set(code, val);
     } else if (r.key === 'ex_picks') {
       // programmed → performed. Inverted here because the log line carries the
       // performed name, and that is the key the renderer looks a swap up by.
@@ -3992,13 +4038,20 @@ function _renderProgContext() {
   const we = new Date(ws); we.setDate(we.getDate() + 6);
   const fmt = d => d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
   const weekLabel = _progAthlete ? _progSelectedWeekLabel(_progAthlete) : null;
+  if (_progView === 'squad') {
+    const codes = _progAthleteCodes().filter(code => !COACHES.has(code));
+    context.innerHTML = `Whole squad, one week · <b>${codes.length}</b> athlete${codes.length === 1 ? '' : 's'} · ${fmt(ws)} – ${fmt(we)}`;
+    return;
+  }
   context.innerHTML = _progView === 'week'
     ? `One athlete, one week · <b>${esc(_progAthlete || 'No athlete')}</b> · <b>${esc(displayWeekLabel(weekLabel || 'Week'))}</b> · ${fmt(ws)} – ${fmt(we)}`
     : `Same athlete, same block · <b>${esc(_progAthlete || 'No athlete')}</b> · ${_progAthlete ? getProgWeeks(_progAthlete) : DEFAULT_PROG_WEEKS}-week programme · selected <b>${esc(displayWeekLabel(weekLabel || 'Week'))}</b>`;
 }
 
+const PROG_VIEWS = new Set(['week', 'squad', 'block']);
+
 function setProgView(view) {
-  _progView = view === 'block' ? 'block' : 'week';
+  _progView = PROG_VIEWS.has(view) ? view : 'week';
   try { localStorage.setItem('dp_prog_view', _progView); } catch {}
   renderProgramming();
 }
@@ -4012,21 +4065,34 @@ function renderProgramming() {
   const chips = document.getElementById('prog-ath-chips');
   if (chips) chips.innerHTML = buildAthChipsHTML(codes, _progAthlete, 'setProgAthlete');
   const weekBody = document.getElementById('prog-week-body');
+  const squadBody = document.getElementById('prog-squad-body');
   const blockBody = document.getElementById('prog-block-body');
   const weekToolbar = document.getElementById('prog-week-toolbar');
   const blockToolbar = document.getElementById('prog-block-toolbar');
   if (weekBody) weekBody.hidden = _progView !== 'week';
+  if (squadBody) squadBody.hidden = _progView !== 'squad';
   if (blockBody) blockBody.hidden = _progView !== 'block';
-  if (weekToolbar) weekToolbar.hidden = _progView !== 'week';
+  // The squad board is week-scoped, so it keeps the week toolbar; only the
+  // single-athlete chips and the per-session controls are hidden.
+  if (weekToolbar) weekToolbar.hidden = _progView === 'block';
   if (blockToolbar) blockToolbar.hidden = _progView !== 'block';
-  document.getElementById('prog-view-week')?.classList.toggle('active', _progView === 'week');
-  document.getElementById('prog-view-block')?.classList.toggle('active', _progView === 'block');
+  if (chips) chips.hidden = _progView === 'squad';
+  // Copy week, add session and the library all act on the selected athlete, so
+  // they have no meaning while the whole squad is on screen. Week navigation
+  // does, and stays.
+  ['plan-copy-btn', 'plan-add-btn', 'plan-lib-btn'].forEach(id => {
+    const button = document.getElementById(id);
+    if (button) button.hidden = _progView === 'squad';
+  });
+  ['week', 'squad', 'block'].forEach(view =>
+    document.getElementById(`prog-view-${view}`)?.classList.toggle('active', _progView === view));
   _renderProgBlockControls();
   _mountProgrammingEditors();
   // Switching away from Block view leaves its table in the DOM, so rescue any
-  // unsaved edits before the branch below replaces it. No-ops in Week view.
+  // unsaved edits before the branch below replaces it. No-ops elsewhere.
   _captureNutDrafts();
   if (_progView === 'block') renderNutTable();
+  else if (_progView === 'squad') renderSquadBoard();
   else if (_planLibOpen) renderPlanLibrary();
   else renderPlanGrid();
   _renderProgContext();
@@ -4065,6 +4131,58 @@ function _weeklyMacrosForWeek(code, weekLabel) {
   } : null;
 }
 
+// ── Session state on the calendar ────────────────────────────────────────────
+// The calendar used to render only planned_sessions.status, which is a free-text
+// field the coach sets. What the athlete actually did lives in the ticked/logs
+// blobs and training_session_logs, so a week could read "Planned" across the
+// board while every session had been completed and submitted.
+//
+// "Completed" (the athlete ticked it) and "Submitted" (they sent data with it)
+// stay separate here, as everywhere else in the product.
+function planSessionState(row) {
+  const code = nid(row.athlete_code);
+  const key = row.notion_page_id || row.id;
+  const status = String(row.status || '').trim().toLowerCase();
+
+  if (/^(missed|skipped)$/.test(status)) return { key: 'missed', label: 'Missed', mark: '✕' };
+  if (status === 'sick') return { key: 'missed', label: 'Sick', mark: '✕' };
+
+  if (isSessionSubmitted(code, key)) return { key: 'submitted', label: 'Submitted', mark: '●' };
+  if (isSessionTicked(code, key)) return { key: 'completed', label: 'Completed, no data', mark: '◐' };
+
+  // A log on the day without a matching session id still counts as done — the
+  // portal does not always write the id back onto the plan row.
+  const athlete = _allAthletes.find(x => x.id === code) || _coaches.find(x => x.id === code);
+  if (athlete && (athlete.sessions || []).some(sess => sess._d === row.planned_date)) {
+    return { key: 'submitted', label: 'Submitted', mark: '●' };
+  }
+
+  if (/^(done|complete|completed)$/.test(status)) return { key: 'completed', label: 'Marked done', mark: '◐' };
+
+  const today = _isoDate(new Date());
+  if (row.planned_date < today) return { key: 'open', label: 'Not logged', mark: '○' };
+  return { key: 'planned', label: 'Planned', mark: '○' };
+}
+
+function planStateBadge(row) {
+  const state = planSessionState(row);
+  return `<span class="plan-state is-${state.key}" title="${esc(state.label)}">
+    <span class="plan-state-mark" aria-hidden="true">${state.mark}</span>${esc(state.label)}
+  </span>`;
+}
+
+// Compact week totals a coach can read without adding up cards.
+function planWeekSummary(rows) {
+  const km = rows.reduce((sum, r) => sum + (parseFloat(r.distance_km) || 0), 0);
+  const states = rows.map(planSessionState);
+  const done = states.filter(s => s.key === 'submitted' || s.key === 'completed').length;
+  const missed = states.filter(s => s.key === 'missed').length;
+  const toReview = rows.filter(r =>
+    planSessionState(r).key === 'submitted' && !isDayReviewed(r.athlete_code, r.planned_date)
+  ).length;
+  return { km: Math.round(km * 10) / 10, done, total: rows.length, missed, toReview };
+}
+
 function renderPlanGrid() {
   document.getElementById('plan-lib').style.display = 'none';
   const grid = document.getElementById('plan-grid');
@@ -4081,8 +4199,15 @@ function renderPlanGrid() {
   const wkLabel = displayWeekLabel(rawWeekLabel || '');
   const baseline = _progAthlete ? _weeklyMacrosForWeek(_progAthlete, rawWeekLabel) : null;
   const totalKm = rows.reduce((s, r) => s + (parseFloat(r.distance_km) || 0), 0);
-  document.getElementById('plan-week-meta').textContent =
-    `${esc(_progAthlete || '—')} · ${fmt(ws)} – ${fmt(we)}${wkLabel ? ' · ' + wkLabel : ''} · ${rows.length} session${rows.length === 1 ? '' : 's'}${totalKm ? ' · ' + (Math.round(totalKm * 10) / 10) + ' km planned' : ''}`;
+  const summary = planWeekSummary(rows);
+  document.getElementById('plan-week-meta').innerHTML =
+    `${esc(_progAthlete || '—')} · ${fmt(ws)} – ${fmt(we)}${wkLabel ? ' · ' + esc(wkLabel) : ''}`
+    + `<span class="plan-week-totals">`
+    + `<span><strong>${summary.done}</strong>/${summary.total} done</span>`
+    + (summary.km ? `<span class="run"><strong>${summary.km}</strong> km planned</span>` : '')
+    + (summary.missed ? `<span class="bad"><strong>${summary.missed}</strong> missed</span>` : '')
+    + (summary.toReview ? `<span class="review"><strong>${summary.toReview}</strong> to review</span>` : '')
+    + `</span>`;
   const weekBar = document.getElementById('prog-week-bar');
   if (weekBar) {
     weekBar.innerHTML = window.DailyMacroOverridesEditor?.weekBarHtml({
@@ -4122,11 +4247,13 @@ function renderPlanGrid() {
       if (r.target_pace) meta.push(esc(r.target_pace));
       const sp = splitForTitle(r.title, r.athlete_code);
       if (sp && !r.run_details) meta.push((sp.exercises || []).length + ' exercises');
-      html += `<div class="plan-card" style="border-left-color:${col}" onclick="openPlanSession('${r.id}')">
-        <div class="plan-card-title">${esc(r.title || 'Session')}</div>
+      const state = planSessionState(r);
+      const needsReview = state.key === 'submitted' && !isDayReviewed(r.athlete_code, r.planned_date);
+      html += `<div class="plan-card is-${state.key}" style="border-left-color:${col}" onclick="openPlanSession('${r.id}')">
+        <div class="plan-card-title">${esc(r.title || 'Session')}${needsReview ? '<span class="plan-card-review" title="Submitted, not yet reviewed">⚑</span>' : ''}</div>
         ${r.session_type ? `<div class="plan-card-meta" style="color:${col}">${esc(r.session_type === 'discovery' ? 'Discovery' : r.session_type)}</div>` : ''}
         ${meta.length ? `<div class="plan-card-meta">${meta.join(' · ')}</div>` : ''}
-        <span class="plan-card-status ${esc(r.status || 'Planned')}">${esc(r.status || 'Planned')}</span>
+        ${planStateBadge(r)}
       </div>`;
     });
     html += `<button class="plan-add-btn" onclick="openPlanSession(null,'${iso}')">+ Add</button>`;
@@ -4135,6 +4262,117 @@ function renderPlanGrid() {
   }
   grid.innerHTML = html;
   window.DailyMacroOverridesEditor?.bindCells(grid, label => _weeklyMacrosForWeek(_progAthlete, label));
+}
+
+// ── Squad board ──────────────────────────────────────────────────────────────
+// One row per athlete, one column per day. Answers "is the squad's week loaded
+// and is it coming back?" without opening twelve athletes in turn.
+function renderSquadBoard() {
+  const root = document.getElementById('squad-board');
+  if (!root) return;
+
+  const ws = _planWeekStart();
+  const we = new Date(ws); we.setDate(we.getDate() + 6);
+  const fmt = d => d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
+  const label = document.getElementById('plan-week-label');
+  if (label) label.textContent = _progWeekOffset === 0 ? 'This Week' : `${fmt(ws)} – ${fmt(we)}`;
+
+  const days = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(ws); d.setDate(d.getDate() + i);
+    days.push({ iso: _isoDate(d), label: PLAN_DAYS[i], date: fmt(d) });
+  }
+  const todayISO = _isoDate(new Date());
+
+  // Coaches train too, but the board is for the athlete roster.
+  const codes = _progAthleteCodes().filter(code => !COACHES.has(code));
+  if (!codes.length) {
+    root.innerHTML = '<div class="squad-board-empty">No athletes on the roster yet.</div>';
+    return;
+  }
+
+  let squadKm = 0;
+  let squadDone = 0;
+  let squadTotal = 0;
+
+  const rows = codes.map(code => {
+    const athlete = _allAthletes.find(x => x.id === code);
+    const weekRows = _planRowsForWeek(code, ws);
+    const summary = planWeekSummary(weekRows);
+    squadKm += summary.km;
+    squadDone += summary.done;
+    squadTotal += summary.total;
+
+    const cells = days.map(day => {
+      const dayRows = weekRows.filter(r => r.planned_date === day.iso);
+      if (!dayRows.length) {
+        return `<td class="sb-cell is-empty${day.iso === todayISO ? ' is-today' : ''}">
+          <button type="button" class="sb-add" title="Add a session"
+                  onclick="squadBoardAdd('${esc(code)}','${day.iso}')">+</button>
+        </td>`;
+      }
+      return `<td class="sb-cell${day.iso === todayISO ? ' is-today' : ''}">
+        ${dayRows.map(r => {
+          const state = planSessionState(r);
+          const col = PLAN_TYPE_COLORS[r.session_type] || 'var(--dim)';
+          const km = r.distance_km != null ? `${r.distance_km}km` : '';
+          return `<button type="button" class="sb-session is-${state.key}" style="border-left-color:${col}"
+                    title="${esc(r.title || 'Session')}${km ? ' · ' + km : ''} · ${esc(state.label)}"
+                    onclick="openPlanSession('${r.id}')">
+            <span class="sb-session-title">${esc(String(r.title || r.session_type || 'Session').slice(0, 18))}</span>
+            <span class="sb-session-meta">${esc(km)}<span class="sb-mark" aria-hidden="true">${state.mark}</span></span>
+          </button>`;
+        }).join('')}
+      </td>`;
+    }).join('');
+
+    const weekNum = typeof athlete?.weekNum === 'number' ? athlete.weekNum : null;
+    const race = athlete?.race;
+    const countdown = race && !race.isPast ? raceCountdownLabel(race) : null;
+
+    return `<tr>
+      <th scope="row" class="sb-athlete">
+        <button type="button" class="sb-athlete-open" onclick="openAthleteFromTriage('${esc(code)}',{tab:'training'})">
+          ${esc(athlete?.displayName || code)}
+        </button>
+        <span class="sb-athlete-meta">${weekNum === null ? '—' : weekNum === 0 ? 'Discovery' : `Wk ${weekNum}`}${countdown ? ` · ${esc(countdown)}` : ''}</span>
+      </th>
+      ${cells}
+      <td class="sb-total">
+        <span class="sb-total-main">${summary.done}/${summary.total}</span>
+        ${summary.km ? `<span class="sb-total-km">${summary.km} km</span>` : ''}
+        ${summary.toReview ? `<span class="sb-total-review" title="Submitted, not yet reviewed">⚑ ${summary.toReview}</span>` : ''}
+      </td>
+    </tr>`;
+  }).join('');
+
+  root.innerHTML = `<table class="squad-board">
+    <thead>
+      <tr>
+        <th class="sb-corner">Athlete</th>
+        ${days.map(day => `<th class="sb-day${day.iso === todayISO ? ' is-today' : ''}">
+          <span class="sb-day-name">${day.label}</span><span class="sb-day-date">${day.date}</span>
+        </th>`).join('')}
+        <th class="sb-corner">Week</th>
+      </tr>
+    </thead>
+    <tbody>${rows}</tbody>
+    <tfoot>
+      <tr>
+        <th scope="row" class="sb-athlete">Squad</th>
+        <td class="sb-foot" colspan="7">${squadDone} of ${squadTotal} sessions done${squadKm ? ` · ${Math.round(squadKm * 10) / 10} km planned` : ''}</td>
+        <td class="sb-total"><span class="sb-total-main">${squadTotal ? Math.round(squadDone / squadTotal * 100) : 0}%</span></td>
+      </tr>
+    </tfoot>
+  </table>
+  <div class="squad-board-key">● submitted &nbsp; ◐ completed &nbsp; ○ not logged &nbsp; ✕ missed &nbsp; ⚑ awaiting review</div>`;
+}
+
+// Adding from the board switches the editor to that athlete first, so the new
+// session is created against the right person.
+function squadBoardAdd(code, dateISO) {
+  setProgAthlete(code);
+  openPlanSession(null, dateISO);
 }
 
 function updatePlanningBadge() {
@@ -4259,6 +4497,8 @@ function openPlanSession(id, dateISO) {
   document.getElementById('ps-title').textContent = row ? 'Edit Session' : 'Plan Session';
   document.getElementById('ps-sub').textContent = (_progAthlete || '') + (row?.planned_date ? ' · ' + fmtDate(row.planned_date) : dateISO ? ' · ' + fmtDate(dateISO) : '');
   document.getElementById('ps-delete').style.display = row ? '' : 'none';
+  document.getElementById('ps-duplicate').style.display = row ? '' : 'none';
+  document.getElementById('ps-move').style.display = row ? '' : 'none';
 
   // Library template (searchable)
   document.getElementById('ps-lib').value = row?.library_id || '';
@@ -4584,6 +4824,108 @@ async function deletePlanSession() {
   closePlanSession();
   renderPlanGrid();
   updatePlanningBadge();
+}
+
+// ── Move and duplicate ───────────────────────────────────────────────────────
+// Two of the three most common programming edits (the third is editing in
+// place). Both previously meant opening the session, retyping the date, and for
+// a duplicate re-entering every field by hand.
+
+// Deliberately a prompt rather than drag-and-drop: a coach moving a session
+// almost always knows the date they want, and a date entry works identically on
+// the squad board, the week grid and on mobile.
+function _askPlanDate(message, current) {
+  const answer = window.prompt(`${message}\n\nDate (YYYY-MM-DD):`, current || '');
+  if (answer === null) return null;
+  const date = String(answer).trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(Date.parse(`${date}T00:00:00`))) {
+    alert('Enter a date as YYYY-MM-DD, for example 2026-09-14.');
+    return null;
+  }
+  return date;
+}
+
+// Week labels are the programme's own numbering, so a session moved into a
+// different calendar week must not carry the old label with it.
+function _weekLabelForDate(code, dateISO) {
+  const monday = _mondayOf(dateISO);
+  const neighbours = _planRowsForWeek(code, new Date(`${monday}T00:00:00`));
+  return neighbours.map(r => r.week_label).find(Boolean) || null;
+}
+
+async function movePlanSession() {
+  if (!_psEditingId) return;
+  const row = _planRowsSB.find(r => r.id === _psEditingId);
+  if (!row) return;
+  if (_modalDirty('ps-overlay') && !confirm('This session has unsaved edits. Move it anyway and lose them?')) return;
+
+  const date = _askPlanDate(`Move "${row.title || 'this session'}" to a different day.`, row.planned_date);
+  if (!date || date === row.planned_date) return;
+
+  const fields = { planned_date: date };
+  const label = _weekLabelForDate(row.athlete_code, date);
+  if (label && label !== row.week_label) fields.week_label = label;
+
+  try {
+    await maPost({ action: 'plan_update', id: _psEditingId, fields });
+  } catch (error) {
+    alert('Move failed: ' + error.message);
+    return;
+  }
+  Object.assign(row, fields);
+  closePlanSession();
+  renderProgramming();
+  updatePlanningBadge();
+  workflowNotice(`${row.title || 'Session'} moved to ${fmtDate(date)}`);
+}
+
+async function duplicatePlanSession() {
+  if (!_psEditingId) return;
+  const row = _planRowsSB.find(r => r.id === _psEditingId);
+  if (!row) return;
+
+  const suggestion = shiftIsoDay(row.planned_date, 7);
+  const date = _askPlanDate(`Copy "${row.title || 'this session'}" to another day.`, suggestion);
+  if (!date) return;
+
+  // Everything the coach prescribed travels with the copy. Identity, status and
+  // the athlete's own completion state deliberately do not.
+  const clone = {
+    athlete_code: row.athlete_code,
+    title: row.title,
+    session_type: row.session_type,
+    planned_date: date,
+    week_label: _weekLabelForDate(row.athlete_code, date) || row.week_label,
+    status: 'Planned',
+    library_id: row.library_id,
+    run_details: row.run_details,
+    intensity: row.intensity,
+    distance_km: row.distance_km,
+    target_pace: row.target_pace,
+    warm_up: row.warm_up,
+    intervals: row.intervals,
+    working_pace: row.working_pace,
+    rest: row.rest,
+    cool_down: row.cool_down,
+    notes: row.notes,
+  };
+
+  let created;
+  try {
+    created = await maPost({ action: 'plan_insert', row: clone });
+  } catch (error) {
+    alert('Duplicate failed: ' + error.message);
+    return;
+  }
+  const inserted = Array.isArray(created?.rows) ? created.rows[0] : null;
+  if (inserted) {
+    _planRowsSB.push(inserted);
+    usePlanningRows(_planRowsSB);
+  }
+  closePlanSession();
+  renderProgramming();
+  updatePlanningBadge();
+  workflowNotice(`${row.title || 'Session'} copied to ${fmtDate(date)}`);
 }
 
 // ── Session library view ──────────────────────────────────────────────────────
@@ -5504,6 +5846,8 @@ async function fetchCoachDataSB() {
       sessionLibrary: [],
       workoutSplits: [],
       applicationDecisions: [],
+      sessionReviews: [],
+      signalState: [],
       activityUploads: [],
       counts: {},
   };
@@ -5529,6 +5873,8 @@ async function fetchCoachDataSB() {
       sessionLibrary: Array.isArray(data.sessionLibrary) ? data.sessionLibrary : [],
       workoutSplits: Array.isArray(data.workoutSplits) ? data.workoutSplits : [],
       applicationDecisions: Array.isArray(data.applicationDecisions) ? data.applicationDecisions : [],
+      sessionReviews: Array.isArray(data.sessionReviews) ? data.sessionReviews : [],
+      signalState: Array.isArray(data.signalState) ? data.signalState : [],
       activityUploads: Array.isArray(data.activityUploads) ? data.activityUploads : [],
       counts: data.counts || {},
       integrity: data.integrity || { weeklyConflicts: [], weeklySuppressed: 0 },
@@ -5696,7 +6042,54 @@ function mergeWeekly(supaRows, notionRows) {
 }
 
 // ── Build ─────────────────────────────────────────────────────────────────────
-function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [], planning = [], applications = [], roster = [], activityUploads = []) {
+// ── Race context ─────────────────────────────────────────────────────────────
+// Everything here comes straight off an athlete_goals row plus the programme
+// week already computed. Nothing is inferred: if the athlete has not set a race
+// date, weeksToRace stays null and the header simply does not show it.
+function buildRaceContext(goal, weekNum, code) {
+  const progWeeks = getProgWeeks(code);
+  if (!goal) return { raceName: null, raceDate: null, daysToRace: null, weeksToRace: null, isPast: false, peakWeek: null, isPeakWeek: false, progWeeks };
+
+  const raceName = String(goal.goal_race || '').trim() || null;
+  const rawDate  = String(goal.race_date || '').slice(0, 10);
+  const raceDate = /^\d{4}-\d{2}-\d{2}$/.test(rawDate) ? rawDate : null;
+
+  let daysToRace = null;
+  let weeksToRace = null;
+  if (raceDate) {
+    const today = localDateStr(new Date());
+    daysToRace = Math.round((new Date(raceDate + 'T00:00:00') - new Date(today + 'T00:00:00')) / 86400000);
+    // Race day itself is "0 weeks"; anything later rounds up so 8 days reads as
+    // 2 weeks out rather than 1.
+    weeksToRace = daysToRace <= 0 ? 0 : Math.ceil(daysToRace / 7);
+  }
+
+  const peak = parseInt(goal.peak_week, 10);
+  const peakWeek = Number.isFinite(peak) ? peak : null;
+
+  return {
+    raceName,
+    raceDate,
+    daysToRace,
+    weeksToRace,
+    isPast: daysToRace !== null && daysToRace < 0,
+    peakWeek,
+    isPeakWeek: peakWeek !== null && typeof weekNum === 'number' && weekNum === peakWeek,
+    progWeeks,
+  };
+}
+
+// Human phrasing for the athlete header. Kept out of the template so the
+// "this week" / "next week" / past-race cases are all in one place.
+function raceCountdownLabel(race) {
+  if (!race || race.weeksToRace === null) return null;
+  if (race.isPast) return 'Race complete';
+  if (race.daysToRace === 0) return 'Race day';
+  if (race.daysToRace <= 7) return `${race.daysToRace} day${race.daysToRace === 1 ? '' : 's'} out`;
+  return `${race.weeksToRace} weeks out`;
+}
+
+function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [], planning = [], applications = [], roster = [], activityUploads = [], goals = []) {
   const c90 = dago(90), c7 = dago(7);
   const map = {};
   const masterIds = new Set();
@@ -5721,6 +6114,18 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [
   // data so a coach with only planned sessions (or no recent rows) still gets a
   // card and their Supabase data can be matched onto it below.
   COACHES.forEach(ens);
+
+  // athlete_goals is the portal's own goal/race record. /api/coach-data has
+  // always returned it; until now nothing consumed it, so race context did not
+  // exist anywhere in the dashboard. One row per athlete, newest wins.
+  const goalsByCode = {};
+  (goals || []).forEach(r => {
+    const code = nid(r.athlete_code || r.athlete_name);
+    if (!code) return;
+    const stamp = String(r._updatedAt || r._submittedAt || '');
+    const prev = goalsByCode[code];
+    if (!prev || stamp >= String(prev._updatedAt || prev._submittedAt || '')) goalsByCode[code] = r;
+  });
 
   const startDates = {};
   athleteDb.forEach(r => {
@@ -6195,6 +6600,8 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [
       checkinStreak,
       compliance4w,
       profile: athleteProfiles[a.id] || null,
+      goal: goalsByCode[a.id] || null,
+      race: buildRaceContext(goalsByCode[a.id] || null, wkNum, a.id),
       displayName: rosterByCode.get(a.id)?.name || athleteProfiles[a.id]?.Name || a.id,
       effectiveStartDate: startDates[a.id] || null,
       isCoach: COACHES.has(a.id),
@@ -6305,9 +6712,16 @@ function render({ athletes, coaches, applications = [], dataHealth = null, syncA
   if (alertCount > 0) badge.classList.add('red'); else badge.classList.remove('red');
 
   document.getElementById('tab-apps-count').textContent  = applications.length || '—';
-  document.getElementById('tab-sync-count').textContent  = syncAudit.filter(r => r.severity !== 'good').length || '✓';
+  document.getElementById('tab-pipeline-count').textContent = applications.length || '—';
+  const syncIssues = syncAudit.filter(r => r.severity !== 'good').length;
+  const syncBadge = document.getElementById('tab-sync-count');
+  syncBadge.textContent = syncIssues || '✓';
+  // Sync sits behind the Settings menu now, so its badge is the only signal a
+  // coach gets that data health has degraded.
+  syncBadge.classList.toggle('red', syncIssues > 0);
 
   renderCommandCenter(athletes, applications, dataHealth);
+  publishClientSignals(athletes);
   window.DP_ACTIONS?.setContext(athletes, dataHealth);
 
   // Data-health cards live on the Sync tab now
@@ -6339,130 +6753,318 @@ function athleteLabel(a) {
   return a?.displayName || a?.id || 'Athlete';
 }
 
+// ── Session review ───────────────────────────────────────────────────────────
+// Which athlete-days a coach has already read. Absence of a review is what puts
+// a day in the review queue, so marking one here clears it there.
+let _sessionReviews = new Map();
+const _reviewPending = new Set();
+
+function useSessionReviewRows(rows) {
+  _sessionReviews = new Map();
+  (rows || []).forEach(row => {
+    const code = nid(row.athlete_code);
+    const date = String(row.session_date || '').slice(0, 10);
+    if (code && date) _sessionReviews.set(`${code}|${date}`, row);
+  });
+}
+
+function isDayReviewed(code, date) {
+  return _sessionReviews.has(`${nid(code)}|${date}`);
+}
+
+// Only days with submitted training are reviewable — an empty day is not work
+// a coach can be behind on.
+function buildDayReviewControl(code, date, submittedCount) {
+  if (!submittedCount) return '';
+  const key = `${nid(code)}|${date}`;
+  const row = _sessionReviews.get(key);
+  const busy = _reviewPending.has(key);
+  const who = row?.reviewed_by ? ` ${esc(row.reviewed_by)}` : '';
+  return `<button type="button" class="wd-review${row ? ' is-reviewed' : ''}"
+    onclick="event.stopPropagation();toggleDayReview('${esc(code)}','${date}')"
+    title="${row ? 'Reviewed' + (who ? ' by' + who : '') + '. Click to reopen.' : 'Mark this day reviewed'}"
+    ${busy ? 'disabled' : ''}>${busy ? '…' : row ? `✓ Reviewed${who}` : 'Mark reviewed'}</button>`;
+}
+
+async function toggleDayReview(code, date) {
+  const key = `${nid(code)}|${date}`;
+  if (_reviewPending.has(key)) return;
+  const reviewed = _sessionReviews.has(key);
+  _reviewPending.add(key);
+  _drawFP();
+  try {
+    if (reviewed) {
+      await maPost({ action: 'session_unreview', code, session_date: date });
+      _sessionReviews.delete(key);
+      workflowNotice(`${code} · ${fmtDate(date)} reopened for review`);
+    } else {
+      const result = await maPost({ action: 'session_review', code, session_date: date });
+      _sessionReviews.set(key, {
+        athlete_code: code,
+        session_date: date,
+        reviewed_by: result?.reviewedBy || null,
+        reviewed_at: new Date().toISOString(),
+      });
+      workflowNotice(`${code} · ${fmtDate(date)} marked reviewed`);
+    }
+    window.DP_TRIAGE?.reload();
+  } catch (error) {
+    workflowNotice(`Could not update review: ${error.message}`, 'error');
+  } finally {
+    _reviewPending.delete(key);
+    _drawFP();
+  }
+}
+
+// ── Client contribution to the decision queue ────────────────────────────────
+// buildActionList sees things the light triage endpoint cannot: niggle text,
+// stress and motivation scores, sleep trend, nutrition against target, weight
+// drift. Rather than render those in a second list, they are handed to the
+// queue as rows of the same shape, deduped there against the server's ranking.
+function publishClientSignals(ath) {
+  const rows = (ath || [])
+    .map(a => {
+      const derived = derivedSignalsFor(a);
+      const critical = [...(a.actions?.critical || []), ...derived.critical];
+      const watch = [...(a.actions?.watch || []), ...derived.watch];
+      const all = [...critical, ...watch];
+      if (!all.length || a.acked) return null;
+      return {
+        athleteCode: a.id,
+        athleteName: athleteLabel(a),
+        flag: 'client_alert',
+        severity: critical.length ? 'critical' : 'medium',
+        // Below every server band except the reserved pace-mismatch slot, so a
+        // server-ranked signal always leads the queue.
+        priority: (critical.length ? 1600 : 1200) + Math.min(99, all.length),
+        signal: all[0] || 'Review this athlete',
+        also: all.slice(1),
+        fingerprint: _ackSig(a),
+        action: derived.action || { type: 'open_athlete', label: 'Open athlete', athleteCode: a.id },
+      };
+    })
+    .filter(Boolean);
+  window.DP_TRIAGE?.setClientSignals(rows);
+}
+
+// ── Derived signals ──────────────────────────────────────────────────────────
+// Phase 3 additions to the queue. Each needs the full dataset (weekly volume
+// history, the strength log blob), which the light triage endpoint deliberately
+// does not load, so they are computed here and merged into the same queue.
+//
+// Each one states a decision, not a measurement, and each is suppressed when it
+// cannot be supported by enough data rather than firing on thin evidence.
+function derivedSignalsFor(a) {
+  const RUN = window.DP_RUN;
+  const STRENGTH = window.DP_STRENGTH;
+  const critical = [];
+  const watch = [];
+  let action = null;
+
+  // ── Load spike ──
+  if (RUN) {
+    const volume = _programmeVolumeData(a);
+    const weeks = volume ? RUN.weeklyLoad(volume.weeks) : [];
+    const current = weeks.find(w => w.isCurrent);
+    if (current?.isSpike) {
+      const race = a.race && !a.race.isPast && a.race.weeksToRace != null && a.race.weeksToRace <= 3
+        ? ` entering a taper with ${a.race.weeksToRace} week${a.race.weeksToRace === 1 ? '' : 's'} to ${a.race.raceName || 'race day'}`
+        : '';
+      const line = `Volume ${current.actual}km is ${current.deltaPct}% above the four-week baseline${race}.`;
+      if (current.deltaPct >= 40 || race) critical.push(line); else watch.push(line);
+      action = { type: 'review', label: 'Adjust week', athleteCode: a.id };
+    } else if (current?.isDrop && current.rollingWeeks >= 3) {
+      watch.push(`Volume ${current.actual}km is ${Math.abs(current.deltaPct)}% below the four-week baseline.`);
+    }
+  }
+
+  // ── Wellness decline ──
+  // Two consecutive check-ins, so a single bad week is not a signal.
+  const recovery = (a.weeklies || []).slice(0, 3)
+    .map(calcRecoveryScore)
+    .filter(v => v !== null && v !== undefined);
+  if (recovery.length >= 3) {
+    const drop = recovery[2] - recovery[0];
+    if (drop >= 2) {
+      const line = `Recovery ${recovery[0]}/10, down ${Math.round(drop * 10) / 10} over two weeks.`;
+      if (recovery[0] <= 4) critical.push(line); else watch.push(line);
+    }
+  }
+
+  // ── Strength stalls ──
+  if (STRENGTH) {
+    try {
+      const history = athleteStrengthHistory(a);
+      if (history?.size) {
+        const prescribed = prescribedExercises(a, dagoStr(56));
+        const rows = STRENGTH.summariseExercises(history, {
+          prescribedCounts: prescribed.counts,
+          prescriptions: prescribed.prescriptions,
+          since: dagoStr(56),
+        });
+        const stalled = rows.filter(r => r.isStalled);
+        const skipped = rows.filter(r => r.isSkipped);
+        if (stalled.length >= 2) {
+          watch.push(`${stalled.length} lifts stalled: ${stalled.slice(0, 3).map(r => r.name).join(', ')}.`);
+          action = action || { type: 'open_strength', label: 'Open strength', athleteCode: a.id };
+        }
+        if (skipped.length) {
+          watch.push(`${skipped[0].name} done ${skipped[0].done} of ${skipped[0].prescribed} times.`);
+          action = action || { type: 'open_strength', label: 'Open strength', athleteCode: a.id };
+        }
+      }
+    } catch (error) {
+      console.warn('[signals] strength', error);
+    }
+  }
+
+  // ── RPE against the session's own expectation ──
+  // Only easy work has an unambiguous expected effort, so this deliberately
+  // only fires there: an RPE 9 threshold session is the prescription working.
+  if (RUN) {
+    const recent = athleteRunSessions(a).slice(-6)
+      .filter(run => run.rpe != null && RUN.classifySession(run.name, run.type) === 'easy');
+    const hard = recent.filter(run => run.rpe >= 7);
+    if (hard.length >= 2) {
+      watch.push(`${hard.length} easy runs logged at RPE 7 or above in the last six sessions.`);
+    }
+  }
+
+  return { critical, watch, action };
+}
+
+// Opens an athlete on a given tab, optionally scrolled to one day. Used by the
+// queue and the review rail so "Review session" lands on the session rather
+// than on the athlete's overview.
+function openAthleteFromTriage(code, options = {}) {
+  if (!code) return;
+  if (options.tab) {
+    _fpaTab = FPA_TAB_KEYS.has(options.tab) ? options.tab : _fpaTab;
+    try { localStorage.setItem('dp_fpa_tab', _fpaTab); } catch {}
+  }
+  const open = () => {
+    showFP(code);
+    if (!options.date) return;
+    // The ledger renders newest-first inside the Training panel; give it a frame
+    // to paint before scrolling to the day.
+    requestAnimationFrame(() => {
+      const row = document.querySelector(`#fp-body [data-wd-date="${CSS.escape(options.date)}"]`);
+      if (row) {
+        row.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        row.classList.add('is-focused');
+        setTimeout(() => row.classList.remove('is-focused'), 2400);
+      }
+    });
+  };
+  if (!_fullDashboardLoaded) {
+    switchTab('athletes');
+    load().then(open).catch(() => {});
+    return;
+  }
+  open();
+}
+
+// ── Squad status ─────────────────────────────────────────────────────────────
+// Six squad-level vitals and a one-line-per-athlete strip of today's work.
+// The priority list and "Coach Next Actions" panel that used to live here were
+// removed: they answered "who needs me today" with a third rule set, alongside
+// the server triage queue and the coach_actions panel. That question now has
+// exactly one answer, in the decision queue below.
 function renderCommandCenter(ath, apps = [], health = null) {
   const el = document.getElementById('command-center');
   if (!el) return;
 
-  const red = ath.filter(a => a.actions?.severity === 'red' && !a.acked);
-  const amber = ath.filter(a => a.actions?.severity === 'amber' && !a.acked);
-  const ackedN = ath.filter(a => a.acked).length;
   const dueCheckins = ath.filter(a => a.checkinDue);
-  const missing = dueCheckins.filter(a => a.isStale);
   const checkedIn = dueCheckins.filter(a => a.hasRecent).length;
   const coverage = dueCheckins.length ? Math.round((checkedIn / dueCheckins.length) * 100) : 100;
-  const avgRecoveryVals = ath.map(a => a.recoveryScore).filter(v => v !== null && !isNaN(v));
-  const avgRecovery = avgRecoveryVals.length
-    ? (avgRecoveryVals.reduce((s, v) => s + v, 0) / avgRecoveryVals.length).toFixed(1)
-    : null;
 
-  const priorityRows = [...red, ...amber].slice(0, 6).map(a => {
-    const reason = [...(a.actions?.critical || []), ...(a.actions?.watch || [])][0] || 'Review this athlete';
-    const sev = a.actions?.severity === 'red' ? 'red' : 'amber';
-    return `<div class="cc-athlete">
-      <button class="cc-athlete-open" type="button" onclick="showFP('${esc(a.id)}')">
-        <div class="cc-athlete-name">${esc(athleteLabel(a))}</div>
-        <div class="cc-athlete-reason">${esc(reason)}</div>
-      </button>
-      <div class="cc-athlete-actions">
-        <span class="cc-chip ${sev}">${sev === 'red' ? 'Act' : 'Watch'}</span>
-        <button class="cc-ack-btn" type="button" onclick="ackAlert('${esc(a.id)}')" title="Acknowledge for Karl and Alex until something changes" ${_ackPending.has(a.id) ? 'disabled' : ''}>${_ackPending.has(a.id) ? '…' : '✓'}</button>
-      </div>
-    </div>`;
-  }).join('');
-
-  const missingRows = missing.slice(0, 5).map(a => {
-    const last = a.weekly?.['Week Ending'] ? `Last ${fmtDate(a.weekly['Week Ending'])}` : 'No check-in data';
-    return `<button class="cc-athlete" type="button" onclick="showFP('${esc(a.id)}')">
-      <div>
-        <div class="cc-athlete-name">${esc(athleteLabel(a))}</div>
-        <div class="cc-athlete-reason">${esc(last)}</div>
-      </div>
-      <span class="cc-chip red">Overdue</span>
-    </button>`;
-  }).join('');
-
-  const topActions = buildCoachActions(ath, apps);
-
-  // Squad-wide stats (merged in from the old summary bar)
-  // KM: prefer Strava weekly km (same source as the table), fall back to logged sessions
-  const totalKm = ath.reduce((s, a) => {
-    const skm = typeof _stravaKmCache !== 'undefined' ? _stravaKmCache[a.id]?.weeklyKm : null;
-    return s + (skm != null ? skm : (a.currRunKm || 0));
+  const kmDone = ath.reduce((sum, a) => {
+    const strava = typeof _stravaKmCache !== 'undefined' ? _stravaKmCache[a.id]?.weeklyKm : null;
+    return sum + (strava != null ? strava : (a.currRunKm || 0));
   }, 0);
+  const kmTarget = ath.reduce((sum, a) => sum + (parseFloat(a.target?.['Weekly KM Target']) || 0), 0);
+  const kmPct = kmTarget > 0 ? Math.round(kmDone / kmTarget * 100) : null;
+
   const compList = ath.filter(a => a.compliance !== null).map(a => a.compliance);
-  const avgComp  = compList.length ? Math.round(compList.reduce((x, y) => x + y, 0) / compList.length) : null;
+  const avgComp = compList.length ? Math.round(compList.reduce((x, y) => x + y, 0) / compList.length) : null;
+
+  const racingSoon = ath.filter(a =>
+    a.race?.weeksToRace !== null && a.race?.weeksToRace !== undefined &&
+    !a.race.isPast && a.race.weeksToRace <= 4
+  );
+
   const c7 = dago(7);
-  const prs7 = ath.reduce((s, a) => !a.prs?.recent ? s : s + a.prs.recent.filter(pr => new Date(pr.date) >= c7).length, 0);
+  const prs7 = ath.reduce((sum, a) =>
+    !a.prs?.recent ? sum : sum + a.prs.recent.filter(pr => new Date(pr.date) >= c7).length, 0);
 
-  const collapsed = _ccCollapsed();
-  const toggleLabel = collapsed ? `▼ ${red.length} act · ${amber.length} watch` : '▲ Collapse';
+  const tone = (v, good, mid) => v === null || v === undefined ? '' : v >= good ? 'green' : v >= mid ? '' : 'red';
 
-  el.innerHTML = `<div class="command-center${collapsed ? ' collapsed' : ''}">
-    <section class="cc-panel">
-      <div class="cc-hero">
-        <div>
-          <div class="cc-kicker">Coaching Command Center</div>
-          <div class="cc-title">This Week's Priorities</div>
-        </div>
-        <div class="cc-score">
-          <div class="cc-score-card" onclick="ccScoreDetail('act')" title="Show athletes"><div class="cc-score-num red">${red.length}</div><div class="cc-score-lbl">Act</div></div>
-          <div class="cc-score-card" onclick="ccScoreDetail('watch')" title="Show athletes"><div class="cc-score-num amber">${amber.length}</div><div class="cc-score-lbl">Watch</div></div>
-          <div class="cc-score-card" onclick="ccScoreDetail('checkins')" title="Show check-in status"><div class="cc-score-num green">${coverage}%</div><div class="cc-score-lbl">Check-ins</div></div>
-          <div class="cc-score-card" onclick="ccScoreDetail('prs')" title="Show PRs"><div class="cc-score-num str">${prs7}</div><div class="cc-score-lbl">PRs 7d</div></div>
-          <div class="cc-score-card" onclick="ccScoreDetail('km')" title="Show per-athlete km"><div class="cc-score-num run" id="cc-squad-km">${totalKm.toFixed(0)}</div><div class="cc-score-lbl">Squad KM</div></div>
-          <div class="cc-score-card" onclick="ccScoreDetail('comp')" title="Show per-athlete compliance"><div class="cc-score-num ${avgComp === null ? '' : avgComp >= 80 ? 'green' : avgComp >= 60 ? '' : 'red'}">${avgComp === null ? '—' : avgComp + '%'}</div><div class="cc-score-lbl">Avg Comp</div></div>
-        </div>
-        <button class="cc-toggle" onclick="toggleCommandCenter()">${toggleLabel}</button>
+  const vitals = [
+    { kind: 'roster',    num: ath.length,                              lbl: 'Athletes',      cls: '' },
+    { kind: 'checkins',  num: `${coverage}%`,                          lbl: 'Checked in',    cls: tone(coverage, 85, 60) },
+    { kind: 'km',        num: kmDone.toFixed(0),                       lbl: kmTarget ? `of ${kmTarget.toFixed(0)} km` : 'Squad km', cls: kmPct === null ? 'run' : tone(kmPct, 90, 70) },
+    { kind: 'comp',      num: avgComp === null ? '—' : `${avgComp}%`,  lbl: 'Avg adherence', cls: tone(avgComp, 80, 60) },
+    { kind: 'races',     num: racingSoon.length,                       lbl: 'Racing ≤4wk',   cls: racingSoon.length ? 'amber' : '' },
+    { kind: 'prs',       num: prs7,                                    lbl: 'PBs 7d',        cls: prs7 ? 'str' : '' },
+  ];
+
+  el.innerHTML = `<section class="squad-status">
+    <div class="squad-status-head">
+      <div>
+        <div class="cc-kicker">Squad</div>
+        <div class="cc-title">This week at a glance</div>
       </div>
-      <div class="cc-detail" id="cc-detail" style="display:none"></div>
-      <div class="cc-body">
-        <div class="cc-list">
-          <div class="cc-list-title">Highest Priority${ackedN ? ` <span class="cc-acked-note" onclick="ccScoreDetail('priority')" title="Show acknowledged">${ackedN} acked</span>` : ''} <span class="cc-list-count" onclick="ccScoreDetail('priority')" style="cursor:pointer" title="Show all">${red.length + amber.length}</span></div>
-          ${priorityRows || `<div class="cc-empty">No priority athletes right now</div>`}
-        </div>
-        <div class="cc-list">
-          <div class="cc-list-title">Overdue Check-ins <span class="cc-list-count" onclick="ccScoreDetail('checkins')" style="cursor:pointer" title="Show all">${missing.length}</span></div>
-          ${missingRows || `<div class="cc-empty">All due check-ins are covered</div>`}
-        </div>
-      </div>
-    </section>
-    <aside class="cc-panel cc-side">
-      <div class="cc-side-head">
-        <div class="cc-side-title">Coach Next Actions</div>
-        <div class="cc-side-sub">${avgRecovery ? `Squad recovery avg ${avgRecovery}/10` : 'Recovery average unavailable'} · ${apps.length} pipeline lead${apps.length === 1 ? '' : 's'}</div>
-      </div>
-      <div class="cc-actions">
-        ${topActions.map((t, i) => `<div class="cc-action">
-          <div class="cc-action-idx">${i + 1}</div>
-          <div>
-            <div class="cc-action-text">${esc(t.text)}</div>
-            <div class="cc-action-meta">${esc(t.meta)}</div>
-          </div>
-          ${t.athlete
-            ? `<button class="cc-action-btn" onclick="showFP('${esc(t.athlete)}')">Open</button>`
-            : t.kind === 'notifications'
-              ? `<button class="cc-action-btn" onclick="switchTab('notifications')">View</button>`
-              : `<button class="cc-action-btn" onclick="ccScoreDetail('${esc(t.kind || 'priority')}')">View</button>`}
-        </div>`).join('')}
-      </div>
-    </aside>
+      ${health?.loadedAt ? `<div class="squad-status-stamp">Updated ${health.loadedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>` : ''}
+    </div>
+    <div class="squad-vitals">
+      ${vitals.map(v => `<button type="button" class="squad-vital" onclick="ccScoreDetail('${v.kind}')" title="Show athletes">
+        <div class="squad-vital-num ${v.cls}">${esc(String(v.num))}</div>
+        <div class="squad-vital-lbl">${esc(v.lbl)}</div>
+      </button>`).join('')}
+    </div>
+    <div class="cc-detail" id="cc-detail" style="display:none"></div>
+    ${buildTodayStrip(ath)}
+  </section>`;
+}
+
+// One line per athlete: what is on today and whether it has come back yet.
+// Lets a coach see the squad's day without opening anything.
+function buildTodayStrip(ath) {
+  const todayISO = localDateStr(new Date());
+  const planDate = r => String(r['date:Planned Date:start'] || r['Planned Date'] || '').slice(0, 10);
+
+  const cells = ath.map(a => {
+    const planned = (a.allPlan || []).filter(r => planDate(r) === todayISO);
+    const logged = (a.sessions || []).filter(s => s._d === todayISO);
+    if (!planned.length && !logged.length) return null;
+
+    const restOnly = planned.length && planned.every(r =>
+      /^rest$/i.test(String(r['Session Type'] || r.Session || '').trim()));
+    const label = restOnly
+      ? 'Rest'
+      : (planned[0]?.Session || planned[0]?.['Session Type'] || logged[0]?.Session || 'Session');
+
+    // ● submitted, ○ prescribed and not yet back, — rest.
+    const mark = restOnly ? '—' : logged.length ? '●' : '○';
+    const state = restOnly ? 'rest' : logged.length ? 'done' : 'open';
+    return `<button type="button" class="today-cell is-${state}" onclick="openAthleteFromTriage('${esc(a.id)}',{tab:'training'})">
+      <span class="today-cell-name">${esc(athleteLabel(a))}</span>
+      <span class="today-cell-session">${esc(String(label).slice(0, 22))}</span>
+      <span class="today-cell-mark" aria-hidden="true">${mark}</span>
+    </button>`;
+  }).filter(Boolean);
+
+  if (!cells.length) {
+    return `<div class="today-strip is-empty">Nothing prescribed or logged across the squad today.</div>`;
+  }
+
+  return `<div class="today-strip">
+    <div class="today-strip-head">Today · ${cells.length} athlete${cells.length === 1 ? '' : 's'}
+      <span class="today-strip-key">● submitted &nbsp; ○ prescribed &nbsp; — rest</span>
+    </div>
+    <div class="today-strip-grid">${cells.join('')}</div>
   </div>`;
 }
-
-// Collapse state: persisted; defaults to collapsed on mobile so the table is on screen one
-function _ccCollapsed() {
-  const v = localStorage.getItem('dp_cc_collapsed');
-  if (v !== null) return v === '1';
-  return window.innerWidth <= 600;
-}
-
-function toggleCommandCenter() {
-  localStorage.setItem('dp_cc_collapsed', _ccCollapsed() ? '0' : '1');
-  renderCommandCenter(_allAthletes, _allApplications, _dataHealth);
-}
-
-// ── Score card detail (click a hero number → athlete list) ──────────────────
-let _ccDetailKind = null;
 
 function _ccDetailContent(kind) {
   const ath = _allAthletes;
@@ -6471,38 +7073,26 @@ function _ccDetailContent(kind) {
       <div><div class="cc-athlete-name">${esc(athleteLabel(a))}</div><div class="cc-athlete-reason">${esc(sub)}</div></div>${chip}
     </button>`;
   const empty = msg => `<div class="cc-empty">${msg}</div>`;
-  const ackRow = a => {
-    const rec = _acks[a.id] || {};
-    const meta = `Acknowledged${rec.at ? ' · ' + fmtDate(rec.at.slice(0, 10)) : ''}${rec.by && rec.by !== 'coach' ? ' by ' + rec.by : ''}`;
-    return `<div class="cc-athlete acked">
-      <button class="cc-athlete-open" type="button" onclick="ccCloseDetail();showFP('${esc(a.id)}')"><div class="cc-athlete-name">${esc(athleteLabel(a))}</div><div class="cc-athlete-reason">${esc(meta)}</div></button>
-      <button class="cc-ack-btn" type="button" onclick="unackAlert('${esc(a.id)}')" title="Restore alert for all coaches" ${_ackPending.has(a.id) ? 'disabled' : ''}>${_ackPending.has(a.id) ? 'Saving…' : '↩ Restore'}</button>
-    </div>`;
-  };
-
-  if (kind === 'act') {
-    const list = ath.filter(a => a.actions?.severity === 'red' && !a.acked);
-    const acked = ath.filter(a => a.actions?.severity === 'red' && a.acked);
-    return { title: `Action Required (${list.length})`, html: (list.length || acked.length)
-      ? list.map(a => row(a, (a.actions.critical || [])[0] || 'Review this athlete', '<span class="cc-chip red">Act</span>')).join('') + acked.map(ackRow).join('')
-      : empty('No red-flag athletes right now') };
+  if (kind === 'roster') {
+    const sorted = [...ath].sort((x, y) => String(athleteLabel(x)).localeCompare(String(athleteLabel(y))));
+    return { title: `Squad (${sorted.length})`, html: sorted.length
+      ? sorted.map(a => row(a, a.weekNum === null || a.weekNum === undefined
+          ? 'No programme week'
+          : a.weekNum === 0 ? 'Discovery week' : `Week ${a.weekNum} of ${getProgWeeks(a.id)}`)).join('')
+      : empty('No athletes on the roster') };
   }
-  if (kind === 'priority') {
-    const reds = ath.filter(a => a.actions?.severity === 'red' && !a.acked);
-    const ambers = ath.filter(a => a.actions?.severity === 'amber' && !a.acked);
-    const acked = ath.filter(a => a.acked);
-    return { title: `Highest Priority (${reds.length + ambers.length})`, html: (reds.length + ambers.length + acked.length)
-      ? reds.map(a => row(a, (a.actions.critical || [])[0] || 'Review this athlete', '<span class="cc-chip red">Act</span>')).join('')
-        + ambers.map(a => row(a, (a.actions.watch || [])[0] || 'Review this athlete', '<span class="cc-chip amber">Watch</span>')).join('')
-        + acked.map(ackRow).join('')
-      : empty('No priority athletes right now') };
-  }
-  if (kind === 'watch') {
-    const list = ath.filter(a => a.actions?.severity === 'amber' && !a.acked);
-    const acked = ath.filter(a => a.actions?.severity === 'amber' && a.acked);
-    return { title: `Watch List (${list.length})`, html: (list.length || acked.length)
-      ? list.map(a => row(a, (a.actions.watch || [])[0] || 'Review this athlete', '<span class="cc-chip amber">Watch</span>')).join('') + acked.map(ackRow).join('')
-      : empty('Nobody on the watch list') };
+  if (kind === 'races') {
+    const racing = ath
+      .filter(a => a.race?.weeksToRace !== null && a.race?.weeksToRace !== undefined && !a.race.isPast)
+      .sort((x, y) => x.race.weeksToRace - y.race.weeksToRace);
+    return { title: `Upcoming races (${racing.length})`, html: racing.length
+      ? racing.map(a => {
+          const label = raceCountdownLabel(a.race);
+          const cls = a.race.weeksToRace <= 4 ? 'amber' : '';
+          return row(a, `${a.race.raceName || 'Race'} · ${fmtDate(a.race.raceDate)}`,
+            `<span class="cc-chip ${cls}">${esc(label || '')}</span>`);
+        }).join('')
+      : empty('No athlete has a goal race set. Athletes set this in their portal.') };
   }
   if (kind === 'checkins') {
     const due = ath.filter(a => a.checkinDue);
@@ -6582,55 +7172,10 @@ function ccCloseDetail() {
   _ccDetailKind = null;
 }
 
-function buildCoachActions(ath, apps) {
-  const actions = [];
-  const red = ath.filter(a => a.actions?.severity === 'red' && !a.acked);
-  const injury = ath.filter(a => {
-    if (!(a.hasCurrentCheckin || a.hasLastWeekCheckin)) return false; // stale check-ins don't count
-    const txt = `${a.weekly?.['Run Niggles'] || ''} ${a.weekly?.['Lifts Niggles'] || ''}`;
-    return isBad(txt) && /pain|injur|strain|physio|tear|niggle/i.test(txt);
-  });
-  const stale = ath.filter(a => a.checkinDue && a.isStale);
-  const lowFuel = ath.filter(a => (a.actions?.critical || []).some(t => /calorie|under-fuelling/i.test(t)));
-  const lowCompliance = ath.filter(a => a.complianceActionable && a.compliance !== null && a.compliance < 70);
-  const newApps = apps.filter(r => !String(r['Current Status'] || '').toLowerCase().includes('reject'));
-
-  const pushAth = (type, list, textFn, meta) => {
-    list.slice(0, 2).forEach(a => actions.push({ type, athlete: a.id, text: textFn(a), meta }));
-  };
-
-  pushAth('act', red, a => {
-    const reason = (a.actions?.critical || a.actions?.watch || [])[0] || 'Review this athlete';
-    return `${athleteLabel(a)}: ${reason}`;
-  }, 'Contact today');
-  pushAth('injury', injury.filter(a => !red.includes(a)), a => `${athleteLabel(a)}: review niggle note before next run/lift adjustment.`, 'Programming check');
-  pushAth('fuel', lowFuel.filter(a => !red.includes(a)), a => `${athleteLabel(a)}: check fuelling before increasing load.`, 'Nutrition');
-  pushAth('compliance', lowCompliance.filter(a => !red.includes(a) && !lowFuel.includes(a)), a => `${athleteLabel(a)}: audit missed sessions and blockers.`, 'Adherence');
-
-  // Do not repeat the same overdue check-in once it is already one of the red
-  // athlete actions above. The side panel should add information, not echo it.
-  const staleNotAlreadyShown = stale.filter(a => !red.slice(0, 2).includes(a));
-  if (staleNotAlreadyShown.length) actions.push({
-    type: 'stale',
-    athlete: staleNotAlreadyShown[0].id,
-    text: `${athleteLabel(staleNotAlreadyShown[0])}: chase overdue check-in${staleNotAlreadyShown.length > 1 ? `, plus ${staleNotAlreadyShown.length - 1} more` : ''}.`,
-    meta: 'Data capture',
-  });
-  if (newApps.length) actions.push({
-    type: 'apps',
-    kind: 'notifications',
-    text: `Triage ${newApps.length} active pipeline lead${newApps.length === 1 ? '' : 's'}.`,
-    meta: 'Pipeline',
-  });
-  if (!actions.length) actions.push({
-    type: 'clear',
-    kind: 'comp',
-    text: 'No urgent issues. Confirm this week is loaded correctly and look for positive PR moments.',
-    meta: 'Maintenance',
-  });
-
-  return actions.slice(0, 5);
-}
+// buildCoachActions() was removed with the Command Center's "Coach Next
+// Actions" panel. It derived a third to-do list from the same athlete data the
+// decision queue already ranks, so an athlete could appear in the queue, in
+// that panel and in coach_actions, three times with three wordings.
 
 function buildHealthCards(health, ath, apps) {
   const rows = [
@@ -6655,409 +7200,74 @@ function setDashboardView(v) {
   applyFilters();
 }
 
+// ── Squad table: expanded row ────────────────────────────────────────────────
+// A preview, not a second athlete profile. This used to render a mini-profile
+// — week navigation, an action ribbon, performance bars, the daily log ledger,
+// the check-in panel and session counts — which is the workspace's job and
+// which a coach had to scroll past to reach the next athlete in the table.
+//
+// Three things only: why this athlete is flagged, what their week looks like,
+// and the two ways out.
 function buildTableExpandPanel(a) {
-  const weekOffset = _dashboardWeekOffset;
-  const isHistorical = weekOffset < 0;
-  const isFuture = weekOffset > 0;
-  const isCurrent = weekOffset === 0;
-  const selectedCtx = getSelectedWeekContext(a, weekOffset);
-
-  // ── Header
-  const fps = a.flags.map(f => `<span class="tflag ${f.t}">${esc(f.l)}</span>`).join('');
-  const wkBadge = selectedCtx.selectedWeekNum !== null ? `<span class="twkbadge" style="font-size:11px">${fmtWk(selectedCtx.selectedWeekNum)}</span>` : '';
-  const dmBtn = `<button class="fp-open-btn" onclick="event.stopPropagation();copyDM('${esc(a.id)}')" style="padding:4px 10px;font-size:10px">💬 DM</button>`;
-  const fullBtn = `<button class="fp-open-btn" onclick="event.stopPropagation();showFP('${esc(a.id)}')" style="padding:4px 10px;font-size:10px">⤢ Full Page</button>`;
-
+  const ctx = getSelectedWeekContext(a, _dashboardWeekOffset);
   const safeIdH = a.id.replace(/\W+/g, '-').toLowerCase();
-  const header = `<div class="texp-header" onclick="toggleTableRow('${safeIdH}')" style="cursor:pointer" title="Click to collapse">
-    <div class="texp-name">${esc(a.id)}${fps}<span style="font-family:var(--mono);font-size:9px;color:var(--dim);font-weight:400;margin-left:6px;text-transform:none;letter-spacing:0">▲ collapse</span></div>
-    <div class="texp-actions">${wkBadge}${dmBtn}${fullBtn}</div>
-  </div>`;
+  const fps = a.flags.map(f => `<span class="tflag ${f.t}">${esc(f.l)}</span>`).join('');
 
-  const selectedWeekLabel = isCurrent
-    ? 'Current Week'
-    : weekOffset === -1
-    ? 'Previous Week'
-    : weekOffset === 1
-    ? 'Next Week'
-    : isHistorical
-    ? `${Math.abs(weekOffset)} Weeks Ago`
-    : `${weekOffset} Weeks Ahead`;
-  const weekNav = `<div class="texp-week-nav">
-    <div class="texp-week-summary">
-      <div class="texp-week-kicker">Schedule View</div>
-      <div class="texp-week-selected">${selectedWeekLabel}${selectedCtx.weekLabel ? ` · ${selectedCtx.weekLabel}` : ''}</div>
-      <div class="texp-week-dates">${fmtDate(selectedCtx.weekStartStr)} → ${fmtDate(selectedCtx.weekEndStr)}</div>
-    </div>
-    <div class="texp-week-switch" role="group" aria-label="Select schedule week">
-      <button class="texp-week-btn ${weekOffset === -1 ? 'active' : ''}" onclick="event.stopPropagation();dashboardWeekSet(-1)" aria-pressed="${weekOffset === -1}">← Previous Week</button>
-      <button class="texp-week-btn ${isCurrent ? 'active' : ''}" onclick="event.stopPropagation();dashboardWeekReset()" aria-pressed="${isCurrent}">Current Week</button>
-      <button class="texp-week-btn ${weekOffset === 1 ? 'active' : ''}" onclick="event.stopPropagation();dashboardWeekSet(1)" aria-pressed="${weekOffset === 1}">Next Week →</button>
-    </div>
-  </div>`;
+  // ── Why they are here ──
+  const critical = a.actions?.critical || [];
+  const watch = a.actions?.watch || [];
+  const reasons = [...critical, ...watch].slice(0, 3);
+  const signalHtml = reasons.length
+    ? `<div class="texp-signal ${critical.length ? 'is-critical' : 'is-watch'}${a.acked ? ' is-acked' : ''}">
+        <div class="texp-signal-head">${critical.length ? 'Action required' : 'Watch'}${a.acked ? ' · resolved' : ''}</div>
+        <ul class="texp-signal-list">${reasons.map(r => `<li>${esc(r)}</li>`).join('')}</ul>
+      </div>`
+    : `<div class="texp-signal is-clear"><div class="texp-signal-head">Nothing flagged</div></div>`;
 
-  // ── Left panel: action ribbon + performance bars + current-week daily data
-
-  // Action ribbon
-  let ribbonHtml = '';
-  if (isCurrent && a.actions?.severity === 'red' && a.actions.critical?.length) {
-    const items = a.actions.critical.map(t => `• ${esc(t)}`).join('<br>');
-    ribbonHtml = `<div class="texp-action-ribbon red"><div class="texp-action-title">🚨 Action Required</div>${items}</div>`;
-  } else if (isCurrent && a.actions?.severity === 'amber' && a.actions.watch?.length) {
-    const items = a.actions.watch.map(t => `• ${esc(t)}`).join('<br>');
-    ribbonHtml = `<div class="texp-action-ribbon amber"><div class="texp-action-title">⚠ Watch</div>${items}</div>`;
+  // ── The week, one cell per day ──
+  const days = [];
+  for (let d = new Date(ctx.weekStart); localDateStr(d) <= ctx.weekEndStr; d.setDate(d.getDate() + 1)) {
+    days.push(localDateStr(new Date(d)));
   }
+  const planDate = r => String(r['date:Planned Date:start'] || r['Planned Date'] || '').slice(0, 10);
+  const todayISO = localDateStr(new Date());
 
-  // Recovery + KM bars
-  let recovBar = '';
-  if (a.recoveryScore !== null) {
-    const rc = a.recoveryScore >= 7.5 ? 'good' : a.recoveryScore >= 5 ? 'mid' : 'bad';
-    const pct = Math.round(a.recoveryScore / 10 * 100);
-    recovBar = `<div class="texp-bar-row">
-      <span class="texp-bar-lbl">Recovery</span>
-      <div class="texp-bar-track"><div class="texp-bar-fill ${rc}" style="width:${pct}%"></div></div>
-      <span class="texp-bar-val ${rc}">${a.recoveryScore}/10</span>
+  const strip = days.map((iso, i) => {
+    const planned = ctx.plan.filter(r => planDate(r) === iso);
+    const logged = (a.sessions || []).filter(sess => sess._d === iso);
+    const rest = planned.length && planned.every(r =>
+      /^rest$/i.test(String(r['Session Type'] || r.Session || '').trim()));
+    const state = rest ? 'rest' : logged.length ? 'done' : planned.length ? 'open' : 'none';
+    const label = rest ? 'Rest'
+      : (planned[0]?.Session || planned[0]?.['Session Type'] || logged[0]?.Session || (logged.length ? 'Logged' : '—'));
+    const needsReview = logged.length && !isDayReviewed(a.id, iso);
+    return `<div class="texp-day is-${state}${iso === todayISO ? ' is-today' : ''}">
+      <div class="texp-day-name">${PLAN_DAYS[i]}</div>
+      <div class="texp-day-label">${esc(String(label).slice(0, 16))}</div>
+      <div class="texp-day-mark">${state === 'done' ? '●' : state === 'open' ? '○' : state === 'rest' ? '—' : ''}${needsReview ? '<span class="texp-day-review" title="Submitted, not yet reviewed">⚑</span>' : ''}</div>
     </div>`;
-  }
-  let kmBar = '';
-  const _stravaKm = _stravaKmCache[a.id];
-  const km = _stravaKm?.weeklyKm != null ? _stravaKm.weeklyKm : (a.currRunKm || 0);
-  const kmSource = _stravaKm?.weeklyKm != null ? 'strava' : null;
+  }).join('');
+
+  const km = a.currRunKm || 0;
   const kmTarget = parseFloat(a.target?.['Weekly KM Target']) || 0;
-  if (km > 0 || kmTarget > 0) {
-    const pct = kmTarget > 0 ? Math.min(100, Math.round(km / kmTarget * 100)) : 100;
-    const label = kmTarget > 0 ? `${km} / ${kmTarget} km` : `${km} km`;
-    const srcChip = kmSource ? `<span style="font-size:8px;color:var(--run);font-family:var(--mono);margin-left:4px">${kmSource}</span>` : '';
-    kmBar = `<div class="texp-bar-row" data-km-bar="${esc(a.id)}" data-km-target="${kmTarget}">
-      <span class="texp-bar-lbl">Weekly KM</span>
-      <div class="texp-bar-track"><div class="texp-bar-fill pbar-fill run" style="width:${pct}%"></div></div>
-      <span class="texp-bar-val pbar-val run">${label}${srcChip}</span>
-    </div>`;
-  }
-  const perfBarsHtml = isCurrent && (recovBar || kmBar)
-    ? `<div class="texp-section"><div class="texp-label">Performance</div>${recovBar}${kmBar}</div>`
-    : '';
+  const summary = [
+    kmTarget ? `${km} / ${kmTarget} km` : km ? `${km} km` : null,
+    a.compliance !== null && a.compliance !== undefined ? `${a.compliance}% adherence` : null,
+    ctx.weekLabel,
+  ].filter(Boolean).join(' · ');
 
-  // ── Daily log: body + nutrition entries for the selected week
-  // Target macros (used for per-day chip signals)
-  const _dT = selectedCtx.target || a.target;
-  const _dTCal   = _dT?.Calories ? parseFloat(String(_dT.Calories).replace(/[^\d.]/g,'')) : null;
-  const _dTPro   = _dT?.Protein  ? parseFloat(String(_dT.Protein).replace(/[^\d.]/g,''))  : null;
-  const _dTCarb  = _dT?.Carbs    ? parseFloat(String(_dT.Carbs).replace(/[^\d.]/g,''))    : null;
-  const _dTFat   = _dT?.Fats     ? parseFloat(String(_dT.Fats).replace(/[^\d.]/g,''))     : null;
-  const _dTFibre = _dT?.Fibre    ? parseFloat(String(_dT.Fibre).replace(/[^\d.]/g,''))    : null;
-
-  const _DAYS_S = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-  const cwBodyEntries = (a.body || []).filter(r => {
-    const iso = String(r['date:Date:start'] || r.Date || '').split('T')[0];
-    return iso >= selectedCtx.weekStartStr && iso <= selectedCtx.weekEndStr;
-  });
-  const cwNutrEntries = (a.nutrition || []).filter(r => {
-    const iso = String(r['date:Date:start'] || r.Date || '').split('T')[0];
-    return iso >= selectedCtx.weekStartStr && iso <= selectedCtx.weekEndStr;
-  });
-
-  // Merge by date ISO string
-  const _dailyMap = {};
-  cwBodyEntries.forEach(r => {
-    const iso = (r['date:Date:start'] || r.Date || '').split('T')[0];
-    if (iso) { if (!_dailyMap[iso]) _dailyMap[iso] = {}; _dailyMap[iso].body = r; }
-  });
-  cwNutrEntries.forEach(r => {
-    const iso = (r['date:Date:start'] || r.Date || '').split('T')[0];
-    if (iso) { if (!_dailyMap[iso]) _dailyMap[iso] = {}; _dailyMap[iso].nutr = r; }
-  });
-
-  const _sortedDates = Object.keys(_dailyMap).sort();
-
-  let dailyRowsHtml = '';
-  if (_sortedDates.length === 0) {
-    dailyRowsHtml = `<div class="texp-daily-none">No daily data logged for this week</div>`;
-  } else {
-    dailyRowsHtml = _sortedDates.map(iso => {
-      const dt = new Date(iso + 'T12:00:00');
-      const dayLabel = `${_DAYS_S[dt.getDay()]} ${dt.getDate()}`;
-      const b = _dailyMap[iso].body;
-      const n = _dailyMap[iso].nutr;
-      const wt    = b?.Weight;
-      const enVal = parseFloat(b?.Energy);
-      const slVal = parseFloat(b?.['Sleep Score']);
-      const stVal = parseFloat(b?.Stress);
-      const soVal = parseFloat(b?.Soreness);
-      const calVal  = n?.Calories;
-      const proVal  = n?.Protein;
-      const carbVal = n?.Carbs;
-      const fatVal  = n?.Fats;
-      const fibreVal= n?.Fibre;
-      const chips = [];
-      if (wt != null && wt !== '')  chips.push(`<span class="texp-daily-chip"><span style="color:var(--dim)">wt</span> ${esc(String(wt))} kg</span>`);
-      if (calVal != null) {
-        let _calC = 'var(--text)';
-        if (_dTCal) { const _d = parseFloat(calVal) - _dTCal; _calC = Math.abs(_d) <= 100 ? 'var(--ok)' : _d < -100 ? 'var(--alert)' : 'var(--warn)'; }
-        chips.push(`<span class="texp-daily-chip"><span style="color:var(--dim)">cal</span> <span style="color:${_calC}">${Number(calVal).toLocaleString()}</span></span>`);
-      }
-      if (proVal != null) {
-        let _proC = 'var(--text)';
-        if (_dTPro) { const _d = parseFloat(proVal) - _dTPro; _proC = _d >= -5 ? 'var(--ok)' : 'var(--alert)'; }
-        chips.push(`<span class="texp-daily-chip"><span style="color:var(--dim)">P</span> <span style="color:${_proC}">${esc(String(proVal))}g</span></span>`);
-      }
-      if (carbVal != null) {
-        let _carbC = 'var(--text)';
-        if (_dTCarb) { const _d = parseFloat(carbVal) - _dTCarb; _carbC = Math.abs(_d) <= 10 ? 'var(--ok)' : _d < -10 ? 'var(--alert)' : 'var(--warn)'; }
-        chips.push(`<span class="texp-daily-chip"><span style="color:var(--dim)">C</span> <span style="color:${_carbC}">${esc(String(carbVal))}g</span></span>`);
-      }
-      if (fatVal != null) {
-        let _fatC = 'var(--text)';
-        if (_dTFat) { const _d = parseFloat(fatVal) - _dTFat; _fatC = Math.abs(_d) <= 5 ? 'var(--ok)' : _d < -5 ? 'var(--alert)' : 'var(--warn)'; }
-        chips.push(`<span class="texp-daily-chip"><span style="color:var(--dim)">F</span> <span style="color:${_fatC}">${esc(String(fatVal))}g</span></span>`);
-      }
-      if (fibreVal != null) {
-        let _fibC = 'var(--text)';
-        if (_dTFibre) { const _d = parseFloat(fibreVal) - _dTFibre; _fibC = _d >= -3 ? 'var(--ok)' : 'var(--alert)'; }
-        chips.push(`<span class="texp-daily-chip"><span style="color:var(--dim)">fibre</span> <span style="color:${_fibC}">${esc(String(fibreVal))}g</span></span>`);
-      }
-      if (!isNaN(enVal)) {
-        const ec = enVal >= 7 ? 'var(--ok)' : enVal >= 5 ? 'var(--warn)' : 'var(--alert)';
-        chips.push(`<span class="texp-daily-chip"><span style="color:var(--dim)">nrg</span> <span style="color:${ec}">${enVal}</span></span>`);
-      }
-      if (!isNaN(slVal)) {
-        const sc = slVal >= 7.5 ? 'var(--ok)' : slVal >= 6 ? 'var(--warn)' : 'var(--alert)';
-        chips.push(`<span class="texp-daily-chip"><span style="color:var(--dim)">slp</span> <span style="color:${sc}">${slVal}</span></span>`);
-      }
-      if (!isNaN(stVal)) {
-        const stc = stVal <= 4 ? 'var(--ok)' : stVal <= 6 ? 'var(--warn)' : 'var(--alert)';
-        chips.push(`<span class="texp-daily-chip"><span style="color:var(--dim)">str</span> <span style="color:${stc}">${stVal}</span></span>`);
-      }
-      if (!isNaN(soVal)) {
-        const soc = soVal <= 4 ? 'var(--ok)' : soVal <= 6 ? 'var(--warn)' : 'var(--alert)';
-        chips.push(`<span class="texp-daily-chip"><span style="color:var(--dim)">sor</span> <span style="color:${soc}">${soVal}</span></span>`);
-      }
-      const chipContent = chips.length ? chips.join('') : `<span style="font-family:var(--mono);font-size:9px;color:var(--dim)">—</span>`;
-      return `<div class="texp-daily-row">
-        <span class="texp-daily-day">${dayLabel}</span>
-        <div class="texp-daily-chips">${chipContent}</div>
-      </div>`;
-    }).join('');
-  }
-
-  // Weekly summary averages from daily data
-  const _avgVal = (entries, field) => {
-    const vals = entries.map(r => parseFloat(r?.[field])).filter(v => !isNaN(v));
-    return vals.length ? (vals.reduce((s,v) => s+v, 0) / vals.length) : null;
-  };
-  const avgWt   = _avgVal(cwBodyEntries, 'Weight');
-  const avgCal  = _avgVal(cwNutrEntries, 'Calories');
-  const avgPro  = _avgVal(cwNutrEntries, 'Protein');
-  const avgEn   = _avgVal(cwBodyEntries, 'Energy');
-  // Summary averages use same targets as daily chips (_dT*)
-  const summaryItems = [];
-  if (avgWt  !== null) summaryItems.push(`<div class="texp-daily-avg"><div class="texp-daily-avg-val">${avgWt.toFixed(1)}</div><div class="texp-daily-avg-lbl">Avg wt kg</div></div>`);
-  if (avgCal !== null) {
-    let calColor = 'var(--text)';
-    let calLbl = 'Avg cal';
-    if (_dTCal) {
-      const _d = avgCal - _dTCal;
-      calColor = Math.abs(_d) <= 100 ? 'var(--ok)' : _d < -100 ? 'var(--alert)' : 'var(--warn)';
-      calLbl = `Avg cal <span style="font-size:6px;opacity:.7">${Math.round(_dTCal).toLocaleString()} tgt</span>`;
-    }
-    summaryItems.push(`<div class="texp-daily-avg"><div class="texp-daily-avg-val" style="color:${calColor}">${Math.round(avgCal).toLocaleString()}</div><div class="texp-daily-avg-lbl">${calLbl}</div></div>`);
-  }
-  if (avgPro !== null) {
-    let proColor = 'var(--text)';
-    let proLbl = 'Avg protein';
-    if (_dTPro) {
-      const _d = avgPro - _dTPro;
-      proColor = _d >= -5 ? 'var(--ok)' : 'var(--alert)';
-      proLbl = `Avg protein <span style="font-size:6px;opacity:.7">${Math.round(_dTPro)}g tgt</span>`;
-    }
-    summaryItems.push(`<div class="texp-daily-avg"><div class="texp-daily-avg-val" style="color:${proColor}">${Math.round(avgPro)}g</div><div class="texp-daily-avg-lbl">${proLbl}</div></div>`);
-  }
-  if (avgEn  !== null) {
-    const ec = avgEn >= 7 ? 'var(--ok)' : avgEn >= 5 ? 'var(--warn)' : 'var(--alert)';
-    summaryItems.push(`<div class="texp-daily-avg"><div class="texp-daily-avg-val" style="color:${ec}">${avgEn.toFixed(1)}</div><div class="texp-daily-avg-lbl">Avg energy</div></div>`);
-  }
-  const summaryHtml = summaryItems.length >= 2
-    ? `<div class="texp-daily-summary" style="grid-template-columns:repeat(${Math.min(summaryItems.length,4)},1fr)">${summaryItems.join('')}</div>`
-    : '';
-
-  const dailySectionHtml = `<div class="texp-section">
-    <div class="texp-label">${selectedWeekLabel} — Daily Log</div>
-    ${dailyRowsHtml}
-    ${summaryHtml}
-  </div>`;
-
-  // Left panel header (selected week label)
-  const leftPanelHeader = `<div class="texp-ci-header">
-    <span class="texp-ci-header-label">${selectedWeekLabel}</span>
-    <span class="texp-ci-wk">${selectedCtx.selectedWeekNum !== null ? fmtWk(selectedCtx.selectedWeekNum) : ''}</span>
-    <span class="texp-ci-date">${fmtDate(selectedCtx.weekStartStr)} → ${fmtDate(selectedCtx.weekEndStr)}</span>
-  </div>`;
-
-  const leftPanel = `<div class="texp-left">
-    ${ribbonHtml}
-    ${leftPanelHeader}
-    ${perfBarsHtml}
-    ${dailySectionHtml}
-  </div>`;
-
-  // ── Right panel: WIP counts + plan rows
-  const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-  function fmtPlanDate(raw) {
-    if (!raw) return '—';
-    const iso = raw.split('T')[0];
-    const dt = new Date(iso + 'T12:00:00');
-    const day = DAYS[dt.getDay()] || '';
-    return `<span style="font-weight:700;color:var(--muted)">${day}</span> <span style="color:var(--dim)">${fmtDate(iso)}</span>`;
-  }
-
-  const activePlan = isCurrent ? (a.thisWeekPlan || []) : (selectedCtx.plan || []);
-
-  // Completion counts — "Done" requires a submitted log (or Notion = Completed).
-  // A box ticked WITHOUT a submitted log counts as "Marked", not Done.
-  const _sessDone = (r) => {
-    const id = r._id || r.id || '';
-    const notionStatus = (r['Status '] || r['Status'] || '').trim().toLowerCase();
-    return isSessionSubmitted(a.id, id) || notionStatus === 'completed';
-  };
-  const planDone   = activePlan.filter(_sessDone).length;
-  const planMarked = activePlan.filter(r => {
-    const id = r._id || r.id || '';
-    return !_sessDone(r) && isSessionTicked(a.id, id);
-  }).length;
-  const planMissed = activePlan.filter(r => (r['Status '] || r['Status'] || '').trim().toLowerCase() === 'missed').length;
-  const planTotal  = activePlan.length;
-
-  let wipHtml = '';
-  if (isFuture) {
-    const fPlan = selectedCtx.plan || [];
-    const fRun = fPlan.filter(r => { const t = r['Session Type'] || r['SessionType'] || ''; return RUN_SESSION_TYPES.has(t); });
-    const fStr = fPlan.filter(r => { const t = r['Session Type'] || r['SessionType'] || ''; return !RUN_SESSION_TYPES.has(t) && t; });
-    wipHtml = `<div class="texp-wip">
-      <div class="texp-wip-label">${a.weekNum !== null ? fmtWk(a.weekNum + weekOffset, true) : ''} — Upcoming</div>
-      <div class="texp-sess-row">
-        <div class="texp-scard"><div class="texp-snum run">${fRun.length}</div><div class="texp-slbl">Run</div></div>
-        <div class="texp-scard"><div class="texp-snum str">${fStr.length}</div><div class="texp-slbl">Strength</div></div>
+  return `<div class="texp-preview">
+    <div class="texp-header" onclick="toggleTableRow('${safeIdH}')" title="Click to collapse">
+      <div class="texp-name">${esc(athleteLabel(a))}${fps}</div>
+      <div class="texp-actions">
+        <button class="fp-open-btn" onclick="event.stopPropagation();openAthleteFromTriage('${esc(a.id)}',{tab:'overview'})">Open athlete</button>
+        <button class="fp-open-btn" onclick="event.stopPropagation();fpPlanWeek('${esc(a.id)}')">Adjust week</button>
       </div>
-    </div>`;
-  } else if (isHistorical) {
-    const hRun = (a.sessions || []).filter(s =>
-      s._d >= selectedCtx.weekStartStr && s._d <= selectedCtx.weekEndStr && s._isRun
-    );
-    const hStr = (a.sessions || []).filter(s =>
-      s._d >= selectedCtx.weekStartStr && s._d <= selectedCtx.weekEndStr && s._isStr
-    );
-    const compPill = planTotal > 0
-      ? `<span style="font-family:var(--mono);font-size:10px;margin-left:auto;color:${planDone===planTotal?'var(--ok)':planMissed>0?'var(--alert)':'var(--muted)'}">${planDone}/${planTotal} done${planMissed>0?` · <span style="color:var(--alert)">${planMissed} missed</span>`:''}</span>`
-      : '';
-    wipHtml = `<div class="texp-wip">
-      <div class="texp-wip-label" style="display:flex;align-items:center">${selectedCtx.weekLabel || 'Historical Week'} · ${fmtDate(selectedCtx.weekStartStr)} → ${fmtDate(selectedCtx.weekEndStr)}${compPill}</div>
-      <div class="texp-sess-row">
-        <div class="texp-scard"><div class="texp-snum run">${hRun.length}</div><div class="texp-slbl">Run logged</div></div>
-        <div class="texp-scard"><div class="texp-snum str">${hStr.length}</div><div class="texp-slbl">Str logged</div></div>
-      </div>
-      ${hRun.length === 0 && hStr.length === 0 ? `<div style="font-family:var(--mono);font-size:9px;color:var(--dim);margin-top:6px;text-transform:uppercase;letter-spacing:.06em">No sessions logged for this week</div>` : ''}
-    </div>`;
-  } else {
-    const rCount = a.currRunS.length;
-    const sCount = a.currStrS.length;
-    const prCount = a.prevRunS.length;
-    const psCount = a.prevStrS.length;
-    const noThis = rCount === 0 && sCount === 0;
-    const showPrev = noThis && (prCount > 0 || psCount > 0);
-    // Plan completion pill
-    const compPill = planTotal > 0
-      ? `<span style="font-family:var(--mono);font-size:10px;margin-left:auto;color:${planDone===planTotal?'var(--ok)':planMissed>0?'var(--alert)':'var(--muted)'}">${planDone}/${planTotal} done${planMarked>0?` · <span style="color:var(--amber)">${planMarked} marked</span>`:''}${planMissed>0?` · <span style="color:var(--alert)">${planMissed} missed</span>`:''}</span>`
-      : '';
-    wipHtml = `<div class="texp-wip">
-      <div class="texp-wip-label" style="display:flex;align-items:center">${a.weekNum !== null ? fmtWk(a.weekNum, true) : '—'} in progress · ends ${fmtDate(a.expectedWeekEnd)}${compPill}</div>
-      <div class="texp-sess-row">
-        <div class="texp-scard"><div class="texp-snum run">${rCount}</div><div class="texp-slbl">Run logged</div></div>
-        <div class="texp-scard"><div class="texp-snum str">${sCount}</div><div class="texp-slbl">Str logged</div></div>
-        ${a.scheduleCompliance !== null ? `<div class="texp-scard" style="margin-left:auto"><div class="texp-snum" style="font-size:14px;color:var(--muted)">${a.scheduleCompliance}%</div><div class="texp-slbl">Compliance</div></div>` : ''}
-      </div>
-      ${noThis && !showPrev ? `<div style="font-family:var(--mono);font-size:9px;color:var(--dim);margin-top:6px;text-transform:uppercase;letter-spacing:.06em">No sessions logged yet</div>` : ''}
-      ${showPrev ? `<div style="font-family:var(--mono);font-size:8px;color:var(--dim);margin-top:8px;text-transform:uppercase;letter-spacing:.06em">Last week</div>
-        <div class="texp-sess-row" style="margin-top:4px;opacity:.55">
-          <div class="texp-scard"><div class="texp-snum run">${prCount}</div><div class="texp-slbl">Run</div></div>
-          <div class="texp-scard"><div class="texp-snum str">${psCount}</div><div class="texp-slbl">Strength</div></div>
-        </div>` : ''}
-    </div>`;
-  }
-
-  // Plan rows — status-highlighted + run override
-  let planRowsHtml = '';
-  if (activePlan.length) {
-    planRowsHtml = activePlan.map(r => {
-      const d = r['date:Planned Date:start'] || r['Planned Date'] || '';
-      const dateStr = fmtPlanDate(d);
-      const rowId2 = r._id || r.id || '';
-      const notionStatus = (r['Status '] || r['Status'] || '').trim().toLowerCase();
-      const isDone   = isSessionSubmitted(a.id, rowId2) || notionStatus === 'completed';
-      const isMarked = !isDone && isSessionTicked(a.id, rowId2);  // ticked but no log submitted yet
-      const isMissed = !isDone && !isMarked && notionStatus === 'missed';
-      const isSick   = !isDone && !isMarked && notionStatus === 'sick';
-      // Row class based on completion
-      const rowCls2 = isDone ? 'texp-row-done' : isMarked ? 'texp-row-marked' : isMissed ? 'texp-row-missed' : isSick ? 'texp-row-sick' : 'texp-row-pending';
-      // Status chip
-      const statusChip = isDone
-        ? `<span class="texp-chip texp-chip-done">✓ Done</span>`
-        : isMarked
-        ? `<span class="texp-chip texp-chip-marked" title="Athlete ticked this but hasn't submitted a log yet">◔ Marked</span>`
-        : isMissed
-        ? `<span class="texp-chip texp-chip-missed">✗ Missed</span>`
-        : isSick
-        ? `<span class="texp-chip texp-chip-sick">SICK</span>`
-        : '';
-      const badge = sessionBadgeHTML(r['Session Type'] || r['SessionType'], r['Status '] || r['Status'], r.Session);
-      const origName = r.Session || r['Session Type'] || 'Session';
-      const nameStyle = isDone ? 'text-decoration:line-through;opacity:.55' : '';
-      const sType = r['Session Type'] || r['SessionType'] || '';
-      const rowId = r._id || r.id || '';
-      const isRunRow = !isDone && rowId && RUN_SESSION_TYPES.has(sType);
-      const ov = isRunRow ? getPlanOverride(rowId) : null;
-      const dispName = ov?.name || origName;
-      const distChip = ov?.dist ? `<span class="po-chip dist-chip overridden">${esc(ov.dist)} km</span>` : '';
-      const paceChip = ov?.pace ? `<span class="po-chip pace-chip overridden">${esc(ov.pace)}</span>` : '';
-      if (isRunRow) {
-        return `<div class="texp-plan-row ${rowCls2} sched-session-row--editable" data-po-id="${esc(rowId)}" data-po-orig="${esc(origName)}" data-po-date="${esc(d)}" onclick="openPlanOverride(this)" title="Click to override session">
-          <span class="texp-plan-date">${dateStr}</span>${badge}
-          <span class="texp-plan-name sched-session-name" style="${nameStyle}"><span class="po-name-text">${esc(dispName)}</span>${distChip}${paceChip}</span>
-          ${statusChip}<span class="po-edit-icon">✎</span>
-        </div>`;
-      }
-      return `<div class="texp-plan-row ${rowCls2}">
-        <span class="texp-plan-date">${dateStr}</span>${badge}
-        <span class="texp-plan-name" style="${nameStyle}">${esc(origName)}</span>
-        ${statusChip}
-      </div>`;
-    }).join('');
-  } else {
-    planRowsHtml = `<div class="texp-plan-none">No plan set for this week</div>`;
-  }
-
-  const thisWkLabel = selectedCtx.selectedWeekNum !== null
-    ? fmtWk(selectedCtx.selectedWeekNum)
-    : selectedWeekLabel;
-  const planSectionLabel = isCurrent
-    ? "Current Week's Plan"
-    : weekOffset === -1
-    ? "Previous Week's Plan"
-    : weekOffset === 1
-    ? "Next Week's Plan"
-    : "Selected Week's Plan";
-  const rightPanelHeader = `<div class="texp-ci-header">
-    <span class="texp-ci-header-label">${selectedWeekLabel}</span>
-    <span class="texp-ci-wk">${thisWkLabel}</span>
-    <span class="texp-ci-date">${fmtDate(selectedCtx.weekStartStr)} → ${fmtDate(selectedCtx.weekEndStr)}</span>
+    </div>
+    ${signalHtml}
+    <div class="texp-week-strip" aria-label="This week">${strip}</div>
+    ${summary ? `<div class="texp-week-summary-line">${esc(summary)}</div>` : ''}
   </div>`;
-
-  const rightPanel = `<div class="texp-right">
-    ${rightPanelHeader}
-    <div class="texp-section">${wipHtml}</div>
-    <div class="texp-section"><div class="texp-label">${planSectionLabel}</div>${planRowsHtml}</div>
-  </div>`;
-
-  return `${header}${weekNav}<div class="texp-panel">${leftPanel}${rightPanel}</div>`;
 }
 
 function toggleTableRow(safeId) {
@@ -8071,34 +8281,6 @@ function getSelectedWeekContext(a, weekOffset = 0) {
   return { weekOffset, weekStart, weekEnd, weekStartStr, weekEndStr, selectedWeekNum, weekLabel, weekly, target, plan };
 }
 
-function buildWeekJump(a, ctx) {
-  const programmeEnd = Math.max(getProgWeeks(a.id), typeof a.weekNum === 'number' ? a.weekNum : 0);
-  const isCurrentWeek = ctx.weekOffset === 0;
-  const selectedWeekLabel = ctx.selectedWeekNum === 0 ? 'Discovery Week' : (ctx.weekLabel || 'Selected Week');
-  const currentWeekLabel = a.weekNum === 0
-    ? 'Discovery Week'
-    : (typeof a.weekNum === 'number' ? `Week ${a.weekNum}` : 'Current week');
-  return `<div class="week-jump ${isCurrentWeek ? 'is-current' : 'is-reviewing'}">
-    <div class="week-jump-identity">
-      <div class="week-jump-athlete">${esc(a.id)}</div>
-      <div class="week-jump-divider" aria-hidden="true"></div>
-      <div class="week-jump-context">
-        <div class="week-jump-title">${isCurrentWeek ? 'Current programme week' : 'Reviewing programme week'}</div>
-        <div class="week-jump-main-row">
-          <div class="week-jump-main">${esc(selectedWeekLabel)}</div>
-          <span class="week-jump-status ${isCurrentWeek ? 'current' : 'reference'}">${isCurrentWeek ? 'Current week' : `Current: ${esc(currentWeekLabel)}`}</span>
-        </div>
-        <div class="week-jump-sub">${fmtDate(ctx.weekStartStr)} → ${fmtDate(ctx.weekEndStr)}</div>
-      </div>
-    </div>
-    <div class="week-jump-controls" role="group" aria-label="Programme week navigation">
-      <button class="week-jump-btn secondary" onclick="fpWeekNav(-1)">← Previous Week</button>
-      <button class="week-jump-btn" onclick="fpWeekReset()" ${ctx.weekOffset === 0 ? 'disabled' : ''}>Current Week</button>
-      <button class="week-jump-btn secondary" onclick="fpWeekNav(1)" ${ctx.selectedWeekNum !== null && ctx.selectedWeekNum >= programmeEnd ? 'disabled' : ''}>Next Week →</button>
-    </div>
-  </div>`;
-}
-
 function importedActivityTime(seconds) {
   const value = Math.max(0, Math.round(Number(seconds) || 0));
   const hours = Math.floor(value / 3600);
@@ -8244,6 +8426,976 @@ function renderImportedActivity(activity) {
   </details>`;
 }
 
+// ── Running analysis ─────────────────────────────────────────────────────────
+// Everything below derives from data the product already holds: planned_sessions
+// for the prescription, weekly check-ins and athlete uploads for what happened.
+// No Strava API data is read — the coaches dashboard is not permitted to display
+// it (see the compliance note in the README).
+
+const RUN_TYPE_KEYS = ['long', 'quality', 'easy'];
+
+// One row per completed run, with distance and pace resolved from whichever
+// source has them: an uploaded file first (device truth), then the portal log.
+function athleteRunSessions(a) {
+  const RUN = window.DP_RUN;
+  if (!RUN) return [];
+  const planByDate = new Map();
+  (a.allPlan || []).forEach(r => {
+    const date = String(r['date:Planned Date:start'] || r['Planned Date'] || '').slice(0, 10);
+    if (date) planByDate.set(date, r);
+  });
+
+  const out = [];
+  const seen = new Set();
+
+  for (const upload of a.activities || []) {
+    const date = String(upload.activityDate || '').slice(0, 10);
+    const distanceKm = Number(upload.summary?.distanceM) > 0 ? Number(upload.summary.distanceM) / 1000 : null;
+    const speed = Number(upload.summary?.avgSpeedMps);
+    if (!date || !distanceKm) continue;
+    const plan = planByDate.get(date);
+    seen.add(date);
+    out.push({
+      date,
+      name: upload.activityName || plan?.Session || '',
+      type: plan?.['Session Type'] || upload.sportType || 'Run',
+      distanceKm: Math.round(distanceKm * 100) / 100,
+      paceSecPerKm: speed > 0 ? Math.round(1000 / speed) : null,
+      rpe: null,
+      source: 'upload',
+    });
+  }
+
+  for (const session of a.sessions || []) {
+    if (!session._isRun || !session._d || seen.has(session._d)) continue;
+    const parsed = RUN.parseRunLog(session['Exercise Log'] || session.exerciseLog || '');
+    if (!parsed || (!parsed.distanceKm && !parsed.paceSecPerKm)) continue;
+    const plan = planByDate.get(session._d);
+    out.push({
+      date: session._d,
+      name: session.Session || plan?.Session || '',
+      type: plan?.['Session Type'] || session._cat || 'Run',
+      distanceKm: parsed.distanceKm,
+      paceSecPerKm: parsed.paceSecPerKm,
+      rpe: parsed.rpe,
+      source: 'log',
+    });
+  }
+
+  return out.sort((x, y) => x.date.localeCompare(y.date));
+}
+
+// Bar-and-line chart: bars are what the athlete ran, the line is the coach's
+// 4-week baseline. The gap between them is the whole point of the chart.
+function buildLoadChart(weeks) {
+  const shown = weeks.filter(w => w.planned != null || w.actual != null);
+  if (shown.length < 2) return '';
+  const W = 640, H = 150, padL = 34, padR = 10, padT = 12, padB = 26;
+  const max = Math.max(1, ...shown.flatMap(w => [w.planned || 0, w.actual || 0, w.rolling || 0]));
+  const step = (W - padL - padR) / shown.length;
+  const barW = Math.max(4, Math.min(26, step * 0.56));
+  const y = v => padT + (H - padT - padB) * (1 - (v || 0) / max);
+  const cx = i => padL + step * i + step / 2;
+
+  const bars = shown.map((w, i) => {
+    if (w.actual == null) return '';
+    const top = y(w.actual);
+    const cls = w.isSpike ? 'is-spike' : w.isDrop ? 'is-drop' : '';
+    return `<rect class="rc-bar ${cls}" x="${(cx(i) - barW / 2).toFixed(1)}" y="${top.toFixed(1)}"
+      width="${barW.toFixed(1)}" height="${Math.max(0, H - padB - top).toFixed(1)}" rx="2">
+      <title>Week ${w.week}: ${w.actual} km${w.planned ? ` of ${w.planned} planned` : ''}${w.deltaPct != null ? ` · ${w.deltaPct > 0 ? '+' : ''}${w.deltaPct}% vs 4wk` : ''}</title>
+    </rect>`;
+  }).join('');
+
+  const plannedPts = shown.map((w, i) => w.planned != null ? `${cx(i).toFixed(1)},${y(w.planned).toFixed(1)}` : null).filter(Boolean);
+  const plannedLine = plannedPts.length >= 2
+    ? `<polyline class="rc-planned" points="${plannedPts.join(' ')}" fill="none"/>` : '';
+
+  const rollingPts = shown.map((w, i) => w.rolling != null ? `${cx(i).toFixed(1)},${y(w.rolling).toFixed(1)}` : null).filter(Boolean);
+  const rollingLine = rollingPts.length >= 2
+    ? `<polyline class="rc-rolling" points="${rollingPts.join(' ')}" fill="none"/>` : '';
+
+  const ticks = [0, max / 2, max].map(v =>
+    `<line class="rc-grid" x1="${padL}" y1="${y(v).toFixed(1)}" x2="${W - padR}" y2="${y(v).toFixed(1)}"/>
+     <text class="rc-axis" x="${padL - 5}" y="${(y(v) + 3).toFixed(1)}" text-anchor="end">${Math.round(v)}</text>`
+  ).join('');
+
+  const labels = shown.map((w, i) =>
+    (i === 0 || i === shown.length - 1 || w.isCurrent)
+      ? `<text class="rc-axis" x="${cx(i).toFixed(1)}" y="${H - 8}" text-anchor="middle">W${w.week}</text>`
+      : ''
+  ).join('');
+
+  return `<svg class="run-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Weekly running volume against the four-week baseline">
+    ${ticks}${bars}${plannedLine}${rollingLine}${labels}
+  </svg>
+  <div class="rc-key">
+    <span><i class="rc-swatch bar"></i>Actual</span>
+    <span><i class="rc-swatch planned"></i>Prescribed</span>
+    <span><i class="rc-swatch rolling"></i>4-week baseline</span>
+    <span><i class="rc-swatch spike"></i>Spike vs baseline</span>
+  </div>`;
+}
+
+// Weekly points for one session group. Distance for long runs, pace for quality
+// and easy work — the metric that actually moves for each.
+function buildProgressionChart(series, metric, label) {
+  const points = (series || []).filter(p => Number.isFinite(p.value));
+  if (points.length < 2) return '';
+  const RUN = window.DP_RUN;
+  const W = 300, H = 96, pad = 8, padB = 16;
+  const values = points.map(p => p.value);
+  const min = Math.min(...values), max = Math.max(...values);
+  const range = (max - min) || 1;
+  const stepX = (W - pad * 2) / (points.length - 1);
+  // Pace improves downward, so a faster week must draw higher on the chart.
+  const y = v => pad + (H - pad - padB) * (metric === 'pace' ? (v - min) / range : 1 - (v - min) / range);
+
+  const path = points.map((p, i) => `${(pad + i * stepX).toFixed(1)},${y(p.value).toFixed(1)}`).join(' ');
+  const dots = points.map((p, i) => {
+    const last = i === points.length - 1;
+    const text = metric === 'pace' ? `${RUN.secondsToPace(p.value)}/km` : `${p.value} km`;
+    return `<circle class="pg-dot${last ? ' is-last' : ''}" cx="${(pad + i * stepX).toFixed(1)}" cy="${y(p.value).toFixed(1)}" r="${last ? 4 : 2.6}">
+      <title>${fmtDate(p.week)}: ${text}</title></circle>`;
+  }).join('');
+
+  const trend = RUN.trendOf(points);
+  const latest = points[points.length - 1];
+  const first = points[0];
+  const change = metric === 'pace'
+    ? `${latest.value < first.value ? '−' : '+'}${RUN.secondsToPace(Math.abs(latest.value - first.value))}/km`
+    : `${latest.value > first.value ? '+' : ''}${Math.round((latest.value - first.value) * 10) / 10} km`;
+  // For pace, "down" is faster; say the coaching meaning, not the axis direction.
+  const verdict = trend.direction === 'flat' ? 'holding'
+    : metric === 'pace' ? (trend.direction === 'down' ? 'getting faster' : 'slowing')
+    : (trend.direction === 'up' ? 'building' : 'reducing');
+
+  return `<div class="pg-card">
+    <div class="pg-head">
+      <span class="pg-label">${esc(label)}</span>
+      <span class="pg-value">${metric === 'pace' ? `${RUN.secondsToPace(latest.value)}/km` : `${latest.value} km`}</span>
+    </div>
+    <svg class="pg-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(label)} progression">
+      <polyline class="pg-line" points="${path}" fill="none"/>${dots}
+    </svg>
+    <div class="pg-foot">${esc(change)} over ${points.length} weeks · <b>${esc(verdict)}</b>${trend.confident ? '' : ' <span class="pg-thin">(few data points)</span>'}</div>
+  </div>`;
+}
+
+function buildRunningPanel(a) {
+  const RUN = window.DP_RUN;
+  if (!RUN) return '<div class="fpa-empty">Running analysis is still loading.</div>';
+
+  const volume = _programmeVolumeData(a);
+  const weeks = volume ? RUN.weeklyLoad(volume.weeks) : [];
+  const current = weeks.find(w => w.isCurrent) || null;
+
+  // ── Load headline ──
+  let loadHtml = '';
+  if (weeks.some(w => w.actual != null)) {
+    const spike = current?.isSpike ? 'is-spike' : current?.isDrop ? 'is-drop' : '';
+    loadHtml = `<div class="fpc-section">
+      <div class="fpc-section-title">Weekly volume — prescribed vs actual</div>
+      <div class="run-load-head">
+        <div class="run-load-figure ${spike}">
+          <span class="run-load-num">${current?.actual ?? '—'}</span><span class="run-load-unit">km this week</span>
+        </div>
+        <div class="run-load-meta">
+          ${current?.planned ? `<span><b>${current.planned}</b> km prescribed${current.adherencePct != null ? ` · ${current.adherencePct}%` : ''}</span>` : '<span>No volume prescribed this week</span>'}
+          ${current?.rolling != null
+            ? `<span class="${current.isSpike ? 'bad' : current.isDrop ? 'warn' : ''}"><b>${current.rolling}</b> km 4-week baseline${current.deltaPct != null ? ` · ${current.deltaPct > 0 ? '+' : ''}${current.deltaPct}%` : ''}</span>`
+            : '<span class="dim">Not enough completed weeks for a baseline yet</span>'}
+        </div>
+      </div>
+      ${buildLoadChart(weeks)}
+      ${current?.isSpike ? `<div class="run-note bad">Volume is ${current.deltaPct}% above the four-week baseline. Worth a look before adding more.</div>` : ''}
+    </div>`;
+  }
+
+  // ── Progression ──
+  const runs = athleteRunSessions(a);
+  const progression = RUN_TYPE_KEYS.map(key => {
+    const metric = key === 'long' ? 'distance' : 'pace';
+    const series = RUN.progressionSeries(runs, key, { metric });
+    return buildProgressionChart(series, metric, RUN.typeLabel(key));
+  }).filter(Boolean).join('');
+
+  const progressionHtml = progression
+    ? `<div class="fpc-section">
+        <div class="fpc-section-title">Progression by session type</div>
+        <div class="pg-grid">${progression}</div>
+      </div>`
+    : '';
+
+  // ── Adherence by type ──
+  const planRows = (a.allPlan || []).map(r => ({
+    date: String(r['date:Planned Date:start'] || r['Planned Date'] || '').slice(0, 10),
+    name: r.Session || '',
+    type: r['Session Type'] || '',
+    id: r._id || r.id,
+  })).filter(row => row.date && row.date <= localDateStr(new Date()));
+
+  const loggedDates = new Set((a.sessions || []).map(sess => sess._d).filter(Boolean));
+  const adherence = RUN.adherenceByType(planRows, row =>
+    isSessionSubmitted(a.id, row.id) || isSessionTicked(a.id, row.id) || loggedDates.has(row.date));
+
+  const adherenceHtml = adherence.length
+    ? `<div class="fpc-section">
+        <div class="fpc-section-title">Adherence by session type</div>
+        <p class="fpc-section-note">Which work gets skipped matters more than how much. Worst first.</p>
+        <div class="adh-list">
+          ${adherence.map(row => `<div class="adh-row${row.pct != null && row.pct < 70 ? ' is-low' : ''}">
+            <span class="adh-label">${esc(row.label)}</span>
+            <div class="adh-track"><div class="adh-fill" style="width:${row.pct ?? 0}%"></div></div>
+            <span class="adh-val">${row.done}/${row.planned}${row.pct != null ? ` · ${row.pct}%` : ''}</span>
+          </div>`).join('')}
+        </div>
+      </div>`
+    : '';
+
+  // ── Concurrent load ──
+  const concurrentHtml = buildConcurrentPanel(a, weeks);
+
+  const body = [loadHtml, progressionHtml, adherenceHtml, concurrentHtml].filter(Boolean).join('');
+  return body || '';
+}
+
+// ── Concurrent training ──────────────────────────────────────────────────────
+// Run volume and strength volume on one weekly axis. Presented as an
+// observation, not a physiological claim: the interpretation is the coach's.
+function buildConcurrentPanel(a, runWeeks) {
+  const STRENGTH = window.DP_STRENGTH;
+  const RUN = window.DP_RUN;
+  if (!STRENGTH || !RUN) return '';
+
+  const history = athleteStrengthHistory(a);
+  if (!history || !history.size) return '';
+  const strengthWeeks = STRENGTH.weeklyStrengthVolume(history, RUN.mondayOf);
+  if (strengthWeeks.length < 2) return '';
+
+  // Programme weeks are numbered; strength volume is dated. Join on the Monday
+  // of the athlete's current week counting backwards, which is the same anchor
+  // the programme volume strip uses.
+  const rows = [];
+  const currentWeek = typeof a.weekNum === 'number' ? a.weekNum : null;
+  const currentMonday = a.expectedWeekEnd ? RUN.mondayOf(a.expectedWeekEnd) : null;
+
+  for (const week of strengthWeeks.slice(-10)) {
+    let runKm = null;
+    if (currentWeek != null && currentMonday) {
+      const weeksBack = Math.round((Date.parse(`${currentMonday}T00:00:00Z`) - Date.parse(`${week.week}T00:00:00Z`)) / (7 * 86400000));
+      const match = runWeeks.find(w => w.week === currentWeek - weeksBack);
+      runKm = match?.actual ?? null;
+    }
+    rows.push({ ...week, runKm });
+  }
+
+  const maxRun = Math.max(1, ...rows.map(r => r.runKm || 0));
+  const maxVol = Math.max(1, ...rows.map(r => r.volume || 0));
+
+  return `<div class="fpc-section">
+    <div class="fpc-section-title">Concurrent load — running against strength</div>
+    <p class="fpc-section-note">Both halves of the programme on one axis, scaled to their own peaks. Read the shape, not the heights.</p>
+    <div class="cc-load">
+      ${rows.map(row => `<div class="cc-load-week">
+        <div class="cc-load-bars">
+          <div class="cc-load-bar run" style="height:${Math.round((row.runKm || 0) / maxRun * 100)}%" title="${row.runKm != null ? `${row.runKm} km` : 'no run volume recorded'}"></div>
+          <div class="cc-load-bar str" style="height:${Math.round(row.volume / maxVol * 100)}%" title="${row.volume} kg · ${row.sessions} session${row.sessions === 1 ? '' : 's'}"></div>
+        </div>
+        <div class="cc-load-lbl">${fmtDate(row.week).replace(/-\d{4}$/, '')}</div>
+      </div>`).join('')}
+    </div>
+    <div class="rc-key">
+      <span><i class="rc-swatch bar"></i>Run km</span>
+      <span><i class="rc-swatch str"></i>Strength tonnage</span>
+    </div>
+  </div>`;
+}
+
+// ── Prescribed vs actual ─────────────────────────────────────────────────────
+// The flagship comparison. run_steps holds what the coach asked for and
+// athlete_activity_uploads holds the device laps; nothing joined them, so the
+// ledger showed two adjacent blocks and left the arithmetic to the coach.
+//
+// Prescriptions are fetched per session rather than bulk-loaded: only the
+// session a coach opens needs one.
+const _prescriptionCache = new Map();
+
+async function loadPrescription(sessionId) {
+  if (_prescriptionCache.has(sessionId)) return _prescriptionCache.get(sessionId);
+  const request = fetch(`/api/athletes?action=prescription&id=${encodeURIComponent(sessionId)}`, { cache: 'no-store' })
+    .then(async response => {
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || data.ok === false) throw new Error(data.error || `HTTP ${response.status}`);
+      return data;
+    })
+    .catch(error => {
+      console.warn('[prescription]', error);
+      return null;
+    });
+  _prescriptionCache.set(sessionId, request);
+  return request;
+}
+
+// Rendered into a placeholder the ledger drops next to a matched activity, so
+// the fetch never blocks the week from painting.
+async function hydratePrescribedVsActual(box) {
+  if (!box || box.dataset.done === '1' || box.dataset.loading === '1') return;
+  box.dataset.loading = '1';
+  const RUN = window.DP_RUN;
+  const sessionId = box.dataset.pvaSession;
+  const activityId = box.dataset.pvaActivity;
+
+  try {
+    const [prescription, activity] = [
+      await loadPrescription(sessionId),
+      _allAthletes.flatMap(a => a.activities || []).find(act => act.id === activityId)
+        || _coaches.flatMap(a => a.activities || []).find(act => act.id === activityId),
+    ];
+    const steps = prescription?.runSteps || [];
+    if (!RUN || !steps.length || !activity) { box.remove(); return; }
+
+    const match = RUN.matchLapsToSteps(steps, activity.laps || []);
+    box.dataset.done = '1';
+    box.outerHTML = renderPrescribedVsActual(match, activity);
+  } catch (error) {
+    console.warn('[prescribed vs actual]', error);
+    box.remove();
+  } finally {
+    box.dataset.loading = '0';
+  }
+}
+
+function renderPrescribedVsActual(match, activity) {
+  const RUN = window.DP_RUN;
+  if (!match || match.mode === 'none') return '';
+
+  if (match.mode === 'session') {
+    // Honest degradation: say why the per-interval table is not available
+    // rather than inventing a pairing.
+    const km = Number(activity.summary?.distanceM) > 0 ? (Number(activity.summary.distanceM) / 1000).toFixed(2) : null;
+    const pace = Number(activity.summary?.avgSpeedMps) > 0 ? RUN.secondsToPace(Math.round(1000 / activity.summary.avgSpeedMps)) : null;
+    return `<div class="pva pva-session">
+      <div class="pva-head">Prescribed vs actual<span class="pva-conf">session totals only</span></div>
+      <div class="pva-why">${esc(match.reason || 'The laps could not be matched to the prescription.')}</div>
+      <div class="pva-totals">
+        <span><b>${match.work.length}</b> work step${match.work.length === 1 ? '' : 's'} prescribed</span>
+        ${km ? `<span><b>${km}</b> km run</span>` : ''}
+        ${pace ? `<span><b>${pace}</b>/km average</span>` : ''}
+      </div>
+    </div>`;
+  }
+
+  const { rows, summary } = match;
+  const drift = summary.driftSec;
+
+  return `<div class="pva">
+    <div class="pva-head">Prescribed vs actual<span class="pva-conf is-matched">${rows.length} laps matched</span></div>
+    <table class="pva-table">
+      <thead><tr><th>Step</th><th class="n">Target</th><th class="n">Actual</th><th class="n">Δ</th><th class="n">HR</th></tr></thead>
+      <tbody>
+        ${rows.map(row => {
+          const target = row.target
+            ? (row.target.isBand
+                ? `${RUN.secondsToPace(row.target.low)}–${RUN.secondsToPace(row.target.high)}`
+                : RUN.secondsToPace(row.target.nominal))
+            : '—';
+          const delta = row.deltaSec == null ? '—'
+            : row.deltaSec === 0 ? 'on'
+            : `${row.deltaSec > 0 ? '+' : '−'}${Math.abs(row.deltaSec)}s`;
+          return `<tr class="is-${row.status}">
+            <td>${esc(row.step.label)}</td>
+            <td class="n">${esc(target)}</td>
+            <td class="n"><b>${esc(RUN.secondsToPace(row.actualPaceSec) || '—')}</b></td>
+            <td class="n pva-delta">${esc(delta)}</td>
+            <td class="n">${row.avgHr ?? '—'}</td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>
+    <div class="pva-summary">
+      <span><b>${summary.onTarget}</b> of ${summary.total} on target</span>
+      ${summary.avgDeltaSec != null ? `<span class="${Math.abs(summary.avgDeltaSec) > 5 ? 'warn' : ''}"><b>${summary.avgDeltaSec > 0 ? '+' : ''}${summary.avgDeltaSec}s</b> average</span>` : ''}
+      ${drift != null && Math.abs(drift) >= 4
+        ? `<span class="${drift > 0 ? 'bad' : 'good'}"><b>${drift > 0 ? '+' : ''}${drift}s</b> ${drift > 0 ? 'fade across the set' : 'negative split'}</span>`
+        : ''}
+    </div>
+  </div>`;
+}
+
+function hydratePrescribedComparisons(scope) {
+  (scope || document).querySelectorAll('[data-pva-session]').forEach(hydratePrescribedVsActual);
+}
+
+// ── Strength analysis ────────────────────────────────────────────────────────
+// The dashboard could show one session at a time, parsed out of a string. These
+// group the same data by exercise instead, which is what makes "is she getting
+// stronger" and "what does she keep skipping" answerable.
+
+// athleteCode → { athlete, history }. The athlete is cached alongside its
+// history so the exercise drawer can resolve it without re-reading the roster,
+// which is not guaranteed to be populated at the moment a drawer opens.
+let _strengthCache = new Map();
+
+function athleteStrengthHistory(a) {
+  const STRENGTH = window.DP_STRENGTH;
+  if (!STRENGTH || !a) return null;
+  if (_strengthCache.has(a.id)) return _strengthCache.get(a.id).history;
+
+  // planned_sessions carry the dates the log blob's session ids refer to.
+  const sessions = (_planRowsSB || [])
+    .filter(r => nid(r.athlete_code) === nid(a.id))
+    .map(r => ({ id: r.notion_page_id || r.id, date: r.planned_date }));
+
+  const textLogs = (a.sessions || [])
+    .filter(sess => sess._isStr && sess._d)
+    .map(sess => ({ date: sess._d, exerciseLog: sess['Exercise Log'] || sess.exerciseLog || '' }));
+
+  const history = STRENGTH.collectExerciseHistory(_logBlobs.get(nid(a.id)) || {}, sessions, textLogs);
+  _strengthCache.set(a.id, { athlete: a, history });
+  return history;
+}
+
+// How often each exercise was actually programmed, so "did it 3 times" can
+// become "did it 3 of 8 times".
+// Returns both how often each exercise was programmed and what it was
+// programmed as. The engine needs the rep range: without it every 5-rep lift
+// reads as "hold" because it never owns an assumed 8-12.
+function prescribedExercises(a, since) {
+  const STRENGTH = window.DP_STRENGTH;
+  if (!STRENGTH) return { counts: new Map(), prescriptions: new Map() };
+  const counts = new Map();
+  const prescriptions = new Map();
+  // Bounded at today: counting sessions the athlete has not reached yet would
+  // make everyone mid-block look like they were skipping everything.
+  const today = localDateStr(new Date());
+  for (const row of _planRowsSB || []) {
+    if (nid(row.athlete_code) !== nid(a.id)) continue;
+    const date = String(row.planned_date || '');
+    if (!date || date > today) continue;
+    if (since && date < since) continue;
+    const split = splitForTitle(row.title, a.id);
+    for (const exercise of split?.exercises || []) {
+      const key = STRENGTH.matchKey(exercise.exercise || exercise.name || '');
+      if (!key) continue;
+      counts.set(key, (counts.get(key) || 0) + 1);
+      const repRange = exercise.repRange || exercise.reps || null;
+      if (repRange && !prescriptions.has(key)) {
+        prescriptions.set(key, {
+          repRange: String(repRange),
+          workingSets: Number(exercise.workingSets || exercise.sets) || null,
+        });
+      }
+    }
+  }
+  return { counts, prescriptions };
+}
+
+function strengthStatusChip(row) {
+  if (row.inferred) {
+    const observed = {
+      progress_load: ['▲', 'good', 'Rising'],
+      stalled: ['⟲', 'bad', 'Flat'],
+      hold: ['═', '', 'Steady'],
+      first_time: ['·', 'dim', 'New lift'],
+    }[row.status] || ['═', '', 'Steady'];
+    return `<span class="st-status is-${observed[1] || 'neutral'} is-inferred"
+      title="Observed from the logged loads. No rep range is prescribed for this exercise, so the progression engine cannot judge it.">
+      <span aria-hidden="true">${observed[0]}</span>${esc(observed[2])}</span>`;
+  }
+  const map = {
+    progress_load: ['▲', 'good', 'Add load'],
+    progress_reps: ['▸', 'good', 'Own reps'],
+    hold: ['═', '', 'Hold'],
+    stalled: ['⟲', 'bad', 'Stalled'],
+    first_time: ['·', 'dim', 'New lift'],
+  };
+  const [mark, tone, label] = map[row.status] || map.hold;
+  return `<span class="st-status is-${tone || 'neutral'}" title="${esc(row.coaching || label)}">
+    <span aria-hidden="true">${mark}</span>${esc(label)}</span>`;
+}
+
+// A sparkline of estimated 1RM. Small on purpose: the row is a scan, the drawer
+// is the analysis.
+function strengthSpark(series) {
+  const points = (series || []).map(p => p.e1rm).filter(Number.isFinite);
+  if (points.length < 2) return '<span class="st-spark-empty">—</span>';
+  const W = 84, H = 22;
+  const min = Math.min(...points), max = Math.max(...points);
+  const range = (max - min) || 1;
+  const step = W / (points.length - 1);
+  const path = points.map((v, i) => `${(i * step).toFixed(1)},${(H - 2 - (H - 4) * (v - min) / range).toFixed(1)}`).join(' ');
+  const rising = points[points.length - 1] > points[0];
+  return `<svg class="st-spark ${rising ? 'is-up' : ''}" viewBox="0 0 ${W} ${H}" aria-hidden="true">
+    <polyline points="${path}" fill="none"/>
+  </svg>`;
+}
+
+function buildStrengthPanel(a) {
+  const STRENGTH = window.DP_STRENGTH;
+  if (!STRENGTH) return '';
+
+  const history = athleteStrengthHistory(a);
+  if (!history || !history.size) return '';
+
+  const since = dagoStr(_strengthRangeDays);
+  const { counts, prescriptions } = prescribedExercises(a, since);
+  const rows = STRENGTH.summariseExercises(history, {
+    prescribedCounts: counts,
+    prescriptions,
+    since,
+  });
+  if (!rows.length) return '';
+
+  const stalled = rows.filter(r => r.isStalled);
+  const skipped = rows.filter(r => r.isSkipped);
+  const progressing = rows.filter(r => r.status === 'progress_load' || r.status === 'progress_reps');
+  const totalDone = rows.reduce((sum, r) => sum + r.done, 0);
+  const totalPlanned = rows.reduce((sum, r) => sum + (r.prescribed || 0), 0);
+
+  // ── The read, in the coach's words ──
+  const reads = [];
+  for (const row of skipped.slice(0, 2)) {
+    reads.push(`<b>${esc(row.name)}</b> done ${row.done} of ${row.prescribed} times. Move it earlier in the session or substitute it.`);
+  }
+  for (const row of stalled.slice(0, 2)) {
+    const where = row.latest ? ` at ${row.latest.topWeight}kg × ${row.latest.topReps}` : '';
+    const effort = row.lastRpe ? ` @ RPE ${row.lastRpe}` : '';
+    const advice = row.coaching
+      ? esc(row.coaching)
+      : 'No rep range is prescribed, so this is the load trend rather than a recommendation.';
+    reads.push(`<b>${esc(row.name)}</b> has stalled${where}${effort}. ${advice}`);
+  }
+  if (!reads.length && progressing.length) {
+    reads.push(`${progressing.length} of ${rows.length} lifts are progressing. Nothing needs changing.`);
+  }
+
+  const ranges = [
+    { days: 28, label: '4wk' },
+    { days: 56, label: '8wk' },
+    { days: 84, label: '12wk' },
+    { days: 3650, label: 'All' },
+  ];
+
+  return `<div class="fpc-section">
+    <div class="fpc-section-title">
+      Strength by exercise
+      <span class="st-range" role="group" aria-label="History range">
+        ${ranges.map(r => `<button type="button" class="st-range-btn${_strengthRangeDays === r.days ? ' is-active' : ''}"
+          onclick="setStrengthRange(${r.days})">${r.label}</button>`).join('')}
+      </span>
+    </div>
+
+    <div class="st-summary">
+      <div class="st-stat"><div class="st-stat-num">${rows.length}</div><div class="st-stat-lbl">Exercises tracked</div></div>
+      <div class="st-stat"><div class="st-stat-num">${totalDone}${totalPlanned ? `<span class="st-stat-of"> / ${totalPlanned}</span>` : ''}</div><div class="st-stat-lbl">Logged vs prescribed</div></div>
+      <div class="st-stat"><div class="st-stat-num ${progressing.length ? 'good' : ''}">${progressing.length}</div><div class="st-stat-lbl">Progressing</div></div>
+      <div class="st-stat"><div class="st-stat-num ${stalled.length ? 'bad' : ''}">${stalled.length}</div><div class="st-stat-lbl">Stalled</div></div>
+      <div class="st-stat"><div class="st-stat-num ${skipped.length ? 'bad' : ''}">${skipped.length}</div><div class="st-stat-lbl">Skipped</div></div>
+    </div>
+
+    <div class="fpa-table-wrap">
+      <table class="fpa-table st-table">
+        <thead><tr>
+          <th>Exercise</th><th class="n">Done</th><th class="n">Top set</th>
+          <th>Trend</th><th class="n">Est. 1RM</th><th class="n">RPE</th><th>Status</th>
+        </tr></thead>
+        <tbody>
+          ${rows.map(row => `<tr class="st-row${row.isSkipped ? ' is-skipped' : ''}${row.isStalled ? ' is-stalled' : ''}"
+              onclick="openExerciseHistory('${esc(a.id)}','${esc(row.key)}')" tabindex="0"
+              onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openExerciseHistory('${esc(a.id)}','${esc(row.key)}')}"
+              title="Open full history">
+            <td>${esc(row.name)}${row.isSkipped ? '<span class="st-warn" title="Consistently skipped">⚠</span>' : ''}</td>
+            <td class="n">${row.done}${row.prescribed ? `<span class="st-of">/${row.prescribed}</span>` : ''}</td>
+            <td class="n">${row.latest?.topWeight != null ? `${row.latest.topWeight}×${row.latest.topReps}` : '—'}</td>
+            <td>${strengthSpark(row.series)}</td>
+            <td class="n">${row.latest?.e1rm != null ? `${Math.round(row.latest.e1rm)}kg` : '—'}${row.changeKg ? `<span class="st-delta ${row.changeKg > 0 ? 'up' : 'dn'}">${row.changeKg > 0 ? '+' : ''}${row.changeKg}</span>` : ''}</td>
+            <td class="n">${row.lastRpe ?? '—'}</td>
+            <td>${strengthStatusChip(row)}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+
+    ${reads.length ? `<div class="st-read">
+      <div class="st-read-head">Coach read</div>
+      <ul>${reads.map(r => `<li>${r}</li>`).join('')}</ul>
+    </div>` : ''}
+  </div>`;
+}
+
+let _strengthRangeDays = 56;
+
+function setStrengthRange(days) {
+  _strengthRangeDays = days;
+  _drawFP();
+}
+
+// ── Exercise history drawer ──────────────────────────────────────────────────
+// Click any exercise anywhere and get every logged instance. This is the view
+// that makes "is the bench going up?" a two-second question instead of opening
+// six days in sequence and remembering the numbers.
+function openExerciseHistory(athleteCode, key) {
+  const STRENGTH = window.DP_STRENGTH;
+  // Resolved from the cache the strength panel just populated: the row can only
+  // exist because that panel rendered, so the cache is always warm here.
+  const cached = _strengthCache.get(athleteCode);
+  const a = cached?.athlete
+    || _allAthletes.find(x => x.id === athleteCode)
+    || _coaches.find(x => x.id === athleteCode);
+  const history = cached?.history || (a ? athleteStrengthHistory(a) : null);
+  const entry = history?.get(key);
+  if (!entry || !STRENGTH || !a) return;
+
+  const prescribed = prescribedExercises(a);
+  const rows = STRENGTH.summariseExercises(new Map([[key, entry]]), {
+    prescribedCounts: prescribed.counts,
+    prescriptions: prescribed.prescriptions,
+  });
+  const row = rows[0];
+
+  let drawer = document.getElementById('ex-history');
+  if (!drawer) {
+    drawer = document.createElement('div');
+    drawer.id = 'ex-history';
+    drawer.className = 'po-overlay po-drawer hidden';
+    drawer.setAttribute('role', 'dialog');
+    drawer.setAttribute('aria-modal', 'true');
+    drawer.addEventListener('click', event => {
+      if (event.target === drawer || event.target.closest('[data-ex-close]')) closeExerciseHistory();
+    });
+    document.body.appendChild(drawer);
+  }
+
+  const series = [...row.series].reverse();  // newest first for reading
+  drawer.innerHTML = `<div class="po-modal">
+    <div class="po-modal-head">
+      <div>
+        <div class="po-modal-title">${esc(entry.name)}</div>
+        <div class="po-modal-sub">${esc(athleteLabel(a))} · ${row.done} logged session${row.done === 1 ? '' : 's'}</div>
+      </div>
+      <button class="po-close" data-ex-close aria-label="Close">✕</button>
+    </div>
+    <div class="po-modal-body">
+      <div class="exh-head">
+        <div class="exh-stat"><div class="exh-num">${row.latest?.topWeight != null ? `${row.latest.topWeight}<span class="exh-unit">kg</span>` : '—'}</div><div class="exh-lbl">Current top set</div></div>
+        <div class="exh-stat"><div class="exh-num">${row.latest?.e1rm != null ? `${Math.round(row.latest.e1rm)}<span class="exh-unit">kg</span>` : '—'}</div><div class="exh-lbl">Est. 1RM</div></div>
+        <div class="exh-stat"><div class="exh-num ${row.changeKg > 0 ? 'good' : row.changeKg < 0 ? 'bad' : ''}">${row.changeKg != null ? `${row.changeKg > 0 ? '+' : ''}${row.changeKg}` : '—'}</div><div class="exh-lbl">Change</div></div>
+      </div>
+      ${row.coaching ? `<div class="exh-verdict is-${row.status}">
+        <div class="exh-verdict-head">${esc(row.target?.weight ? `Next: ${row.target.weight}kg × ${row.target.reps}${row.target.sets ? ` × ${row.target.sets} sets` : ''}` : 'Next session')}</div>
+        <div class="exh-verdict-body">${esc(row.coaching)}</div>
+      </div>` : `<div class="exh-verdict is-inferred">
+        <div class="exh-verdict-head">Observed from the logged loads</div>
+        <div class="exh-verdict-body">No rep range is prescribed for this exercise, so the progression engine has nothing to judge against. Add sets and reps to the split to get a coaching recommendation here.</div>
+      </div>`}
+      <div class="fpa-table-wrap">
+        <table class="fpa-table">
+          <thead><tr><th>Date</th><th class="n">Top set</th><th class="n">Sets</th><th class="n">Volume</th><th class="n">RPE</th><th class="n">Est. 1RM</th></tr></thead>
+          <tbody>
+            ${series.map(point => `<tr>
+              <td>${point.date ? fmtDate(point.date) : '—'}</td>
+              <td class="n">${point.topWeight != null ? `${point.topWeight}kg × ${point.topReps}` : '—'}</td>
+              <td class="n">${point.sets}</td>
+              <td class="n">${point.volume ? `${point.volume}kg` : '—'}</td>
+              <td class="n">${point.rpe ?? '—'}</td>
+              <td class="n">${point.e1rm != null ? `${Math.round(point.e1rm)}kg` : '—'}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>`;
+  drawer.classList.remove('hidden');
+}
+
+function closeExerciseHistory() {
+  document.getElementById('ex-history')?.classList.add('hidden');
+}
+
+// ── Athlete workspace: tabs ──────────────────────────────────────────────────
+// Replaces the 16 stacked sections the athlete view used to render as one
+// document. Every section still exists; each now lives in exactly one tab, so a
+// coach reaches any of them in one click instead of a scroll hunt.
+const FPA_TABS = [
+  { key: 'overview',  label: 'Overview'    },
+  { key: 'training',  label: 'Training'    },
+  { key: 'running',   label: 'Running'     },
+  { key: 'strength',  label: 'Strength'    },
+  { key: 'body',      label: 'Body & Fuel' },
+  { key: 'checkins',  label: 'Check-ins'   },
+  { key: 'notes',     label: 'Notes'       },
+];
+const FPA_TAB_KEYS = new Set(FPA_TABS.map(t => t.key));
+
+let _fpaTab = (() => {
+  try {
+    const saved = localStorage.getItem('dp_fpa_tab');
+    return FPA_TAB_KEYS.has(saved) ? saved : 'overview';
+  } catch { return 'overview'; }
+})();
+
+// The tab persists across athletes on purpose: a coach working through the squad
+// on strength should stay on Strength when they press Next.
+function switchAthleteTab(key, options = {}) {
+  if (!FPA_TAB_KEYS.has(key)) key = 'overview';
+  _fpaTab = key;
+  if (!options.silent) { try { localStorage.setItem('dp_fpa_tab', key); } catch {} }
+
+  document.querySelectorAll('#fp-body [data-fpa-panel]').forEach(panel => {
+    panel.hidden = panel.dataset.fpaPanel !== key;
+  });
+  document.querySelectorAll('#fp-body [data-fpa-tab]').forEach(button => {
+    const active = button.dataset.fpaTab === key;
+    button.classList.toggle('is-active', active);
+    button.setAttribute('aria-selected', String(active));
+    button.tabIndex = active ? 0 : -1;
+  });
+
+  const panel = document.querySelector(`#fp-body [data-fpa-panel="${key}"]`);
+  if (panel) {
+    // Deferred work that can only run once the panel has layout.
+    if (key === 'running') _positionCurrentProgrammeWeek(panel);
+    if (key === 'training' || key === 'body') hydrateActivityStreams(panel);
+    if (key === 'training') hydratePrescribedComparisons(panel);
+  }
+  if (!options.keepScroll) {
+    const overlay = document.getElementById('fp-overlay');
+    if (overlay) overlay.scrollTop = 0;
+  }
+}
+
+// Arrow-key movement along the tab strip, per the WAI-ARIA tabs pattern.
+function fpaTabKeydown(event, key) {
+  const keys = FPA_TABS.map(t => t.key);
+  const i = keys.indexOf(key);
+  let next = null;
+  if (event.key === 'ArrowRight') next = keys[(i + 1) % keys.length];
+  else if (event.key === 'ArrowLeft') next = keys[(i - 1 + keys.length) % keys.length];
+  else if (event.key === 'Home') next = keys[0];
+  else if (event.key === 'End') next = keys[keys.length - 1];
+  if (!next) return;
+  event.preventDefault();
+  event.stopPropagation();
+  switchAthleteTab(next, { keepScroll: true });
+  document.querySelector(`#fp-body [data-fpa-tab="${next}"]`)?.focus();
+}
+
+function buildAthleteTabBar(counts = {}) {
+  return `<div class="fpa-tabs" role="tablist" aria-label="Athlete sections">
+    ${FPA_TABS.map(t => {
+      const active = t.key === _fpaTab;
+      const badge = counts[t.key];
+      return `<button type="button" class="fpa-tab${active ? ' is-active' : ''}" role="tab"
+        data-fpa-tab="${t.key}" aria-selected="${active}" tabindex="${active ? 0 : -1}"
+        onclick="switchAthleteTab('${t.key}')" onkeydown="fpaTabKeydown(event,'${t.key}')">
+        ${esc(t.label)}${badge ? `<span class="fpa-tab-badge">${esc(String(badge))}</span>` : ''}
+      </button>`;
+    }).join('')}
+  </div>`;
+}
+
+// ── Athlete workspace: sticky header ─────────────────────────────────────────
+// Answers "what is the state of this athlete" without scrolling. Every value is
+// current-week and labelled as such, so navigating to a historical week (which
+// only changes the Overview and Training panels) can never make this row lie.
+function buildAthleteHeader(a, ctx) {
+  const race = a.race || {};
+  const countdown = raceCountdownLabel(race);
+
+  const flags = (a.flags || []).map(f => `<span class="fp ${f.t}">${esc(f.l)}</span>`).join('');
+
+  // ── Race line ──
+  let raceHtml = '';
+  if (race.raceName || race.raceDate) {
+    const bits = [
+      race.raceName ? `<span class="fpa-race-name">${esc(race.raceName)}</span>` : '',
+      race.raceDate ? `<span class="fpa-race-date">${fmtDate(race.raceDate)}</span>` : '',
+    ].filter(Boolean).join('<span class="fpa-dot">·</span>');
+    const tone = race.isPast ? 'is-past'
+      : race.daysToRace !== null && race.daysToRace <= 21 ? 'is-close' : '';
+    raceHtml = `<div class="fpa-race ${tone}">
+      <span class="fpa-race-icon" aria-hidden="true">🏁</span>${bits}
+      ${countdown ? `<span class="fpa-countdown ${tone}">${esc(countdown)}</span>` : ''}
+    </div>`;
+  } else {
+    raceHtml = `<div class="fpa-race is-empty">No goal race set — the athlete sets this in their portal</div>`;
+  }
+
+  // ── Programme week ──
+  const wkNum = typeof a.weekNum === 'number' ? a.weekNum : null;
+  const wkText = wkNum === null ? 'No programme week'
+    : wkNum === 0 ? 'Discovery week'
+    : `Week ${wkNum} of ${race.progWeeks || getProgWeeks(a.id)}`;
+  const peakChip = race.isPeakWeek ? '<span class="fpa-chip is-peak">Peak week</span>' : '';
+
+  // ── Vitals ──
+  const kmLogged = (typeof _stravaKmCache !== 'undefined' && _stravaKmCache[a.id]?.weeklyKm != null)
+    ? _stravaKmCache[a.id].weeklyKm
+    : (a.currRunKm || 0);
+  const kmTarget = parseFloat(a.target?.['Weekly KM Target']) || 0;
+  const kmPct = kmTarget > 0 ? Math.round(kmLogged / kmTarget * 100) : null;
+
+  const plannedStr = (a.thisWeekPlan || []).filter(r => {
+    const t = r['Session Type'] || r['SessionType'] || '';
+    return t && !RUN_SESSION_TYPES.has(t) && t !== 'Rest' && t !== 'discovery';
+  }).length;
+  const doneStr = (a.currStrS || []).length;
+
+  // Recovery delta needs the check-in before the current one.
+  const prevW = a.weekly
+    ? (a.weeklies || []).find(x => (x['Week Ending'] || '') < (a.weekly['Week Ending'] || ''))
+    : null;
+  const prevRec = prevW ? calcRecoveryScore(prevW) : null;
+  let recDelta = '';
+  if (a.recoveryScore !== null && prevRec !== null && prevRec !== undefined) {
+    const d = +(a.recoveryScore - prevRec).toFixed(1);
+    if (d > 0) recDelta = `<span class="ttrend-up">↑${d}</span>`;
+    else if (d < 0) recDelta = `<span class="ttrend-dn">↓${Math.abs(d)}</span>`;
+  }
+
+  const tone = (v, good, mid) => v === null || v === undefined ? '' : v >= good ? 'good' : v >= mid ? 'mid' : 'bad';
+  const lastLogDays = a.lastActivity ? daysAgo(a.lastActivity) : null;
+  const lastLogText = lastLogDays === null ? '—'
+    : lastLogDays === 0 ? 'Today'
+    : lastLogDays === 1 ? 'Yesterday'
+    : `${lastLogDays}d ago`;
+
+  const checkinText = a.hasCurrentCheckin ? 'This week'
+    : a.hasLastWeekCheckin ? 'Last week'
+    : a.weekly ? 'Overdue' : 'None';
+
+  // `text` marks a status rather than a measurement — "This week", "Yesterday".
+  // Those set at the numeric size read louder than the numbers they sit beside.
+  const vital = (label, value, sub, cls = '', attrs = '', text = false) => `<div class="fpa-vital" ${attrs}>
+    <div class="fpa-vital-lbl">${esc(label)}</div>
+    <div class="fpa-vital-val ${cls}${text ? ' is-text' : ''}">${value}</div>
+    <div class="fpa-vital-sub">${sub}</div>
+  </div>`;
+
+  const vitals = [
+    vital('Run volume',
+      `${kmLogged ? (Number.isInteger(kmLogged) ? kmLogged : Number(kmLogged).toFixed(1)) : '—'}<span class="fpa-vital-unit">${kmTarget ? ` / ${kmTarget} km` : ' km'}</span>`,
+      kmPct === null ? 'no target set' : `${kmPct}% of target`,
+      kmPct === null ? '' : tone(kmPct, 90, 70),
+      `data-fpa-km="${esc(a.id)}"`),
+    vital('Adherence',
+      a.compliance === null || a.compliance === undefined ? '—' : `${a.compliance}<span class="fpa-vital-unit">%</span>`,
+      a.compliance4w === null ? 'this week' : `${a.compliance4w}% over 4wk`,
+      tone(a.compliance, 80, 60)),
+    vital('Strength',
+      plannedStr ? `${doneStr}<span class="fpa-vital-unit"> / ${plannedStr}</span>` : `${doneStr}<span class="fpa-vital-unit"> done</span>`,
+      plannedStr ? 'sessions this week' : 'none prescribed',
+      plannedStr ? tone(Math.round(doneStr / plannedStr * 100), 90, 60) : ''),
+    vital('Wellness',
+      a.recoveryScore === null ? '—' : `${a.recoveryScore}${recDelta}`,
+      a.recoveryScore === null ? 'no recent check-in' : 'recovery /10',
+      tone(a.recoveryScore, 7.5, 5)),
+    vital('Check-in', esc(checkinText),
+      a.checkinStreak > 0 ? `${a.checkinStreak} week streak` : 'no streak',
+      a.hasCurrentCheckin ? 'good' : a.isStale ? 'bad' : 'mid', '', true),
+    vital('Last log', esc(lastLogText),
+      a.lastActivity ? fmtDate(a.lastActivity) : 'nothing logged',
+      lastLogDays === null ? 'bad' : lastLogDays <= 2 ? 'good' : lastLogDays <= 4 ? 'mid' : 'bad', '', true),
+  ].join('');
+
+  // ── Next action ──
+  const nextAction = (a.actions?.critical || [])[0] || (a.actions?.watch || [])[0] || null;
+  const nextTone = (a.actions?.critical || []).length ? 'is-critical' : 'is-watch';
+  const nextHtml = nextAction && !a.acked
+    ? `<div class="fpa-next ${nextTone}">
+        <span class="fpa-next-lbl">Next action</span>
+        <span class="fpa-next-txt">${esc(nextAction)}</span>
+        <button class="fpa-next-btn" type="button" onclick="fpPlanWeek('${esc(a.id)}')">Adjust week</button>
+      </div>`
+    : '';
+
+  // A <div>, not a <header>: seven stylesheets style bare `header` as the dark
+  // app chrome, which painted this block dark-on-dark in light theme.
+  return `<div class="fpa-head" role="group" aria-label="Athlete summary">
+    <div class="fpa-head-top">
+      <div class="fpa-identity">
+        <div class="fpa-name">${esc(a.displayName || a.id)}</div>
+        ${flags ? `<div class="fpa-flags">${flags}</div>` : ''}
+      </div>
+      <div class="fpa-context">
+        ${raceHtml}
+        <div class="fpa-week">
+          <span class="fpa-week-main">${esc(wkText)}</span>${peakChip}
+        </div>
+      </div>
+      <div class="fpa-head-actions">
+        <button class="fpc-act-btn" onclick="copyDM('${esc(a.id)}')">💬 DM</button>
+        <button class="fpc-act-btn" onclick="DP_ACTIONS.open('${esc(a.id)}')">＋ Action</button>
+        <button class="fpc-act-btn" onclick="fpPlanWeek('${esc(a.id)}')">⚏ Plan Week</button>
+        <button class="fpc-act-btn" onclick="fpNotify('${esc(a.id)}')">🔔 Notify</button>
+      </div>
+    </div>
+    <div class="fpa-vitals" aria-label="Current week summary">
+      <div class="fpa-vitals-lbl">This week</div>
+      ${vitals}
+    </div>
+    ${nextHtml}
+  </div>`;
+}
+
+// Week navigation for the panels that are week-scoped (Overview and Training).
+// It deliberately sits inside those panels rather than in the sticky header, so
+// the current-week vitals above can never be mistaken for the week being read.
+function buildAthleteWeekStrip(a, ctx) {
+  const isCurrent = ctx.weekOffset === 0;
+  const programmeEnd = Math.max(getProgWeeks(a.id), typeof a.weekNum === 'number' ? a.weekNum : 0);
+  const selectedWeekLabel = ctx.selectedWeekNum === 0 ? 'Discovery Week' : (ctx.weekLabel || 'Selected Week');
+  const currentWeekLabel = a.weekNum === 0
+    ? 'Discovery Week'
+    : (typeof a.weekNum === 'number' ? `Week ${a.weekNum}` : 'Current week');
+  return `<div class="week-jump ${isCurrent ? 'is-current' : 'is-reviewing'}">
+    <div class="week-jump-identity">
+      <div class="week-jump-context">
+        <div class="week-jump-title">${isCurrent ? 'Current programme week' : 'Reviewing programme week'}</div>
+        <div class="week-jump-main-row">
+          <div class="week-jump-main">${esc(selectedWeekLabel)}</div>
+          <span class="week-jump-status ${isCurrent ? 'current' : 'reference'}">${isCurrent ? 'Current week' : `Current: ${esc(currentWeekLabel)}`}</span>
+        </div>
+        <div class="week-jump-sub">${fmtDate(ctx.weekStartStr)} → ${fmtDate(ctx.weekEndStr)}</div>
+      </div>
+    </div>
+    <div class="week-jump-controls" role="group" aria-label="Programme week navigation">
+      <button class="week-jump-btn secondary" onclick="fpWeekNav(-1)">← Previous Week</button>
+      <button class="week-jump-btn" onclick="fpWeekReset()" ${isCurrent ? 'disabled' : ''}>Current Week</button>
+      <button class="week-jump-btn secondary" onclick="fpWeekNav(1)" ${ctx.selectedWeekNum !== null && ctx.selectedWeekNum >= programmeEnd ? 'disabled' : ''}>Next Week →</button>
+    </div>
+  </div>`;
+}
+
+// Current best set per exercise, from the same e1RM comparison detectPRs already
+// runs for the PR feed. No new data, and it makes "what are they lifting now"
+// answerable without opening six days in sequence.
+function buildStrengthBests(a) {
+  const all = detectPRs(a.sessions || []).allTime || {};
+  const rows = Object.entries(all)
+    .map(([, best]) => best)
+    .filter(b => b && b.weight)
+    .sort((x, y) => (y.date || '').localeCompare(x.date || ''));
+  if (!rows.length) return '';
+  return `<div class="fpc-section">
+    <div class="fpc-section-title">Current bests — all logged strength work (${rows.length})</div>
+    <div class="fpa-table-wrap">
+      <table class="fpa-table">
+        <thead><tr><th>Exercise</th><th class="n">Best set</th><th class="n">Est. 1RM</th><th class="n">When</th></tr></thead>
+        <tbody>
+          ${rows.map(b => `<tr>
+            <td>${esc(b.exercise)}</td>
+            <td class="n">${esc(String(b.weight))}kg × ${esc(String(b.reps))}</td>
+            <td class="n">${Math.round(b.e1rm)}kg</td>
+            <td class="n">${fmtDate(b.date)}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+  </div>`;
+}
+
 function buildFPCard(a, weekOffset = 0) {
   const ctx = getSelectedWeekContext(a, weekOffset);
   const w = ctx.weekly || (weekOffset === 0 ? a.weekly : null);
@@ -8268,29 +9420,6 @@ function buildFPCard(a, weekOffset = 0) {
   } else {
     metaText = a.body.length ? 'Daily tracking only' : 'No recent data';
   }
-
-  // Hero
-  const hero = `<div class="fpc-hero">
-    <div class="fpc-hero-top">
-      <div>
-        <div class="fpc-name">${esc(a.id)}</div>
-        <div class="fpc-meta ${a.isStale ? 'stale' : ''}">${metaText}</div>
-        <div class="fpc-hero-actions">
-          <button class="fpc-act-btn" onclick="copyDM('${esc(a.id)}')">💬 DM</button>
-          <button class="fpc-act-btn" onclick="DP_ACTIONS.open('${esc(a.id)}')">＋ Action</button>
-          <button class="fpc-act-btn" onclick="fpPlanWeek('${esc(a.id)}')">⚏ Plan Week</button>
-          <button class="fpc-act-btn" onclick="fpNotify('${esc(a.id)}')">🔔 Notify</button>
-          <button class="fpc-act-btn fpc-expand-all" onclick="fpExpandAll(this)">▾ Show all data</button>
-        </div>
-      </div>
-      ${ctx.selectedWeekNum !== null ? ctx.selectedWeekNum === 0 ? `<div class="fpc-week-badge"><div class="fpc-week-num" style="font-size:24px;letter-spacing:.04em">DISC</div><div class="fpc-week-lbl">WEEK</div></div>` : `<div class="fpc-week-badge"><div class="fpc-week-num">${ctx.selectedWeekNum}</div><div class="fpc-week-lbl">Week</div></div>` : ''}
-    </div>
-    ${a.flags.length ? `<div class="fpc-flags">${fps}</div>` : ''}
-    <div class="fpc-stat-pills">
-      ${a.checkinStreak > 0 ? `<div class="fpc-stat-pill ${a.checkinStreak >= 4 ? 'good' : a.checkinStreak >= 2 ? 'mid' : ''}">🔥 ${a.checkinStreak}wk streak</div>` : `<div class="fpc-stat-pill bad">No streak</div>`}
-      ${a.compliance4w !== null ? `<div class="fpc-stat-pill ${a.compliance4w >= 85 ? 'good' : a.compliance4w >= 65 ? 'mid' : 'bad'}">📊 ${a.compliance4w}% 4w compliance</div>` : ''}
-    </div>
-  </div>`;
 
   // Banner
   let banner = '';
@@ -8505,7 +9634,6 @@ function buildFPCard(a, weekOffset = 0) {
     ? `<div class="${bodyHtml && nutrHtml ? 'fpc-body-nutr' : ''}" style="${bodyHtml && nutrHtml ? '' : 'margin-bottom:16px'}">${bodyHtml}${nutrHtml}</div>`
     : '';
 
-  const dailyInputsHtml = buildDailyInputsLedger(a, ctx);
   const clientProfileHtml = buildClientProfilePanel(a, 'full');
 
   // ── Day-by-day week detail (full week, newest first) ─────────────────────
@@ -8544,7 +9672,17 @@ function buildFPCard(a, weekOffset = 0) {
         // Original device files take priority: unlike a third-party API summary,
         // they include the athlete-consented laps and sensor streams we own.
         const importedForDay = (a.activities || []).filter(activity => activity._d === dateStr);
-        const importedActivityHtml = importedForDay.map(renderImportedActivity).join('');
+        // Where the coach prescribed a structured run and the athlete uploaded a
+        // file for the same day, drop a placeholder the prescribed-vs-actual
+        // comparison hydrates into. Fetched per session so the week still paints
+        // immediately.
+        const pvaPlan = dayPlan.find(r => RUN_SESSION_TYPES.has(r['Session Type'] || r['SessionType'] || ''));
+        // _sbId is the planned_sessions UUID; the prescription endpoint keys on it.
+        const pvaPlanId = pvaPlan?._sbId || '';
+        const pvaHtml = (pvaPlanId && importedForDay.length)
+          ? `<div class="pva-pending" data-pva-session="${esc(pvaPlanId)}" data-pva-activity="${esc(importedForDay[0].id)}"></div>`
+          : '';
+        const importedActivityHtml = pvaHtml + importedForDay.map(renderImportedActivity).join('');
         const normaliseActivityTitle = value => String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
         const importedNames = new Set(importedForDay.map(activity => normaliseActivityTitle(activity.activityName)));
 
@@ -8626,7 +9764,7 @@ function buildFPCard(a, weekOffset = 0) {
         const hasData = daySessions.length > 0 || dayPlan.length > 0 || importedForDay.length > 0 || dayBody || dayNutr;
 
         if (!hasData) {
-          return `<div class="wd-row empty">
+          return `<div class="wd-row empty" data-wd-date="${dateStr}">
             <div class="wd-date">${dayLabel}</div>
             <div class="wd-rest">${isFuture ? '—' : 'No data logged'}</div>
             <div class="wd-strava-col" data-wd-strava-id="${esc(a.id)}" data-wd-strava-date="${dateStr}" data-direct-activity-count="${importedForDay.length}">${activityColumnHtml}</div>
@@ -8818,8 +9956,8 @@ function buildFPCard(a, weekOffset = 0) {
             ${isBad(nNotes) ? `<div class="wd-sess-notes" style="margin-top:2px">${esc(nNotes)}</div>` : ''}`;
         }
 
-        return `<div class="wd-row">
-          <div class="wd-date">${dayLabel}</div>
+        return `<div class="wd-row" data-wd-date="${dateStr}">
+          <div class="wd-date">${dayLabel}${buildDayReviewControl(a.id, dateStr, daySessions.length)}</div>
           <div class="wd-day-content">
             ${planHtml}
             ${sessHtml}
@@ -9123,25 +10261,53 @@ function buildFPCard(a, weekOffset = 0) {
     }
   }
 
-  // Triage order: act → this week's story → detail → media/history → call prep
-  return `<div>
-    ${buildWeekJump(a, ctx)}
-    ${hero}
-    ${banner}
-    ${fpActionHtml}
-    ${clientProfileHtml}
-    ${wipHtml}
-    ${programmeVolumeHtml}
-    ${scoresHtml}
-    ${trainingHtml}
-    ${weekDetailHtml}
-    ${dailyNutrHtml}
-    ${prsHtml}
-    ${trendsHtml}
-    ${bodyNutrPart}
-    ${progressPhotosHtml}
-    ${fpPrevCheckinsHtml}
-    ${callPrepHtml}
+  // ── Panels ────────────────────────────────────────────────────────────────
+  // Same sections as before, each now assigned to exactly one tab. Overview and
+  // Training are week-scoped and carry the week strip; the rest span a range.
+  const weekStrip = buildAthleteWeekStrip(a, ctx);
+  const strengthBestsHtml = buildStrengthBests(a);
+  const emptyPanel = message => `<div class="fpa-empty">${esc(message)}</div>`;
+
+  const panels = {
+    overview: [weekStrip, banner, fpActionHtml, wipHtml, scoresHtml, trainingHtml, clientProfileHtml],
+    training: [weekStrip, weekDetailHtml],
+    running:  [buildRunningPanel(a), programmeVolumeHtml, buildMileageTrend(a)],
+    strength: [buildStrengthPanel(a), prsHtml, strengthBestsHtml],
+    body:     [trendsHtml, bodyNutrPart, dailyNutrHtml, progressPhotosHtml],
+    checkins: [fpPrevCheckinsHtml],
+    notes:    [callPrepHtml],
+  };
+
+  const emptyCopy = {
+    overview: 'Nothing logged for this athlete yet.',
+    training: 'No sessions planned or logged for this week.',
+    running:  'No running volume recorded yet. Prescribe a week in Programming to see planned versus actual.',
+    strength: 'No strength sessions logged yet. Personal bests and current lifts appear here once the athlete logs a gym session.',
+    body:     'No body, nutrition or photo data logged yet.',
+    checkins: 'No previous weekly check-ins submitted.',
+    notes:    'No coach notes yet.',
+  };
+
+  const panelHtml = FPA_TABS.map(t => {
+    const content = (panels[t.key] || []).filter(Boolean).join('');
+    return `<div class="fpa-panel" data-fpa-panel="${t.key}" role="tabpanel" ${t.key === _fpaTab ? '' : 'hidden'}>
+      ${content || emptyPanel(emptyCopy[t.key] || 'Nothing here yet.')}
+    </div>`;
+  }).join('');
+
+  const tabCounts = {
+    checkins: (a.weeklies || []).length || '',
+    strength: (a.prs?.recent || []).length || '',
+  };
+
+  // Header and tabs share one sticky wrapper so the offset does not depend on
+  // the header's height, which changes with flags and the next-action row.
+  return `<div class="fpa">
+    <div class="fpa-sticky">
+      ${buildAthleteHeader(a, ctx)}
+      ${buildAthleteTabBar(tabCounts)}
+    </div>
+    <div class="fpa-panels">${panelHtml}</div>
   </div>`;
 }
 
@@ -9876,29 +11042,64 @@ async function decideApplication(notionId, name, decision) {
 }
 
 // ── Tab switching ─────────────────────────────────────────────────────────────
+// ── Tab switching ─────────────────────────────────────────────────────────────
+// Four coaching destinations plus a Settings menu. Applications, new-lead
+// notifications and the notify composer were three top-level tabs for one
+// funnel; they are now sub-views of Pipeline and keep their own content divs.
+const PIPELINE_TABS = ['applications', 'notifications', 'send'];
+const ALL_TABS = ['triage', 'athletes', 'programming', 'coaches', 'sync', ...PIPELINE_TABS];
+const TAB_CONTENT_ID = { applications: 'apps', notifications: 'notif' };
+
+// Which primary button lights up for a given internal tab key.
+function primaryTabFor(tab) {
+  if (PIPELINE_TABS.includes(tab)) return 'pipeline';
+  if (tab === 'coaches' || tab === 'sync') return 'settings';
+  return tab;
+}
+
+let _pipelineView = 'applications';
+
 function switchTab(tab) {
   if (tab === 'planning' || tab === 'nutrition') {
     _progView = tab === 'nutrition' ? 'block' : 'week';
     try { localStorage.setItem('dp_prog_view', _progView); } catch {}
     tab = 'programming';
   }
-  const idMap = { applications: 'apps', notifications: 'notif' };
-  const tabs = ['triage','athletes','programming','coaches','sync','applications','notifications','send'];
-  tabs.forEach(t => {
-    const key = idMap[t] || t;
-    const btn     = document.getElementById(`tab-${key}-btn`);
-    const content = document.getElementById(`tab-${key}-content`);
-    const active  = t === tab;
-    if (btn) {
-      btn.setAttribute('role', 'tab');
-      btn.setAttribute('aria-selected', String(active));
-      btn.classList.toggle('active', active);
-    }
+  if (tab === 'pipeline') tab = _pipelineView;
+  if (!ALL_TABS.includes(tab)) tab = 'triage';
+  if (PIPELINE_TABS.includes(tab)) _pipelineView = tab;
+
+  // Content panels keep their existing ids and markup.
+  ALL_TABS.forEach(t => {
+    const content = document.getElementById(`tab-${TAB_CONTENT_ID[t] || t}-content`);
     if (content) {
       content.setAttribute('role', 'tabpanel');
-      content.style.display = active ? '' : 'none';
+      content.style.display = t === tab ? '' : 'none';
     }
   });
+
+  const primary = primaryTabFor(tab);
+  ['triage', 'athletes', 'programming', 'pipeline'].forEach(key => {
+    const btn = document.getElementById(`tab-${key}-btn`);
+    if (!btn) return;
+    const active = key === primary;
+    btn.setAttribute('aria-selected', String(active));
+    btn.classList.toggle('active', active);
+  });
+  document.getElementById('settings-btn')?.classList.toggle('active', primary === 'settings');
+
+  // Pipeline sub-navigation
+  const subnav = document.getElementById('pipeline-subnav');
+  if (subnav) subnav.style.display = PIPELINE_TABS.includes(tab) ? '' : 'none';
+  PIPELINE_TABS.forEach(t => {
+    const btn = document.getElementById(`pipe-${t}-btn`);
+    if (!btn) return;
+    const active = t === tab;
+    btn.classList.toggle('active', active);
+    btn.setAttribute('aria-selected', String(active));
+  });
+
+  closeSettingsMenu();
   document.getElementById('filter-bar').style.display = tab === 'athletes' ? '' : 'none';
   document.getElementById('gen-btn').style.display    = tab === 'athletes' && _allAthletes.length ? 'block' : 'none';
 
@@ -9915,8 +11116,279 @@ function switchTab(tab) {
     'triage', 'athletes', 'programming', 'coaches', 'sync', 'applications', 'notifications',
   ]).has(tab);
   if (needsFullData && !_fullDashboardLoaded && !_fullDashboardLoading) load();
-
 }
+
+// ── Command palette (⌘K) ──────────────────────────────────────────────────────
+// Athlete switching is the most frequent navigation in the dashboard and used to
+// cost a tab change plus a scan of the roster. This puts every athlete and every
+// destination one keystroke away from anywhere, including from inside another
+// athlete's workspace.
+const CMDK_DESTINATIONS = [
+  { label: 'Today',            hint: 'Decision queue',        run: () => switchTab('triage') },
+  { label: 'Squad',            hint: 'Roster table',          run: () => switchTab('athletes') },
+  { label: 'Calendar',         hint: 'Programming',           run: () => switchTab('programming') },
+  { label: 'Pipeline',         hint: 'Applications',          run: () => switchTab('applications') },
+  { label: 'Notify athletes',  hint: 'Send a message',        run: () => switchTab('send') },
+  { label: 'Sync health',      hint: 'Settings',              run: () => switchTab('sync') },
+  { label: 'Coach team',       hint: 'Settings',              run: () => switchTab('coaches') },
+  { label: 'Manage athletes',  hint: 'Settings',              run: () => openManageAthletes() },
+];
+
+const CMDK_RECENT_KEY = 'dp_recent_athletes';
+let _cmdkResults = [];
+let _cmdkIndex = 0;
+let _cmdkReturnFocus = null;
+
+function cmdkRecent() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(CMDK_RECENT_KEY) || '[]');
+    return Array.isArray(raw) ? raw.filter(v => typeof v === 'string').slice(0, 5) : [];
+  } catch { return []; }
+}
+
+function cmdkRemember(id) {
+  if (!id) return;
+  try {
+    const next = [id, ...cmdkRecent().filter(v => v !== id)].slice(0, 5);
+    localStorage.setItem(CMDK_RECENT_KEY, JSON.stringify(next));
+  } catch {}
+}
+
+function cmdkEnsureShell() {
+  let root = document.getElementById('cmdk');
+  if (root) return root;
+  root = document.createElement('div');
+  root.id = 'cmdk';
+  root.hidden = true;
+  root.setAttribute('role', 'dialog');
+  root.setAttribute('aria-modal', 'true');
+  root.setAttribute('aria-label', 'Search athletes and destinations');
+  root.innerHTML = `
+    <div class="cmdk-backdrop" data-cmdk-close></div>
+    <div class="cmdk-panel">
+      <input id="cmdk-input" class="cmdk-input" type="text" autocomplete="off" spellcheck="false"
+             placeholder="Search athletes, or jump to a screen…" aria-label="Search"
+             aria-controls="cmdk-list" aria-autocomplete="list">
+      <div id="cmdk-list" class="cmdk-list" role="listbox" aria-label="Results"></div>
+      <div class="cmdk-foot">
+        <span><kbd>↑</kbd><kbd>↓</kbd> move</span>
+        <span><kbd>↵</kbd> open</span>
+        <span><kbd>esc</kbd> close</span>
+      </div>
+    </div>`;
+  document.body.appendChild(root);
+
+  root.addEventListener('click', event => {
+    if (event.target.closest('[data-cmdk-close]')) return closeCommandPalette();
+    const row = event.target.closest('[data-cmdk-i]');
+    if (row) cmdkRun(Number(row.dataset.cmdkI));
+  });
+  root.querySelector('#cmdk-input').addEventListener('input', () => cmdkRender());
+  root.querySelector('#cmdk-input').addEventListener('keydown', cmdkKeydown);
+  return root;
+}
+
+function cmdkAthletes() {
+  const list = [..._allAthletes, ..._coaches];
+  const seen = new Set();
+  return list.filter(a => {
+    if (!a?.id || seen.has(a.id)) return false;
+    seen.add(a.id);
+    return true;
+  });
+}
+
+function cmdkSubtitle(a) {
+  const bits = [];
+  if (typeof a.weekNum === 'number') bits.push(a.weekNum === 0 ? 'Discovery' : `Week ${a.weekNum}`);
+  const countdown = raceCountdownLabel(a.race);
+  if (countdown && !a.race.isPast) bits.push(countdown);
+  if (a.actions?.severity === 'red' && !a.acked) bits.push('Needs action');
+  else if (a.isStale) bits.push('No check-in');
+  return bits.join(' · ') || 'No recent data';
+}
+
+function cmdkBuildResults(query) {
+  const q = query.trim().toLowerCase();
+  const athletes = cmdkAthletes();
+  const rows = [];
+
+  if (!q) {
+    const recent = cmdkRecent()
+      .map(id => athletes.find(a => a.id === id))
+      .filter(Boolean);
+    recent.forEach(a => rows.push({
+      group: 'Recent', label: a.displayName || a.id, hint: cmdkSubtitle(a),
+      run: () => cmdkOpenAthlete(a.id),
+    }));
+    // Anyone flagged is worth surfacing before the coach has typed anything.
+    athletes
+      .filter(a => a.actions?.severity === 'red' && !a.acked && !recent.includes(a))
+      .slice(0, 5)
+      .forEach(a => rows.push({
+        group: 'Needs attention', label: a.displayName || a.id, hint: cmdkSubtitle(a),
+        run: () => cmdkOpenAthlete(a.id),
+      }));
+    CMDK_DESTINATIONS.forEach(d => rows.push({ group: 'Go to', label: d.label, hint: d.hint, run: d.run }));
+    return rows;
+  }
+
+  athletes
+    .filter(a => `${a.displayName || ''} ${a.id}`.toLowerCase().includes(q))
+    .sort((x, y) => {
+      // Prefix matches first, then alphabetical — typing "sa" should not put
+      // "Alessandra" above "Sarah".
+      const xs = String(x.displayName || x.id).toLowerCase().startsWith(q) ? 0 : 1;
+      const ys = String(y.displayName || y.id).toLowerCase().startsWith(q) ? 0 : 1;
+      return xs - ys || String(x.displayName || x.id).localeCompare(String(y.displayName || y.id));
+    })
+    .slice(0, 12)
+    .forEach(a => rows.push({
+      group: 'Athletes', label: a.displayName || a.id, hint: cmdkSubtitle(a),
+      run: () => cmdkOpenAthlete(a.id),
+    }));
+
+  CMDK_DESTINATIONS
+    .filter(d => `${d.label} ${d.hint}`.toLowerCase().includes(q))
+    .forEach(d => rows.push({ group: 'Go to', label: d.label, hint: d.hint, run: d.run }));
+
+  return rows;
+}
+
+function cmdkOpenAthlete(id) {
+  cmdkRemember(id);
+  // showFP walks the visible roster for prev/next, so make sure the squad is
+  // loaded and rendered before handing it an id.
+  if (!_fullDashboardLoaded) {
+    switchTab('athletes');
+    load().then(() => showFP(id)).catch(() => {});
+    return;
+  }
+  showFP(id);
+}
+
+function cmdkRender() {
+  const input = document.getElementById('cmdk-input');
+  const list = document.getElementById('cmdk-list');
+  if (!input || !list) return;
+  _cmdkResults = cmdkBuildResults(input.value);
+  if (_cmdkIndex >= _cmdkResults.length) _cmdkIndex = Math.max(0, _cmdkResults.length - 1);
+
+  if (!_cmdkResults.length) {
+    list.innerHTML = `<div class="cmdk-empty">No athlete or screen matches “${esc(input.value.trim())}”.</div>`;
+    return;
+  }
+
+  let lastGroup = null;
+  list.innerHTML = _cmdkResults.map((r, i) => {
+    const head = r.group !== lastGroup ? `<div class="cmdk-group">${esc(r.group)}</div>` : '';
+    lastGroup = r.group;
+    return `${head}<div class="cmdk-row${i === _cmdkIndex ? ' is-active' : ''}" role="option"
+      aria-selected="${i === _cmdkIndex}" id="cmdk-row-${i}" data-cmdk-i="${i}">
+      <span class="cmdk-label">${esc(r.label)}</span>
+      <span class="cmdk-hint">${esc(r.hint)}</span>
+    </div>`;
+  }).join('');
+
+  input.setAttribute('aria-activedescendant', `cmdk-row-${_cmdkIndex}`);
+  list.querySelector('.cmdk-row.is-active')?.scrollIntoView({ block: 'nearest' });
+}
+
+function cmdkRun(i) {
+  const row = _cmdkResults[i];
+  if (!row) return;
+  closeCommandPalette();
+  row.run();
+}
+
+function cmdkKeydown(event) {
+  if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+    event.preventDefault();
+    if (!_cmdkResults.length) return;
+    const dir = event.key === 'ArrowDown' ? 1 : -1;
+    _cmdkIndex = (_cmdkIndex + dir + _cmdkResults.length) % _cmdkResults.length;
+    cmdkRender();
+    return;
+  }
+  if (event.key === 'Enter') { event.preventDefault(); cmdkRun(_cmdkIndex); return; }
+  if (event.key === 'Escape') { event.preventDefault(); closeCommandPalette(); }
+}
+
+function openCommandPalette() {
+  const root = cmdkEnsureShell();
+  if (!root.hidden) return;
+  _cmdkReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  _cmdkIndex = 0;
+  root.hidden = false;
+  const input = document.getElementById('cmdk-input');
+  input.value = '';
+  cmdkRender();
+  requestAnimationFrame(() => input.focus());
+  // The roster is what makes the palette useful, so pull it if it is not in yet.
+  if (!_fullDashboardLoaded && !_fullDashboardLoading) load().then(cmdkRender).catch(() => {});
+}
+
+function closeCommandPalette() {
+  const root = document.getElementById('cmdk');
+  if (!root || root.hidden) return;
+  root.hidden = true;
+  if (_cmdkReturnFocus?.isConnected) _cmdkReturnFocus.focus();
+  _cmdkReturnFocus = null;
+}
+
+document.addEventListener('keydown', event => {
+  if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+    event.preventDefault();
+    const root = document.getElementById('cmdk');
+    return root && !root.hidden ? closeCommandPalette() : openCommandPalette();
+  }
+  // "/" is a shortcut only when the coach is not already typing somewhere.
+  if (event.key === '/' && !_isTyping()) {
+    event.preventDefault();
+    openCommandPalette();
+  }
+});
+
+// ── Settings menu ─────────────────────────────────────────────────────────────
+// Sync health, the coach team and roster management are administration, not
+// daily coaching, so they no longer hold top-level tab slots.
+function toggleSettingsMenu(event) {
+  event?.stopPropagation();
+  const dropdown = document.getElementById('settings-dropdown');
+  const button = document.getElementById('settings-btn');
+  if (!dropdown || !button) return;
+  const open = dropdown.hidden;
+  dropdown.hidden = !open;
+  button.setAttribute('aria-expanded', String(open));
+  if (open) {
+    // Positioned on open because the dropdown is fixed — see the note in
+    // dashboard-detail-cleanup.css about .tab-bar clipping absolute children.
+    const rect = button.getBoundingClientRect();
+    dropdown.style.top = `${Math.round(rect.bottom + 4)}px`;
+    dropdown.style.left = `${Math.round(Math.max(8, rect.right - dropdown.offsetWidth))}px`;
+    dropdown.querySelector('button')?.focus();
+  }
+}
+
+function closeSettingsMenu() {
+  const dropdown = document.getElementById('settings-dropdown');
+  if (!dropdown || dropdown.hidden) return;
+  dropdown.hidden = true;
+  document.getElementById('settings-btn')?.setAttribute('aria-expanded', 'false');
+}
+
+function settingsGo(target) {
+  closeSettingsMenu();
+  if (target === 'manage') return openManageAthletes();
+  switchTab(target);
+}
+
+document.addEventListener('click', event => {
+  if (!event.target.closest?.('#settings-btn, #settings-dropdown')) closeSettingsMenu();
+});
+document.addEventListener('keydown', event => {
+  if (event.key === 'Escape') closeSettingsMenu();
+});
 
 // ── Call Prep toggle ──────────────────────────────────────────────────────────
 function toggleCardDetails(id) {
@@ -10067,18 +11539,25 @@ function _isAcked(a) {
   return !!(r && a.actions?.severity && r.sig === _ackSig(a));
 }
 
-function useAckRows(rows) {
+// coach_signal_state is the source of truth. The legacy athlete_data 'ack_alert'
+// blob is still read so acknowledgements made before this release are not lost
+// on deploy; nothing writes it any more.
+function useAckRows(rows, signalRows) {
   _acks = {};
   (rows || []).filter(r => r.key === 'ack_alert').forEach(r => {
     if (!r.value) return;
     if (typeof r.value === 'object') _acks[r.athlete_code] = r.value;
     else try { _acks[r.athlete_code] = JSON.parse(r.value); } catch {}
   });
+  (signalRows || []).filter(r => r.signal_type === 'client_alert').forEach(r => {
+    if (!r.athlete_code || !r.fingerprint) return;
+    _acks[nid(r.athlete_code)] = { sig: r.fingerprint, at: r.resolved_at, by: r.resolved_by };
+  });
 }
 
-function applyAckState(rows) {
+function applyAckState(rows, signalRows) {
   const before = JSON.stringify(_acks);
-  useAckRows(rows);
+  useAckRows(rows, signalRows);
   _allAthletes.forEach(a => { a.acked = _isAcked(a); });
   return before !== JSON.stringify(_acks);
 }
@@ -10108,6 +11587,7 @@ function _ackRefresh() {
   }
   ccCloseDetail(); // any open detail panel/popup is stale after an ack change
   renderCommandCenter(_allAthletes, _allApplications, _dataHealth);
+  publishClientSignals(_allAthletes);
   applyFilters();
   const fpOv = document.getElementById('fp-overlay');
   if (fpOv && fpOv.style.display === 'block') _drawFP();
@@ -10119,10 +11599,21 @@ async function ackAlert(id) {
   _ackPending.add(id);
   _ackRefresh();
   try {
-    const result = await maPost({ action: 'alert_acknowledge', code: id, signature: _ackSig(a) });
-    _acks[id] = result.acknowledgement;
+    // Resolution is one mechanism now: the same coach_signal_state row the
+    // triage queue uses, under the 'client_alert' signal type. _ackSig already
+    // normalises rolling day counters, so it is exactly the fingerprint
+    // semantics the server signals use.
+    const signature = _ackSig(a);
+    await maPost({
+      action: 'signal_resolve',
+      code: id,
+      signal_type: 'client_alert',
+      fingerprint: signature,
+    });
+    _acks[id] = { sig: signature, at: new Date().toISOString(), by: window.DP_COACH_AUTH?.coach?.() || document.getElementById('coach-select')?.value || 'Coach' };
     a.acked = _isAcked(a);
-    workflowNotice(`${athleteLabel(a)} acknowledged by ${result.acknowledgement.by}`);
+    window.DP_TRIAGE?.reload();
+    workflowNotice(`${athleteLabel(a)} resolved for Karl and Alex`);
   } catch (error) {
     workflowNotice(`Could not acknowledge ${athleteLabel(a)}: ${error.message}`, 'error');
   } finally {
@@ -10137,10 +11628,11 @@ async function unackAlert(id) {
   _ackPending.add(id);
   _ackRefresh();
   try {
-    await maPost({ action: 'alert_restore', code: id });
+    await maPost({ action: 'signal_restore', code: id, signal_type: 'client_alert' });
     delete _acks[id];
     if (a) a.acked = false;
-    workflowNotice(`${athleteLabel(a)} restored for Karl and Alex`);
+    window.DP_TRIAGE?.reload();
+    workflowNotice(`${athleteLabel(a)} reopened for Karl and Alex`);
   } catch (error) {
     workflowNotice(`Could not restore ${athleteLabel(a)}: ${error.message}`, 'error');
   } finally {
@@ -10156,7 +11648,7 @@ async function refreshSharedAcknowledgements() {
     const response = await fetch(`${ROSTER_API}?action=acknowledgements`, { cache: 'no-store' });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok || payload.ok === false) throw new Error(payload.error || `HTTP ${response.status}`);
-    if (applyAckState(payload.acknowledgements || [])) _ackRefresh();
+    if (applyAckState(payload.acknowledgements || [], payload.signals || [])) _ackRefresh();
   } catch (error) {
     console.warn('[shared acknowledgements]', error);
   } finally {
@@ -10202,7 +11694,9 @@ async function load({ bust = false } = {}) {
     useSessionLibraryRows(coachDataSB.sessionLibrary, coachDataSB.workoutSplits);
     useCallNoteRows(coachDataSB.athleteSettings);
     usePrepRows(coachDataSB.athleteSettings);
-    useAckRows(coachDataSB.athleteSettings);
+    useAckRows(coachDataSB.athleteSettings, coachDataSB.signalState);
+    useSessionReviewRows(coachDataSB.sessionReviews);
+    _strengthCache = new Map();
     const targets = useNutritionPlanRows(
       coachDataSB.nutritionPlans,
       coachDataSB.athleteSettings,
@@ -10223,7 +11717,7 @@ async function load({ bust = false } = {}) {
     // Auto-fill weekly KM from the training plan where no manual target is set
     _fillTargetsKm(targets);
 
-    const { athletes, coaches, syncAudit } = buildAll(weekly, sessions, body, nutrition, athleteDb, targets, planning, applications, roster, coachDataSB.activityUploads);
+    const { athletes, coaches, syncAudit } = buildAll(weekly, sessions, body, nutrition, athleteDb, targets, planning, applications, roster, coachDataSB.activityUploads, coachDataSB.goals);
     const dataHealth = {
       weekly: weekly.length,
       sessions: sessions.length,
@@ -10290,7 +11784,7 @@ async function load({ bust = false } = {}) {
     if (todayLoading) todayLoading.hidden = true;
     if (todayError) {
       todayError.hidden = false;
-      todayError.textContent = 'Weekly priorities could not load: ' + e.message;
+      todayError.textContent = 'Squad status could not load: ' + e.message;
     }
   } finally {
     _fullDashboardLoading = false;
@@ -10376,6 +11870,7 @@ function showFP(id, options = {}) {
   if (!_fpOrder.includes(id)) _fpOrder = [id];
   _fpIdx = Math.max(0, _fpOrder.indexOf(id));
   _fpWeekOffset = 0;
+  cmdkRemember(id);
   _drawFP();
   overlay.style.display = 'block';
   overlay.setAttribute('aria-hidden', 'false');
@@ -10465,65 +11960,10 @@ function fpWeekReset() {
   _drawFP();
 }
 
-function fpExpandAll(button) {
-  document.querySelectorAll('#fp-body .fpc-section.collapsed').forEach(section => {
-    section.classList.remove('collapsed');
-  });
-  document.querySelectorAll('#fp-body details').forEach(detail => {
-    detail.open = true;
-  });
-  if (button) {
-    button.textContent = '✓ All data shown';
-    button.disabled = true;
-  }
-}
-
-function initCollapsibleSections() {
-  // Sections open by default — matched against lowercased title text
-  const OPEN_BY_DEFAULT = [
-    'daily nutrition',
-    '🍽',
-    'progress photo',
-    'body',
-    'nutrition',
-    'this week',
-    'weekly check-in',
-    'training',
-    '🏆',
-    'recent pr',
-    '📈',
-    'trend',
-    'client profile',
-    '🟠',
-    'strava',
-    'week in progress',
-    '📍',
-    'volume by week',
-    'action required',
-    '⚠',
-    'watch list',
-  ];
-  // Sections that cannot be collapsed
-  const NO_COLLAPSE = [
-    'action required',
-    'watch list',
-    '⚠',
-  ];
-
-  document.querySelectorAll('#fp-body .fpc-section-title').forEach(title => {
-    const section = title.closest('.fpc-section');
-    if (!section) return;
-    const txt = title.textContent.toLowerCase().trim();
-    const noCollapse = NO_COLLAPSE.some(k => txt.includes(k.toLowerCase()));
-    if (noCollapse) {
-      section.classList.add('no-collapse');
-      return;
-    }
-    const startOpen = OPEN_BY_DEFAULT.some(k => txt.includes(k.toLowerCase()));
-    if (!startOpen) section.classList.add('collapsed');
-    title.addEventListener('click', () => section.classList.toggle('collapsed'));
-  });
-}
+// fpExpandAll() and initCollapsibleSections() were removed with the move to
+// tabs. The old collapse pass matched section *titles* against a string list
+// that named almost every section as open-by-default, so in practice nothing
+// collapsed and the athlete view stayed a sixteen-section scroll.
 
 function _drawFP() {
   const id = _fpOrder[_fpIdx];
@@ -10532,8 +11972,13 @@ function _drawFP() {
 
   document.getElementById('fp-body').innerHTML = buildFPCard(a, _fpWeekOffset);
   document.getElementById('fp-overlay').scrollTop = 0;
-  initCollapsibleSections();
-  requestAnimationFrame(() => _positionCurrentProgrammeWeek(document.getElementById('fp-body')));
+  // Applies the remembered tab and runs that panel's deferred work. `silent`
+  // because restoring a tab is not the coach choosing one.
+  switchAthleteTab(_fpaTab, { silent: true });
+  requestAnimationFrame(() => {
+    const panel = document.querySelector('#fp-body [data-fpa-panel="running"]');
+    if (panel && !panel.hidden) _positionCurrentProgrammeWeek(panel);
+  });
   loadProgressPhotoComparison(a.id);
 
   // Restore saved note (fpc-note textarea uses onchange so pre-fill here)
@@ -11879,7 +13324,34 @@ function buildWeightHistory(a) {
 }
 
 // Keyboard shortcuts: Escape = close, ←→ = navigate
+// The sticky athlete header carries a lot on first read and very little once a
+// coach is deep in a panel, so it sheds the vitals detail after a short scroll.
+(function initAthleteHeaderCondense() {
+  const overlay = document.getElementById('fp-overlay');
+  if (!overlay) return;
+  // A single class toggle against a value the scroll event already settled, so
+  // no rAF throttle: one would leave its "pending" flag stuck if the tab were
+  // hidden mid-scroll, and the header would then stop responding entirely.
+  let condensed = null;
+  overlay.addEventListener('scroll', () => {
+    const next = overlay.scrollTop > 140;
+    if (next === condensed) return;
+    condensed = next;
+    overlay.querySelector('.fpa-sticky')?.classList.toggle('is-condensed', next);
+  }, { passive: true });
+})();
+
 document.addEventListener('keydown', e => {
+  // The palette owns the keyboard while it is open.
+  const cmdk = document.getElementById('cmdk');
+  if (cmdk && !cmdk.hidden) return;
+
+  const exHistory = document.getElementById('ex-history');
+  if (exHistory && !exHistory.classList.contains('hidden')) {
+    if (e.key === 'Escape') closeExerciseHistory();
+    return;
+  }
+
   const whOl = document.getElementById('wh-overlay');
   if (whOl && whOl.style.display !== 'none') {
     if (e.key === 'Escape') hideWH();
@@ -11888,6 +13360,9 @@ document.addEventListener('keydown', e => {
   const overlay = document.getElementById('fp-overlay');
   if (overlay.style.display === 'none') return;
   if (e.key === 'Escape') hideFP();
+  // Arrow keys move between athletes, but not while the coach is writing a note
+  // or editing a field inside the workspace — there they belong to the caret.
+  if (_isTyping()) return;
   if (e.key === 'ArrowLeft'  && _fpIdx > 0)                  fpNav(-1);
   if (e.key === 'ArrowRight' && _fpIdx < _fpOrder.length - 1) fpNav(1);
 });
@@ -11991,13 +13466,17 @@ document.getElementById('gen-btn').addEventListener('click', generateAI);
   });
 })();
 </script>
-<script src="/dashboard-redesign.js?v=20260810-3" defer></script>
+<script src="/dashboard-redesign.js?v=20260906-17" defer></script>
 <script src="/coaching-actions.js?v=3" defer></script>
-<script src="/dashboard-mobilenav.js" defer></script>
-<script src="/triage.js?v=21" defer></script>
+<script src="/dashboard-mobilenav.js?v=20260906-17" defer></script>
+<script src="/triage.js?v=20260906-17" defer></script>
 <script src="/weekly-sport-targets.js?v=3" defer></script>
 <script src="/daily-macro-overrides.js?v=3" defer></script>
 <script src="/programming.js?v=4" defer></script>
+<!-- Analysis modules. ES modules so tests can import them directly; each also
+     publishes itself on window for the classic-script render code. -->
+<script type="module" src="/run-analysis.js?v=20260906-17"></script>
+<script type="module" src="/strength-analysis.js?v=20260906-17"></script>
 <script src="/app.js?v=2" defer></script>
 </body>
 </html>

@@ -489,6 +489,12 @@
     overflow-x: clip;
     overscroll-behavior: contain;
   }
+  #fp-overlay {
+    /* Keeps the athlete workspace's sticky header clear of the taller mobile
+       top bar. Consumed by .fpa-sticky and .wd-date. */
+    --fpa-topbar-h: calc(56px + var(--dp-safe-top));
+    --fpa-sticky-h: 118px;
+  }
   #fp-overlay .fp-topbar {
     position: sticky !important;
     top: 0;
@@ -540,7 +546,6 @@
      athlete. Give it a full-width reading order instead of squeezing the
      athlete, week and state into one desktop row. */
   #fp-overlay .week-jump {
-    top: calc(56px + var(--dp-safe-top)) !important;
     gap: 10px !important;
     padding: 12px !important;
     border-radius: 14px !important;
@@ -550,23 +555,6 @@
     display: block !important;
     min-width: 0;
   }
-  #fp-overlay .week-jump-athlete {
-    max-width: 100% !important;
-    margin-bottom: 8px;
-    color: var(--brand-text);
-    font-family: var(--font-data) !important;
-    font-size: 10px !important;
-    font-weight: 800 !important;
-    letter-spacing: .1em !important;
-    line-height: 1.2 !important;
-    text-overflow: clip !important;
-  }
-  #fp-overlay .week-jump-athlete::before {
-    content: 'Athlete · ';
-    color: var(--dim);
-    font-weight: 650;
-  }
-  #fp-overlay .week-jump-divider { display: none !important; }
   #fp-overlay .week-jump-main-row {
     align-items: center !important;
     justify-content: space-between;
@@ -595,15 +583,6 @@
   }
   #fp-overlay .fpc-hero-actions {
     gap: 6px !important;
-  }
-  #fp-overlay .fpc-expand-all {
-    display: inline-flex !important;
-    grid-column: 1 / -1;
-    align-items: center;
-    justify-content: center;
-    color: var(--brand-text);
-    background: var(--brand-bg);
-    border-color: var(--brand-border);
   }
   #fp-overlay .fpc-section {
     margin-bottom: 9px !important;

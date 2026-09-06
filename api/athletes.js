@@ -564,6 +564,21 @@ export async function listAlertAcknowledgements(request = sb) {
   return Array.isArray(rows) ? rows : [];
 }
 
+// Live resolution state, polled alongside the legacy acknowledgements so one
+// coach clearing a row is reflected on the other coach's screen within seconds.
+export async function listSignalState(request = sb) {
+  try {
+    const rows = await request(
+      'coach_signal_state?select=athlete_code,signal_type,fingerprint,resolved_by,resolved_at&order=resolved_at.desc'
+    );
+    return Array.isArray(rows) ? rows : [];
+  } catch (error) {
+    // Pre-migration: no table, so nothing is resolved.
+    console.warn('[athletes] coach_signal_state unavailable:', error.message);
+    return [];
+  }
+}
+
 export async function acknowledgeAlert(code, signature, coach, request = sb, now = new Date()) {
   const athleteCode = normaliseCode(code);
   if (!athleteCode) throw new Error('Athlete code is required');
@@ -589,6 +604,100 @@ export async function restoreAlert(code, request = sb) {
     { method: 'DELETE', prefer: 'return=representation' }
   );
   return { ok: true, athleteCode, rows: Array.isArray(rows) ? rows : [] };
+}
+
+// ── Session review ───────────────────────────────────────────────────────────
+// The reviewable unit is an athlete's day, not a single log row: strength
+// sessions write one training_session_logs row per exercise, and an athlete can
+// log a run and a lift on the same date. See the migration note.
+
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+function reviewDate(value) {
+  const date = String(value || '').slice(0, 10);
+  if (!ISO_DATE.test(date)) throw new Error('A session date of the form YYYY-MM-DD is required');
+  return date;
+}
+
+export async function reviewSession(code, sessionDate, coach, note, request = sb, now = new Date()) {
+  const athleteCode = normaliseCode(code);
+  if (!athleteCode) throw new Error('Athlete code is required');
+  const date = reviewDate(sessionDate);
+  const reviewedBy = String(coach || '').trim() || 'Coach';
+
+  const rows = await request('coach_session_reviews?on_conflict=athlete_code,session_date', {
+    method: 'POST',
+    prefer: 'resolution=merge-duplicates,return=representation',
+    body: {
+      athlete_code: athleteCode,
+      session_date: date,
+      reviewed_by: reviewedBy,
+      reviewed_at: now.toISOString(),
+      note: String(note || '').trim() || null,
+    },
+  });
+  return { ok: true, athleteCode, sessionDate: date, reviewedBy, rows: Array.isArray(rows) ? rows : [] };
+}
+
+export async function unreviewSession(code, sessionDate, request = sb) {
+  const athleteCode = normaliseCode(code);
+  if (!athleteCode) throw new Error('Athlete code is required');
+  const date = reviewDate(sessionDate);
+  const rows = await request(
+    `coach_session_reviews?athlete_code=eq.${encodeURIComponent(athleteCode)}&session_date=eq.${date}`,
+    { method: 'DELETE', prefer: 'return=representation' }
+  );
+  return { ok: true, athleteCode, sessionDate: date, rows: Array.isArray(rows) ? rows : [] };
+}
+
+// ── Triage signal resolution ─────────────────────────────────────────────────
+// Replaces the single `ack_alert` blob in athlete_data, which could hold one
+// acknowledgement per athlete and could not clear the server triage queue at
+// all. Resolving stores the fingerprint the signal was raised on, so the row
+// returns by itself once the underlying values move.
+
+export const RESOLVABLE_SIGNALS = new Set([
+  'pain',
+  'gone_quiet',
+  'compliance_drift',
+  'awaiting_review',
+  'overdue_action',
+  'client_alert',
+]);
+
+export async function resolveSignal(code, signalType, fingerprint, coach, note, request = sb, now = new Date()) {
+  const athleteCode = normaliseCode(code);
+  if (!athleteCode) throw new Error('Athlete code is required');
+  const type = String(signalType || '').trim().toLowerCase();
+  if (!RESOLVABLE_SIGNALS.has(type)) throw new Error(`Unsupported signal type: ${signalType}`);
+  const print = String(fingerprint || '').trim().slice(0, 200);
+  if (!print) throw new Error('A signal fingerprint is required');
+
+  const rows = await request('coach_signal_state?on_conflict=athlete_code,signal_type', {
+    method: 'POST',
+    prefer: 'resolution=merge-duplicates,return=representation',
+    body: {
+      athlete_code: athleteCode,
+      signal_type: type,
+      fingerprint: print,
+      resolved_by: String(coach || '').trim() || 'Coach',
+      resolved_at: now.toISOString(),
+      note: String(note || '').trim() || null,
+    },
+  });
+  return { ok: true, athleteCode, signalType: type, fingerprint: print, rows: Array.isArray(rows) ? rows : [] };
+}
+
+export async function restoreSignal(code, signalType, request = sb) {
+  const athleteCode = normaliseCode(code);
+  if (!athleteCode) throw new Error('Athlete code is required');
+  const type = String(signalType || '').trim().toLowerCase();
+  if (!RESOLVABLE_SIGNALS.has(type)) throw new Error(`Unsupported signal type: ${signalType}`);
+  const rows = await request(
+    `coach_signal_state?athlete_code=eq.${encodeURIComponent(athleteCode)}&signal_type=eq.${encodeURIComponent(type)}`,
+    { method: 'DELETE', prefer: 'return=representation' }
+  );
+  return { ok: true, athleteCode, signalType: type, rows: Array.isArray(rows) ? rows : [] };
 }
 
 export async function upsertAthleteSetting(code, key, value, request = sb) {
@@ -768,8 +877,11 @@ export default async function handler(req, res) {
       const action = String(req.query.action || 'roster').trim().toLowerCase();
 
       if (action === 'acknowledgements') {
-        const acknowledgements = await listAlertAcknowledgements();
-        return res.status(200).json({ ok: true, acknowledgements });
+        const [acknowledgements, signals] = await Promise.all([
+          listAlertAcknowledgements(),
+          listSignalState(),
+        ]);
+        return res.status(200).json({ ok: true, acknowledgements, signals });
       }
 
       if (action === 'profiles') {
@@ -834,6 +946,26 @@ export default async function handler(req, res) {
 
     if (action === 'alert_restore') {
       return res.status(200).json(await restoreAlert(req.body?.code));
+    }
+
+    if (action === 'session_review') {
+      return res.status(200).json(await reviewSession(
+        req.body?.code, req.body?.session_date, coach, req.body?.note
+      ));
+    }
+
+    if (action === 'session_unreview') {
+      return res.status(200).json(await unreviewSession(req.body?.code, req.body?.session_date));
+    }
+
+    if (action === 'signal_resolve') {
+      return res.status(200).json(await resolveSignal(
+        req.body?.code, req.body?.signal_type, req.body?.fingerprint, coach, req.body?.note
+      ));
+    }
+
+    if (action === 'signal_restore') {
+      return res.status(200).json(await restoreSignal(req.body?.code, req.body?.signal_type));
     }
 
     if (action === 'add') {

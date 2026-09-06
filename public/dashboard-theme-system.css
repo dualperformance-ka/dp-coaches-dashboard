@@ -5,11 +5,21 @@
    ============================================================ */
 
 :root {
-  --font-ui: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --font-data: 'Geist Mono', 'SFMono-Regular', Consolas, monospace;
+  /* Typeface contract. These three families are the ones actually fetched in
+     index.html's Google Fonts link. The previous values named 'Geist', which has
+     no @font-face anywhere in the repo, so every rule below silently resolved to
+     system-ui and the seven downloaded Plex files were discarded. */
+  --font-ui: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-data: 'IBM Plex Mono', 'SFMono-Regular', Consolas, monospace;
+  --font-display: 'IBM Plex Sans Condensed', 'IBM Plex Sans', -apple-system, sans-serif;
   --sans: var(--font-ui);
-  --cond: var(--font-ui);
+  --cond: var(--font-display);
   --mono: var(--font-data);
+  /* One content width for the whole product. Previously `.main` was 1400px
+     inline, 1440px in dashboard-redesign.css and 1600px via --desktop-max, so
+     which width you got depended on which file won. */
+  --content-max: 1680px;
+  --athlete-max: 1440px;
   --chrome: #081019;
   --chrome-text: #f3f8fb;
   --control-bg: #0d141b;
@@ -77,14 +87,22 @@ button,input,select,textarea,table,
   font-family: var(--font-ui) !important;
 }
 
+/* Sentence-case headings: UI face, tightened. */
 h1,h2,h3,h4,
-.dp-page-title,.cc-title,.aname,.tname,.texp-name,.coach-name,
-.fpc-name,.sched-card-name,.plan-card-title,.plan-lib-name,.nut-wk,
-.ma-title,.ma-name,.week-jump-main,.dp-access-card h1,
-.coach-actions-head h2,.coach-action-dialog-head h2,
-.dp-mobile-section-head h1 {
-  font-family: var(--font-ui) !important;
-  letter-spacing: -.025em !important;
+.dp-page-title,.plan-card-title,.plan-lib-name,.ma-title {
+  font-family: var(--font-ui);
+  letter-spacing: -.02em;
+}
+
+/* Athletic display type — athlete names, week labels, section lockups. These are
+   set uppercase at heavy weight by their own rules, so the condensed face and
+   their own positive tracking are what they were designed for. The previous
+   blanket `letter-spacing:-.025em !important` fought every one of them. */
+.cc-title,.aname,.tname,.texp-name,.coach-name,
+.fpc-name,.sched-card-name,.nut-wk,.ma-name,.week-jump-main,
+.dp-access-card h1,.coach-actions-head h2,.coach-action-dialog-head h2,
+.dp-mobile-section-head h1,.fpa-name {
+  font-family: var(--font-display) !important;
 }
 
 .sum-num,.cc-score-num,.tval,.tcell-num,.tdim,.twkbadge,
