@@ -4,6 +4,7 @@
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { extname, join, normalize } from 'node:path';
+import * as FIXTURE from './preview-fixture.mjs';
 
 const root = new URL('../public/', import.meta.url).pathname;
 const TYPES = {
@@ -30,17 +31,17 @@ const TRIAGE = () => ({
   },
   queue: [
     {
-      athleteCode: 'KHANG', athleteName: 'Khang Tran', flag: 'pain', severity: 'critical',
+      athleteCode: 'KAI', athleteName: 'Kai Tran', flag: 'pain', severity: 'critical',
       priority: 10070, fingerprint: 'pain|' + iso(1) + '|7|none',
       signal: `Pain 7/10 reported yesterday after Threshold 5×1km.`,
-      action: { type: 'open_athlete', label: 'Open session', athleteCode: 'KHANG' },
+      action: { type: 'open_athlete', label: 'Open session', athleteCode: 'KAI' },
       evidence: {},
     },
     {
-      athleteCode: 'MIA', athleteName: 'Mia Rossi', flag: 'gone_quiet', severity: 'high',
+      athleteCode: 'ANNA', athleteName: 'Anna Petrov', flag: 'gone_quiet', severity: 'high',
       priority: 5000, fingerprint: 'quiet|' + iso(2),
       signal: 'No completed session and no body log for at least 5 days.',
-      action: { type: 'message', label: 'Check in', athleteCode: 'MIA' },
+      action: { type: 'message', label: 'Check in', athleteCode: 'ANNA' },
       evidence: {},
     },
     {
@@ -70,10 +71,25 @@ const TRIAGE = () => ({
   },
 });
 
+// Order matters: the first pattern that matches wins, so the narrow
+// coach-data modes are listed before the bare full-payload route.
 const FIXTURES = [
   [/^\/api\/coach-data.*mode=triage/, TRIAGE],
-  [/^\/api\/actions/, () => ({ ok: true, actions: [] })],
+  [/^\/api\/coach-data.*mode=activity_streams/, () => ({ ok: true, id: 'up-0001', streams: [] })],
+  [/^\/api\/coach-data/, () => FIXTURE.coachData()],
   [/^\/api\/athletes\?action=acknowledgements/, () => ({ ok: true, acknowledgements: [], signals: [] })],
+  [/^\/api\/athletes\?action=roster/, () => ({ ok: true, athletes: FIXTURE.roster() })],
+  [/^\/api\/athletes\?action=profiles/, () => ({ ok: true, results: FIXTURE.profiles() })],
+  [/^\/api\/athletes\?action=prescription/, target => {
+    const id = new URL(target, 'http://x').searchParams.get('id');
+    return FIXTURE.prescription(id);
+  }],
+  [/^\/api\/athletes\?action=daily_macro_overrides/, () => ({ ok: true, overrides: [] })],
+  // Notion is still a second source in production. The preview returns it empty
+  // so what renders is provably the Supabase path and not a blended legacy shape.
+  [/^\/api\/data/, () => ({ results: [], has_more: false, next_cursor: null })],
+  [/^\/api\/actions/, () => ({ ok: true, actions: [] })],
+  [/^\/api\/notify/, () => ({ ok: true, status: [], queue: [] })],
 ];
 
 createServer(async (req, res) => {
@@ -83,7 +99,7 @@ createServer(async (req, res) => {
   for (const [pattern, build] of FIXTURES) {
     if (pattern.test(target)) {
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      return res.end(JSON.stringify(build()));
+      return res.end(JSON.stringify(build(target)));
     }
   }
   if (url.pathname.startsWith('/api/')) {
