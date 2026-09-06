@@ -233,3 +233,62 @@ test('the squad countdown is measured from the week on screen to race week', () 
   assert.equal(countdown('2026-09-14'), 'Race week', 'race day falls inside this week');
   assert.equal(countdown('2026-09-21'), null, 'no stale countdown on later weeks');
 });
+
+// ── Block view: the open week must be the athlete's own ──────────────────────
+// The week toolbar is hidden in Block view, but _progSelectedWeekLabel still
+// consulted _progWeekOffset. Browsing the Squad board two weeks ahead and then
+// switching to Block reported an athlete in his discovery week as "Week 2 of
+// 12", with no control on screen to explain or undo it.
+
+test('entering the block view drops a week offset browsed elsewhere', () => {
+  const render = functionSource('renderProgramming');
+  assert.match(render, /weekToolbar\.hidden = _progView === 'block'/, 'no week nav in block view');
+  assert.match(render, /_progView === 'block' && _progWeekOffset !== 0/, 'so the offset resets');
+});
+
+test('the block view week label is the offset applied to the athlete week', () => {
+  const labelFor = (offset) => {
+    const context = vm.createContext({
+      _progWeekOffset: offset,
+      _planRowsForWeek: () => [],            // no coach-assigned sessions that week
+      _planWeekStart: () => new Date(2026, 7, 31),
+      _nutCurrentWeekLabel: () => 'Week 0',  // the athlete is in his discovery week
+      result: null,
+    });
+    vm.runInContext(
+      `${functionSource('isDiscoveryWeek')}
+       ${functionSource('_nutWkNum')}
+       ${functionSource('_progSelectedWeekLabel')}
+       result = _progSelectedWeekLabel('CHUNG');`,
+      context,
+    );
+    return context.result;
+  };
+  assert.equal(labelFor(0), 'Week 0', 'at rest, the athlete-s own week');
+  assert.equal(labelFor(2), 'Week 2', 'the number the coach saw, two weeks browsed away');
+});
+
+// ── The open programme week has to be findable ───────────────────────────────
+
+test('the open week is banded, not tinted at chip alpha', () => {
+  const styles = html + fs.readFileSync(new URL('../public/dashboard-theme-system.css', import.meta.url), 'utf8');
+
+  // One ramp per theme, so the pride theme does not fall back to orange.
+  for (const alpha of ['--wk-open-bg:', '--wk-open-bg-hover:', '--wk-open-line:']) {
+    const declarations = html.split(alpha).length - 1;
+    assert.ok(declarations >= 3, `${alpha} must be defined for dark, light and pride (found ${declarations})`);
+  }
+
+  // The row band, and a rail thick enough to see.
+  assert.match(html, /\.nut-row\.current td\{background:var\(--wk-open-bg\)\}/);
+  assert.match(html, /\.nut-row\.current:hover td\{background:var\(--wk-open-bg-hover\)\}/);
+  assert.match(html, /\.nut-row\.current td:first-child\{box-shadow:inset 4px 0 0 var\(--amber\)/);
+  assert.match(html, /\.nut-row\.current td:last-child\{box-shadow:inset -4px 0 0 var\(--amber\)/);
+
+  // The band ran as a 1px brand hairline that fought the amber rail.
+  assert.doesNotMatch(html, /\.nut-row\.selected td\{box-shadow:inset 0 1px 0 var\(--brand-border\)/);
+
+  // Light theme used to repaint the whole thing blue at 8%.
+  assert.doesNotMatch(styles, /\.nut-row\.current td \{ background:rgba\(31,139,184/);
+  assert.match(styles, /body\[data-theme="light"\] \.nut-row\.current td \{ background:var\(--wk-open-bg\); \}/);
+});

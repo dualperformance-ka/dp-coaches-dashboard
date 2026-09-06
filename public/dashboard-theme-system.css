@@ -343,8 +343,9 @@ body[data-theme="light"] .plan-card-status.Planned { color:var(--muted); backgro
 body[data-theme="light"] .plan-chip { color:var(--muted); background:var(--surface); border-color:var(--border-mid); }
 body[data-theme="light"] .plan-chip.active { color:#0d6288; background:rgba(31,139,184,.11); border-color:rgba(31,139,184,.38); }
 body[data-theme="light"] .plan-action-btn { color:#0d6288; background:rgba(31,139,184,.08); border-color:rgba(31,139,184,.30); }
-body[data-theme="light"] .nut-row.current td { background:rgba(31,139,184,.08); }
-body[data-theme="light"] .nut-row.current .nut-wk { color:#0d6288; }
+body[data-theme="light"] .nut-row.current td { background:var(--wk-open-bg); }
+body[data-theme="light"] .nut-row.current:hover td { background:var(--wk-open-bg-hover); }
+body[data-theme="light"] .nut-row.current .nut-wk { color:var(--amber); }
 
 /* Theme-aware semantic surfaces and data accents. */
 .action-ribbon {
@@ -550,6 +551,15 @@ body[data-theme="light"] textarea:focus-visible {
     color:var(--text);
     background:var(--surface);
     border-color:var(--border);
+  }
+  /* The rule above repaints every card, open week included, and its
+     border-color lands after the card rail is set in
+     dashboard-comprehensive.css. On a light phone the open week was a plain
+     white card with no rail and no tint. */
+  body[data-theme="light"] .nut-table .nut-row.current {
+    background:linear-gradient(135deg,var(--wk-open-bg),transparent 65%),var(--surface);
+    border-color:var(--wk-open-line);
+    border-left:4px solid var(--amber);
   }
   body[data-theme="light"] .dp-theme-switch {
     color:#eef5f8;

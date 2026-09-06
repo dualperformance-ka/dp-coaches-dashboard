@@ -25,6 +25,10 @@
   --red-bg:rgba(248,113,113,.08);--red-border:rgba(248,113,113,.22);--red-text:#f87171;
   --coach-bg:rgba(165,180,252,.08);--coach-border:rgba(165,180,252,.22);--coach-text:#a5b4fc;
   --brand:#79c3e8;--brand-dim:#4a9fc9;--brand-text:#a9dbf5;--brand-bg:rgba(121,195,232,.10);--brand-border:rgba(121,195,232,.34);
+  /* The open programme week in the Block table. --amber-bg is 8% alpha, which
+     is right for a chip and far too quiet for finding one row in thirteen, so
+     the open week gets its own ramp per theme. */
+  --wk-open-bg:rgba(245,158,11,.17);--wk-open-bg-hover:rgba(245,158,11,.24);--wk-open-line:rgba(245,158,11,.5);
 }
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;line-height:1.5}
@@ -127,6 +131,8 @@ body[data-theme="light"]{
   --amber-bg:rgba(217,119,6,.08);--amber-border:rgba(217,119,6,.22);--amber-text:#b45309;
   --red-bg:rgba(220,38,38,.08);--red-border:rgba(220,38,38,.22);--red-text:#dc2626;
   --coach-bg:rgba(99,102,241,.08);--coach-border:rgba(99,102,241,.22);--coach-text:#4338ca;
+  /* Lower alphas than dark: the light amber is a heavier pigment on white. */
+  --wk-open-bg:rgba(217,119,6,.15);--wk-open-bg-hover:rgba(217,119,6,.22);--wk-open-line:rgba(180,83,9,.45);
 }
 body[data-theme="light"] header{background:#0a0a0a}
 body[data-theme="light"] .tab-bar{background:#0a0a0a;border-bottom-color:rgba(255,255,255,.08)}
@@ -298,6 +304,7 @@ body[data-theme="pride"]{
   --text:#f0ede8;--muted:#bbb;--dim:#888;
   --amber:#FF69B4;--amber-dim:#FFB6C1;--warn:#FF8C00;
   --ok:#00DD88;--alert:#FF4466;--str:#8B5CF6;
+  --wk-open-bg:rgba(255,105,180,.16);--wk-open-bg-hover:rgba(255,105,180,.23);--wk-open-line:rgba(255,105,180,.5);
 }
 body[data-theme="pride"] header{background:linear-gradient(90deg,#FF0018 0%,#FF8C00 20%,#FFD700 40%,#008018 60%,#0000F9 80%,#8B008B 100%);background-size:200% 100%;animation:pride-shift 6s ease infinite}
 body[data-theme="pride"] .logo .d{color:#fff;text-shadow:0 0 20px rgba(255,255,255,.5)}
@@ -1127,7 +1134,7 @@ body[data-theme="light"] .plan-chip.coach::before{color:#92400e}
 .prog-context{margin:0 0 12px;padding:9px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);font-family:var(--mono);font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
 .prog-context b{color:var(--text)}
 .prog-body[hidden],.prog-toolbar[hidden]{display:none!important}
-.nut-row.selected td{box-shadow:inset 0 1px 0 var(--brand-border),inset 0 -1px 0 var(--brand-border)}
+.nut-row.selected td{box-shadow:inset 0 2px 0 var(--wk-open-line),inset 0 -2px 0 var(--wk-open-line)}
 .nut-open{flex:0 0 auto;margin-left:auto;font-family:var(--mono);font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:2px 6px;border-radius:4px;border:1px solid var(--border-mid);background:transparent;color:var(--dim);cursor:pointer;transition:all .15s}
 .nut-open:hover{color:var(--brand-text);border-color:var(--brand-border);background:var(--brand-bg)}
 .nut-row:hover td{background:var(--surface2)}
@@ -1177,16 +1184,16 @@ body[data-theme="light"] .plan-chip.coach::before{color:#92400e}
 .nut-table th:last-child,.nut-table td:last-child{right:0}
 .nut-table th:first-child,.nut-table td:first-child{border-right:1px solid var(--border)}
 .nut-table th:last-child,.nut-table td:last-child{border-left:1px solid var(--border)}
-.nut-row.current td:first-child,.nut-row.current td:last-child{background:linear-gradient(var(--amber-bg),var(--amber-bg)),var(--surface)}
+.nut-row.current td:first-child,.nut-row.current td:last-child{background:linear-gradient(var(--wk-open-bg),var(--wk-open-bg)),var(--surface)}
 .nut-row:hover td:first-child,.nut-row:hover td:last-child{background:var(--surface2)}
-.nut-row.current:hover td:first-child,.nut-row.current:hover td:last-child{background:linear-gradient(var(--amber-bg),var(--amber-bg)),var(--surface2)}
+.nut-row.current:hover td:first-child,.nut-row.current:hover td:last-child{background:linear-gradient(var(--wk-open-bg-hover),var(--wk-open-bg-hover)),var(--surface2)}
 /* Soft edge shadow so it reads as a pinned column, not a layout glitch.
    The selected-row rule repeats its inset borders because box-shadow is
    a single property and would otherwise be overwritten here. */
 .nut-table tbody td:first-child{box-shadow:10px 0 12px -10px rgba(0,0,0,.45)}
 .nut-table tbody td:last-child{box-shadow:-10px 0 12px -10px rgba(0,0,0,.45)}
-.nut-row.selected td:first-child{box-shadow:inset 0 1px 0 var(--brand-border),inset 0 -1px 0 var(--brand-border),10px 0 12px -10px rgba(0,0,0,.45)}
-.nut-row.selected td:last-child{box-shadow:inset 0 1px 0 var(--brand-border),inset 0 -1px 0 var(--brand-border),-10px 0 12px -10px rgba(0,0,0,.45)}
+.nut-row.selected td:first-child{box-shadow:inset 0 2px 0 var(--wk-open-line),inset 0 -2px 0 var(--wk-open-line),10px 0 12px -10px rgba(0,0,0,.45)}
+.nut-row.selected td:last-child{box-shadow:inset 0 2px 0 var(--wk-open-line),inset 0 -2px 0 var(--wk-open-line),-10px 0 12px -10px rgba(0,0,0,.45)}
 /* Card view on phones: this block must sit AFTER the desktop table rules or
    the min-width above wins on source order and the cards scroll sideways. */
 @media(max-width:760px){
@@ -1205,13 +1212,20 @@ body[data-theme="light"] .plan-chip.coach::before{color:#92400e}
 .nut-week-select{font-family:var(--cond);font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.02em;color:var(--text);background:var(--surface2);border:1px solid var(--border-mid);border-radius:6px;padding:5px 6px;width:100%;min-width:0;max-width:100%;text-overflow:ellipsis}
 .nut-week-select:focus{outline:none;border-color:var(--amber)}
 .nut-week-cap{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.05em;margin-top:4px;white-space:nowrap;overflow:hidden}
-.nut-row.current td{background:var(--amber-bg)}
-.nut-row.current td:first-child{box-shadow:inset 3px 0 0 var(--amber),10px 0 12px -10px rgba(0,0,0,.45)}
-.nut-row.current .nut-week-select{border-color:var(--amber-border)}
+.nut-row.current td{background:var(--wk-open-bg)}
+.nut-row.current:hover td{background:var(--wk-open-bg-hover)}
+/* A 4px rail on the left, and the band closed off at both ends so the open
+   week reads as one continuous stripe rather than a tint that stops. */
+.nut-row.current td:first-child{box-shadow:inset 4px 0 0 var(--amber),inset 0 2px 0 var(--wk-open-line),inset 0 -2px 0 var(--wk-open-line),10px 0 12px -10px rgba(0,0,0,.45)}
+.nut-row.current td:last-child{box-shadow:inset -4px 0 0 var(--amber),inset 0 2px 0 var(--wk-open-line),inset 0 -2px 0 var(--wk-open-line),-10px 0 12px -10px rgba(0,0,0,.45)}
+.nut-row.current .nut-week-select{border-color:var(--amber);background:var(--surface);font-weight:700}
 /* Card view: keep the amber rail, drop the sticky-column shadow. */
-@media(max-width:760px){.nut-row.current td:first-child{box-shadow:inset 3px 0 0 var(--amber)}}
+@media(max-width:760px){
+  .nut-row.current td:first-child{box-shadow:inset 4px 0 0 var(--amber)}
+  .nut-row.current td:last-child{box-shadow:none}
+}
 .nut-row.current .nut-wk{color:var(--amber-dim)}
-.nut-now{flex:0 0 auto;font-family:var(--mono);font-size:8px;color:var(--amber);border:1px solid var(--amber-border);border-radius:4px;padding:1px 5px;vertical-align:middle;letter-spacing:.06em}
+.nut-now{flex:0 0 auto;font-family:var(--mono);font-size:8px;font-weight:700;color:var(--bg);background:var(--amber);border:1px solid var(--amber);border-radius:4px;padding:2px 6px;vertical-align:middle;letter-spacing:.08em}
 .nut-input{font-family:var(--mono);font-size:12px;color:var(--text);background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:6px 8px;width:84px;transition:border-color .15s}
 .nut-input:focus{outline:none;border-color:var(--amber)}
 .nut-input.wide{width:160px}
@@ -1825,7 +1839,7 @@ body[data-theme="light"] .strava-command-bar{background:linear-gradient(135deg,r
 <link rel="stylesheet" href="/dashboard-redesign.css?v=20260906-17">
 <link rel="stylesheet" href="/dashboard-detail-cleanup.css?v=20260906-17">
 <link rel="stylesheet" href="/dashboard-mobile.css">
-<link rel="stylesheet" href="/dashboard-comprehensive.css?v=20260906-17">
+<link rel="stylesheet" href="/dashboard-comprehensive.css?v=20260906-18">
 <script src="/coach-auth.js"></script>
 <style>
   .wd-strava-act.direct-upload{border-left-color:#0ea5e9;background:linear-gradient(135deg,rgba(14,165,233,.06),rgba(255,255,255,.02))}
@@ -2137,7 +2151,7 @@ body[data-theme="light"] .theme-btn.active{background:rgba(255,255,255,.22);colo
   .sum-card{flex:1 1 100%}
 }
 </style>
-<link rel="stylesheet" href="/dashboard-theme-system.css?v=20260906-17">
+<link rel="stylesheet" href="/dashboard-theme-system.css?v=20260906-19">
 <link rel="stylesheet" href="/dashboard-desktop.css?v=20260906-17">
 <link rel="stylesheet" href="/dashboard-mobile-polish.css?v=20260906-17">
 <link rel="stylesheet" href="/triage.css?v=20260906-17">
@@ -4086,6 +4100,13 @@ function renderProgramming() {
   });
   ['week', 'squad', 'block'].forEach(view =>
     document.getElementById(`prog-view-${view}`)?.classList.toggle('active', _progView === view));
+  // Block view hides the week toolbar (above) but still read _progWeekOffset
+  // through _progSelectedWeekLabel. Browse the Week or Squad view two weeks
+  // ahead, switch to Block, and an athlete in his discovery week was reported
+  // as "Week 2 of 12" with no visible control saying which week was selected
+  // or any way to get back. The block is about where the athlete actually is,
+  // so entering it returns to the current week.
+  if (_progView === 'block' && _progWeekOffset !== 0) _progWeekOffset = 0;
   _renderProgBlockControls();
   _mountProgrammingEditors();
   // Switching away from Block view leaves its table in the DOM, so rescue any
