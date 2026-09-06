@@ -29,7 +29,12 @@
   /* ─── TEXT ───────────────────────────────────────────────────────────── */
   --t-1:#ece9e2;
   --t-2:rgba(236,233,226,.66);
-  --t-3:rgba(236,233,226,.42);
+  /* --t-3 is the muted role: metadata, table sub-values, chart labels, chips.
+     At .42 it resolved to 3.5:1 on --surface, under the 4.5:1 AA floor for the
+     8-11px sizes it is mostly used at, so the smallest text in the product was
+     the hardest to read. .55 clears 4.5:1 on --surface and on the elevated
+     surfaces above it, while staying clearly quieter than --muted. */
+  --t-3:rgba(236,233,226,.55);
 
   /* ─── READOUT ────────────────────────────────────────────────────────── */
   --readout:#92d2ed;          /* identical to the portal's live-number blue */

@@ -118,6 +118,94 @@ header{background:#0a0a0a;padding:0 18px;height:62px;display:flex;align-items:ce
 .theme-btn.active{background:rgba(255,255,255,.18);color:#fff}
 .pride-btn{font-size:14px}
 
+/* ── Loading skeletons ───────────────────────────────────────────────────────
+   A shape rather than a spinner: the squad table is the biggest layout jump in
+   the product, so the placeholder is built to its proportions. The shimmer is
+   motion that communicates "still working", so it stands down under
+   prefers-reduced-motion and leaves a plain block behind. */
+.dp-skel{
+  display:block;border-radius:5px;
+  background:linear-gradient(90deg,var(--surface2) 0%,var(--border-mid) 40%,var(--surface2) 80%);
+  background-size:280% 100%;
+  animation:dp-skel-sweep 1.5s ease-in-out infinite;
+}
+@keyframes dp-skel-sweep{from{background-position:180% 0}to{background-position:-40% 0}}
+.dp-skel-line{height:11px}
+.dp-skel-tile{height:62px;border-radius:9px}
+.dp-skel-row{display:flex;align-items:center;gap:14px;padding:11px 2px}
+.dp-skel-row + .dp-skel-row{border-top:1px solid var(--border)}
+.dp-skel-row.head .dp-skel{height:8px;opacity:.7}
+.dp-skel-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-top:12px}
+.dp-skel-table{width:100%;max-width:760px;margin:0 auto 14px}
+.w10{width:10%}.w12{width:12%}.w15{width:15%}.w20{width:20%}
+.w22{width:22%}.w24{width:24%}.w25{width:25%}.w28{width:28%}.w40{width:40%}
+@media (prefers-reduced-motion: reduce){
+  .dp-skel{animation:none;background:var(--surface2)}
+}
+
+/* ── Keyboard and focus ──────────────────────────────────────────────────────
+   A keyboard-only coach must always be able to see where they are. */
+.dp-skip-link{
+  position:fixed;top:8px;left:8px;z-index:10060;
+  padding:10px 16px;border-radius:6px;
+  /* Fixed colours, not tokens: this link must be legible the instant it is
+     focused, in either theme, and --brand is light enough in light mode that
+     near-black text on it measured 4.26:1. */
+  background:#0a2b3a;color:#f4fbff;
+  font:600 13px/1 var(--sans);text-decoration:none;
+  box-shadow:0 6px 20px rgba(0,0,0,.35);
+  transform:translateY(-160%);
+  transition:transform .12s ease-out;
+}
+.dp-skip-link:focus{transform:none;outline:2px solid #f4fbff;outline-offset:2px}
+.dp-visually-hidden{
+  position:absolute;width:1px;height:1px;margin:-1px;padding:0;
+  overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;border:0;
+}
+.dp-go-hint{
+  position:fixed;left:50%;bottom:22px;transform:translateX(-50%);
+  z-index:10060;padding:7px 13px;border-radius:6px;
+  background:var(--elevated,#151d24);border:1px solid var(--border-mid);
+  color:var(--muted);font:500 11px/1 var(--mono);letter-spacing:.04em;
+  box-shadow:var(--shadow-soft,0 10px 28px rgba(0,0,0,.3));
+}
+.dp-go-hint kbd{
+  display:inline-block;margin:0 2px 0 6px;padding:2px 5px;
+  border:1px solid var(--border-mid);border-radius:3px;
+  background:var(--surface2);color:var(--text);font:inherit;
+}
+/* Focus is never removed, only restyled. Anything that takes focus says so. */
+:focus-visible{outline:2px solid var(--brand);outline-offset:2px;border-radius:3px}
+.dash-trow:focus-visible,.triage-row:focus-visible,.fpa-tab:focus-visible,
+.cmdk-row:focus-visible,[role="option"]:focus-visible{
+  outline:2px solid var(--brand);outline-offset:-2px;
+}
+/* Motion communicates a transition or it does not run at all. */
+@media (prefers-reduced-motion: reduce){
+  .dp-skip-link{transition:none}
+}
+
+/* ── Icons ───────────────────────────────────────────────────────────────────
+   One rule for every SVG icon, so an icon behaves like the letter next to it:
+   it takes the text colour, scales with the text, and sits on the baseline.
+   Emoji did none of these, which is why they never lined up. */
+.dp-icon{
+  display:inline-block;
+  vertical-align:-0.145em;      /* optical baseline for a 24-unit box at 1em */
+  flex:none;
+  color:inherit;
+}
+/* An icon paired with a label reads as one unit. */
+.fpc-section-title,.cp-title,.cp-block-lbl,.fpc-cp-section-lbl,
+.wd-metric,.wd-strava-stat,.fpc-impact,.impact,.fpc-wip-title,
+.strava-source-chip,.wd-ext-pb,.fp-open-btn,.fpc-act-btn,.ps-mode-btn{
+  display:inline-flex;align-items:center;gap:6px;
+}
+.fpc-section-title,.fpc-wip-title{display:flex}
+.fpc-banner-icon .dp-icon{width:20px;height:20px}
+.coaches-intro-icon{display:flex;align-items:center;justify-content:center}
+.fpa-race-icon{display:inline-flex;align-items:center}
+
 /* ── Light Theme ── */
 body[data-theme="light"]{
   --bg:#f4f3f0;--surface:#fff;--surface2:#ede9e3;
@@ -1842,8 +1930,7 @@ body[data-theme="light"] .strava-command-bar{background:linear-gradient(135deg,r
 </style>
 <link rel="stylesheet" href="/dashboard-redesign.css?v=20260906-17">
 <link rel="stylesheet" href="/dashboard-detail-cleanup.css?v=20260906-17">
-<link rel="stylesheet" href="/dashboard-mobile.css">
-<link rel="stylesheet" href="/dashboard-comprehensive.css?v=20260906-18">
+<link rel="stylesheet" href="/dashboard-comprehensive.css?v=20260906-21">
 <script src="/coach-auth.js"></script>
 <style>
   .wd-strava-act.direct-upload{border-left-color:#0ea5e9;background:linear-gradient(135deg,rgba(14,165,233,.06),rgba(255,255,255,.02))}
@@ -1857,6 +1944,13 @@ body[data-theme="light"] .strava-command-bar{background:linear-gradient(135deg,r
 </style>
 </head>
 <body>
+<!-- Keyboard users land here first: one link past the header, nav and filters,
+     straight to whatever the current screen is. Visually hidden until focused. -->
+<a class="dp-skip-link" href="#tab-triage-content">Skip to main content</a>
+<!-- Shortcut feedback for screen readers, and the "g" chord's visible hint. -->
+<div id="dp-live-region" class="dp-visually-hidden" role="status" aria-live="polite"></div>
+<div id="dp-go-hint" class="dp-go-hint" hidden aria-hidden="true">g then <kbd>t</kbd> today <kbd>s</kbd> squad <kbd>c</kbd> calendar <kbd>p</kbd> pipeline</div>
+
 
 <!-- ── Plan Override Modal ── -->
 <div class="po-overlay hidden" id="po-overlay" role="dialog" aria-modal="true" aria-label="Override session" onclick="if(event.target===this)closePlanOverride()">
@@ -1931,7 +2025,7 @@ body[data-theme="light"] .strava-command-bar{background:linear-gradient(135deg,r
       <div class="theme-toggle">
         <button class="theme-btn" data-theme="dark" onclick="setTheme('dark')" title="Dark">◑</button>
         <button class="theme-btn" data-theme="light" onclick="setTheme('light')" title="Light">☀</button>
-        <button class="theme-btn pride-btn" data-theme="pride" onclick="setTheme('pride')" title="Pride">🏳️‍🌈</button>
+        <button class="theme-btn pride-btn" data-theme="pride" onclick="setTheme('pride')" title="Pride" aria-label="Pride theme">🏳️‍🌈</button><!-- deliberate: the only emoji left in the UI, because a monochrome icon cannot carry what this one means -->
       </div>
     </div>
   </div>
@@ -2157,12 +2251,14 @@ body[data-theme="light"] .theme-btn.active{background:rgba(255,255,255,.22);colo
 </style>
 <link rel="stylesheet" href="/dashboard-theme-system.css?v=20260906-20">
 <link rel="stylesheet" href="/dashboard-desktop.css?v=20260906-17">
-<link rel="stylesheet" href="/dashboard-mobile-polish.css?v=20260906-17">
 <link rel="stylesheet" href="/triage.css?v=20260906-17">
 <link rel="stylesheet" href="/programming.css?v=20260906-17">
 <link rel="stylesheet" href="/weekly-sport-targets.css?v=3">
 <link rel="stylesheet" href="/daily-macro-overrides.css?v=3">
-<link rel="stylesheet" href="/instrument.css?v=20260906-17">
+<link rel="stylesheet" href="/instrument.css?v=20260906-30">
+<!-- Phone layer, deliberately last: see the header of dashboard-mobile-final.css.
+     Loading it here is what lets every phone rule drop its !important. -->
+<link rel="stylesheet" href="/dashboard-mobile-final.css?v=20260906-29">
 <div class="ma-backdrop" id="ma-backdrop" role="dialog" aria-modal="true" aria-label="Manage athletes" onclick="if(event.target===this)closeManageAthletes()">
   <div class="ma-card">
     <div class="ma-head">
@@ -2509,7 +2605,14 @@ function refreshRosterDrivenUI() {
          a headline number — the priority and overdue lists that used to sit
          here duplicated the decision queue below with different rules. -->
     <section class="today-operations" aria-label="Squad status">
-      <div id="today-dashboard-loading" class="today-dashboard-state" role="status">Loading squad status…</div>
+      <div id="today-dashboard-loading" class="today-dashboard-state" role="status" aria-label="Loading squad status">
+        <div class="dp-skel-row"><span class="dp-skel dp-skel-line w40"></span><span class="dp-skel dp-skel-line w15"></span></div>
+        <div class="dp-skel-tiles">
+          <span class="dp-skel dp-skel-tile"></span><span class="dp-skel dp-skel-tile"></span>
+          <span class="dp-skel dp-skel-tile"></span><span class="dp-skel dp-skel-tile"></span>
+          <span class="dp-skel dp-skel-tile"></span><span class="dp-skel dp-skel-tile"></span>
+        </div>
+      </div>
       <div id="today-dashboard-error" class="today-dashboard-state is-error" role="alert" hidden></div>
       <div id="command-center"></div>
     </section>
@@ -2552,8 +2655,18 @@ function refreshRosterDrivenUI() {
 <!-- ATHLETES TAB -->
 <div id="tab-athletes-content" style="display:none">
   <div class="main">
-    <div id="loading" class="state-box">
-      <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+    <div id="loading" class="state-box" role="status" aria-label="Loading athlete data">
+      <!-- Shaped like the squad table it is about to become, so the page does
+           not jump when the data lands. A skeleton must never outlive a real
+           failure: #err replaces this and stays visible. -->
+      <div class="dp-skel-table">
+        <div class="dp-skel-row head"><span class="dp-skel dp-skel-line w20"></span><span class="dp-skel dp-skel-line w10"></span><span class="dp-skel dp-skel-line w10"></span><span class="dp-skel dp-skel-line w10"></span></div>
+        <div class="dp-skel-row"><span class="dp-skel dp-skel-line w25"></span><span class="dp-skel dp-skel-line w12"></span><span class="dp-skel dp-skel-line w12"></span><span class="dp-skel dp-skel-line w12"></span></div>
+        <div class="dp-skel-row"><span class="dp-skel dp-skel-line w20"></span><span class="dp-skel dp-skel-line w12"></span><span class="dp-skel dp-skel-line w12"></span><span class="dp-skel dp-skel-line w12"></span></div>
+        <div class="dp-skel-row"><span class="dp-skel dp-skel-line w28"></span><span class="dp-skel dp-skel-line w12"></span><span class="dp-skel dp-skel-line w12"></span><span class="dp-skel dp-skel-line w12"></span></div>
+        <div class="dp-skel-row"><span class="dp-skel dp-skel-line w22"></span><span class="dp-skel dp-skel-line w12"></span><span class="dp-skel dp-skel-line w12"></span><span class="dp-skel dp-skel-line w12"></span></div>
+        <div class="dp-skel-row"><span class="dp-skel dp-skel-line w24"></span><span class="dp-skel dp-skel-line w12"></span><span class="dp-skel dp-skel-line w12"></span><span class="dp-skel dp-skel-line w12"></span></div>
+      </div>
       <div class="state-txt">Loading athlete data…</div>
     </div>
     <div id="err" class="state-box" style="display:none">
@@ -2636,10 +2749,10 @@ function refreshRosterDrivenUI() {
       <div id="ps-mode-picker">
         <div class="po-label" style="margin-bottom:8px">What kind of session?</div>
         <div class="ps-mode-row">
-          <button type="button" class="ps-mode-btn" id="ps-mode-run" onclick="setPsMode('run')">🏃 Running</button>
-          <button type="button" class="ps-mode-btn" id="ps-mode-str" onclick="setPsMode('strength')">🏋 Strength</button>
+          <button type="button" class="ps-mode-btn" id="ps-mode-run" onclick="setPsMode('run')">${DP_ICON('run')} Running</button>
+          <button type="button" class="ps-mode-btn" id="ps-mode-str" onclick="setPsMode('strength')">${DP_ICON('dumbbell')} Strength</button>
           <button type="button" class="ps-mode-btn" id="ps-mode-other" onclick="setPsMode('other')">✦ Other</button>
-          <button type="button" class="ps-mode-btn" id="ps-mode-disc" onclick="setPsMode('discovery')">📝 Discovery</button>
+          <button type="button" class="ps-mode-btn" id="ps-mode-disc" onclick="setPsMode('discovery')">${DP_ICON('note')} Discovery</button>
         </div>
       </div>
       <div id="ps-form" style="display:none">
@@ -2935,7 +3048,7 @@ function refreshRosterDrivenUI() {
 <div id="tab-coaches-content" style="display:none">
   <div class="coaches-section">
     <div class="coaches-intro">
-      <div class="coaches-intro-icon">🎯</div>
+      <div class="coaches-intro-icon"><svg class="dp-icon" width="28px" height="28px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1"/></svg></div>
       <div class="coaches-intro-text">
         <strong>Coaching Team</strong> — Karl, Alex &amp; Jojo's own training data.
         This tab tracks your personal check-ins separate from the athlete roster.
@@ -3907,7 +4020,7 @@ function renderNutTable() {
   _captureNutDrafts();
   const wrap = document.getElementById('nut-table-wrap');
   const meta = document.getElementById('nut-meta');
-  if (!_progAthlete) { wrap.innerHTML = '<div class="nut-empty">No athletes found</div>'; meta.textContent = ''; return; }
+  if (!_progAthlete) { wrap.innerHTML = '<div class="nut-empty">No athletes match the current filter.</div>'; meta.textContent = ''; return; }
 
   const curWk = _progSelectedWeekLabel(_progAthlete);
   _nutRenderRows = _nutPlans
@@ -4332,7 +4445,7 @@ function renderPlanGrid() {
     const day = rows.filter(r => r.planned_date === iso);
     html += `<div class="plan-day${iso === todayISO ? ' today' : ''}">
       <div class="plan-day-head"><span>${PLAN_DAYS[i]}</span><span>${fmt(d)}</span></div>`;
-    if (!day.length) html += `<div class="plan-empty">—</div>`;
+    if (!day.length) html += `<div class="plan-empty">Rest</div>`;
     day.forEach(r => {
       const col = PLAN_TYPE_COLORS[r.session_type] || 'var(--dim)';
       const meta = [];
@@ -7464,7 +7577,7 @@ function buildTableRow(a) {
   const fps = a.flags.map(f => `<span class="tflag ${f.t}">${esc(f.l)}</span>`).join('');
   const stravaConfirmedCount = (a.currRunS || []).filter(session => session._stravaConfirmed === true).length;
   const stravaConfirmedBadge = stravaConfirmedCount
-    ? `<span class="fp strava-linked-badge" title="${stravaConfirmedCount} athlete-confirmed Strava session${stravaConfirmedCount === 1 ? '' : 's'} this week">🟠 Strava · ${stravaConfirmedCount}</span>`
+    ? `<span class="fp strava-linked-badge" title="${stravaConfirmedCount} athlete-confirmed Strava session${stravaConfirmedCount === 1 ? '' : 's'} this week">${DP_ICON('dot')} Strava · ${stravaConfirmedCount}</span>`
     : '';
 
   // Previous weekly check-in (for week-on-week deltas)
@@ -7753,7 +7866,7 @@ function buildCard(a, weekOffset = 0) {
     session._d >= selectedCtx.weekStartStr && session._d <= selectedCtx.weekEndStr
   ).length;
   const stravaConfirmedBadge = stravaConfirmedCount
-    ? `<span class="fp strava-linked-badge" title="${stravaConfirmedCount} athlete-confirmed Strava session${stravaConfirmedCount === 1 ? '' : 's'} in this view">🟠 Strava confirmed · ${stravaConfirmedCount}</span>`
+    ? `<span class="fp strava-linked-badge" title="${stravaConfirmedCount} athlete-confirmed Strava session${stravaConfirmedCount === 1 ? '' : 's'} in this view">${DP_ICON('dot')} Strava confirmed · ${stravaConfirmedCount}</span>`
     : '';
   const w = isHistorical ? (histCtx.weekly || null) : isFuture ? null : a.weekly;
   const hW = !!w?.Name;
@@ -8110,7 +8223,7 @@ function buildCard(a, weekOffset = 0) {
   const callPrepHtml = `
     <div class="call-prep">
       <div class="cp-header" onclick="toggleCallPrep('${cpId}')">
-        <div class="cp-title"><span class="cp-icon">📋</span> Call Prep</div>
+        <div class="cp-title"><span class="cp-icon"><svg class="dp-icon" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1"/><path d="M8.5 10h7M8.5 14h7M8.5 18h4"/></svg></span> Call Prep</div>
         <span class="cp-toggle" id="${cpId}-toggle">▼</span>
       </div>
       <div class="cp-body" id="${cpId}">
@@ -8132,7 +8245,7 @@ function buildCard(a, weekOffset = 0) {
           </div>` : ''}
         ${!callPrep.wins.length && !callPrep.issues.length && !callPrep.ask.length ? `<div class="cp-none">No check-in data to prep from yet.</div>` : ''}
         <div class="cp-block">
-          <div class="cp-block-lbl note-lbl">📝 Call Notes</div>
+          <div class="cp-block-lbl note-lbl"><span class="cp-lbl-ic"><svg class="dp-icon" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 5.5A1.5 1.5 0 0 1 6.5 4H15l4 4v10.5A1.5 1.5 0 0 1 17.5 20h-11A1.5 1.5 0 0 1 5 18.5Z"/><path d="M14.5 4v4.5H19"/><path d="M8.5 13h7M8.5 16.5h4"/></svg></span> Call Notes</div>
           <textarea class="cp-note" placeholder="Notes for this call…" oninput="noteInput('${a.id}', this.value)" onchange="saveNote('${a.id}', this.value)">${esc(savedNote)}</textarea>
         </div>
       </div>
@@ -8187,11 +8300,11 @@ function buildCard(a, weekOffset = 0) {
         <div>
           <div class="aname">${esc(a.id)}</div>
           <div class="ameta ${isHistorical ? '' : a.isStale ? 'nocheckin' : ''}">${metaText}</div>
-          <div class="pcard-tags">${fps}${actDotHtml ? `<span style="display:inline-flex;align-items:center;gap:4px;margin-left:${fps?'2':'0'}px">${actDotHtml}</span>` : ''}${a.checkinStreak >= 2 ? `<span class="fp streak">🔥 ${a.checkinStreak}wk</span>` : ''}${stravaConfirmedBadge}</div>
+          <div class="pcard-tags">${fps}${actDotHtml ? `<span style="display:inline-flex;align-items:center;gap:4px;margin-left:${fps?'2':'0'}px">${actDotHtml}</span>` : ''}${a.checkinStreak >= 2 ? `<span class="fp streak">${DP_ICON('flame')} ${a.checkinStreak}wk</span>` : ''}${stravaConfirmedBadge}</div>
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">
           <div style="display:flex;gap:6px">
-            <button class="fp-open-btn" onclick="copyDM('${esc(a.id)}')" title="Copy DM to clipboard">💬 DM</button>
+            <button class="fp-open-btn" onclick="copyDM('${esc(a.id)}')" title="Copy DM to clipboard">${DP_ICON('message')} DM</button>
             <button class="fp-open-btn" onclick="showFP('${esc(a.id)}')">⤢ Full Page</button>
           </div>
           ${(() => { const _wn = isHistorical ? histCtx.selectedWeekNum : a.weekNum; if (_wn === null) return ''; return _wn === 0 ? '<div class="week-badge"><div class="wk-num" style="font-size:9px;letter-spacing:.04em">DISC</div><div class="wk-lbl">WEEK</div></div>' : `<div class="week-badge"><div class="wk-num">${_wn}</div><div class="wk-lbl">Week</div></div>`; })()}
@@ -8390,7 +8503,7 @@ function renderExerciseLog(logStr, isRun, priorBests, plannedExs, swaps) {
         return;
       }
       const wCell = st.w !== null
-        ? `${st.pb ? '<span class="wd-ext-pb" title="Personal Best — beats their previous best for this exercise">🏆 PB</span>' : ''}<strong>${st.w}</strong><em>kg</em>`
+        ? `${st.pb ? '<span class="wd-ext-pb" title="Personal Best — beats their previous best for this exercise">' + DP_ICON('trophy') + ' PB</span>' : ''}<strong>${st.w}</strong><em>kg</em>`
         : '<strong>BW</strong>';
       const rpeNum = st.rpe !== null ? parseFloat(st.rpe) : null;
       bodyRows.push(`<div class="wd-ext-row${first ? ' grp' : ''}${st.pb ? ' pb' : ''}">
@@ -8540,7 +8653,7 @@ function renderImportedActivity(activity) {
     summary.totalElevationGainM ? `<span class="wd-strava-stat">↑ <strong>${Math.round(summary.totalElevationGainM)}</strong>m</span>` : '',
     summary.avgCadence ? `<span class="wd-strava-stat">⟳ <strong>${Math.round(summary.avgCadence)}</strong> cadence</span>` : '',
     summary.maxPower ? `<span class="wd-strava-stat"><strong>${Math.round(summary.maxPower)}</strong>W max</span>` : '',
-    summary.calories ? `<span class="wd-strava-stat">🔥 <strong>${Math.round(summary.calories)}</strong> kcal</span>` : '',
+    summary.calories ? `<span class="wd-strava-stat">${DP_ICON('flame')} <strong>${Math.round(summary.calories)}</strong> kcal</span>` : '',
     summary.temperatureC != null ? `<span class="wd-strava-stat"><strong>${Math.round(summary.temperatureC)}°C</strong></span>` : '',
     activity.deviceName ? `<span class="wd-strava-stat">⌚ ${esc(activity.deviceName)}</span>` : '',
     summary.hasGps ? `<span class="wd-strava-stat">GPS · <strong>${Number(summary.recordCount)||streams.length}</strong> points</span>` : '',
@@ -9375,7 +9488,7 @@ function buildAthleteHeader(a, ctx) {
     const tone = race.isPast ? 'is-past'
       : race.daysToRace !== null && race.daysToRace <= 21 ? 'is-close' : '';
     raceHtml = `<div class="fpa-race ${tone}">
-      <span class="fpa-race-icon" aria-hidden="true">🏁</span>${bits}
+      <span class="fpa-race-icon">${DP_ICON('flag')}</span>${bits}
       ${countdown ? `<span class="fpa-countdown ${tone}">${esc(countdown)}</span>` : ''}
     </div>`;
   } else {
@@ -9483,10 +9596,10 @@ function buildAthleteHeader(a, ctx) {
         </div>
       </div>
       <div class="fpa-head-actions">
-        <button class="fpc-act-btn" onclick="copyDM('${esc(a.id)}')">💬 DM</button>
+        <button class="fpc-act-btn" onclick="copyDM('${esc(a.id)}')">${DP_ICON('message')} DM</button>
         <button class="fpc-act-btn" onclick="DP_ACTIONS.open('${esc(a.id)}')">＋ Action</button>
         <button class="fpc-act-btn" onclick="fpPlanWeek('${esc(a.id)}')">⚏ Plan Week</button>
-        <button class="fpc-act-btn" onclick="fpNotify('${esc(a.id)}')">🔔 Notify</button>
+        <button class="fpc-act-btn" onclick="fpNotify('${esc(a.id)}')">${DP_ICON('bell')} Notify</button>
       </div>
     </div>
     <div class="fpa-vitals" aria-label="Current week summary">
@@ -9583,7 +9696,7 @@ function buildFPCard(a, weekOffset = 0) {
   let banner = '';
   if (hW && a.isStale) {
     banner = `<div class="fpc-banner stale">
-      <div class="fpc-banner-icon">🚨</div>
+      <div class="fpc-banner-icon">${DP_ICON('siren')}</div>
       <div>
         <div class="fpc-banner-title stale">No check-in submitted this week</div>
         <div class="fpc-banner-sub">Showing last submission — week ending ${fmtDate(w['Week Ending'])}</div>
@@ -9591,7 +9704,7 @@ function buildFPCard(a, weekOffset = 0) {
     </div>`;
   } else if (hW && a.hasLastWeekCheckin) {
     banner = `<div class="fpc-banner lastweek">
-      <div class="fpc-banner-icon">📅</div>
+      <div class="fpc-banner-icon">${DP_ICON('calendar')}</div>
       <div>
         <div class="fpc-banner-title lastweek">Last week's check-in</div>
         <div class="fpc-banner-sub">Submitted ${fmtDate(w['Week Ending'])} · selected week ends ${fmtDate(ctx.weekEndStr)}</div>
@@ -9610,7 +9723,7 @@ function buildFPCard(a, weekOffset = 0) {
     const noThisWeek = rCount === 0 && sCount === 0;
     const showPrev = noThisWeek && (prCount > 0 || psCount > 0);
     wipHtml = `<div class="fpc-wip">
-      <div class="fpc-wip-title">📍 Week ${a.weekNum ?? ''} In Progress — ends ${fmtDate(a.expectedWeekEnd)}</div>
+      <div class="fpc-wip-title">${DP_ICON('pin')} Week ${a.weekNum ?? ''} In Progress — ends ${fmtDate(a.expectedWeekEnd)}</div>
       <div class="fpc-sess-row">
         <div class="fpc-sess"><div class="fpc-sess-num run">${rCount}</div><div class="fpc-sess-lbl">Run Sessions</div></div>
         <div class="fpc-sess"><div class="fpc-sess-num str">${sCount}</div><div class="fpc-sess-lbl">Strength Sessions</div></div>
@@ -9688,7 +9801,7 @@ function buildFPCard(a, weekOffset = 0) {
         </div>
       </div>
       ${w['Testimonial'] ? `<div class="fpc-testim">"${esc(w['Testimonial'])}"</div>` : ''}
-      ${w['Upcoming Impact'] && w['Upcoming Impact'] !== 'n/a' ? `<div class="fpc-impact">⚡ ${esc(w['Upcoming Impact'])}</div>` : ''}
+      ${w['Upcoming Impact'] && w['Upcoming Impact'] !== 'n/a' ? `<div class="fpc-impact">${DP_ICON('bolt')} ${esc(w['Upcoming Impact'])}</div>` : ''}
     </div>`;
   }
 
@@ -9949,7 +10062,7 @@ function buildFPCard(a, weekOffset = 0) {
           const cls = isRun ? 'run' : isStr ? 'str' : 'other';
           const catLabel = 'Completed ' + (isRun ? 'run' : isStr ? 'lift' : (esc(s._cat || 'session').toLowerCase()));
           const stravaSource = s._stravaConfirmed === true
-            ? '<span class="strava-source-chip">🟠 Athlete confirmed via Strava</span>'
+            ? '<span class="strava-source-chip">' + DP_ICON('dot') + ' Athlete confirmed via Strava</span>'
             : '';
           const rawName = s.Session || (s.Name || '').split('—').slice(1, -1).join('—').trim() || '';
           const exLog = s['Exercise Log'] || s.exerciseLog || s['Exercises'] || '';
@@ -10053,11 +10166,11 @@ function buildFPCard(a, weekOffset = 0) {
           const bParts = [
             dayBody.Weight       ? `<span class="wd-metric"><strong>${esc(dayBody.Weight)}</strong> kg</span>` : '',
             (dayBody['Sleep Score'] !== undefined && dayBody['Sleep Score'] !== null)
-              ? `<span class="wd-metric">💤 <strong>${esc(dayBody['Sleep Score'])}</strong> sleep</span>` : '',
-            dayBody.Energy       ? `<span class="wd-metric">⚡ <strong>${esc(dayBody.Energy)}</strong> energy</span>` : '',
-            dayBody.Stress       ? `<span class="wd-metric">🧠 <strong>${esc(dayBody.Stress)}</strong> stress</span>` : '',
-            dayBody.Soreness     ? `<span class="wd-metric">💪 <strong>${esc(dayBody.Soreness)}</strong> sore</span>` : '',
-            dayBody.Steps        ? `<span class="wd-metric">🚶 <strong>${esc(dayBody.Steps)}</strong> steps</span>` : '',
+              ? `<span class="wd-metric">${DP_ICON('moon')} <strong>${esc(dayBody['Sleep Score'])}</strong> sleep</span>` : '',
+            dayBody.Energy       ? `<span class="wd-metric">${DP_ICON('bolt')} <strong>${esc(dayBody.Energy)}</strong> energy</span>` : '',
+            dayBody.Stress       ? `<span class="wd-metric">${DP_ICON('gauge')} <strong>${esc(dayBody.Stress)}</strong> stress</span>` : '',
+            dayBody.Soreness     ? `<span class="wd-metric">${DP_ICON('dumbbell')} <strong>${esc(dayBody.Soreness)}</strong> sore</span>` : '',
+            dayBody.Steps        ? `<span class="wd-metric">${DP_ICON('footprint')} <strong>${esc(dayBody.Steps)}</strong> steps</span>` : '',
           ].filter(Boolean).join('');
           const bNotes = pickFirst(dayBody, ['Notes', 'Note', 'Body Notes']);
           if (bParts) bodyRowHtml = `<div class="wd-body-row">
@@ -10142,7 +10255,7 @@ function buildFPCard(a, weekOffset = 0) {
   const cpId = `fcp-${a.id.replace(/\s+/g,'-')}`;
   const callPrepHtml = `<div class="fpc-cp">
     <div class="fpc-cp-head">
-      <span style="font-size:14px">📋</span>
+      <span class="fpc-cp-ic">${DP_ICON('clipboard')}</span>
       <div class="fpc-cp-head-title">Call Prep</div>
     </div>
     <div class="fpc-cp-body" id="${cpId}">
@@ -10162,7 +10275,7 @@ function buildFPCard(a, weekOffset = 0) {
       ${!callPrep.wins.length && !callPrep.issues.length && !callPrep.ask.length
         ? `<div class="fpc-cp-none">No check-in data to prep from yet.</div>` : ''}
       <div>
-        <div class="fpc-cp-section-lbl note">📝 Call Notes</div>
+        <div class="fpc-cp-section-lbl note">${DP_ICON('note')} Call Notes</div>
         <textarea class="fpc-note" placeholder="Notes for this call…" oninput="noteInput('${esc(a.id)}', this.value)" onchange="saveNote('${esc(a.id)}', this.value)">${esc(savedNote)}</textarea>
       </div>
     </div>
@@ -10221,13 +10334,13 @@ function buildFPCard(a, weekOffset = 0) {
       </div>`;
     }).join('');
     prsHtml = `<div class="fpc-section">
-      <div class="fpc-section-title">🏆 Recent PRs — last 21 days (${a.prs.recent.length})</div>
+      <div class="fpc-section-title">${DP_ICON('trophy')} Recent PRs — last 21 days (${a.prs.recent.length})</div>
       <div class="fpc-pr-grid">${prCards}</div>
     </div>`;
   } else if (a.sessions.filter(s => s._isStr).length > 0) {
     // Has strength sessions but no PRs detected
     prsHtml = `<div class="fpc-section">
-      <div class="fpc-section-title">🏆 Recent PRs</div>
+      <div class="fpc-section-title">${DP_ICON('trophy')} Recent PRs</div>
       <div class="no-pr">No PRs in the last 21 days — pushing volume not load</div>
     </div>`;
   }
@@ -10274,7 +10387,7 @@ function buildFPCard(a, weekOffset = 0) {
     }).filter(Boolean).join('');
     if (cardsHtml) {
       trendsHtml = `<div class="fpc-section">
-        <div class="fpc-section-title">📈 14-Day Trends</div>
+        <div class="fpc-section-title">${DP_ICON('trend')} 14-Day Trends</div>
         <div class="trend-grid">${cardsHtml}</div>
       </div>`;
     }
@@ -10319,7 +10432,7 @@ function buildFPCard(a, weekOffset = 0) {
       }).join('');
 
       dailyNutrHtml = `<div class="fpc-section">
-        <div class="fpc-section-title">🍽 Daily Nutrition vs Target — ${Math.round(tCal)} kcal/day</div>
+        <div class="fpc-section-title">${DP_ICON('utensils')} Daily Nutrition vs Target — ${Math.round(tCal)} kcal/day</div>
         <div class="daily-nutr-wrap">
           <div class="daily-nutr-legend">
             <span><span class="swatch" style="background:linear-gradient(180deg,#86efac,#15803d)"></span>On Target</span>
@@ -10414,7 +10527,7 @@ function buildFPCard(a, weekOffset = 0) {
             ${pw['Lift Wins'] && pw['Lift Wins'] !== 'n/a' ? `<div class="fpc-train-note good">✓ ${esc(pw['Lift Wins'])}</div>` : ''}
           </div>
         </div>` : '';
-        const textRow = `${pw['Testimonial'] ? `<div class="fpc-testim">"${esc(pw['Testimonial'])}"</div>` : ''}${pw['Upcoming Impact'] && pw['Upcoming Impact'] !== 'n/a' ? `<div class="fpc-impact">⚡ ${esc(pw['Upcoming Impact'])}</div>` : ''}`;
+        const textRow = `${pw['Testimonial'] ? `<div class="fpc-testim">"${esc(pw['Testimonial'])}"</div>` : ''}${pw['Upcoming Impact'] && pw['Upcoming Impact'] !== 'n/a' ? `<div class="fpc-impact">${DP_ICON('bolt')} ${esc(pw['Upcoming Impact'])}</div>` : ''}`;
         return `<div class="fp-prev-row">
           <div class="fp-prev-row-date">${pwWeekLabel}Week ending ${fmtDate(pwEnd)}</div>
           ${scoresRow}${trainRow}${textRow}
@@ -10444,14 +10557,18 @@ function buildFPCard(a, weekOffset = 0) {
     notes:    [callPrepHtml],
   };
 
+  // Every one of these answers three things: what is missing, why it might be
+  // missing, and what the coach can do next. Where the answer is "the athlete
+  // owns this", it says so rather than asking the coach to do something they
+  // cannot do from here.
   const emptyCopy = {
-    overview: 'Nothing logged for this athlete yet.',
-    training: 'No sessions planned or logged for this week.',
-    running:  'No running volume recorded yet. Prescribe a week in Programming to see planned versus actual.',
-    strength: 'No strength sessions logged yet. Personal bests and current lifts appear here once the athlete logs a gym session.',
-    body:     'No body, nutrition or photo data logged yet.',
-    checkins: 'No previous weekly check-ins submitted.',
-    notes:    'No coach notes yet.',
+    overview: 'Nothing logged for this athlete yet. Their overview fills in once they submit a session or a daily check-in through the portal.',
+    training: 'No sessions prescribed for this week. Add sessions in Calendar to start programming.',
+    running:  'No running volume yet. Prescribe a week in Calendar and this will show prescribed against actual as sessions come in.',
+    strength: 'No strength sessions submitted yet. Progression, estimated 1RM and personal bests appear once the athlete logs a gym session.',
+    body:     'No body, nutrition or photo data yet. The athlete logs these daily in their portal.',
+    checkins: 'No weekly check-ins submitted yet. The athlete completes these in their portal at the end of each week.',
+    notes:    'No coach notes yet. Notes you add here stay on the coaching side and are not shown to the athlete.',
   };
 
   const panelHtml = FPA_TABS.map(t => {
@@ -10560,7 +10677,7 @@ function buildDailyInputsLedger(a, ctx = getSelectedWeekContext(a, 0)) {
   const bodyBox = row => {
     if (!row) return `<div class="daily-ledger-box empty">
       <div class="daily-ledger-title">Body</div>
-      <div class="daily-ledger-empty">No body check-in</div>
+      <div class="daily-ledger-empty">Not logged</div>
     </div>`;
 
     const fields = [
@@ -10586,7 +10703,7 @@ function buildDailyInputsLedger(a, ctx = getSelectedWeekContext(a, 0)) {
   const nutritionBox = row => {
     if (!row) return `<div class="daily-ledger-box empty">
       <div class="daily-ledger-title">Nutrition</div>
-      <div class="daily-ledger-empty">No nutrition input</div>
+      <div class="daily-ledger-empty">Not logged</div>
     </div>`;
 
     const fields = [
@@ -10675,7 +10792,7 @@ function buildCoachCard(a) {
         </div>
       </div>
       ${w['Testimonial'] ? `<div class="testim">"${esc(w['Testimonial'])}"</div>` : ''}
-      ${w['Upcoming Impact'] && w['Upcoming Impact'] !== 'n/a' ? `<div class="impact">⚡ ${esc(w['Upcoming Impact'])}</div>` : ''}
+      ${w['Upcoming Impact'] && w['Upcoming Impact'] !== 'n/a' ? `<div class="impact">${DP_ICON('bolt')} ${esc(w['Upcoming Impact'])}</div>` : ''}
     </div>`;
   }
 
@@ -11512,6 +11629,97 @@ document.addEventListener('keydown', event => {
   if (event.key === '/' && !_isTyping()) {
     event.preventDefault();
     openCommandPalette();
+  }
+});
+
+// ── Keyboard workflow ────────────────────────────────────────────────────────
+// A coach working a queue should not have to reach for the mouse between
+// athletes. Three additions, all of which stand down the moment the coach is
+// typing, so they can never eat a character in a note or a search field:
+//
+//   1-7   jump to a workspace tab, in the order the tabs appear
+//   g t/s/c/p   go to Today, Squad, Calendar or Pipeline
+//   r     resolve the focused decision-queue row
+//
+// _isTyping() already guards the "/" shortcut and is reused here rather than
+// reinvented: it covers input, textarea, select and contenteditable.
+
+const _GO_TARGETS = {
+  t: { id: 'tab-triage-btn',      label: 'Today'    },
+  s: { id: 'tab-athletes-btn',    label: 'Squad'    },
+  c: { id: 'tab-programming-btn', label: 'Calendar' },
+  p: { id: 'tab-pipeline-btn',    label: 'Pipeline' },
+};
+let _goPending = false;
+let _goTimer = null;
+
+function _announce(message) {
+  const live = document.getElementById('dp-live-region');
+  if (!live) return;
+  // Clearing first makes a repeated message announce again.
+  live.textContent = '';
+  setTimeout(() => { live.textContent = message; }, 30);
+}
+
+function _cancelGo() {
+  _goPending = false;
+  clearTimeout(_goTimer);
+  document.getElementById('dp-go-hint')?.setAttribute('hidden', '');
+}
+
+document.addEventListener('keydown', event => {
+  // Never intercept a modified key: those belong to the browser and the OS.
+  if (event.metaKey || event.ctrlKey || event.altKey) return;
+  if (_isTyping()) return;
+  // The command palette owns the keyboard while it is open.
+  const palette = document.getElementById('cmdk');
+  if (palette && !palette.hidden) return;
+
+  const key = event.key.toLowerCase();
+
+  // ── g, then a destination ──
+  if (_goPending) {
+    const target = _GO_TARGETS[key];
+    _cancelGo();
+    if (target) {
+      event.preventDefault();
+      const button = document.getElementById(target.id);
+      if (button) { button.click(); button.focus(); _announce(target.label); }
+    }
+    return;
+  }
+  if (key === 'g') {
+    _goPending = true;
+    document.getElementById('dp-go-hint')?.removeAttribute('hidden');
+    // A dangling "g" should not silently swallow the next keystroke forever.
+    _goTimer = setTimeout(_cancelGo, 1500);
+    return;
+  }
+
+  // ── 1-7: athlete workspace tabs, only while the workspace is open ──
+  if (/^[1-7]$/.test(event.key)) {
+    const overlay = document.getElementById('fp-overlay');
+    if (overlay && overlay.style.display === 'block') {
+      const tab = FPA_TABS[Number(event.key) - 1];
+      if (tab) {
+        event.preventDefault();
+        switchAthleteTab(tab.key);
+        document.querySelector(`#fp-body [data-fpa-tab="${tab.key}"]`)?.focus();
+        _announce(tab.label);
+      }
+    }
+    return;
+  }
+
+  // ── r: resolve the focused queue row ──
+  if (key === 'r') {
+    const row = document.activeElement?.closest?.('[data-queue-row], .triage-row, .cc-alert-row');
+    if (!row) return;
+    const resolve = row.querySelector('[data-resolve], .triage-resolve, [onclick*="ackAlert"]');
+    if (!resolve) return;
+    event.preventDefault();
+    resolve.click();
+    _announce('Resolved');
   }
 });
 
@@ -12531,7 +12739,7 @@ function buildMileageTrend(a) {
   </div>`;
 
   const hasData = pts.some(p => p.completed != null || p.planned != null);
-  let chartHtml = '<p style="font-family:var(--mono);font-size:11px;color:var(--wh-dim)">No mileage data yet.</p>';
+  let chartHtml = '<p style="font-family:var(--mono);font-size:11px;color:var(--wh-dim)">No weekly mileage yet. This chart plots the athlete\'s check-in mileage against the weekly target once either exists.</p>';
 
   if (hasData) {
     const CW = 880, CH = 180, pL = 42, pR = 12, pT = 10, pB = 30;
@@ -12843,7 +13051,7 @@ function copyDM(athleteId) {
   navigator.clipboard.writeText(msg).then(() => {
     // Brief visual feedback on the button
     const btn = document.querySelector(`button[onclick="copyDM('${athleteId}')"]`);
-    if (btn) { btn.textContent = '✓ Copied'; setTimeout(() => { btn.textContent = '💬 DM'; }, 2000); }
+    if (btn) { btn.textContent = '✓ Copied'; setTimeout(() => { btn.innerHTML = DP_ICON('message') + ' DM'; }, 2000); }
   }).catch(() => {
     prompt('Copy this DM:', msg);
   });
@@ -12896,6 +13104,7 @@ document.getElementById('gen-btn').addEventListener('click', generateAI);
 </script>
 <script src="/dashboard-redesign.js?v=20260906-17" defer></script>
 <script src="/coaching-actions.js?v=3" defer></script>
+<script src="/dp-icons.js?v=20260906-30"></script>
 <script src="/dashboard-mobilenav.js?v=20260906-17" defer></script>
 <script src="/triage.js?v=20260906-17" defer></script>
 <script src="/weekly-sport-targets.js?v=3" defer></script>

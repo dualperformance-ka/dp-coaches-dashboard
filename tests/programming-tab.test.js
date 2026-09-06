@@ -85,7 +85,13 @@ test('Programming badge preserves nutrition load errors', () => {
 test('both Programming bodies have empty states and render delegates', () => {
   assert.match(functionSource('renderProgramming'), /renderNutTable\(\)/);
   assert.match(functionSource('renderProgramming'), /renderPlanGrid\(\)/);
-  assert.match(functionSource('renderNutTable'), /No athletes found/);
+  // Asserts that an empty state exists and explains itself, not its exact
+  // wording: "No athletes found" became "No athletes match the current filter."
+  // during the Phase 4 empty-state pass, and pinning the literal string would
+  // fail every future improvement to the copy.
+  const nutEmpty = functionSource('renderNutTable').match(/class="nut-empty">([^<]+)</);
+  assert.ok(nutEmpty, 'renderNutTable must render an empty state');
+  assert.ok(nutEmpty[1].trim().length > 12, `the empty state must explain itself, got "${nutEmpty[1]}"`);
   assert.match(functionSource('renderPlanGrid'), /_progAthlete \? _planRowsForWeek/);
 });
 

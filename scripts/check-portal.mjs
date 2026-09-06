@@ -118,13 +118,60 @@ for (const name of loadedStyles) {
   if (depth !== 0) failures.push(`${name} has unbalanced braces (depth ${depth} at end of file).`);
 }
 
-// ── The shared design system must stay last, or the dashboard's earlier
-//    layers win and the two apps stop matching. ──────────────────────────────
+// ── The shared design system must stay last among the unscoped layers, or the
+//    dashboard's earlier layers win and the two apps stop matching.
+//
+//    One exception, and only one: a stylesheet whose every rule is inside a
+//    phone media query. The rule here protects instrument.css from being
+//    overridden on the screens both apps share, and a file that cannot apply
+//    above 720px cannot do that. dashboard-mobile-final.css is allowed after it
+//    for exactly that reason, and it is what let 529 !important come out of the
+//    phone layer: those rules only needed the flag because they loaded before
+//    instrument.css and a media query adds nothing to specificity.
+//
+//    The allowance is verified, not asserted. Any file listed after
+//    instrument.css is read, and every top-level block in it must be a
+//    max-width media query. The moment someone adds an unscoped rule to such a
+//    file it fails here rather than silently outranking the design system. ────
 const styleLinks = [...index.matchAll(/<link[^>]+href="\/([\w.-]+\.css)/g)].map((m) => m[1]);
 if (!styleLinks.includes('instrument.css')) {
   failures.push('instrument.css is not loaded — the dashboard would drift from the athlete portal');
-} else if (styleLinks[styleLinks.length - 1] !== 'instrument.css') {
-  failures.push(`instrument.css must load last; currently "${styleLinks[styleLinks.length - 1]}" does`);
+} else {
+  const after = styleLinks.slice(styleLinks.indexOf('instrument.css') + 1);
+  for (const name of after) {
+    let css;
+    try {
+      css = readFileSync(join(publicDir, name), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+    } catch {
+      failures.push(`${name} loads after instrument.css but could not be read`);
+      continue;
+    }
+    // Walk top-level blocks; anything not scoped to a phone width outranks the
+    // shared design system on desktop, which is the thing this check exists for.
+    let depth = 0, selector = '', start = 0;
+    const offenders = [];
+    for (let i = 0; i < css.length; i += 1) {
+      const ch = css[i];
+      if (ch === '{') {
+        if (depth === 0) selector = css.slice(start, i).replace(/\s+/g, ' ').trim();
+        depth += 1;
+      } else if (ch === '}') {
+        depth -= 1;
+        if (depth === 0) {
+          if (selector && !/^@media\s*\(\s*max-width\s*:\s*\d+px\s*\)$/.test(selector)) {
+            offenders.push(selector.slice(0, 60));
+          }
+          start = i + 1;
+        }
+      }
+    }
+    if (offenders.length) {
+      failures.push(
+        `${name} loads after instrument.css but ${offenders.length} of its blocks are not phone-scoped ` +
+        `(e.g. "${offenders[0]}"). Only max-width media queries may follow the design system.`
+      );
+    }
+  }
 }
 
 // ── The coach gate is injected at runtime by coach-auth.js, which must stay

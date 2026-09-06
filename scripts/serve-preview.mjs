@@ -91,6 +91,7 @@ const FIXTURES = [
   [/^\/api\/data/, () => ({ results: [], has_more: false, next_cursor: null })],
   [/^\/api\/actions/, () => ({ ok: true, actions: [] })],
   [/^\/api\/notify/, () => ({ ok: true, status: [], queue: [] })],
+  [/^\/api\/progress-photos/, () => ({ ok: true, photos: [] })],
 ];
 
 createServer(async (req, res) => {

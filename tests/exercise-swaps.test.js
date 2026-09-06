@@ -94,6 +94,10 @@ function loadRenderer() {
   vm.createContext(context);
   vm.runInContext(
     'function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}\n' +
+    // The renderer now emits SVG icons through DP_ICON (dp-icons.js) instead of
+    // emoji. The real implementation is not under test here, so it is stubbed
+    // with something that keeps the icon's identity visible to assertions.
+    'function DP_ICON(name){return "<svg data-icon=\\"" + name + "\\"></svg>";}\n' +
     html.slice(start, end) +
     '\nthis.renderExerciseLog=renderExerciseLog;',
     context
