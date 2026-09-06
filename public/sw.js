@@ -16,7 +16,7 @@
 // it for you — and if sw.js is byte-identical the browser never installs a new
 // worker, no "Update available" toast appears, and the activate purge never runs.
 // scripts/bump-sw-version.mjs does it for you: `node scripts/bump-sw-version.mjs`.
-const VERSION = 'dp-coaches-v44-phase4-contrast';
+const VERSION = 'dp-coaches-v45-phase4-contrast-aa';
 const SHELL_CACHE = `${VERSION}-shell`;
 const STATIC_CACHE = `${VERSION}-static`;
 const FONT_CACHE = `${VERSION}-fonts`;
@@ -31,13 +31,13 @@ const SHELL_ASSETS = [
   '/dashboard-redesign.js?v=20260906-17',
   '/dashboard-redesign.css?v=20260906-17',
   '/dashboard-detail-cleanup.css?v=20260906-17',
-  '/dashboard-comprehensive.css?v=20260906-21',
+  '/dashboard-comprehensive.css?v=20260906-23',
   '/dashboard-theme-system.css?v=20260906-20',
   '/dashboard-desktop.css?v=20260906-17',
-  '/dashboard-mobile-final.css?v=20260906-29',
+  '/dashboard-mobile-final.css?v=20260906-31',
   '/dp-icons.js?v=20260906-30',
   '/dashboard-mobilenav.js?v=20260906-17',
-  '/triage.css?v=20260906-17',
+  '/triage.css?v=20260906-32',
   '/triage.js?v=20260906-17',
   '/programming.css?v=20260906-17',
   '/weekly-sport-targets.css?v=3',

@@ -32,9 +32,9 @@
   /* --t-3 is the muted role: metadata, table sub-values, chart labels, chips.
      At .42 it resolved to 3.5:1 on --surface, under the 4.5:1 AA floor for the
      8-11px sizes it is mostly used at, so the smallest text in the product was
-     the hardest to read. .55 clears 4.5:1 on --surface and on the elevated
+     the hardest to read. .60 clears 4.5:1 on --surface and on the elevated
      surfaces above it, while staying clearly quieter than --muted. */
-  --t-3:rgba(236,233,226,.55);
+  --t-3:rgba(236,233,226,.60);
 
   /* ─── READOUT ────────────────────────────────────────────────────────── */
   --readout:#92d2ed;          /* identical to the portal's live-number blue */
@@ -131,7 +131,11 @@ body[data-theme="light"]{
   --t-1:#1b1a18;--t-2:rgba(27,26,24,.82);--t-3:rgba(27,26,24,.66);
   /* Baby blue dies on paper (~1.6:1), so the readout role darkens while the
      token itself stays constant — the same rule the portal follows. */
-  --readout:#0f7fae;--readout-ink:#ffffff;--watch:#a86a06;--done:#178048;
+  /* --readout darkened from #0f7fae: white on it measured exactly 4.5:1, which
+     is the AA floor with no headroom, and it is the fill behind every primary
+     action button. #0c6a91 gives 5.87:1 and also lifts the 37 places --brand is
+     used as text. */
+  --readout:#0c6a91;--readout-ink:#ffffff;--watch:#7f5507;--done:#0f6b3c;
 
   --bg:var(--g-0);--surface:var(--g-1);--surface2:var(--g-2);--surface3:var(--g-3);
   --border:rgba(19,19,18,.10);--border-mid:rgba(19,19,18,.18);
@@ -143,6 +147,23 @@ body[data-theme="light"]{
   --brand:var(--readout);--brand-text:#0a5f82;
   --brand-bg:rgba(15,127,174,.10);--brand-border:rgba(15,127,174,.28);
   --ok:var(--done);--warn:var(--watch);--amber:var(--watch);
+  /* Light-theme semantic INK.
+     These tokens are ink, not fill. A scan of every rule referencing them found
+     26-49 `color:` uses each and not one `background:`; fills come from the
+     separate --*-bg tokens. That is what makes darkening them safe, and it is
+     the opposite of what I assumed before checking.
+
+     They were failing WCAG AA on the tinted surfaces the dashboard actually
+     uses: --warn 3.97:1, --run 4.46:1, --ok 4.45:1 against #edf3f7, which is
+     what put 19 text nodes under the 4.5 floor. Set here rather than in
+     dashboard-theme-system.css because this file loads last and is the token
+     contract; scoped to the light block so dark is untouched.
+
+     Run and warning are both warm and sit near each other, so the pair was
+     chosen for separation as well as contrast: 22.6 ΔE apart, up from 15.8. */
+  --run:#9c4409;
+  --str:#2f5c8f;
+  --alert:#a33645;
   /* Flat warm ground: Instrument has one light source and no colour wash. */
   background:var(--g-0);
 }

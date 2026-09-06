@@ -148,3 +148,83 @@ test('running and strength stay separable in the theme that actually renders', (
     assert.ok(strHue > 170 && strHue < 270, `${theme}: --str should read cool, got hue ${Math.round(strHue)}`);
   }
 });
+
+test('semantic ink meets WCAG AA against the surfaces it is used on', () => {
+  // The dashboard's smallest text is its most important: adherence percentages,
+  // review ages, session flags. Those use the semantic ink tokens, and in light
+  // theme they were resolving to 3.97-4.46:1 against the tinted surfaces the
+  // product actually paints, which put 19 text nodes under the 4.5 floor.
+  //
+  // This checks the tokens rather than rendered pixels, because a rendered check
+  // needs a browser and this needs to fail in CI. The rendered check lives in
+  // scripts/verify-ui.mjs, which composites the full background stack.
+
+  const srgb = hex => [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16));
+  const relative = hex => {
+    const [r, g, b] = srgb(hex).map(v => {
+      v /= 255;
+      return v > 0.03928 ? ((v + 0.055) / 1.055) ** 2.4 : v / 12.92;
+    });
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  };
+  const ratio = (a, b) => {
+    const [x, y] = [relative(a), relative(b)];
+    return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
+  };
+
+  // Resolve a token to its literal value for one theme, honouring load order and
+  // one level of var() aliasing (--ok: var(--done), and so on).
+  const LOADED = [
+    'dashboard-redesign.css', 'dashboard-detail-cleanup.css',
+    'dashboard-comprehensive.css', 'dashboard-theme-system.css',
+    'dashboard-desktop.css', 'triage.css', 'programming.css',
+    'weekly-sport-targets.css', 'daily-macro-overrides.css', 'instrument.css',
+    'dashboard-mobile-final.css',
+  ];
+  const strip = css => css.replace(/\/\*[\s\S]*?\*\//g, '');
+  const sources = [['inline', strip(html.slice(html.indexOf('<style>')))],
+    ...LOADED.map(f => [f, strip(read(f))])];
+
+  const declared = { dark: {}, light: {} };
+  for (const [file, css] of sources) {
+    for (const block of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+      const selector = block[1];
+      if (/data-theme="pride"/.test(selector)) continue;
+      // A phone-only block still declares the same token values.
+      const theme = /data-theme="light"/.test(selector) ? 'light' : 'dark';
+      for (const decl of block[2].matchAll(/(--[\w-]+)\s*:\s*([^;]+)/g)) {
+        declared[theme][decl[1]] = { value: decl[2].trim(), file };
+      }
+    }
+  }
+
+  const resolve = (theme, name, depth = 0) => {
+    const hit = declared[theme][name] || declared.dark[name];
+    if (!hit || depth > 4) return null;
+    const alias = hit.value.match(/^var\((--[\w-]+)/);
+    if (alias) return resolve(theme, alias[1], depth + 1);
+    const hex = hit.value.match(/#[0-9a-f]{6}\b/i);
+    return hex ? { hex: hex[0], file: hit.file } : null;
+  };
+
+  // The grounds each theme actually paints text on.
+  const SURFACES = {
+    light: ['#ffffff', '#f4f2ed', '#edf3f7'],
+    dark: ['#222120', '#2a2928', '#1a1918'],
+  };
+
+  const failures = [];
+  for (const theme of ['light', 'dark']) {
+    for (const token of ['--run', '--str', '--ok', '--warn', '--alert', '--brand-text']) {
+      const ink = resolve(theme, token);
+      if (!ink) continue;
+      for (const surface of SURFACES[theme]) {
+        const r = ratio(ink.hex, surface);
+        if (r < 4.5) {
+          failures.push(`${theme} ${token} ${ink.hex} (${ink.file}) on ${surface}: ${r.toFixed(2)}:1`);
+        }
+      }
+    }
+  }
+  assert.deepEqual(failures, [], 'semantic ink must clear 4.5:1 on every surface it is painted on');
+});

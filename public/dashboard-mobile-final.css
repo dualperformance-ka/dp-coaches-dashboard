@@ -203,7 +203,8 @@
     font-size:12px;
     font-weight: 600; }
 .filter-bar .sf-group:has(#view-cards-btn) .sf.active { background:var(--brand, #79c3e8);
-    color:#06101a;
+    /* Theme-aware ink on the brand fill; see --readout-ink. */
+    color:var(--readout-ink, #06101a);
     border:0; }
 /* Put week-nav and view-toggle side by side to save vertical space */
   #dash-week-controls { order: 4; flex: 1 1 calc(58% - 5px); }
@@ -440,7 +441,10 @@
     padding:0 4px;
     border-radius:999px;
     background:var(--brand, #79c3e8);
-    color:#06101a;
+    /* Theme-aware ink on the brand fill: near-black on the pale dark-theme
+       blue, white on the darker light-theme blue. Hardcoded near-black
+       measured 4.26:1 in light. */
+    color:var(--readout-ink, #06101a);
     font-family:var(--mono, monospace);
     font-size:9px;
     font-weight: 700;
@@ -479,7 +483,7 @@
     font-weight: 900;
     text-transform: uppercase;
     letter-spacing:.06em;
-    color:#f0ede8;
+    color:var(--text, #f0ede8);
     margin:0 2px 14px; }
 .dp-sheet-grid { display:grid; }
 .dp-sheet-cell { display:flex;

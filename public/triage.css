@@ -19,20 +19,33 @@
   margin-bottom: 26px;
 }
 
+/* Squad vitals span the top; the decision queue takes the working column and
+   the coach's own workload (review backlog, actions) sits in the rail. The
+   previous layout put a second priority list beside the queue, which answered
+   "who needs me" twice with two different rule sets. */
 .today-workspace {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(340px, 390px);
+  grid-template-columns: minmax(0, 1fr) minmax(330px, 380px);
   grid-template-areas:
-    "priorities triage"
-    "actions triage";
+    "operations operations"
+    "queue      rail";
   align-items: start;
   gap: 18px 20px;
   padding-bottom: 80px;
 }
 
-.today-operations { grid-area: priorities; min-width: 0; }
-.today-actions { grid-area: actions; min-width: 0; }
-.today-actions .coach-actions { margin: 0; }
+.today-operations { grid-area: operations; min-width: 0; }
+.triage-shell { grid-area: queue; min-width: 0; }
+.today-rail {
+  grid-area: rail;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  position: sticky;
+  top: 118px;
+}
+.today-rail .coach-actions { margin: 0; }
 
 .today-dashboard-state {
   min-height: 76px;
@@ -51,14 +64,9 @@
 .today-dashboard-state.is-error { color: var(--alert); }
 
 .triage-shell {
-  grid-area: triage;
   width: auto;
-  max-height: calc(100vh - 138px);
   margin: 0;
   padding: 18px;
-  overflow-y: auto;
-  position: sticky;
-  top: 118px;
   border: 1px solid var(--border);
   border-radius: 18px;
   background: var(--surface);
@@ -67,8 +75,6 @@
   scrollbar-color: var(--border-mid) transparent;
 }
 
-.triage-shell::-webkit-scrollbar { width: 5px; }
-.triage-shell::-webkit-scrollbar-thumb { background: var(--border-mid); border-radius: 999px; }
 
 .today-workspace .triage-hero { display: block; margin-bottom: 16px; }
 .today-workspace .triage-hero h1 { font-size: clamp(27px, 2.4vw, 34px); letter-spacing: -.04em !important; }
@@ -91,10 +97,11 @@
 .today-workspace .triage-row::before { grid-row: 1 / 4; width: 5px; margin: -14px 0; }
 .today-workspace .triage-athlete,
 .today-workspace .triage-signal,
-.today-workspace .triage-action { grid-column: 2; }
+.today-workspace .triage-also,
+.today-workspace .triage-row-actions { grid-column: 2; }
 .today-workspace .triage-athlete-name { font-size: 15px; }
 .today-workspace .triage-signal { margin-top: 9px; font-size: 12px; line-height: 1.45; }
-.today-workspace .triage-action { width: 100%; min-width: 0; min-height: 38px; margin-top: 10px; }
+.today-workspace .triage-action { min-width: 0; min-height: 34px; padding: 7px 14px; font-size: 11.5px; }
 .today-workspace .triage-clear { margin-top: 10px; padding: 12px; font-size: 11px; }
 .today-workspace .triage-clear.is-all-clear { min-height: 108px; font-size: 18px; }
 
@@ -107,11 +114,11 @@
   .today-workspace {
     grid-template-columns: minmax(0, 1fr);
     grid-template-areas:
-      "priorities"
-      "triage"
-      "actions";
+      "operations"
+      "queue"
+      "rail";
   }
-  .triage-shell { max-height: none; position: static; overflow: visible; }
+  .today-rail { position: static; }
 }
 
 .triage-hero {
@@ -311,7 +318,12 @@
   padding: 9px 15px;
   border: 1px solid var(--brand-border);
   border-radius: 10px;
-  color: #081019;
+  /* --brand is a mid blue in light theme, so near-black ink on it measured
+     4.25:1, under the AA floor for 11.5px. --readout-ink is the token that
+     already exists for "text sitting on the brand fill": it is near-black in
+     dark theme where the fill is pale, and white in light theme where the fill
+     is dark. Using it makes this button pass in both. */
+  color: var(--readout-ink, #081019);
   background: var(--brand);
   font-size: 12px;
   font-weight: 750;
@@ -371,6 +383,337 @@ body[data-theme="light"] .triage-page {
   .triage-row::before { grid-row: 1 / 4; margin: -16px 0; width: 5px; }
   .triage-athlete { grid-column: 2; }
   .triage-signal { grid-column: 2; margin-top: 12px; font-size: 13px; }
-  .triage-action { grid-column: 2; width: 100%; min-height: 44px; margin-top: 14px; }
+  .triage-also { grid-column: 2; }
+  .triage-row-actions { grid-column: 2; margin-top: 14px; }
+  .triage-action { flex: 1 1 auto; min-height: 44px; }
   .triage-clear { margin-top: 12px; }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   SQUAD STATUS — six vitals and a one-line-per-athlete strip of today's work.
+   Replaces the Command Center's own ranked lists; these tiles filter, they do
+   not rank. Ranking happens once, in the decision queue.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.squad-status {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: var(--shadow-soft);
+  padding: 16px 18px;
+}
+
+.squad-status-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+.squad-status-stamp {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: .06em;
+  color: var(--dim);
+}
+
+.squad-vitals {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
+}
+.squad-vital {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 11px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface2);
+  cursor: pointer;
+  text-align: left;
+  min-width: 0;
+  transition: border-color .12s ease, background .12s ease;
+}
+.squad-vital:hover { border-color: var(--brand-border); background: var(--brand-bg); }
+.squad-vital:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
+.squad-vital-num {
+  font-family: var(--mono);
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.squad-vital-num.green { color: var(--ok); }
+.squad-vital-num.red { color: var(--alert); }
+.squad-vital-num.amber { color: var(--warn); }
+.squad-vital-num.run { color: var(--run); }
+.squad-vital-num.str { color: var(--str); }
+.squad-vital-lbl {
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Today strip ── */
+.today-strip { margin-top: 14px; border-top: 1px solid var(--border); padding-top: 12px; }
+.today-strip.is-empty {
+  margin-top: 14px;
+  padding: 14px 0 2px;
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--dim);
+}
+.today-strip-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--dim);
+  margin-bottom: 9px;
+}
+.today-strip-key { letter-spacing: .04em; text-transform: none; font-weight: 400; }
+.today-strip-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 5px;
+}
+.today-cell {
+  display: grid;
+  grid-template-columns: minmax(0, auto) minmax(0, 1fr) 14px;
+  align-items: baseline;
+  gap: 8px;
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--border-mid);
+  border-radius: 7px;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  font-size: 12px;
+}
+.today-cell:hover { background: var(--surface2); }
+.today-cell:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
+.today-cell.is-done { border-left-color: var(--ok); }
+.today-cell.is-open { border-left-color: var(--run); }
+.today-cell.is-rest { border-left-color: var(--border-mid); opacity: .62; }
+.today-cell-name {
+  font-family: var(--cond);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--text);
+  white-space: nowrap;
+}
+.today-cell-session {
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 11.5px;
+}
+.today-cell-mark { font-family: var(--mono); font-size: 10px; color: var(--dim); text-align: right; }
+.today-cell.is-done .today-cell-mark { color: var(--ok); }
+.today-cell.is-open .today-cell-mark { color: var(--run); }
+
+@media (max-width: 900px) {
+  .squad-vitals { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 520px) {
+  .squad-vitals { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   DECISION QUEUE — resolve controls and merged sub-signals.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.triage-also {
+  margin: 6px 0 0;
+  padding-left: 15px;
+  list-style: disc;
+  color: var(--muted);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+.triage-also li::marker { color: var(--dim); }
+
+.triage-row-actions { display: flex; gap: 7px; flex-wrap: wrap; margin-top: 10px; }
+
+.triage-athlete-open {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 3px;
+}
+.triage-athlete-open:hover { text-decoration-color: currentColor; }
+.triage-athlete-open:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; border-radius: 3px; }
+
+.triage-resolve {
+  background: transparent;
+  border: 1px solid var(--border-mid);
+  border-radius: 6px;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  padding: 6px 11px;
+  cursor: pointer;
+}
+.triage-resolve:hover:not(:disabled) { border-color: var(--ok); color: var(--ok); }
+.triage-resolve:disabled { opacity: .5; cursor: default; }
+
+.triage-resolved { margin-top: 12px; }
+.triage-resolved-list summary {
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--dim);
+  padding: 6px 0;
+}
+.triage-resolved-row {
+  display: grid;
+  grid-template-columns: minmax(0, auto) minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 10px;
+  padding: 7px 0;
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--muted);
+}
+.triage-resolved-meta { font-family: var(--mono); font-size: 10px; color: var(--dim); }
+.triage-restore {
+  background: transparent;
+  border: 1px solid var(--border-mid);
+  border-radius: 5px;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  padding: 4px 9px;
+  cursor: pointer;
+}
+.triage-restore:hover { border-color: var(--brand-border); color: var(--brand-text); }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   REVIEW QUEUE — "what have I not looked at?", previously unanswerable.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.review-panel {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: var(--shadow-soft);
+  padding: 15px 16px;
+}
+.review-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.review-head h2 {
+  margin: 0;
+  font-family: var(--cond);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+.review-count {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 600;
+  min-width: 26px;
+  text-align: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--surface2);
+  color: var(--text);
+}
+.review-count.is-overdue { background: var(--amber-bg); color: var(--amber-text); }
+.review-count.is-clear { background: var(--green-bg); color: var(--green-text); }
+.review-sub { margin: 6px 0 11px; font-size: 11px; color: var(--dim); }
+.review-empty { margin: 8px 0 0; font-size: 12px; color: var(--dim); }
+
+.review-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+.review-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: stretch;
+  gap: 6px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+}
+.review-item.is-overdue { border-color: var(--amber-border); background: var(--amber-bg); }
+.review-open {
+  display: grid;
+  grid-template-columns: minmax(0, auto) minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 8px;
+  padding: 8px 10px;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+  text-align: left;
+  min-width: 0;
+}
+.review-open:hover { background: var(--surface2); }
+.review-open:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; }
+.review-athlete {
+  font-family: var(--cond);
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--text);
+  white-space: nowrap;
+}
+.review-session {
+  font-size: 11.5px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.review-age { font-family: var(--mono); font-size: 10px; color: var(--dim); white-space: nowrap; }
+.review-tick {
+  background: transparent;
+  border: 1px solid var(--border-mid);
+  border-radius: 7px;
+  color: var(--muted);
+  font-size: 12px;
+  width: 34px;
+  cursor: pointer;
+}
+.review-tick:hover { border-color: var(--ok); color: var(--ok); }
+.review-more {
+  margin-top: 9px;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--dim);
+  text-align: center;
 }
