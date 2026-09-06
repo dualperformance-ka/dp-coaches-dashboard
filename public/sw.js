@@ -16,7 +16,7 @@
 // it for you — and if sw.js is byte-identical the browser never installs a new
 // worker, no "Update available" toast appears, and the activate purge never runs.
 // scripts/bump-sw-version.mjs does it for you: `node scripts/bump-sw-version.mjs`.
-const VERSION = 'dp-coaches-v33-strava-and-block-fixes';
+const VERSION = 'dp-coaches-v39-week-label-follows-viewed-week';
 const SHELL_CACHE = `${VERSION}-shell`;
 const STATIC_CACHE = `${VERSION}-static`;
 const FONT_CACHE = `${VERSION}-fonts`;
@@ -28,23 +28,27 @@ const SHELL_ASSETS = [
   '/app.js?v=2',
   '/coach-auth.js',
   '/coaching-actions.js?v=3',
-  '/dashboard-redesign.js?v=20260810-3',
-  '/dashboard-redesign.css',
-  '/dashboard-detail-cleanup.css',
+  '/dashboard-redesign.js?v=20260906-17',
+  '/dashboard-redesign.css?v=20260906-17',
+  '/dashboard-detail-cleanup.css?v=20260906-17',
   '/dashboard-mobile.css',
-  '/dashboard-comprehensive.css?v=2',
-  '/dashboard-theme-system.css?v=20260821-1',
-  '/dashboard-desktop.css',
-  '/dashboard-mobile-polish.css?v=20260821-2',
-  '/dashboard-mobilenav.js',
-  '/triage.css?v=23',
-  '/triage.js?v=21',
-  '/programming.css?v=4',
+  '/dashboard-comprehensive.css?v=20260906-17',
+  '/dashboard-theme-system.css?v=20260906-17',
+  '/dashboard-desktop.css?v=20260906-17',
+  '/dashboard-mobile-polish.css?v=20260906-17',
+  '/dashboard-mobilenav.js?v=20260906-17',
+  '/triage.css?v=20260906-17',
+  '/triage.js?v=20260906-17',
+  '/programming.css?v=20260906-17',
   '/weekly-sport-targets.css?v=3',
   '/daily-macro-overrides.css?v=3',
   '/weekly-sport-targets.js?v=3',
   '/daily-macro-overrides.js?v=3',
   '/programming.js?v=4',
+  '/run-analysis.js?v=20260906-17',
+  '/strength-analysis.js?v=20260906-17',
+  '/overload-adapter.js',
+  '/progressive-overload.js',
   '/manifest.webmanifest',
   '/dp-mark-blue.png',
   '/dp-mark-light.png',

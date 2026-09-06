@@ -4326,16 +4326,20 @@ function renderSquadBoard() {
       </td>`;
     }).join('');
 
-    const weekNum = typeof athlete?.weekNum === 'number' ? athlete.weekNum : null;
+    // The row describes the week ON SCREEN, not today. athlete.weekNum is
+    // always the current programme week, so browsing ahead used to leave every
+    // row showing this week's number beside next week's sessions.
+    const currentWeekNum = typeof athlete?.weekNum === 'number' ? athlete.weekNum : null;
+    const weekNum = currentWeekNum === null ? null : currentWeekNum + _progWeekOffset;
     const race = athlete?.race;
-    const countdown = race && !race.isPast ? raceCountdownLabel(race) : null;
+    const countdown = race && !race.isPast ? squadRaceCountdown(race, ws) : null;
 
     return `<tr>
       <th scope="row" class="sb-athlete">
         <button type="button" class="sb-athlete-open" onclick="openAthleteFromTriage('${esc(code)}',{tab:'training'})">
           ${esc(athlete?.displayName || code)}
         </button>
-        <span class="sb-athlete-meta">${weekNum === null ? '—' : weekNum === 0 ? 'Discovery' : `Wk ${weekNum}`}${countdown ? ` · ${esc(countdown)}` : ''}</span>
+        <span class="sb-athlete-meta">${weekNum === null || weekNum < 0 ? '—' : weekNum === 0 ? 'Discovery' : `Wk ${weekNum}`}${countdown ? ` · ${esc(countdown)}` : ''}</span>
       </th>
       ${cells}
       <td class="sb-total">
@@ -5370,6 +5374,29 @@ function localDateStr(d) {
   return `${y}-${m}-${n}`;
 }
 
+// ── Local midnight + whole-day maths ─────────────────────────────────────────
+// new Date('2026-08-31') is parsed as UTC midnight, which in Adelaide is 09:30
+// that same morning. Anything counting elapsed days from a stored start date
+// therefore rolled over mid-morning instead of at midnight. localMidnight()
+// returns the LOCAL midnight of a 'YYYY-MM-DD' (or of any parseable date) so
+// both ends of a day count sit on the same clock.
+function localMidnight(v) {
+  const m = String(v || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  const d = new Date(v);
+  return Number.isNaN(d.getTime()) ? null : new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
+
+// Whole calendar days from one date to another, midnight to midnight. Rounded,
+// so the 23-hour and 25-hour days either side of a daylight saving change still
+// count as one day each. Returns null if either side will not parse.
+function daysBetweenLocal(from, to) {
+  const a = localMidnight(from);
+  const b = localMidnight(to);
+  if (!a || !b) return null;
+  return Math.round((b - a) / 86400000);
+}
+
 // ── Current week ending (same for ALL athletes) ───────────────────────────────
 // Weeks run Mon–Sun. Week resets on Monday.
 // "Current week ending" = the COMING Sunday (or today if today IS Sunday).
@@ -6089,6 +6116,28 @@ function raceCountdownLabel(race) {
   return `${race.weeksToRace} weeks out`;
 }
 
+// The squad board can be scrolled weeks ahead, where a countdown measured from
+// today reads as a countdown for the week on screen. This one measures Monday
+// to Monday, from the displayed week to race week: the week containing race day
+// reads 'Race week', the one before it '1 week out'. Null once the race sits
+// behind the week being viewed, so past weeks do not carry a stale countdown.
+function squadRaceCountdown(race, weekStart) {
+  if (!race || !race.raceDate || !weekStart) return null;
+  const mondayOf = value => {
+    const d = localMidnight(value);
+    if (!d) return null;
+    d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+    return d;
+  };
+  const raceMonday = mondayOf(race.raceDate);
+  const viewMonday = mondayOf(weekStart);
+  if (!raceMonday || !viewMonday) return null;
+  const weeks = Math.round((raceMonday - viewMonday) / (7 * 86400000));
+  if (weeks < 0) return null;
+  if (weeks === 0) return 'Race week';
+  return `${weeks} week${weeks === 1 ? '' : 's'} out`;
+}
+
 function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [], planning = [], applications = [], roster = [], activityUploads = [], goals = []) {
   const c90 = dago(90), c7 = dago(7);
   const map = {};
@@ -6169,8 +6218,12 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [
     const sd = restart && !restartIsActive
       ? (restart.previous_start_date || athleteProfiles[id]?.['date:Start Date:start'] || athleteProfiles[id]?.['Start Date'])
       : startDates[id];
-    if (sd) {
-      const diffDays = Math.floor((Date.now() - new Date(sd)) / 86400000);
+    // Local midnight on both sides. Parsing 'YYYY-MM-DD' straight through
+    // new Date() gives UTC midnight, which is 09:30 the same morning in
+    // Adelaide, so the programme week used to tick over mid-Monday rather than
+    // at midnight. daysBetweenLocal() also survives the daylight saving change.
+    const diffDays = sd ? daysBetweenLocal(sd, new Date()) : null;
+    if (diffDays !== null) {
       // NO_DISCOVERY athletes started directly on Week 1 (no discovery week).
       // Formula: floor(days/7) + 1  →  Day 0–6 = Week 1, Day 7–13 = Week 2 …
       // A coach-triggered restart explicitly chooses Week 0 or Week 1, so its

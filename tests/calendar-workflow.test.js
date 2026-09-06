@@ -148,3 +148,88 @@ test('the expanded squad row is a preview, not a second athlete profile', () => 
   }
   assert.ok(panel.split('\n').length < 90, 'the preview must stay short');
 });
+
+// ── Programme week rollover ───────────────────────────────────────────────────
+// A start date is stored as 'YYYY-MM-DD'. Passing that straight to new Date()
+// parses it as UTC midnight, which is 09:30 the same morning in Adelaide, so an
+// athlete's programme week used to advance mid-Monday instead of at midnight.
+
+function evalHelpers(names, expression) {
+  const context = vm.createContext({ result: null });
+  vm.runInContext(`${names.map(functionSource).join('\n')}; result = (${expression});`, context);
+  return context.result;
+}
+
+function inTimezone(zone, run) {
+  const previous = process.env.TZ;
+  process.env.TZ = zone;
+  try { return run(); }
+  finally {
+    if (previous === undefined) delete process.env.TZ;
+    else process.env.TZ = previous;
+  }
+}
+
+test('the programme week rolls over at local midnight, not at 09:30', () => {
+  inTimezone('Australia/Adelaide', () => {
+    const start = '2026-08-31'; // Monday, day 0 of the discovery week
+
+    // The bug, stated as the expression that caused it: one minute into Monday
+    // the athlete has completed 7 days, but UTC parsing counts only 6.
+    const justAfterMidnight = new Date(2026, 8, 7, 0, 1);
+    assert.equal(
+      Math.floor((justAfterMidnight - new Date(start)) / 86400000), 6,
+      'the old UTC-parsed expression is what put the athlete a day behind',
+    );
+
+    const days = (date) => evalHelpers(
+      ['localMidnight', 'daysBetweenLocal'],
+      `daysBetweenLocal('${start}', new Date(${date.getTime()}))`,
+    );
+    assert.equal(days(new Date(2026, 8, 6, 23, 59)), 6, 'Sunday night is still day 6');
+    assert.equal(days(justAfterMidnight), 7, 'Monday 00:01 is day 7, so Week 1');
+    assert.equal(days(new Date(2026, 8, 7, 8, 0)), 7, 'and it does not change at 09:30');
+
+    assert.equal(Math.floor(days(new Date(2026, 8, 6, 23, 59)) / 7), 0, 'Discovery');
+    assert.equal(Math.floor(days(justAfterMidnight) / 7), 1, 'Week 1');
+  });
+});
+
+test('a daylight saving changeover still counts as one day', () => {
+  inTimezone('Australia/Adelaide', () => {
+    // Adelaide moves to daylight time on Sunday 4 October 2026: a 23-hour day.
+    const days = evalHelpers(
+      ['localMidnight', 'daysBetweenLocal'],
+      `daysBetweenLocal('2026-10-03', '2026-10-05')`,
+    );
+    assert.equal(days, 2, 'the short day must not swallow a programme day');
+  });
+});
+
+test('calcWeekNum counts whole local days from the start date', () => {
+  const source = functionSource('calcWeekNum');
+  assert.match(source, /daysBetweenLocal\(sd, new Date\(\)\)/);
+  assert.doesNotMatch(source, /new Date\(sd\)/, 'a bare new Date(sd) is a UTC parse');
+});
+
+// ── Squad board: the row describes the week on screen ─────────────────────────
+
+test('the squad row shows the week being viewed, not the week it is today', () => {
+  const board = functionSource('renderSquadBoard');
+  assert.match(board, /currentWeekNum \+ _progWeekOffset/, 'the label follows the visible week');
+  assert.match(board, /squadRaceCountdown\(race, ws\)/, 'so does the countdown');
+  assert.doesNotMatch(board, /raceCountdownLabel\(race\)/, 'that one is pinned to today');
+  // Browsing back before an athlete joined must not print a negative week.
+  assert.match(board, /weekNum === null \|\| weekNum < 0 \? '—'/);
+});
+
+test('the squad countdown is measured from the week on screen to race week', () => {
+  const countdown = (weekStart) => evalHelpers(
+    ['localMidnight', 'squadRaceCountdown'],
+    `squadRaceCountdown({ raceDate: '2026-09-20' }, localMidnight('${weekStart}'))`,
+  );
+  assert.equal(countdown('2026-08-31'), '2 weeks out');
+  assert.equal(countdown('2026-09-07'), '1 week out', 'singular, not "1 weeks out"');
+  assert.equal(countdown('2026-09-14'), 'Race week', 'race day falls inside this week');
+  assert.equal(countdown('2026-09-21'), null, 'no stale countdown on later weeks');
+});
