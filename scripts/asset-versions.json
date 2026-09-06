@@ -1,23 +1,35 @@
 {
+  "dashboard-redesign.css": {
+    "version": "20260906-17",
+    "sha": "703c681fe698"
+  },
+  "dashboard-detail-cleanup.css": {
+    "version": "20260906-17",
+    "sha": "1d5b1d291ef7"
+  },
   "dashboard-comprehensive.css": {
-    "version": "2",
-    "sha": "5b0fbb7f3973"
+    "version": "20260906-17",
+    "sha": "09add15caddf"
   },
   "dashboard-theme-system.css": {
-    "version": "20260821-1",
-    "sha": "0414a4e27411"
+    "version": "20260906-17",
+    "sha": "6a96b0f76d78"
+  },
+  "dashboard-desktop.css": {
+    "version": "20260906-17",
+    "sha": "25327bbe2c71"
   },
   "dashboard-mobile-polish.css": {
-    "version": "20260821-2",
-    "sha": "c26f0f5e862a"
+    "version": "20260906-17",
+    "sha": "06fcaeb7c0ce"
   },
   "triage.css": {
-    "version": "23",
-    "sha": "6d8171c71188"
+    "version": "20260906-17",
+    "sha": "d0c4b19c2d3d"
   },
   "programming.css": {
-    "version": "4",
-    "sha": "f68f686c7f5c"
+    "version": "20260906-17",
+    "sha": "4337802bb7ef"
   },
   "weekly-sport-targets.css": {
     "version": "3",
@@ -28,20 +40,24 @@
     "sha": "a4d055be95dd"
   },
   "instrument.css": {
-    "version": "1",
-    "sha": "77bc5a100002"
+    "version": "20260906-17",
+    "sha": "470ff1155d47"
   },
   "dashboard-redesign.js": {
-    "version": "20260810-3",
-    "sha": "3d20db136c7b"
+    "version": "20260906-17",
+    "sha": "43b64a721db1"
   },
   "coaching-actions.js": {
     "version": "3",
     "sha": "3a2b5bda61f5"
   },
+  "dashboard-mobilenav.js": {
+    "version": "20260906-17",
+    "sha": "5d94e20470f3"
+  },
   "triage.js": {
-    "version": "21",
-    "sha": "6a3b050c77d8"
+    "version": "20260906-17",
+    "sha": "a69b2220f559"
   },
   "weekly-sport-targets.js": {
     "version": "3",
@@ -54,6 +70,14 @@
   "programming.js": {
     "version": "4",
     "sha": "c857d6a4fdf4"
+  },
+  "run-analysis.js": {
+    "version": "20260906-17",
+    "sha": "83e1c83da86e"
+  },
+  "strength-analysis.js": {
+    "version": "20260906-17",
+    "sha": "f1e02257f808"
   },
   "app.js": {
     "version": "2",

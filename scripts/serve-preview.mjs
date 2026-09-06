@@ -1,0 +1,104 @@
+// Local static preview of public/ — no build step, no Supabase. Used for visual
+// checks only. A handful of /api routes answer with fixtures so screens that
+// depend on them can be seen; everything else 404s.
+import { createServer } from 'node:http';
+import { readFile } from 'node:fs/promises';
+import { extname, join, normalize } from 'node:path';
+
+const root = new URL('../public/', import.meta.url).pathname;
+const TYPES = {
+  '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css',
+  '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml',
+  '.webmanifest': 'application/manifest+json',
+};
+
+const iso = days => {
+  const d = new Date();
+  d.setDate(d.getDate() - days);
+  return d.toISOString().slice(0, 10);
+};
+
+const TRIAGE = () => ({
+  ok: true,
+  source: 'fixture',
+  generatedAt: new Date().toISOString(),
+  timeZone: 'Australia/Adelaide',
+  week: { start: iso(2), dayIndex: 3, halfElapsed: false },
+  counts: {
+    active: 12, flagged: 3, critical: 1, high: 1, medium: 1,
+    resolved: 1, clear: 8, reviewPending: 5, reviewOverdue: 2,
+  },
+  queue: [
+    {
+      athleteCode: 'KHANG', athleteName: 'Khang Tran', flag: 'pain', severity: 'critical',
+      priority: 10070, fingerprint: 'pain|' + iso(1) + '|7|none',
+      signal: `Pain 7/10 reported yesterday after Threshold 5×1km.`,
+      action: { type: 'open_athlete', label: 'Open session', athleteCode: 'KHANG' },
+      evidence: {},
+    },
+    {
+      athleteCode: 'MIA', athleteName: 'Mia Rossi', flag: 'gone_quiet', severity: 'high',
+      priority: 5000, fingerprint: 'quiet|' + iso(2),
+      signal: 'No completed session and no body log for at least 5 days.',
+      action: { type: 'message', label: 'Check in', athleteCode: 'MIA' },
+      evidence: {},
+    },
+    {
+      athleteCode: 'JAMES', athleteName: 'James Okafor', flag: 'awaiting_review', severity: 'medium',
+      priority: 2030, fingerprint: 'review|' + iso(3) + '|3',
+      signal: 'Long run submitted 3 days ago and not yet reviewed.',
+      action: { type: 'open_review', label: 'Review session', athleteCode: 'JAMES', date: iso(3) },
+      evidence: {},
+    },
+  ],
+  resolved: [{
+    athleteCode: 'TOM', athleteName: 'Tom Reilly', flag: 'compliance_drift',
+    signal: 'Completed 2 of 5 sessions planned so far this week.',
+    fingerprint: 'drift|x', resolvedBy: 'KARL', resolvedAt: new Date().toISOString(),
+  }],
+  review: {
+    overdueAfterDays: 2,
+    windowStart: iso(13),
+    counts: { pending: 5, overdue: 2, athletes: 4 },
+    queue: [
+      { athleteCode: 'JAMES', athleteName: 'James Okafor', date: iso(3), days: 3, sessions: [{ name: 'Long run 26km' }] },
+      { athleteCode: 'SARAH', athleteName: 'Sarah Chen', date: iso(2), days: 2, sessions: [{ name: 'Threshold 5×1km' }] },
+      { athleteCode: 'SARAH', athleteName: 'Sarah Chen', date: iso(1), days: 1, sessions: [{ name: 'Upper B' }] },
+      { athleteCode: 'ANNA', athleteName: 'Anna Petrov', date: iso(1), days: 1, sessions: [{ name: 'Easy 8km' }] },
+      { athleteCode: 'LUCA', athleteName: 'Luca Bianchi', date: iso(0), days: 0, sessions: [{ name: 'Lower A' }] },
+    ],
+  },
+});
+
+const FIXTURES = [
+  [/^\/api\/coach-data.*mode=triage/, TRIAGE],
+  [/^\/api\/actions/, () => ({ ok: true, actions: [] })],
+  [/^\/api\/athletes\?action=acknowledgements/, () => ({ ok: true, acknowledgements: [], signals: [] })],
+];
+
+createServer(async (req, res) => {
+  const url = new URL(req.url, 'http://x');
+  const target = url.pathname + url.search;
+
+  for (const [pattern, build] of FIXTURES) {
+    if (pattern.test(target)) {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify(build()));
+    }
+  }
+  if (url.pathname.startsWith('/api/')) {
+    res.writeHead(404, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify({ ok: false, error: 'No fixture for this route' }));
+  }
+
+  const path = decodeURIComponent(url.pathname);
+  const file = join(root, normalize(path === '/' ? '/index.html' : path).replace(/^(\.\.[/\\])+/, ''));
+  try {
+    const body = await readFile(file);
+    res.writeHead(200, { 'Content-Type': TYPES[extname(file)] || 'application/octet-stream' });
+    res.end(body);
+  } catch {
+    res.writeHead(404, { 'Content-Type': 'text/plain' });
+    res.end('Not found');
+  }
+}).listen(4173, () => console.log('preview on http://localhost:4173'));
