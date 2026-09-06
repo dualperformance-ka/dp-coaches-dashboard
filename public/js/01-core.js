@@ -1,7 +1,95 @@
 // Public runtime constants are loaded from /config.js.
+
+// ── ANALYTICS ────────────────────────────────────────────────────────────────
+// Vercel Web Analytics. window.va is absent until the injected script loads,
+// and stays absent forever if a content blocker or bad signal stops it — so
+// every call is guarded and wrapped. Tracking must never throw into a user
+// action, and no athlete name, email or free text is ever passed as a prop.
+function track(event, props){ try{ if(window.va) window.va('event',{name:event,data:props||{}}); }catch(e){} }
 // ── WORKOUT SPLITS (Supabase = source of truth, hardcoded STR = fallback) ────
 var SPLITS_BY_NAME={};
 function getSplit(key){return SPLITS_BY_NAME[key]||STR[key]||[];}
+
+// ── STRUCTURED PRESCRIPTIONS ─────────────────────────────────────────────────
+// A coach-built session carries its OWN exercise list rather than sharing a
+// named split with every other athlete. The server delivers it in exactly the
+// workout_splits shape, so the whole strength stack — rendering, set logging,
+// progression, swaps, PBs, muscle coverage — keeps reading it through
+// getSplit() with no other change.
+//
+// The mechanism: each structured session's exercises are registered in
+// SPLITS_BY_NAME under a synthetic, session-scoped key. Resolution then just
+// picks that key instead of the title-matched one.
+//
+// Keys are alphanumeric by construction. They are interpolated into inline
+// onclick attributes by the renderer (draftGym(i,'<key>')), so a session title
+// must never end up inside one.
+var SESSION_PRESCRIPTIONS={};   // sessionId -> synthetic split key
+var SESSION_RUN_STEPS={};       // sessionId -> ordered run step tree
+var SESSION_SPLIT_ALIAS={};     // synthetic split key -> real split name, for priority lookups
+var COACH_CHANGES_BY_DATE={};   // YYYY-MM-DD -> safe athlete-facing audit summaries
+
+function registerCoachChanges(result){
+  COACH_CHANGES_BY_DATE={};
+  ((result&&result.rows)||[]).forEach(function(row){
+    var detail=row&&row.detail||{},date=String(detail.date||'').slice(0,10);
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(date))return;
+    if(!COACH_CHANGES_BY_DATE[date])COACH_CHANGES_BY_DATE[date]=[];
+    COACH_CHANGES_BY_DATE[date].push({source:row.source||'training',changedAt:row.changed_at||'',item:detail.item||'Session',action:detail.action||'updated'});
+  });
+}
+
+function prescriptionSplitKey(sessionId){
+  return '__s_'+String(sessionId).replace(/[^A-Za-z0-9_-]/g,'-');
+}
+
+// Female priority slots are keyed by SPLIT NAME. A synthetic key would never
+// match, silently dropping the priority markers from a structured session, so
+// every priority lookup resolves back through the alias first.
+function splitPriorityKey(key){
+  return SESSION_SPLIT_ALIAS[key]||key;
+}
+
+function registerSessionPrescriptions(prescriptions,plannedRows){
+  SESSION_PRESCRIPTIONS={};SESSION_RUN_STEPS={};SESSION_SPLIT_ALIAS={};
+  if(!prescriptions)return;
+  var titleById={};
+  (plannedRows||[]).forEach(function(r){titleById[r.notion_page_id||r.id]=r.title||'';});
+  var exercises=prescriptions.exercises||{};
+  Object.keys(exercises).forEach(function(sessionId){
+    var list=exercises[sessionId];
+    if(!Array.isArray(list)||!list.length)return;
+    var key=prescriptionSplitKey(sessionId);
+    SPLITS_BY_NAME[key]=list;
+    SESSION_PRESCRIPTIONS[sessionId]=key;
+    // Alias to the split name this session would have matched by title, so
+    // female priority slots keep working for structured sessions too.
+    var title=titleById[sessionId]||'';
+    var matched=GYM_KEYS.find(function(k){return String(title).toLowerCase().indexOf(String(k).toLowerCase())>=0;});
+    SESSION_SPLIT_ALIAS[key]=matched||title;
+  });
+  var steps=prescriptions.runSteps||{};
+  Object.keys(steps).forEach(function(sessionId){
+    if(Array.isArray(steps[sessionId])&&steps[sessionId].length)SESSION_RUN_STEPS[sessionId]=steps[sessionId];
+  });
+}
+
+// THE resolution point for a session's strength work. A structured session
+// answers with its own prescription; everything else falls back to the legacy
+// title match against workout_splits, unchanged.
+function splitKeyForSession(s,fallback){
+  if(s&&s.id&&SESSION_PRESCRIPTIONS[s.id])return SESSION_PRESCRIPTIONS[s.id];
+  var name=String((s&&s.name)||'');
+  var matched=GYM_KEYS.find(function(k){return name.toLowerCase().indexOf(String(k).toLowerCase())>=0;});
+  return matched||(fallback===undefined?null:fallback);
+}
+
+function sessionHasPrescription(s){
+  return !!(s&&s.id&&SESSION_PRESCRIPTIONS[s.id]);
+}
+function sessionRunSteps(s){
+  return (s&&s.id&&SESSION_RUN_STEPS[s.id])||null;
+}
 
 // Female sessions keep their full exercise list, but the priority slots give
 // athletes a balanced minimum session when time is genuinely tight. Matching
@@ -40,11 +128,11 @@ function priorityMatchKey(value){
   return String(value||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
 }
 function isFemaleSplit(splitKey){
-  return /(^|\s)female($|\s)/.test(priorityMatchKey(splitKey));
+  return /(^|\s)female($|\s)/.test(priorityMatchKey(splitPriorityKey(splitKey)));
 }
 function isFemalePriorityExercise(splitKey,exerciseName){
   if(!isFemaleSplit(splitKey))return false;
-  var priorities=FEMALE_TIME_CRUNCH_PRIORITIES[priorityMatchKey(splitKey)]||[];
+  var priorities=FEMALE_TIME_CRUNCH_PRIORITIES[priorityMatchKey(splitPriorityKey(splitKey))]||[];
   return priorities.indexOf(priorityMatchKey(exerciseName))>=0;
 }
 async function loadWorkoutSplits(preloaded){
@@ -110,8 +198,8 @@ function initAuthStateListener(){
   _authListenerBound=true;
   sbClient.auth.onAuthStateChange(function(event,session){
     var method=localStorage.getItem('dp_auth_method');
-    if(session&&session.access_token)_authToken=session.access_token;
-    else if(method==='email')_authToken=null;
+    if(session&&session.access_token){_authToken=session.access_token;writePortalOfflineState('dp_auth_token',_authToken);}
+    else if(method==='email'){_authToken=null;removePortalOfflineState('dp_auth_token');}
     // Refresh failed / signed out elsewhere while the portal is open: fall
     // back to the login screen's email panel with a friendly recovery path
     // ("send a new code") instead of silently 401-ing in the background.
@@ -130,24 +218,130 @@ function authHeaders(base){
   if(_authToken)h['Authorization']='Bearer '+_authToken;
   return h;
 }
+// Access-code sessions are deliberately short-lived server-signed tokens, but
+// the portal has always remembered a successful access-code login on this
+// device. Transparently exchange that remembered credential for a fresh token
+// when needed so expiry protects API requests without logging the client out.
+// Explicit logout removes dp_auth_code/dp_auth_method, so it cannot auto-renew.
+var _legacyRenewPromise=null;
+function renewLegacySession(){
+  var method='',code='';
+  try{method=localStorage.getItem('dp_auth_method')||'';code=localStorage.getItem('dp_auth_code')||'';}catch(e){}
+  if(method!=='code'||!code)return Promise.resolve(null);
+  if(_legacyRenewPromise)return _legacyRenewPromise;
+  _legacyRenewPromise=(async function(){
+    try{
+      var r=await fetch('/api/auth-athlete',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({action:'legacy-login',code:code}),
+        cache:'no-store'
+      });
+      var result={};try{result=await r.json();}catch(e){}
+      if(!r.ok||!result.access_token||String(result.code||'').toUpperCase()!==String(code).toUpperCase()){
+        // A definitive credential/account rejection must not loop forever.
+        // Keep remembered state on network/5xx failures so a later retry can
+        // recover without asking the client to sign in again.
+        if(r.status===401||r.status===403){
+          localStorage.removeItem('dp_legacy_session');
+          localStorage.removeItem('dp_auth_code');
+          localStorage.removeItem('dp_auth_method');
+        }
+        return null;
+      }
+      _authToken=result.access_token;
+      localStorage.setItem('dp_legacy_session',_authToken);
+      localStorage.setItem('dp_auth_method','code');
+      writePortalOfflineState('dp_auth_token',_authToken);
+      writePortalOfflineState('dp_auth_athlete_code',String(code).toUpperCase());
+      return result;
+    }catch(e){return null;}
+  })().finally(function(){_legacyRenewPromise=null;});
+  return _legacyRenewPromise;
+}
 async function portalRequest(action,payload,options){
-  if(!_authToken)throw new Error('Your session has expired. Please sign in again.');
+  if(!_authToken){
+    var restored=await renewLegacySession();
+    if(!restored)throw new Error('Your session has expired. Please sign in again.');
+  }
   var body=Object.assign({action:action},payload||{});
-  var response=await fetch('/api/portal-data',{
-    method:'POST',
-    headers:authHeaders({'Content-Type':'application/json'}),
-    body:JSON.stringify(body),
-    cache:'no-store',
-    keepalive:!!(options&&options.keepalive)
-  });
+  var encodedBody=JSON.stringify(body);
+  function send(){
+    return fetch('/api/portal-data',{
+      method:'POST',
+      headers:authHeaders({'Content-Type':'application/json'}),
+      body:encodedBody,
+      cache:'no-store',
+      keepalive:!!(options&&options.keepalive)
+    });
+  }
+  var response=await send();
+  // A code-login token may expire while the PWA remains open. Renew once and
+  // replay the request; Supabase email sessions refresh through supabase-js.
+  if(response.status===401&&localStorage.getItem('dp_auth_method')==='code'){
+    var renewed=await renewLegacySession();
+    if(renewed)response=await send();
+  }
   var data={};
   try{data=await response.json();}catch(e){}
   if(response.status===401){handleAuthSessionLost();throw new Error('Your session has expired. Please sign in again.');}
   if(!response.ok||data.ok===false)throw new Error(data.error||('Sync failed '+response.status));
   return data;
 }
+// STRAVA MATCH PAYLOAD TRIMMING
+//
+// A matched Strava run used to be stored in the log entry in full: the entire
+// detailed-activity response, including segment_efforts, laps, best_efforts,
+// splits_metric, splits_standard, the map polyline, similar_activities and
+// photos. One matched run cost ~71KB while the log the athlete actually filled
+// in was ~30 bytes, and api/write.js rejects a state value over 750,000 chars
+// with a 413. The logs blob crossed that line, every save was refused, and the
+// outbox retried the same oversized payload forever, so the pending banner
+// could never clear: retrying could never succeed.
+//
+// Only the fields below are ever read back out of a stored match. Anything
+// richer is re-fetched from /api/strava when it is genuinely needed, so
+// trimming costs nothing and keeps the blob an order of magnitude smaller.
+var STRAVA_MATCH_ACTIVITY_FIELDS=['id','name','type','sport_type','distance','moving_time','elapsed_time','start_date','start_date_local','suffer_score','relative_effort'];
+function slimStravaActivity(activity){
+  if(!activity||typeof activity!=='object'||Array.isArray(activity))return activity;
+  var slim={},i,field;
+  for(i=0;i<STRAVA_MATCH_ACTIVITY_FIELDS.length;i++){
+    field=STRAVA_MATCH_ACTIVITY_FIELDS[i];
+    if(activity[field]!==undefined)slim[field]=activity[field];
+  }
+  return slim;
+}
+// Trims every stored match in place. Returns true when anything changed, so
+// callers can persist the smaller copy instead of rewriting an identical blob
+// on every load.
+function pruneStravaMatchPayloads(logsObject){
+  if(!logsObject||typeof logsObject!=='object')return false;
+  var changed=false;
+  Object.keys(logsObject).forEach(function(sessionId){
+    var entry=logsObject[sessionId];
+    if(!entry||typeof entry!=='object')return;
+    var match=entry.__stravaMatch;
+    if(!match||typeof match!=='object'||!match.activity)return;
+    var slim=slimStravaActivity(match.activity);
+    if(JSON.stringify(slim)===JSON.stringify(match.activity))return;
+    match.activity=slim;
+    changed=true;
+  });
+  return changed;
+}
 function portalStateWrite(key,value,options){
-  return portalRequest('state-write',{key:key,value:value},options);
+  // Belt and braces: no oversized logs blob can leave the device, whatever
+  // path built it or how long it has been sitting in the outbox.
+  if(key==='logs')pruneStravaMatchPayloads(value);
+  return portalRequest('state-write',{key:key,value:value},options).then(async function(result){
+    await removePendingPortalStateWrite(key,null,value);
+    return result;
+  }).catch(async function(error){
+    await queuePortalStateWrite(key,value,error);
+    if(options&&options.required)throw error;
+    return {ok:true,queued:true,error:String(error&&error.message||error||'State write failed')};
+  });
 }
 async function getAuthSession(){
   var client=await ensureSupabaseClient();
@@ -170,14 +364,18 @@ async function authSignOut(){
   try{var client=await ensureSupabaseClient();if(client&&client.auth)await client.auth.signOut();}catch(e){}
   _authToken=null;
   try{localStorage.removeItem('dp_legacy_session');}catch(e){}
+  await removePortalOfflineState('dp_auth_token');
+  await removePortalOfflineState('dp_auth_athlete_code');
 }
 function handleAuthSessionLost(){
   var method=localStorage.getItem('dp_auth_method');
   logoutToLogin(true);
-  if(method==='email'&&typeof showEmailLogin==='function'){
-    showEmailLogin(true,'Your session expired — enter your email and we’ll send a new code.');
+  if(typeof isEmailLoginEnabled==='function'&&isEmailLoginEnabled()&&typeof showPrimaryLogin==='function'){
+    var notice=method==='email'
+      ?'Your session expired — enter your email and we’ll send a new code.'
+      :'Your access session expired — sign in with email, or use your athlete access code.';
+    showPrimaryLogin(notice);
   }else{
-    if(typeof showEmailLogin==='function')showEmailLogin(false);
     if(typeof showLoginError==='function')showLoginError('Your access session expired — enter your coach-issued code again.');
   }
 }
@@ -202,19 +400,23 @@ function _flushSbKey(sbKey){
   if(!p||!_authToken) return;
   delete _sbSyncPending[sbKey];
   portalStateWrite(sbKey,p.value,{keepalive:true})
-    .then(function(){setSaveState('saved');})
+    .then(function(result){setSaveState(result&&result.queued?'offline':'saved');})
     .catch(function(){_sbSyncPending[sbKey]=p;setSaveState('offline');});
 }
 function _flushAllSb(){Object.keys(_sbSyncPending).forEach(_flushSbKey);}
 function _scheduleSbSync(code,sbKey,parsed){
   setSaveState(navigator.onLine?'saving':'offline');
   _sbSyncPending[sbKey]={code:code,value:parsed};
+  // Persist intent immediately, before the network debounce. If iOS kills the
+  // page between this keystroke and pagehide, cloud hydration can still see
+  // that the device copy is newer and must not overwrite it.
+  queuePortalStateWrite(sbKey,parsed,'Awaiting sync').catch(function(){});
   if(_sbSyncTimers[sbKey]) clearTimeout(_sbSyncTimers[sbKey]);
   _sbSyncTimers[sbKey]=setTimeout(function(){_flushSbKey(sbKey);},1500);
 }
 document.addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden')_flushAllSb();});
 window.addEventListener('pagehide',_flushAllSb);
-window.addEventListener('online',function(){setSaveState('saving');_flushAllSb();retryPendingCoachWrites(true).then(function(){setSaveState('saved');});});
+window.addEventListener('online',function(){setSaveState('saving');_flushAllSb();Promise.all([retryPendingCoachWrites(true,'online'),retryPendingPortalStateWrites(true,'online')]).then(function(){setSaveState('saved');});});
 window.addEventListener('offline',function(){setSaveState('offline');});
 (function(){
   var _orig=localStorage.setItem.bind(localStorage);
@@ -226,6 +428,7 @@ window.addEventListener('offline',function(){setSaveState('offline');});
     if(key==='dp_goals_'+code) sbKey='goals';
     else if(key==='dp_logs_'+code) sbKey='logs';
     else if(key==='dp_ticked_'+code) sbKey='ticked';
+    else if(key==='dp_strength_rpe_enabled') sbKey='strength_rpe_enabled';
     else if(key==='dp_reschedules_'+code) sbKey='reschedules';
     else if(key==='dp_strava_match_rejections_'+code) sbKey='strava_match_rejections';
     else if(key==='dp_photos_'+code) sbKey='photos';
@@ -250,6 +453,145 @@ window.addEventListener('offline',function(){setSaveState('offline');});
 })();
 
 function pendingCoachWritesKey(code){return 'dp_pending_writes_'+code;}
+function pendingPortalStateWritesKey(code){return 'dp_pending_state_writes_'+code;}
+var DP_OFFLINE_DB_NAME='dp-athlete-portal',DP_OFFLINE_DB_VERSION=2;
+var DP_QUEUE_STORE='queued_writes',DP_STATE_STORE='app_state',DP_STATE_QUEUE_STORE='state_writes';
+var _offlineDbPromise=null,_offlineMigrationPromise=null;
+function openPortalOfflineDb(){
+  if(_offlineDbPromise)return _offlineDbPromise;
+  _offlineDbPromise=new Promise(function(resolve){
+    if(typeof indexedDB==='undefined'){resolve(null);return;}
+    var request;
+    try{request=indexedDB.open(DP_OFFLINE_DB_NAME,DP_OFFLINE_DB_VERSION);}catch(e){resolve(null);return;}
+    request.onupgradeneeded=function(){
+      var db=request.result;
+      if(!db.objectStoreNames.contains(DP_QUEUE_STORE)){
+        var queue=db.createObjectStore(DP_QUEUE_STORE,{keyPath:'id'});
+        queue.createIndex('bucket','bucket',{unique:false});
+      }
+      if(!db.objectStoreNames.contains(DP_STATE_STORE))db.createObjectStore(DP_STATE_STORE,{keyPath:'key'});
+      if(!db.objectStoreNames.contains(DP_STATE_QUEUE_STORE)){
+        var stateQueue=db.createObjectStore(DP_STATE_QUEUE_STORE,{keyPath:'id'});
+        stateQueue.createIndex('code','code',{unique:false});
+      }
+    };
+    request.onsuccess=function(){resolve(request.result);};
+    request.onerror=function(){resolve(null);};
+    request.onblocked=function(){resolve(null);};
+  });
+  return _offlineDbPromise;
+}
+function offlineRequest(request){
+  return new Promise(function(resolve,reject){
+    request.onsuccess=function(){resolve(request.result);};
+    request.onerror=function(){reject(request.error||new Error('IndexedDB request failed'));};
+  });
+}
+function offlineTransactionDone(transaction){
+  return new Promise(function(resolve,reject){
+    transaction.oncomplete=function(){resolve();};
+    transaction.onabort=function(){reject(transaction.error||new Error('IndexedDB transaction aborted'));};
+    transaction.onerror=function(){reject(transaction.error||new Error('IndexedDB transaction failed'));};
+  });
+}
+async function putOfflineQueueRecords(db,bucket,list){
+  var tx=db.transaction(DP_QUEUE_STORE,'readwrite'),store=tx.objectStore(DP_QUEUE_STORE);
+  (list||[]).forEach(function(item){store.put(Object.assign({},item,{bucket:bucket}));});
+  await offlineTransactionDone(tx);
+}
+async function migrateOfflineLocalStorage(db){
+  if(!db)return null;
+  if(_offlineMigrationPromise)return _offlineMigrationPromise;
+  _offlineMigrationPromise=(async function(){
+    var keys=[];
+    try{
+      for(var i=0;i<localStorage.length;i++){
+        var key=localStorage.key(i);
+        if(key&&(key.indexOf('dp_pending_writes_')===0||key.indexOf('dp_pending_state_writes_')===0||key==='dp_run_library_cache_v3'))keys.push(key);
+      }
+    }catch(e){return db;}
+    for(var k=0;k<keys.length;k++){
+      var storageKey=keys[k],raw=null;
+      try{raw=localStorage.getItem(storageKey);}catch(e){continue;}
+      if(raw==null)continue;
+      try{
+        if(storageKey.indexOf('dp_pending_writes_')===0){
+          var list=JSON.parse(raw),bucket=storageKey.slice('dp_pending_writes_'.length);
+          if(!Array.isArray(list))continue;
+          await putOfflineQueueRecords(db,bucket,list);
+        }else if(storageKey.indexOf('dp_pending_state_writes_')===0){
+          var stateList=JSON.parse(raw),stateCode=storageKey.slice('dp_pending_state_writes_'.length);
+          if(!Array.isArray(stateList))continue;
+          var stateTx=db.transaction(DP_STATE_QUEUE_STORE,'readwrite'),stateStore=stateTx.objectStore(DP_STATE_QUEUE_STORE);
+          stateList.forEach(function(item){stateStore.put(Object.assign({},item,{code:stateCode}));});
+          await offlineTransactionDone(stateTx);
+        }else{
+          var cached=JSON.parse(raw);
+          var tx=db.transaction(DP_STATE_STORE,'readwrite');
+          tx.objectStore(DP_STATE_STORE).put({key:storageKey,value:cached});
+          await offlineTransactionDone(tx);
+        }
+        // Removal happens only after the corresponding transaction commits.
+        // A reload can safely repeat any unfinished migration without loss.
+        localStorage.removeItem(storageKey);
+      }catch(e){console.warn('Offline storage migration deferred:',e);}
+    }
+    return db;
+  })();
+  return _offlineMigrationPromise;
+}
+async function getPortalOfflineDb(){return migrateOfflineLocalStorage(await openPortalOfflineDb());}
+async function readPortalOfflineState(key){
+  try{
+    var db=await getPortalOfflineDb();
+    if(!db)throw new Error('IndexedDB unavailable');
+    var tx=db.transaction(DP_STATE_STORE,'readonly');
+    var row=await offlineRequest(tx.objectStore(DP_STATE_STORE).get(key));
+    return row?row.value:null;
+  }catch(e){
+    try{var raw=localStorage.getItem(key);return raw==null?null:JSON.parse(raw);}catch(storageError){return null;}
+  }
+}
+async function writePortalOfflineState(key,value){
+  try{
+    var db=await getPortalOfflineDb();
+    if(!db)throw new Error('IndexedDB unavailable');
+    var tx=db.transaction(DP_STATE_STORE,'readwrite');
+    tx.objectStore(DP_STATE_STORE).put({key:key,value:value});
+    await offlineTransactionDone(tx);
+    try{localStorage.removeItem(key);}catch(e){}
+  }catch(e){
+    try{localStorage.setItem(key,JSON.stringify(value));}catch(storageError){}
+  }
+}
+async function removePortalOfflineState(key){
+  try{
+    var db=await getPortalOfflineDb();
+    if(db){
+      var tx=db.transaction(DP_STATE_STORE,'readwrite');
+      tx.objectStore(DP_STATE_STORE).delete(key);
+      await offlineTransactionDone(tx);
+    }
+  }catch(e){}
+  try{localStorage.removeItem(key);}catch(e){}
+}
+var _storagePersistenceRequested=false;
+async function requestPersistentPortalStorage(){
+  if(_storagePersistenceRequested||!navigator.storage||!navigator.storage.persist)return false;
+  _storagePersistenceRequested=true;
+  try{
+    var granted=navigator.storage.persisted?await navigator.storage.persisted():false;
+    if(!granted)granted=await navigator.storage.persist();
+    track('offline_storage_persistence',{granted:!!granted});
+    return !!granted;
+  }catch(e){return false;}
+}
+function readPendingCoachWritesFallback(code){
+  try{
+    var list=JSON.parse(localStorage.getItem(pendingCoachWritesKey(code))||'[]');
+    return Array.isArray(list)?list:[];
+  }catch(e){return [];}
+}
 // Resolve the best athlete code available, even if the athlete object isn't
 // ready yet — so a failed write is NEVER silently dropped for lack of a code.
 function currentWriteCode(payload){
@@ -258,28 +600,150 @@ function currentWriteCode(payload){
   try{var c=localStorage.getItem('dp_last_athlete_code');if(c) return c;}catch(e){}
   return '_unknown';
 }
-function readPendingCoachWrites(code){
-  code=code||currentWriteCode();
+function readPendingPortalStateWritesFallback(code){
   try{
-    var list=JSON.parse(localStorage.getItem(pendingCoachWritesKey(code))||'[]');
+    var list=JSON.parse(localStorage.getItem(pendingPortalStateWritesKey(code))||'[]');
     return Array.isArray(list)?list:[];
   }catch(e){return [];}
 }
+async function readPendingPortalStateWrites(code){
+  code=code||currentWriteCode();
+  try{
+    var db=await getPortalOfflineDb();
+    if(!db)return readPendingPortalStateWritesFallback(code);
+    var tx=db.transaction(DP_STATE_QUEUE_STORE,'readonly');
+    var list=await offlineRequest(tx.objectStore(DP_STATE_QUEUE_STORE).index('code').getAll(code));
+    return Array.isArray(list)?list:[];
+  }catch(e){return readPendingPortalStateWritesFallback(code);}
+}
+async function queuePortalStateWrite(key,value,error){
+  var code=currentWriteCode();
+  if(!code||code==='_unknown')return;
+  var id='state_'+code+'_'+key,now=new Date().toISOString();
+  var item={id:id,code:code,key:key,value:value,createdAt:now,updatedAt:now,attempts:0,lastError:String(error&&error.message||error||'State write failed')};
+  // Stage synchronously before the first await. If a mobile browser kills the
+  // page immediately, the next open migrates this exact value into IndexedDB.
+  var staged=readPendingPortalStateWritesFallback(code),stagedIndex=staged.findIndex(function(row){return row.id===id;});
+  if(stagedIndex>=0)staged[stagedIndex]=item;else staged.push(item);
+  try{localStorage.setItem(pendingPortalStateWritesKey(code),JSON.stringify(staged));}catch(e){}
+  try{
+    var db=await getPortalOfflineDb();
+    if(!db)throw new Error('IndexedDB unavailable');
+    var tx=db.transaction(DP_STATE_QUEUE_STORE,'readwrite');
+    tx.objectStore(DP_STATE_QUEUE_STORE).put(item);
+    await offlineTransactionDone(tx);
+    try{
+      var fallback=readPendingPortalStateWritesFallback(code).filter(function(row){return row.id!==id||JSON.stringify(row.value)!==JSON.stringify(value);});
+      if(fallback.length)localStorage.setItem(pendingPortalStateWritesKey(code),JSON.stringify(fallback));else localStorage.removeItem(pendingPortalStateWritesKey(code));
+    }catch(e){}
+  }catch(e){
+    var list=readPendingPortalStateWritesFallback(code),index=list.findIndex(function(row){return row.id===id;});
+    if(index>=0)list[index]=item;else list.push(item);
+    try{localStorage.setItem(pendingPortalStateWritesKey(code),JSON.stringify(list));}catch(storageError){}
+  }
+  if(typeof updatePendingQueueIndicator==='function')updatePendingQueueIndicator();
+  await registerBackgroundQueueSync();
+}
+async function removePendingPortalStateWrite(key,code,expectedValue){
+  code=code||currentWriteCode();
+  if(!code||code==='_unknown')return;
+  var id='state_'+code+'_'+key,removed=false;
+  try{
+    var db=await getPortalOfflineDb();
+    if(!db)throw new Error('IndexedDB unavailable');
+    var tx=db.transaction(DP_STATE_QUEUE_STORE,'readwrite'),store=tx.objectStore(DP_STATE_QUEUE_STORE);
+    var current=await offlineRequest(store.get(id));
+    if(current&&(expectedValue===undefined||JSON.stringify(current.value)===JSON.stringify(expectedValue))){store.delete(id);removed=true;}
+    await offlineTransactionDone(tx);
+  }catch(e){
+    var list=readPendingPortalStateWritesFallback(code),keep=[];
+    list.forEach(function(item){
+      if(item.id===id&&(expectedValue===undefined||JSON.stringify(item.value)===JSON.stringify(expectedValue)))removed=true;
+      else keep.push(item);
+    });
+    try{if(keep.length)localStorage.setItem(pendingPortalStateWritesKey(code),JSON.stringify(keep));else localStorage.removeItem(pendingPortalStateWritesKey(code));}catch(storageError){}
+  }
+  if(typeof updatePendingQueueIndicator==='function')updatePendingQueueIndicator();
+}
+async function retryPendingPortalStateWrites(silent,trigger){
+  var code=currentWriteCode();
+  if(!code||code==='_unknown'||!_authToken)return 0;
+  var list=await readPendingPortalStateWrites(code),synced=0;
+  for(var i=0;i<list.length;i++){
+    var item=list[i];
+    // A logs value queued by an older build still carries the full Strava
+    // payloads that made the server reject it. Retrying it verbatim fails
+    // forever, so trim it here before the send. pruneStravaMatchPayloads
+    // mutates in place, so snapshot the fat value first: removal matches on
+    // the stored value, and without the snapshot the queue entry is orphaned.
+    var original=null,trimmed=false;
+    if(item.key==='logs'){
+      try{original=JSON.parse(JSON.stringify(item.value));}catch(e){original=null;}
+      trimmed=pruneStravaMatchPayloads(item.value)&&!!original;
+    }
+    try{
+      await portalRequest('state-write',{key:item.key,value:item.value},{keepalive:true});
+      if(trimmed)await removePendingPortalStateWrite(item.key,code,original);
+      await removePendingPortalStateWrite(item.key,code,item.value);
+      synced++;
+    }
+    catch(e){}
+  }
+  if(synced)track('offline_state_flushed',{count:synced,trigger:trigger||'visibility'});
+  if(synced&&!silent)showToast(synced+' pending portal update'+(synced>1?'s':'')+' synced');
+  await updatePendingQueueIndicator();
+  return synced;
+}
+async function readPendingCoachWrites(code){
+  code=code||currentWriteCode();
+  try{
+    var db=await getPortalOfflineDb();
+    if(!db)return readPendingCoachWritesFallback(code);
+    var tx=db.transaction(DP_QUEUE_STORE,'readonly');
+    var list=await offlineRequest(tx.objectStore(DP_QUEUE_STORE).index('bucket').getAll(code));
+    return Array.isArray(list)?list.map(function(item){var copy=Object.assign({},item);delete copy.bucket;return copy;}):[];
+  }catch(e){return readPendingCoachWritesFallback(code);}
+}
 async function persistPendingCoachWrites(list,code){
   code=code||currentWriteCode();
-  try{localStorage.setItem(pendingCoachWritesKey(code),JSON.stringify(list));}catch(e){}
+  try{
+    var db=await getPortalOfflineDb();
+    if(!db)throw new Error('IndexedDB unavailable');
+    var tx=db.transaction(DP_QUEUE_STORE,'readwrite'),store=tx.objectStore(DP_QUEUE_STORE),index=store.index('bucket');
+    var existing=await offlineRequest(index.getAll(code));
+    existing.forEach(function(item){store.delete(item.id);});
+    (list||[]).forEach(function(item){store.put(Object.assign({},item,{bucket:code}));});
+    await offlineTransactionDone(tx);
+    try{localStorage.removeItem(pendingCoachWritesKey(code));}catch(e){}
+  }catch(e){
+    try{localStorage.setItem(pendingCoachWritesKey(code),JSON.stringify(list));}catch(storageError){}
+  }
   // Mirror the retry queue to the authenticated server gateway.
   if(_authToken&&code&&code!=='_unknown'){
     try{
       await portalStateWrite('pending_writes',list);
     }catch(e){console.warn('Pending coach-write sync failed:',e);}
   }
+  if(typeof updatePendingQueueIndicator==='function')updatePendingQueueIndicator();
+}
+async function registerBackgroundQueueSync(){
+  if(!('serviceWorker'in navigator))return;
+  try{
+    var registration=await navigator.serviceWorker.ready;
+    if(registration.sync)await registration.sync.register('dp-flush-queue');
+    if(registration.periodicSync&&navigator.permissions&&navigator.permissions.query){
+      var permission=await navigator.permissions.query({name:'periodic-background-sync'}).catch(function(){return null;});
+      if(permission&&permission.state==='granted'){
+        await registration.periodicSync.register('dp-flush-queue',{minInterval:12*60*60*1000}).catch(function(){});
+      }
+    }
+  }catch(e){}
 }
 async function queueCoachWrite(url,payload,error){
   // Robust: queue under the best code we can resolve; never bail for a missing code.
   var code=currentWriteCode(payload);
   if(code&&code!=='_unknown'){try{localStorage.setItem('dp_last_athlete_code',code);}catch(e){}}
-  var list=readPendingCoachWrites(code);
+  var list=await readPendingCoachWrites(code);
   var writeId=payload&&payload.clientWriteId?payload.clientWriteId:('cw_'+Date.now()+'_'+Math.random().toString(36).slice(2));
   if(payload) payload.clientWriteId=writeId;
   var existing=list.find(function(item){return item.id===writeId;});
@@ -289,6 +753,7 @@ async function queueCoachWrite(url,payload,error){
     list.push({id:writeId,url:url,payload:payload,createdAt:new Date().toISOString(),attempts:0,lastError:String(error&&error.message||error||'Write failed')});
   }
   await persistPendingCoachWrites(list,code);
+  await registerBackgroundQueueSync();
 }
 async function postJsonChecked(url,payload){
   if(payload&&!payload.clientWriteId) payload.clientWriteId='cw_'+Date.now()+'_'+Math.random().toString(36).slice(2);
@@ -324,14 +789,37 @@ async function coachWrite(url,payload,opts){
     return {ok:true,queued:true,error:ingestError&&ingestError.message};
   }
 }
-async function retryPendingCoachWrites(silent){
+var _pendingQueueIndicatorCount=-1;
+async function pendingCoachWriteCount(){
+  var code=currentWriteCode(),list=await readPendingCoachWrites(code);
+  if(code!=='_unknown')list=list.concat(await readPendingCoachWrites('_unknown'));
+  var ids={},coachCount=list.filter(function(item){if(!item||ids[item.id])return false;ids[item.id]=true;return true;}).length;
+  var stateCount=code==='_unknown'?0:(await readPendingPortalStateWrites(code)).filter(function(item){return item.key!=='pending_writes';}).length;
+  return coachCount+stateCount;
+}
+async function updatePendingQueueIndicator(){
+  var banner=document.getElementById('queuePendingBanner');if(!banner)return;
+  var count=await pendingCoachWriteCount();
+  banner.hidden=count===0;
+  banner.style.display=count?'flex':'none';
+  var text=banner.querySelector('b');if(text)text.textContent=count+' update'+(count===1?'':'s')+' waiting to send';
+  if(count>0&&count!==_pendingQueueIndicatorCount)track('queue_pending_shown',{count:count});
+  _pendingQueueIndicatorCount=count;
+}
+async function manualRetryPendingCoachWrites(){
+  track('queue_flush_manual');
+  var banner=document.getElementById('queuePendingBanner');if(banner)banner.classList.add('is-retrying');
+  try{await Promise.all([retryPendingCoachWrites(false,'manual'),retryPendingPortalStateWrites(false,'manual')]);}
+  finally{if(banner)banner.classList.remove('is-retrying');await updatePendingQueueIndicator();}
+}
+async function retryPendingCoachWrites(silent,trigger){
   var code=currentWriteCode();
   // Process the active code AND any writes parked under '_unknown' before a code was known.
   var buckets=[code];if(code!=='_unknown') buckets.push('_unknown');
   var totalSynced=0;
   for(var b=0;b<buckets.length;b++){
     var bucket=buckets[b];
-    var list=readPendingCoachWrites(bucket);
+    var list=await readPendingCoachWrites(bucket);
     if(!list.length) continue;
     var keep=[],synced=0;
     for(var i=0;i<list.length;i++){
@@ -349,16 +837,34 @@ async function retryPendingCoachWrites(silent){
     totalSynced+=synced;
     if(bucket==='_unknown'&&code!=='_unknown'){
       // Re-home any still-failing 'unknown' writes under the now-known code.
-      var primary=readPendingCoachWrites(code).concat(keep);
+      var primary=(await readPendingCoachWrites(code)).concat(keep);
       await persistPendingCoachWrites(primary,code);
       await persistPendingCoachWrites([],'_unknown');
     }else{
       await persistPendingCoachWrites(keep,bucket);
     }
   }
+  if(totalSynced){
+    // A drained queue means some of those "saved on this device" logs have now
+    // actually reached the coaches — re-read the confirmed dates so the dock
+    // stops warning about work that has since landed.
+    if(typeof loadConfirmedLogDates==='function'){try{await loadConfirmedLogDates();}catch(e){}}
+  }
+  if(totalSynced) track('offline_queue_flushed',{count:totalSynced,trigger:trigger||'visibility'});
   if(totalSynced&&!silent) showToast(totalSynced+' pending coach update'+(totalSynced>1?'s':'')+' synced');
+  await updatePendingQueueIndicator();
 }
-window.addEventListener('online',function(){retryPendingCoachWrites(false);});
+document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible'){retryPendingCoachWrites(true,'visibility');retryPendingPortalStateWrites(true,'visibility');}});
+window.addEventListener('pageshow',function(){retryPendingCoachWrites(true,'visibility');retryPendingPortalStateWrites(true,'visibility');});
+if('serviceWorker'in navigator){
+  navigator.serviceWorker.addEventListener('message',function(event){
+    var data=event.data||{};
+    if(data.type==='dp-queue-flushed'){
+      if(data.count)track('offline_queue_flushed',{count:data.count,trigger:'sync'});
+      updatePendingQueueIndicator();
+    }
+  });
+}
 
 // Coach prescription overrides now live directly on planned_sessions rows in
 // Supabase — loadPlannedSessions() populates _sessionOverrides from each row.
@@ -368,6 +874,10 @@ async function loadPlannedSessions(startISO,endISO,preloaded){
     var plannedRows=(result.rows||[]).slice();
     if(result.next&&!plannedRows.some(function(existing){return existing.id===result.next.id;}))plannedRows.push(result.next);
     _sessionOverrides={};
+    // Register coach-built prescriptions before the rows are mapped, so every
+    // downstream resolution can already see them.
+    try{registerSessionPrescriptions(result.prescriptions,plannedRows);}
+    catch(e){console.warn('Prescription registration failed; falling back to named splits',e);}
     return plannedRows.map(function(r){
       var key=r.notion_page_id||r.id;
       if(r.distance_km!=null||r.target_pace||r.warm_up||r.intervals||r.working_pace||r.rest||r.cool_down||r.notes){
@@ -380,7 +890,11 @@ async function loadPlannedSessions(startISO,endISO,preloaded){
         sessionType:r.session_type||'',status:r.status||'Planned',
         runningSession:'',runningSessionIds:[],
         runningLibraryIds:r.library_id?[r.library_id]:[],
-        runDetails:r.run_details||'',intensity:r.intensity||'',week:r.week_label||''};
+        runDetails:r.run_details||'',intensity:r.intensity||'',week:r.week_label||'',
+        programmeWeekIdentifier:r.programme_week_id||null,
+        prescriptionMode:r.prescription_mode||'legacy',
+        partOfDay:r.part_of_day||'',dayOrder:r.day_order||0,
+        estimatedMinutes:r.estimated_minutes||null};
     });
   }catch(e){ console.warn('Planned sessions load failed',e); return null; }
 }
@@ -392,6 +906,8 @@ async function loadCloudData(code,preloaded){
     var result=preloaded||await portalRequest('state-read');
     var rows=result.rows||[];
     var structuredCheckins=result.checkins||[];
+    var pendingStateWrites=await readPendingPortalStateWrites(code),pendingStateKeys={};
+    pendingStateWrites.forEach(function(item){pendingStateKeys[item.key]=true;});
     // Build a set of keys that exist in Supabase
     var cloudKeys={};
     rows.forEach(function(row){cloudKeys[row.key]=row.value;});
@@ -405,6 +921,10 @@ async function loadCloudData(code,preloaded){
     // Write cloud data to localStorage (cloud is authoritative)
     rows.forEach(function(row){
       var lsKey=null;
+      // A locally queued state value is newer by definition: it exists only
+      // because the device could not commit it. Never let the older cloud row
+      // overwrite that value before the outbox gets a chance to retry.
+      if(pendingStateKeys[row.key])return;
       // LOGS: never let an older cloud copy clobber a newer local draft.
       // (Athletes were losing in-progress gym/run data on reload because the
       //  cloud copy was treated as authoritative even when a fresher local
@@ -415,8 +935,14 @@ async function loadCloudData(code,preloaded){
         var _localLogs=null;try{_localLogs=JSON.parse(localStorage.getItem('dp_logs_'+code)||'null');}catch(e){}
         var _cloudT=(_cloudLogs&&_cloudLogs.__savedAt)||0;
         var _localT=(_localLogs&&_localLogs.__savedAt)||0;
+        // Trim both copies before the comparison. A cloud row written by an
+        // older build still carries the full Strava payloads, and copying it
+        // into localStorage unpruned would just re-inflate the device.
+        pruneStravaMatchPayloads(_cloudLogs);
+        var _localTrimmed=pruneStravaMatchPayloads(_localLogs);
         if(_localLogs&&_localT>_cloudT){
           // Local draft is newer — keep it, and push it up so other devices catch up.
+          if(_localTrimmed){try{localStorage.setItem('dp_logs_'+code,JSON.stringify(_localLogs));}catch(e){}}
           portalStateWrite('logs',_localLogs).catch(function(){});
         }else if(_cloudLogs){
           localStorage.setItem('dp_logs_'+code,JSON.stringify(_cloudLogs));
@@ -426,6 +952,7 @@ async function loadCloudData(code,preloaded){
       if(row.key==='goals') lsKey='dp_goals_'+code;
       else if(row.key==='logs') lsKey='dp_logs_'+code;
       else if(row.key==='ticked') lsKey='dp_ticked_'+code;
+      else if(row.key==='strength_rpe_enabled') lsKey='dp_strength_rpe_enabled';
       else if(row.key==='reschedules') lsKey='dp_reschedules_'+code;
       else if(row.key==='strava_match_rejections') lsKey='dp_strava_match_rejections_'+code;
       else if(row.key==='photos') lsKey='dp_photos_'+code;
@@ -433,10 +960,22 @@ async function loadCloudData(code,preloaded){
       else if(row.key.startsWith('daily_nut_')) lsKey='dp_daily_nut_'+code+'_'+row.key.slice('daily_nut_'.length);
       else if(row.key==='ex_picks') lsKey='dp_ex_picks_'+code;
       else if(row.key.startsWith('call_booked_')) lsKey='dp_call_booked_'+(code?code.toUpperCase()+'_':'')+row.key.slice('call_booked_'.length);
-      else if(row.key==='pending_writes') lsKey=pendingCoachWritesKey(code);
+      // calls_prep_* is retired: the Calls tab prep questions were folded into
+      // the weekly check-in. Any row an old build wrote is ignored, not rehydrated.
+      else if(row.key.startsWith('calls_prep_')) return;
+      else if(row.key==='pending_writes') return;
       if(!lsKey||!row.value) return;
       localStorage.setItem(lsKey,JSON.stringify(row.value));
     });
+    if(Array.isArray(cloudKeys['pending_writes'])&&!pendingStateKeys['pending_writes']){
+      var localPending=await readPendingCoachWrites(code),pendingById={};
+      localPending.concat(cloudKeys['pending_writes']).forEach(function(item){
+        if(!item||!item.id)return;
+        var prior=pendingById[item.id];
+        if(!prior||String(item.updatedAt||item.createdAt||'')>=String(prior.updatedAt||prior.createdAt||''))pendingById[item.id]=item;
+      });
+      await persistPendingCoachWrites(Object.keys(pendingById).map(function(id){return pendingById[id];}),code);
+    }
     // Rebuild this athlete's completion cache exclusively from structured
     // weekly_checkins (plus a locally queued submission). Old releases used a
     // shared dp_checkin_YYYY_WW key and mirrored it through athlete_data; both
@@ -464,7 +1003,7 @@ async function loadCloudData(code,preloaded){
       });
       // An offline submission is still work the athlete has completed. Keep
       // its nudge quiet while the existing outbox retries the canonical write.
-      readPendingCoachWrites(code).forEach(function(item){
+      (await readPendingCoachWrites(code)).forEach(function(item){
         var p=item&&item.payload;if(!p||p.type!=='weekly_checkin'||!p.weekEnding)return;
         var queuedOn=p.submittedAt?new Date(p.submittedAt):(item.createdAt?new Date(item.createdAt):new Date());
         localStorage.setItem(checkinPrefix+checkinWeekSuffix(queuedOn),JSON.stringify({queued:true,weekEnding:p.weekEnding}));
@@ -527,12 +1066,41 @@ async function loadStructuredBodyData(code,preloaded){
   }catch(e){console.warn('Body log cloud hydration failed',e);}
   finally{_skipSbSync=wasSkipping;}
 }
+// The nutrition twin of the above. Both daily logs are supposed to mirror into
+// athlete_data on write, but that mirror has quietly stopped landing for
+// several athletes — THOMAS logs most days and has zero rows there — so it
+// cannot be trusted to repopulate a submitted form. daily_nutrition_logs is
+// what the coaches actually read, so hydrate from that and let every device
+// agree on what was sent.
+async function loadStructuredNutritionData(code,preloaded){
+  if(!code) return;
+  var wasSkipping=_skipSbSync;
+  try{
+    var result=preloaded||await portalRequest('nutrition-logs');
+    if(!result||!Array.isArray(result.rows)) return;
+    _skipSbSync=true;
+    var num=function(v){return v==null?'':String(v);};
+    result.rows.forEach(function(row){
+      var logDate=String(row.log_date||'').slice(0,10);if(!logDate)return;
+      var raw=row.raw_payload&&typeof row.raw_payload==='object'?row.raw_payload:{};
+      var value=Object.assign({},raw,{
+        type:'daily_nutrition',athleteCode:code,date:logDate,
+        calories:num(row.calories),protein:num(row.protein),carbs:num(row.carbs),
+        fat:num(row.fat),fibre:num(row.fibre),
+        notes:row.notes||raw.notes||'',
+        submittedAt:row.submitted_at||raw.submittedAt||''
+      });
+      localStorage.setItem('dp_daily_nut_'+code+'_'+logDate,JSON.stringify(value));
+    });
+  }catch(e){console.warn('Nutrition log cloud hydration failed',e);}
+  finally{_skipSbSync=wasSkipping;}
+}
 
 // ── STRENGTH LIBRARY ──────────────────────────────────────────────────────────
 const STR = {
   "Lower A":[
     {"exercise":"Leg Extension","sets":"4","reps":"8","repRange":"8-12","warmupSets":"1","workingSets":"3","rest":"90s","notes":"First set warm-up","alts":["Single Leg Extension"]},
-    {"exercise":"Bulgarian Split Squat","sets":"3","reps":"8","repRange":"8-12","warmupSets":"0","workingSets":"3","rest":"90s","notes":"","alts":["Dumbbell Bulgarian Split Squat","Hack Squat"]},
+    {"exercise":"Bulgarian Split Squat","sets":"3","reps":"8","repRange":"8-12","warmupSets":"0","workingSets":"3","rest":"90s","notes":"","alts":["Barbell Split Squat","Hack Squat"]},
     {"exercise":"Seated Hamstring Curl","sets":"4","reps":"8","repRange":"8-12","warmupSets":"1","workingSets":"3","rest":"90s","notes":"First set warm-up","alts":["Lying Leg Curl"]},
     {"exercise":"Barbell Romanian Dead Lift","sets":"3","reps":"8","repRange":"6-10","warmupSets":"0","workingSets":"3","rest":"90s","notes":"","alts":["Dumbbell Romanian Deadlift"]},
     {"exercise":"Adduction Machine","sets":"2","reps":"8","repRange":"10-15","warmupSets":"0","workingSets":"2","rest":"90s","notes":"","alts":["Cable Hip Adduction"],"leftRightExercises":["Cable Hip Adduction"]},
@@ -657,7 +1225,7 @@ var EX_PATTERNS={
   ]},
   unilateral_leg:{label:'Single leg — quads, glutes & stability',options:[
     {n:'Single Leg Press',e:'machine'},{n:'Smith Machine Split Squat',e:'machine'},
-    {n:'Bulgarian Split Squat',e:'free'},{n:'Dumbbell Bulgarian Split Squat',e:'free'},{n:'Walking Lunge',e:'free'},{n:'Reverse Lunge',e:'free'},{n:'Dumbbell Step Up',e:'free'},{n:'Front Foot Elevated Split Squat',e:'free'},
+    {n:'Bulgarian Split Squat',e:'free'},{n:'Barbell Split Squat',e:'free'},{n:'Walking Lunge',e:'free'},{n:'Reverse Lunge',e:'free'},{n:'Dumbbell Step Up',e:'free'},{n:'Front Foot Elevated Split Squat',e:'free'},
     {n:'Single Leg Step Down',e:'bodyweight'},{n:'Bodyweight Split Squat',e:'bodyweight'},{n:'Step Up',e:'bodyweight'},{n:'Skater Squat',e:'bodyweight'}
   ]},
   hamstring_curl:{label:'Hamstrings — knee flexion',options:[
@@ -731,7 +1299,7 @@ var EX_PATTERN_BY_NAME={
   'dumbbell hammer curl':'biceps','bicep curl':'biceps','barbell curl':'biceps','preacher curl':'biceps',
   'leg extension':'quad_isolation','single leg extension':'quad_isolation',
   'lying down leg press':'squat_pattern','leg press':'squat_pattern','leg press feet high wide':'squat_pattern','hack squat':'squat_pattern','barbell back squat':'squat_pattern','back squat':'squat_pattern','goblet squat':'squat_pattern',
-  'bulgarian split squat':'unilateral_leg','dumbbell bulgarian split squat':'unilateral_leg','single leg step down':'unilateral_leg','walking lunge':'unilateral_leg','reverse lunge':'unilateral_leg','step up':'unilateral_leg',
+  'bulgarian split squat':'unilateral_leg','barbell split squat':'unilateral_leg','single leg step down':'unilateral_leg','walking lunge':'unilateral_leg','reverse lunge':'unilateral_leg','step up':'unilateral_leg',
   'seated hamstring curl':'hamstring_curl','lying hamstring curl':'hamstring_curl','lying leg curl':'hamstring_curl','standing hamstring curl':'hamstring_curl','nordic hamstring curl':'hamstring_curl',
   'barbell romanian dead lift':'hip_hinge','barbell romanian deadlift':'hip_hinge','dumbbell romanian deadlift':'hip_hinge','romanian deadlift':'hip_hinge','deadlift':'hip_hinge','good morning':'hip_hinge','back extension':'hip_hinge',
   'barbell hip thrust':'hip_thrust','dumbbell hip thrust':'hip_thrust','hip thrust':'hip_thrust','glute bridge':'hip_thrust','glute kickback':'hip_thrust','cable glute kickback':'hip_thrust',
@@ -932,6 +1500,44 @@ function localDateFromISO(value){
   return m?new Date(Number(m[1]),Number(m[2])-1,Number(m[3])):new Date(value);
 }
 function getMon(d){var day=d.getDay(),diff=day===0?-6:1-day;return new Date(d.getFullYear(),d.getMonth(),d.getDate()+diff);}
+// ── LOGGING STREAK ────────────────────────────────────────────────────────────
+// Consecutive WEEKS containing at least one logged session — weeks, not days.
+// The programme runs 8-9 sessions a week, so a day streak would punish planned
+// rest and break on a deload. A week streak measures the thing that actually
+// matters: showing up, week after week.
+//
+// Week boundaries are getMon()'s, Monday-start, so a Sunday session belongs to
+// the week that is ending rather than the one about to begin.
+//
+// The current week is live, not yet judged: it counts as soon as it has a
+// session, and while it is still empty the run that ended last week stands. An
+// athlete opening the portal on Monday morning does not watch their streak
+// reset before they have had a chance to train.
+//
+// Pure: takes dates and a reference date, returns a number. No globals, no clock.
+function computeLoggingStreak(sessionDates,today){
+  var ref=today==null?new Date():(typeof today==='string'?localDateFromISO(today):new Date(today));
+  if(!ref||isNaN(ref.getTime()))return 0;
+  var weeks={};
+  (Array.isArray(sessionDates)?sessionDates:[]).forEach(function(value){
+    // Duck-typed rather than `instanceof Date`: dates cross realms (the tests
+    // run this in a vm context) and an identity check would silently drop them.
+    var d=(value&&typeof value.getTime==='function')?new Date(value.getTime()):localDateFromISO(String(value||'').slice(0,10));
+    if(!d||isNaN(d.getTime()))return;
+    weeks[localISO(getMon(d))]=1;
+  });
+  var cursor=getMon(ref);
+  if(!weeks[localISO(cursor)])cursor.setDate(cursor.getDate()-7);
+  var streak=0;
+  // A programme is 12 weeks by default and the longest athlete history here is
+  // shorter than two years, so the guard is generous rather than meaningful.
+  for(var guard=0;guard<520;guard++){
+    if(!weeks[localISO(cursor)])break;
+    streak++;
+    cursor.setDate(cursor.getDate()-7);
+  }
+  return streak;
+}
 function getWS(){var m=getMon(new Date());m.setDate(m.getDate()+weekOffset*7);return m;}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 // Run "feel" used to be stored with a leading emoji (e.g. "💪 Feeling Strong").
@@ -970,10 +1576,38 @@ function getRelationIds(prop){return prop&&prop.relation?(prop.relation||[]).map
 
 // Core programme/photo helpers are needed by the home nudges and check-in.
 // Keeping them here lets the heavier Progress renderer load only when opened.
+//
+// Athletes who started straight on Week 1, before the discovery week existed.
+// Closed set — everyone onboarded since goes through a Week 0 — and it mirrors
+// NO_DISCOVERY in the coaches dashboard, which decides the week number the
+// coach sees. The two must agree or the portal reads a week ahead.
+var NO_DISCOVERY_CODES=['JACOB','KHANG'];
+function athleteSkipsDiscoveryWeek(){
+  return NO_DISCOVERY_CODES.indexOf(String((typeof athlete!=='undefined'&&athlete&&athlete.code)||'').toUpperCase())>=0;
+}
 function getCurrentProgrammeWeek(){
   var wkS=sessions.find(function(s){return s.week;});
-  if(wkS){var m=wkS.week.match(/\d+/);if(m)return parseInt(m[0]);}
-  if(athlete.startDate&&athlete.startDate!=='—'){var start=localDateFromISO(athlete.startDate);var now=new Date();var diff=Math.floor((now-start)/(7*24*60*60*1000))+1;return Math.max(1,Math.min(programmeWeeks,diff));}
+  if(wkS){
+    // 'Discovery Week' carries no digit. Falling through to the date maths on
+    // that label is what let the nutrition week label sit a week away from the
+    // training one for the same athlete on the same day.
+    if(typeof isDiscoveryWeek==='function'&&isDiscoveryWeek(wkS.week))return 0;
+    var m=wkS.week.match(/\d+/);if(m)return parseInt(m[0]);
+  }
+  if(athlete.startDate&&athlete.startDate!=='—'){
+    var start=localDateFromISO(athlete.startDate);
+    var now=new Date();
+    var today=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+    // Whole local days, rounded, so the 23 and 25 hour days either side of a
+    // daylight saving change still count as one day each. Measuring raw
+    // milliseconds put the week boundary an hour out every October.
+    var days=Math.round((today-start)/(24*60*60*1000));
+    // Day 0 is the discovery week (Week 0), matching the dashboard. The legacy
+    // codes above started on Week 1, so for them day 0 is week 1.
+    var skip=athleteSkipsDiscoveryWeek();
+    var floor=skip?1:0;
+    return Math.max(floor,Math.min(programmeWeeks,Math.floor(days/7)+(skip?1:0)));
+  }
   return 1;
 }
 function getPhotos(){return JSON.parse(localStorage.getItem('dp_photos_'+athlete.code)||'{}');}
@@ -987,20 +1621,60 @@ async function fetchRunLibrary(){
 
 // ── SESSION TYPE ──────────────────────────────────────────────────────────────
 function normaliseExerciseName(exerciseName){
-  return String(exerciseName||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
+  return canonicalExerciseName(exerciseName).toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
 }
+function canonicalExerciseName(exerciseName){
+  var displayName=String(exerciseName||'').trim();
+  var normalised=displayName.toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
+  // The generic Bulgarian option has always been performed with dumbbells.
+  // Fold both historic dumbbell labels into that one choice, while keeping the
+  // barbell setup separate because its loading and progression are different.
+  if(normalised==='dumbbell split squat'||normalised==='dumbbell bulgarian split squat')return 'Bulgarian Split Squat';
+  return displayName;
+}
+// Exercise names come from both the built-in swap bank and coach-managed
+// Supabase splits. Keep the obvious per-side cases here so a newly added
+// unilateral option gets Left / Right inputs even before its split metadata is
+// updated. Explicit metadata still wins for movements whose setup is ambiguous.
+var LEFT_RIGHT_REP_RULES=[
+  /\b(?:single|one) (?:leg|arm|side|limb)\b/,
+  /\biso lateral\b/,
+  /\bunilateral\b/,
+  /\bsplit squat\b/,
+  /\blunges?\b/,
+  /\bstep (?:up|down)\b/,
+  /\bkickbacks?\b/,
+  /\bcopenhagen plank\b/,
+  /^(?:one arm |single arm )?dumbbell row$/,
+  /\bcable (?:hip (?:abduction|adduction|flexion)|adduction|lateral raise|woodchop)\b/,
+  /\b(?:standing cable|banded standing) knee drive\b/,
+  /\b(?:weighted standing|single leg) knee raise\b/,
+  /\bside lying (?:leg|adduction) raise\b/,
+  /\bpallof press\b/,
+  /\bside plank\b/
+];
 function usesLeftRightReps(exerciseName,prescription){
   var normalised=normaliseExerciseName(exerciseName);
-  var tagged=prescription&&Array.isArray(prescription.leftRightExercises)?prescription.leftRightExercises:[];
+  var tagged=prescription&&Array.isArray(prescription.leftRightExercises)?prescription.leftRightExercises:
+    (prescription&&Array.isArray(prescription.left_right_exercises)?prescription.left_right_exercises:[]);
   if(tagged.some(function(name){return normaliseExerciseName(name)===normalised;}))return true;
-  if(prescription&&prescription.repMode==='left_right'&&normaliseExerciseName(prescription.exercise)===normalised)return true;
+  var prescribedName=normaliseExerciseName(prescription&&prescription.exercise);
+  var explicitMode=prescription&&(prescription.repMode||prescription.rep_mode);
+  if(prescribedName===normalised&&explicitMode==='left_right')return true;
+  // Coaches can force an ambiguous movement (for example a two-arm machine
+  // variant with "iso-lateral" in its product name) back to a single reps box.
+  if(prescribedName===normalised&&explicitMode==='reps')return false;
   // Backward-compatible fallback for older split data and athlete-specific
   // variants that have not yet received explicit Supabase rep-mode metadata.
-  return /(?:\bsingle (?:leg|arm)\b|\bone arm\b|\bunilateral\b|\bsplit squat\b|\blunges?\b|\bstep (?:up|down)\b|\bkickbacks?\b|\bcopenhagen plank\b|\bdumbbell row\b|\bcable (?:hip (?:abduction|adduction)|adduction|lateral raise)\b)/i.test(normalised);
+  return LEFT_RIGHT_REP_RULES.some(function(rule){return rule.test(normalised);});
 }
 function getType(s){
   var t=(s.sessionType||'').toLowerCase(),n=(s.name||'').toLowerCase();
   if(t==='note'||t==='notes'||t==='general'||t==='discovery'||t==='custom')return 'note';
+  // A coach-built strength session carries its own exercises, so it no longer
+  // has to be named after one of the four legacy splits to be recognised.
+  // Sessions that also carry run steps stay run-led, as they do today.
+  if(sessionHasPrescription(s)&&!sessionRunSteps(s))return 'strength';
   if(t==='strength'||GYM_KEYS.some(function(k){return n.indexOf(k.toLowerCase())>=0;}))return 'strength';
   if(t==='rest'||n==='rest')return 'rest';
   return 'run';
@@ -1020,8 +1694,12 @@ function sortSessionsForDisplay(list){
 // preserveEmail=true keeps the remembered email/method so the recovery path
 // ("send a new code") is one tap; explicit logout clears everything.
 function logoutToLogin(preserveEmail){
+  if(typeof invalidateProgrammeVolume==='function')invalidateProgrammeVolume();
+  window._trainingReadSnapshot=null;
   localStorage.removeItem('dp_auth_code');
   localStorage.removeItem('dp_legacy_session');
+  removePortalOfflineState('dp_auth_token');
+  removePortalOfflineState('dp_auth_athlete_code');
   if(!preserveEmail){
     try{localStorage.removeItem('dp_auth_method');localStorage.removeItem('dp_auth_email');}catch(e){}
   }
@@ -1029,13 +1707,52 @@ function logoutToLogin(preserveEmail){
   athlete=null;sessions=[];allSessions=[];ticked={};logs={};exPicks={};
   document.getElementById('portalScreen').style.display='none';
   document.getElementById('quicklogStrip').style.display='none';
-  document.getElementById('loginScreen').style.display='block';
   document.getElementById('codeInput').value='';
   clearLoginError();
   renderCode();
+  if(typeof showPrimaryLogin==='function')showPrimaryLogin();
+  document.getElementById('loginScreen').style.display='block';
 }
 function logout(){
   logoutToLogin(false);
   authSignOut(); // ends the Supabase session too (no-op for legacy code logins)
-  if(typeof showEmailLogin==='function') showEmailLogin(false);
 }
+
+// ── Personalisation ─────────────────────────────────────────────────────────
+// The hero greets the athlete by first name and time of day. Deliberately
+// driven from a render pass that owns the current date rather than from
+// doLogin: a session left open overnight would otherwise keep saying
+// "Evening" until the athlete signed in again. Display only — the name comes
+// from the Supabase roster (athletes.name), which the coach dashboard owns.
+function dpFirstName(full){
+  var name=String(full||'').trim();
+  if(!name) return '';
+  return name.split(/\s+/)[0];
+}
+function dpGreetingWord(when){
+  var hour=(when||new Date()).getHours();
+  if(hour<12) return 'Morning';
+  if(hour<17) return 'Afternoon';
+  return 'Evening';
+}
+function dpGreetingDate(when){
+  // en-AU renders "Fri, 4 Sep"; the engraved label drops the comma.
+  try{
+    return (when||new Date()).toLocaleDateString('en-AU',{weekday:'short',day:'numeric',month:'short'}).replace(',','');
+  }catch(e){return '';}
+}
+function renderHeroGreeting(){
+  var el=document.querySelector('.hero-main .hi');
+  var first=dpFirstName(typeof athlete!=='undefined'&&athlete&&athlete.name);
+  var now=new Date(),date=dpGreetingDate(now);
+  if(el) el.textContent=first?(dpGreetingWord(now)+', '+first+(date?' · '+date:'')):'Training Portal';
+  // The header carries the athlete's full name above the section label — the
+  // hero itself now leads with today's session, so the name lives here.
+  var kicker=document.querySelector('.portal-context-kicker');
+  var full=String((typeof athlete!=='undefined'&&athlete&&athlete.name)||'').trim();
+  if(kicker&&full) kicker.textContent=full;
+}
+// Re-render on resume so the greeting and date follow real time, not session age.
+document.addEventListener('visibilitychange',function(){
+  if(document.visibilityState==='visible') try{renderHeroGreeting();}catch(e){}
+});

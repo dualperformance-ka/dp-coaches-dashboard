@@ -26,6 +26,7 @@ async function validateRosterCode(code){
       _authToken=result.access_token;
       localStorage.setItem('dp_legacy_session',_authToken);
       localStorage.setItem('dp_auth_method','code');
+      writePortalOfflineState('dp_auth_token',_authToken);
     }
     return result;
   }catch(e){return null;}
@@ -42,9 +43,10 @@ function showPausedScreen(name){
 function pausedBackToLogin(){
   localStorage.removeItem('dp_auth_code');
   var el=document.getElementById('pausedScreen');if(el) el.style.display='none';
-  document.getElementById('loginScreen').style.display='block';
   var inp=document.getElementById('codeInput');if(inp) inp.value='';
   renderCode();
+  if(typeof showPrimaryLogin==='function')showPrimaryLogin();
+  document.getElementById('loginScreen').style.display='block';
 }
 function buildAthleteProfile(p,code,roster){
   var props=p?(p.properties||{}):{};
@@ -70,6 +72,40 @@ async function fetchAthleteProfile(code,roster){
   return buildAthleteProfile(null,code,roster);
 }
 function saveProfileCache(code,profile){try{localStorage.setItem('dp_profile_'+code,JSON.stringify(profile));}catch(e){}}
+var _emailUpgradeRoster=null;
+function emailUpgradePromptKey(code){return 'dp_email_upgrade_prompt_v1_'+sanitizeCode(code);}
+function maybeShowEmailUpgradePrompt(roster){
+  if(!roster||localStorage.getItem('dp_auth_method')!=='code')return;
+  if(String(roster.auth_mode||'').toLowerCase()!=='both'||!roster.email)return;
+  var key=emailUpgradePromptKey(roster.code||'');
+  if(!key||localStorage.getItem(key))return;
+  // Record the impression before painting it. A refresh, crash or dismissal can
+  // therefore never turn this gentle migration suggestion into a repeated nag.
+  localStorage.setItem(key,'shown');
+  _emailUpgradeRoster={code:sanitizeCode(roster.code||''),email:String(roster.email).trim().toLowerCase()};
+  var prompt=document.getElementById('emailUpgradePrompt');
+  if(prompt){prompt.hidden=false;prompt.style.display='flex';}
+  track('email_upgrade_prompt_shown');
+}
+function dismissEmailUpgradePrompt(){
+  var prompt=document.getElementById('emailUpgradePrompt');
+  if(prompt){prompt.hidden=true;prompt.style.display='none';}
+}
+async function acceptEmailUpgrade(){
+  if(!_emailUpgradeRoster||!_emailUpgradeRoster.email)return;
+  var email=_emailUpgradeRoster.email;
+  track('email_upgrade_accepted');
+  dismissEmailUpgradePrompt();
+  localStorage.setItem('dp_auth_email',email);
+  _authToken=null;
+  await removePortalOfflineState('dp_auth_token');
+  logoutToLogin(true);
+  localStorage.setItem('dp_auth_method','email');
+  showEmailLogin(true);
+  var input=document.getElementById('emailInput');
+  if(input)input.value=email;
+  await sendEmailCode();
+}
 async function hydratePortalData(code){
   try{
     var bootstrap=await portalRequest('bootstrap');
@@ -78,22 +114,48 @@ async function hydratePortalData(code){
     // identical while removing two browser/server round trips.
     await loadCloudData(code,bootstrap.state);
     await loadStructuredBodyData(code,bootstrap.bodyLogs);
+    // Older deployments have no nutritionLogs in the bootstrap; passing
+    // undefined makes the loader fetch it itself rather than skip silently.
+    await loadStructuredNutritionData(code,bootstrap.nutritionLogs);
     await loadSessionLogs(bootstrap.sessionLogs);
+    // Which daily logs the coaches actually hold. Absent on older deployments,
+    // in which case the dock falls back to its own read below.
+    if(bootstrap.dailyLogged) hydrateConfirmedLogDates(bootstrap.dailyLogged);
+    else await loadConfirmedLogDates();
     return;
   }catch(e){
     console.warn('Combined portal bootstrap failed; using compatibility reads',e);
   }
   // Safe rollout/failure path: older deployments and transient bootstrap
   // failures retain the exact request sequence used before this optimisation.
-  await Promise.all([(async function(){await loadCloudData(code);await loadStructuredBodyData(code);})(),loadSessionLogs()]);
+  await Promise.all([(async function(){await loadCloudData(code);await loadStructuredBodyData(code);await loadStructuredNutritionData(code);})(),loadSessionLogs(),loadConfirmedLogDates()]);
 }
 function hydrateLocalPortalState(code){
   ticked=JSON.parse(localStorage.getItem('dp_ticked_'+code)||'{}');
   logs=JSON.parse(localStorage.getItem('dp_logs_'+code)||'{}');
+  // One-time repair for devices carrying full Strava activity payloads from an
+  // older build. Rewrite the local copy immediately so the next save is small
+  // enough for the server to accept, without waiting for a sync round trip.
+  if(typeof pruneStravaMatchPayloads==='function'&&pruneStravaMatchPayloads(logs)){
+    try{localStorage.setItem('dp_logs_'+code,JSON.stringify(logs));}catch(e){}
+  }
   stravaMatchRejections=JSON.parse(localStorage.getItem('dp_strava_match_rejections_'+code)||'{}');
   exPicks=JSON.parse(localStorage.getItem('dp_ex_picks_'+code)||'{}');
+  var picksChanged=false;
+  Object.keys(exPicks).forEach(function(programmed){
+    var canonical=canonicalExerciseName(exPicks[programmed]);
+    if(canonical!==exPicks[programmed]){exPicks[programmed]=canonical;picksChanged=true;}
+  });
+  // Existing clients may have persisted either historic dumbbell label. Repair
+  // both the device and cloud preference so the removed UI choice cannot return
+  // on the next hydration or on another device.
+  if(picksChanged){
+    localStorage.setItem('dp_ex_picks_'+code,JSON.stringify(exPicks));
+    if(athlete&&athlete.code===code)portalStateWrite('ex_picks',exPicks).catch(function(){});
+  }
 }
 async function doLogin(code,prevalidatedRoster){
+  if(typeof invalidateProgrammeVolume==='function')invalidateProgrammeVolume();
   var btn=document.getElementById('loginBtn')||document.querySelector('.lbtn');
   btn.textContent='Authenticating...';btn.disabled=true;btn.classList.add('loading');
   clearLoginError();
@@ -107,6 +169,9 @@ async function doLogin(code,prevalidatedRoster){
   if(!fresh){resetBtn();showLoginError('Unable to load your athlete profile');renderCode();return;}
   if(showWelcome)showLoginSuccess(fresh.name);
   athlete=fresh;saveProfileCache(code,fresh);
+  await writePortalOfflineState('dp_auth_athlete_code',String(code).toUpperCase());
+  if(window.dpTagAthlete)window.dpTagAthlete(code);
+  track(localStorage.getItem('dp_auth_method')==='email'?'login_email':'login_code');
   resetBtn();
   localStorage.setItem('dp_auth_code',code);
   // Supabase remains the identity provider for email OTP only; portal data
@@ -124,8 +189,13 @@ async function doLogin(code,prevalidatedRoster){
   var coachLogout=document.getElementById('coachLogoutBtn');
   if(coachLogout)coachLogout.style.display=localStorage.getItem('dp_auth_method')==='code'?'flex':'none';
   document.getElementById('quicklogStrip').style.display='flex';
+  requestPersistentPortalStorage();
+  maybeShowEmailUpgradePrompt(roster);
+  updatePendingQueueIndicator();
+  registerBackgroundQueueSync();
   try{syncQuickLogDock();}catch(e){}
   document.getElementById('heroName').textContent=athlete.name;
+  renderHeroGreeting();
   populateStatic();
   // The primary plan gets the network first. Strava, nutrition and programme
   // metrics start only after today's session has rendered; they update their
@@ -151,13 +221,25 @@ async function doLogin(code,prevalidatedRoster){
       retryPendingCoachWrites(true);
       initCallNudge();
       syncPushSubscription();
+      if(typeof refreshNotificationInbox==='function')refreshNotificationInbox();
+      // Installed PWAs get one friendly in-app explanation first. The native
+      // permission sheet is still opened only by the athlete's button tap.
+      if(typeof maybePromptPwaNotifications==='function')setTimeout(maybePromptPwaNotifications,700);
     },0);
+    var deepParams=new URLSearchParams(location.search),deepTab=deepParams.get('tab'),deepDate=deepParams.get('date');
+    if(['training','weekly','nutrition','checkin','progress','goals','handbook','comms'].indexOf(deepTab)>=0){
+      setTimeout(function(){
+        switchTab(deepTab);
+        if(deepTab==='training'&&/^\d{4}-\d{2}-\d{2}$/.test(deepDate||'')&&typeof openDayPlanDate==='function')openDayPlanDate(deepDate);
+      },80);
+    }
   });
   // A persisted week paints immediately. Refresh it without clearing the
   // visible cards; on a cold start loadWeek already performs the network read.
   var weekRefreshPromise=initialWeekPromise.then(function(){
-    return window._trainingReadServedPersistent&&typeof refreshWeekInBackground==='function'
-      ?refreshWeekInBackground():null;
+    // loadWeek now kicks this for whichever week it painted, so boot goes
+    // through the same deduped helper rather than starting a second read.
+    return typeof refreshWeekIfStale==='function'?refreshWeekIfStale():null;
   }).catch(function(){});
   // Once cloud state and the fresh plan have both settled, re-apply reschedules
   // and completion state using the in-memory snapshot. This is a local rerender,
@@ -184,6 +266,12 @@ function populateStatic(){
   document.getElementById('gHalf').value=saved.timeHalf||athlete.timeHalf||'';
   document.getElementById('gMarathon').value=saved.timeMarathon||athlete.timeMarathon||'';
   document.getElementById('gLRPace').value=saved.lrPace||athlete.lrPace||'';
+  setGoalChipsFromValue('strengthIntentOptions',saved.strengthIntent||'');
+  setGoalChipsFromValue('strengthPriorityOptions',saved.strengthPriorities||'');
+  document.getElementById('gStrengthLift').value=saved.strengthLift||'';
+  document.getElementById('gStrengthCurrentLoad').value=saved.strengthCurrentLoad||'';
+  document.getElementById('gStrengthTargetLoad').value=saved.strengthTargetLoad||'';
+  document.getElementById('gStrengthReps').value=saved.strengthReps||'';
   document.getElementById('gWhy').value=saved.why||athlete.why||'';
   document.getElementById('gM4').value=saved.m4||athlete.m4||'';
   document.getElementById('gM8').value=saved.m8||athlete.m8||'';
@@ -203,16 +291,63 @@ function populateStatic(){
 }
 
 function selectRace(btn){
-  document.querySelectorAll('.race-opt').forEach(function(b){b.classList.remove('selected');});
+  document.querySelectorAll('#raceOptions .race-opt').forEach(function(b){b.classList.remove('selected');});
   btn.classList.add('selected');
   document.getElementById('otherRaceField').style.display=btn.dataset.val==='Other'?'':'none';
   if(btn.dataset.val!=='Other') document.getElementById('gRaceOther').value='';
 }
 function setRaceFromValue(val){
   if(!val) return;var v=val.trim();
-  var btns=document.querySelectorAll('.race-opt'),matched=false;
+  var btns=document.querySelectorAll('#raceOptions .race-opt'),matched=false;
   btns.forEach(function(b){if(b.dataset.val.toLowerCase().replace(/\s/g,'')=== v.toLowerCase().replace(/\s/g,'')){b.classList.add('selected');matched=true;}else{b.classList.remove('selected');}});
   if(!matched&&v){btns.forEach(function(b){if(b.dataset.val==='Other') b.classList.add('selected');});document.getElementById('otherRaceField').style.display='';document.getElementById('gRaceOther').value=v;}
+}
+
+// ── GOAL CHIP GROUPS ─────────────────────────────────────────────────────────
+// Generic chip helpers scoped to their own .race-options container so several
+// groups can share the chip styling without clearing each other's selection.
+function goalChipGroup(btn){return btn&&btn.closest?btn.closest('.race-options'):null;}
+function selectGoalChip(btn){
+  var group=goalChipGroup(btn);if(!group) return;
+  group.querySelectorAll('.race-opt').forEach(function(b){b.classList.remove('selected');});
+  btn.classList.add('selected');
+}
+// Multi-select with a cap. At the cap the earliest pick drops out rather than the
+// tap doing nothing, so an athlete changing their mind never has to deselect first.
+// Pick order is stamped on the chip because DOM order says nothing about it.
+var _goalChipPickSeq=0;
+function toggleGoalChip(btn,max){
+  var group=goalChipGroup(btn);if(!group) return;
+  var limit=Number(max)>0?Number(max):99;
+  if(btn.classList.contains('selected')){btn.classList.remove('selected');delete btn.dataset.pickOrder;return;}
+  var chosen=Array.prototype.slice.call(group.querySelectorAll('.race-opt.selected'));
+  chosen.sort(function(a,b){return (Number(a.dataset.pickOrder)||0)-(Number(b.dataset.pickOrder)||0);});
+  while(chosen.length>=limit){var earliest=chosen.shift();if(earliest){earliest.classList.remove('selected');delete earliest.dataset.pickOrder;}}
+  btn.classList.add('selected');btn.dataset.pickOrder=String(++_goalChipPickSeq);
+}
+function goalChipValue(groupId){
+  var group=document.getElementById(groupId);if(!group) return '';
+  var sel=group.querySelector('.race-opt.selected');
+  return sel?sel.dataset.val:'';
+}
+function goalChipValues(groupId){
+  var group=document.getElementById(groupId);if(!group) return '';
+  var chosen=Array.prototype.slice.call(group.querySelectorAll('.race-opt.selected'));
+  chosen.sort(function(a,b){return (Number(a.dataset.pickOrder)||0)-(Number(b.dataset.pickOrder)||0);});
+  return chosen.map(function(b){return b.dataset.val;}).join(', ');
+}
+function setGoalChipsFromValue(groupId,val){
+  var group=document.getElementById(groupId);if(!group) return;
+  var wanted=String(val||'').split(',').map(function(s){return s.trim().toLowerCase();}).filter(Boolean);
+  // Stamp by saved position, not DOM position, so a reload keeps the order the
+  // athlete picked in and the cap still evicts the right chip afterwards.
+  var base=_goalChipPickSeq;
+  group.querySelectorAll('.race-opt').forEach(function(b){
+    var at=wanted.indexOf(String(b.dataset.val||'').toLowerCase());
+    if(at>=0){b.classList.add('selected');b.dataset.pickOrder=String(base+1+at);}
+    else{b.classList.remove('selected');delete b.dataset.pickOrder;}
+  });
+  _goalChipPickSeq=base+wanted.length;
 }
 
 // ── EXERCISE PICKS (persisted per-exercise memory) ───────────────────────────
@@ -308,7 +443,7 @@ function pickEx(exName,chosen){
   if(m){
     var i=+m[1],ei=+m[2],s=sessions[i];
     if(s){
-      var splitKey=GYM_KEYS.find(function(k){return((s.name||'').indexOf(k)>=0);})||'Upper A';
+      var splitKey=splitKeyForSession(s,'Upper A');
       var ex=getSplit(splitKey)[ei]||null;
       syncStrengthRepMode(i,ei,ex,chosen,splitKey);
       refreshExerciseStat(i,ei,chosen,ex);
@@ -325,13 +460,16 @@ function pickEx(exName,chosen){
 
 async function saveGoals(){
   var btn=document.getElementById('goalsSaveBtn');btn.textContent='Saving...';btn.disabled=true;
-  var selectedRaceBtn=document.querySelector('.race-opt.selected');
+  var selectedRaceBtn=document.querySelector('#raceOptions .race-opt.selected');
   var raceVal=selectedRaceBtn?(selectedRaceBtn.dataset.val==='Other'?document.getElementById('gRaceOther').value.trim():selectedRaceBtn.dataset.val):'';
   var goals={goalRace:raceVal,peakWeek:document.getElementById('gPeakWeek').value.trim(),raceDate:document.getElementById('gRaceDate').value.trim(),
     startWeight:document.getElementById('gWeight').value.trim(),weight:document.getElementById('gWeight').value.trim(),targetWeight:document.getElementById('gTargetWeight').value.trim(),
     bodyFat:document.getElementById('gBodyFat').value.trim(),time5k:document.getElementById('g5k').value.trim(),
     time10k:document.getElementById('g10k').value.trim(),timeHalf:document.getElementById('gHalf').value.trim(),
     timeMarathon:document.getElementById('gMarathon').value.trim(),lrPace:document.getElementById('gLRPace').value.trim(),
+    strengthIntent:goalChipValue('strengthIntentOptions'),strengthPriorities:goalChipValues('strengthPriorityOptions'),
+    strengthLift:document.getElementById('gStrengthLift').value.trim(),strengthCurrentLoad:document.getElementById('gStrengthCurrentLoad').value.trim(),
+    strengthTargetLoad:document.getElementById('gStrengthTargetLoad').value.trim(),strengthReps:document.getElementById('gStrengthReps').value.trim(),
     why:document.getElementById('gWhy').value.trim(),m4:document.getElementById('gM4').value.trim(),
     m8:document.getElementById('gM8').value.trim(),m12:document.getElementById('gM12').value.trim(),savedAt:new Date().toISOString()};
   localStorage.setItem('dp_goals_'+athlete.code,JSON.stringify(goals));
