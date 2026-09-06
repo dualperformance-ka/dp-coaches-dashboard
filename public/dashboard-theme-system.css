@@ -59,8 +59,15 @@ body[data-theme="light"] {
   --ok: #0f7650;
   --warn: #99600d;
   --alert: #b83f50;
-  --run: #136d98;
-  --str: #334d69;
+  /* Running and strength are the two things a coach compares on nearly every
+     screen, so they must never read as one series. These were #136d98 and
+     #334d69: two blues 17.6 ΔE apart, which collapsed the mileage chart's run
+     bars into its strength line. This file loads after dashboard-redesign.css,
+     so it was silently undoing the warm run colour that file sets for exactly
+     this reason. Restored warm, and pushed further from --warn (#99600d) than
+     the original light value was: run/strength 91 ΔE, run/warn 16 ΔE. */
+  --run: #b1560f;
+  --str: #2f5c8f;
   --chart-blue: #1d5fbf;
   --chart-red: #b42332;
   --chart-amber: #94600b;

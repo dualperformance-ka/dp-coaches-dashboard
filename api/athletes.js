@@ -6,6 +6,7 @@ import {
 } from '../server/coach-scope.js';
 import {
   addExercise,
+  copyPrescription,
   materialiseSession,
   programmeHistory,
   readPrescription,
@@ -433,11 +434,19 @@ export function cleanPlannedSessionFields(input = {}) {
   );
 }
 
-export async function insertPlannedSessions(input, request = sb) {
+// `copyFrom` is the id of a session whose structured prescription should travel
+// with the new row. Duplicating used to insert this parent row alone, which lost
+// session_exercises and run_steps: everything the Phase 2/3 builder writes. The
+// copy happens here, after the insert, so the browser cannot leave a session
+// half-duplicated by failing between two requests.
+export async function insertPlannedSessions(input, request = sb, copyFrom = null) {
   const source = Array.isArray(input) ? input : [input];
   const rows = source.map(cleanPlannedSessionFields);
   if (!rows.length || rows.some(row => !row.athlete_code || !row.planned_date)) {
     throw new Error('Each planned session needs an athlete and planned date');
+  }
+  if (copyFrom && rows.length !== 1) {
+    throw new Error('A prescription can only be copied onto a single new session');
   }
 
   const created = await request('planned_sessions', {
@@ -445,7 +454,30 @@ export async function insertPlannedSessions(input, request = sb) {
     prefer: 'return=representation',
     body: Array.isArray(input) ? rows : rows[0],
   });
-  return { ok: true, rows: Array.isArray(created) ? created : [] };
+  const createdRows = Array.isArray(created) ? created : [];
+
+  if (!copyFrom || !createdRows[0]?.id) {
+    return { ok: true, rows: createdRows };
+  }
+
+  const copied = await copyPrescription(copyFrom, createdRows[0].id, request);
+
+  // prescription_mode decides which editor the coach gets and whether run
+  // analysis looks for structured steps. Carrying the source's mode is what
+  // makes the copy behave like the original rather than reverting to legacy.
+  const mode = copied.copiedSteps > 0 ? 'structured'
+    : copied.copiedExercises > 0 ? 'exercises'
+    : null;
+  if (mode) {
+    await request(`planned_sessions?id=eq.${encodeURIComponent(createdRows[0].id)}`, {
+      method: 'PATCH',
+      prefer: 'return=minimal',
+      body: { prescription_mode: mode },
+    });
+    createdRows[0].prescription_mode = mode;
+  }
+
+  return { ok: true, rows: createdRows, copied };
 }
 
 export async function updatePlannedSession(matchId, fields, request = sb) {
@@ -1001,7 +1033,11 @@ export default async function handler(req, res) {
     }
 
     if (action === 'plan_insert') {
-      return res.status(200).json(await insertPlannedSessions(req.body?.rows ?? req.body?.row));
+      return res.status(200).json(await insertPlannedSessions(
+        req.body?.rows ?? req.body?.row,
+        sb,
+        req.body?.copy_from || null
+      ));
     }
 
     if (action === 'plan_update') {

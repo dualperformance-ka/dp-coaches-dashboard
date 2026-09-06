@@ -83,6 +83,7 @@ for (const vp of VIEWPORTS) {
     page.on('pageerror', e => errors.push('PAGEERROR: ' + String(e.message).slice(0, 300)));
 
     await page.goto(`${BASE}/index.html`, { waitUntil: 'networkidle' });
+    await page.evaluate(() => document.fonts.ready);
     await page.evaluate(t => {
       document.body.setAttribute('data-theme', t);
     }, theme);
@@ -123,14 +124,38 @@ for (const vp of VIEWPORTS) {
         .map(e => e.textContent.trim()).filter(Boolean).slice(0, 40);
 
       return {
-        fonts: {
-          condensedLoaded: document.fonts.check('600 16px "IBM Plex Sans Condensed"'),
-          sansLoaded: document.fonts.check('400 16px "IBM Plex Sans"'),
-          monoLoaded: document.fonts.check('400 16px "IBM Plex Mono"'),
-          tokenCond: tok('--cond'),
-          tokenSans: tok('--sans'),
-          tokenMono: tok('--mono'),
-        },
+        // document.fonts.check() is not usable here: it returns true when the
+        // family merely resolves through fallback, so with Google Fonts blocked
+        // it reported all three faces present while every one had fallen back to
+        // system sans. Measuring the same string in each face is the check that
+        // cannot be fooled -- if Condensed is really applied it renders
+        // materially narrower than the regular sans, which in turn differs from
+        // the generic fallback.
+        fonts: (() => {
+          const measure = family => {
+            const probe = document.createElement('span');
+            probe.textContent = 'HANDLEBAR MEASUREMENT 0123456789';
+            probe.style.cssText =
+              `font:700 40px ${family};position:absolute;visibility:hidden;white-space:nowrap`;
+            document.body.appendChild(probe);
+            const w = probe.getBoundingClientRect().width;
+            probe.remove();
+            return Math.round(w);
+          };
+          const cond = measure(`'IBM Plex Sans Condensed', sans-serif`);
+          const sans = measure(`'IBM Plex Sans', sans-serif`);
+          const generic = measure('sans-serif');
+          return {
+            condWidth: cond, sansWidth: sans, genericWidth: generic,
+            condensedReallyApplied: cond < sans - 8,
+            sansReallyApplied: Math.abs(sans - generic) > 2,
+            loadedFaces: [...document.fonts]
+              .filter(f => f.status === 'loaded').map(f => `${f.family} ${f.weight}`),
+            tokenCond: tok('--cond'),
+            tokenSans: tok('--sans'),
+            tokenMono: tok('--mono'),
+          };
+        })(),
         colours: {
           run: resolve('--run'),
           str: resolve('--str'),

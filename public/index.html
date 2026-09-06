@@ -1697,7 +1697,11 @@ body[data-theme="light"] .wd-ext-swap{background:rgba(180,83,9,.1);color:#b45309
 .progress-photo-empty{min-height:180px;display:flex;align-items:center;justify-content:center;border-style:dashed;color:var(--dim);font-family:var(--mono);font-size:9px;text-align:center;text-transform:uppercase;letter-spacing:.06em;padding:14px}
 .photo-comparison-message{grid-column:1/-1;font-family:var(--mono);font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.07em;padding:14px 2px}
 
-/* ── Strava section ── */
+/* ── Strava section ──
+   The coach-side Strava panel was removed; .wd-strava-act, .strava-source-chip
+   and .strava-linked-badge below are still used by the athlete-submitted
+   provenance display. The .strava-act / .strava-command-* / .strava-insights
+   rules are now unreferenced and are Phase 4.1 cleanup. */
 .strava-panel{min-height:80px}
 .strava-state{font-family:var(--mono);font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;padding:10px 0}
 .strava-command-bar{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:11px 12px;margin-bottom:10px;border:1px solid var(--border);border-radius:10px;background:linear-gradient(135deg,rgba(252,76,2,.09),var(--surface2) 48%)}
@@ -2151,7 +2155,7 @@ body[data-theme="light"] .theme-btn.active{background:rgba(255,255,255,.22);colo
   .sum-card{flex:1 1 100%}
 }
 </style>
-<link rel="stylesheet" href="/dashboard-theme-system.css?v=20260906-19">
+<link rel="stylesheet" href="/dashboard-theme-system.css?v=20260906-20">
 <link rel="stylesheet" href="/dashboard-desktop.css?v=20260906-17">
 <link rel="stylesheet" href="/dashboard-mobile-polish.css?v=20260906-17">
 <link rel="stylesheet" href="/triage.css?v=20260906-17">
@@ -3453,19 +3457,68 @@ function _sessionKm(r) {
   const m = (r.title || '').match(/(\d+(?:\.\d+)?)\s*km\b(?!\s*pace)/i);
   return m ? parseFloat(m[1]) : 0;
 }
-function _plannedKmForWeek(code, weekLabel) {
-  if (!code || !weekLabel) return 0;
-  let sum = 0, declared = 0;
-  _planRowsSB.forEach(r => {
-    if (r.athlete_code !== code || !_sameWeek(r.week_label, weekLabel)) return;
-    if (r.session_type === 'Weekly KM Total' || /km total/i.test(r.title || '')) {
-      const m = (r.title || '').match(/(\d+(?:\.\d+)?)\s*km/i);
-      if (m) declared = Math.max(declared, parseFloat(m[1]));
-      return;
+// Prescribed volume for one programme week.
+//
+// Rows are matched on planned_sessions.week_label, which is coach-entered free
+// text. When that label drifts from the week the dashboard computes from the
+// athlete's start date -- a restart, a hand-typed label, a start date that moved
+// -- the label match finds nothing and the card read "No volume prescribed this
+// week" while the sessions sat plainly on that week's calendar. That told the
+// coach they had programmed nothing, which was untrue.
+//
+// `range` is the week's actual Monday-to-Sunday dates. When the label matches
+// nothing and a range is available, planned_date decides instead, and the caller
+// is told which way the answer was reached so the copy can be honest about it.
+function _plannedKmForWeekDetail(code, weekLabel, range = null) {
+  if (!code || !weekLabel) return { km: 0, matchedBy: 'none', sessions: 0 };
+
+  const collect = predicate => {
+    let sum = 0, declared = 0, sessions = 0;
+    _planRowsSB.forEach(r => {
+      if (r.athlete_code !== code || !predicate(r)) return;
+      if (r.session_type === 'Weekly KM Total' || /km total/i.test(r.title || '')) {
+        const m = (r.title || '').match(/(\d+(?:\.\d+)?)\s*km/i);
+        if (m) declared = Math.max(declared, parseFloat(m[1]));
+        return;
+      }
+      sessions += 1;
+      sum += _sessionKm(r);
+    });
+    return { km: Math.round(Math.max(sum, declared) * 10) / 10, sessions };
+  };
+
+  const byLabel = collect(r => _sameWeek(r.week_label, weekLabel));
+  if (byLabel.sessions > 0 || byLabel.km > 0) {
+    return { ...byLabel, matchedBy: 'label' };
+  }
+
+  if (range?.start && range?.end) {
+    const byDate = collect(r => {
+      const d = String(r.planned_date || '').slice(0, 10);
+      return d >= range.start && d <= range.end;
+    });
+    if (byDate.sessions > 0 || byDate.km > 0) {
+      return { ...byDate, matchedBy: 'date' };
     }
-    sum += _sessionKm(r);
-  });
-  return Math.round(Math.max(sum, declared) * 10) / 10;
+  }
+
+  return { km: 0, matchedBy: 'none', sessions: 0 };
+}
+
+function _plannedKmForWeek(code, weekLabel, range = null) {
+  return _plannedKmForWeekDetail(code, weekLabel, range).km;
+}
+
+// Monday-to-Sunday dates for a given programme week, anchored on the week the
+// athlete is currently in. Returns null when there is no anchor to count from.
+function _programmeWeekRange(a, week) {
+  if (!a?.expectedWeekEnd || typeof a.weekNum !== 'number') return null;
+  const end = new Date(a.expectedWeekEnd);
+  if (isNaN(end)) return null;
+  end.setDate(end.getDate() - (a.weekNum - week) * 7);
+  const start = new Date(end);
+  start.setDate(start.getDate() - 6);
+  return { start: _isoDate(start), end: _isoDate(end) };
 }
 
 function _plannedSessionsForWeek(code, weekLabel) {
@@ -3495,8 +3548,10 @@ function _fmtProgrammeKm(n) {
 
 // Whole-block running volume for the athlete full-page view. A manual weekly
 // KM target is the coach's intent and wins; otherwise use the summed plan.
-// Logged KM comes from weekly check-ins, with available Strava weekly history
-// taking precedence when connected.
+// Logged KM comes from the athlete's weekly check-ins. It used to prefer a
+// Strava weekly aggregate where one was cached; that read is gone, because the
+// coaches dashboard is not permitted to display Strava API data (see the note
+// above _programmeVolumeData's caller and public/run-analysis.js).
 function _programmeVolumeData(a) {
   if (!a) return null;
   const weekFromLabel = label => {
@@ -3530,23 +3585,13 @@ function _programmeVolumeData(a) {
     if (wk != null && wk >= 1 && wk <= totalWeeks) actualByWeek[wk] = km;
   });
 
-  const strava = (typeof _stravaKmCache !== 'undefined') ? _stravaKmCache[a.id] : null;
-  if (strava && typeof a.weekNum === 'number' && a.expectedWeekEnd) {
-    Object.entries(_stravaKmByWeekEnd(strava, a.expectedWeekEnd)).forEach(([weekEnd, km]) => {
-      const weeksBehind = Math.round(
-        (new Date(a.expectedWeekEnd) - new Date(weekEnd)) / (7 * 86400000)
-      );
-      const wk = a.weekNum - weeksBehind;
-      if (wk >= 1 && wk <= totalWeeks) actualByWeek[wk] = km;
-    });
-  }
-
   const weeks = [];
   for (let week = 1; week <= totalWeeks; week++) {
     const label = `Week ${week}`;
     const manual = a.targetByWeek?.[label]?.['Weekly KM Target'];
     const manualKm = manual == null || manual === '' ? NaN : parseFloat(manual);
-    const autoKm = _plannedKmForWeek(a.id, label);
+    const auto = _plannedKmForWeekDetail(a.id, label, _programmeWeekRange(a, week));
+    const autoKm = auto.km;
     const planned = !isNaN(manualKm) && manualKm > 0 ? manualKm : (autoKm > 0 ? autoKm : null);
     const actual = actualByWeek[week] != null && !isNaN(actualByWeek[week])
       ? Math.round(actualByWeek[week] * 10) / 10
@@ -3558,6 +3603,9 @@ function _programmeVolumeData(a) {
       isCurrent: week === a.weekNum,
       isPast: typeof a.weekNum === 'number' && week < a.weekNum,
       isFuture: typeof a.weekNum === 'number' && week > a.weekNum,
+      // 'label' when the coach's week_label matched, 'date' when only the
+      // planned dates did, 'manual' for a coach-set weekly KM target.
+      plannedSource: !isNaN(manualKm) && manualKm > 0 ? 'manual' : auto.matchedBy,
     });
   }
 
@@ -3567,6 +3615,31 @@ function _programmeVolumeData(a) {
   const totalPlanned = Math.round(withPlan.reduce((sum, week) => sum + week.planned, 0) * 10) / 10;
   const max = Math.max(1, ...weeks.flatMap(w => [w.planned || 0, w.actual || 0]));
   return { weeks, peak, totalPlanned, max };
+}
+
+// What to say when a week shows no prescribed volume. The old copy always said
+// "No volume prescribed this week", which reads as "you have not programmed
+// anything" -- and that was wrong whenever sessions existed but carried no
+// distance, or sat outside the week entirely. Name the actual reason instead.
+function _prescribedEmptyCopy(a, current) {
+  const week = current?.week;
+  if (!a || week == null) return 'No volume prescribed this week';
+
+  const range = _programmeWeekRange(a, week);
+  const dated = range
+    ? _planRowsSB.filter(r => {
+        if (r.athlete_code !== a.id) return false;
+        const d = String(r.planned_date || '').slice(0, 10);
+        return d >= range.start && d <= range.end;
+      })
+    : [];
+
+  if (!dated.length) return 'No sessions prescribed this week. Add a session to start programming.';
+
+  const runs = dated.filter(r => !/strength|gym|lift/i.test(r.session_type || ''));
+  if (!runs.length) return `${dated.length} session${dated.length === 1 ? '' : 's'} prescribed this week, none of them running.`;
+
+  return `${runs.length} running session${runs.length === 1 ? '' : 's'} prescribed this week with no distance set, so there is no volume to compare against.`;
 }
 
 function _programmeVolumeBody(a, data) {
@@ -4935,9 +5008,13 @@ async function duplicatePlanSession() {
     notes: row.notes,
   };
 
+  // copy_from carries the structured prescription across server-side.
+  // session_exercises and run_steps are where the real prescription lives; the
+  // columns above are only the legacy free-text ones, so without this the copy
+  // arrives empty.
   let created;
   try {
-    created = await maPost({ action: 'plan_insert', row: clone });
+    created = await maPost({ action: 'plan_insert', row: clone, copy_from: row.id });
   } catch (error) {
     alert('Duplicate failed: ' + error.message);
     return;
@@ -4950,7 +5027,18 @@ async function duplicatePlanSession() {
   closePlanSession();
   renderProgramming();
   updatePlanningBadge();
-  workflowNotice(`${row.title || 'Session'} copied to ${fmtDate(date)}`);
+  // Say what actually travelled. "Copied" alone was the misleading part: it read
+  // as a full copy while the prescription was being left behind.
+  const copied = created?.copied;
+  const carried = copied
+    ? [
+        copied.copiedExercises ? `${copied.copiedExercises} exercise${copied.copiedExercises === 1 ? '' : 's'}` : null,
+        copied.copiedSteps ? `${copied.copiedSteps} run step${copied.copiedSteps === 1 ? '' : 's'}` : null,
+      ].filter(Boolean).join(' and ')
+    : '';
+  workflowNotice(
+    `${row.title || 'Session'} copied to ${fmtDate(date)}${carried ? ` with ${carried}` : ''}`
+  );
 }
 
 // ── Session library view ──────────────────────────────────────────────────────
@@ -7052,10 +7140,7 @@ function renderCommandCenter(ath, apps = [], health = null) {
   const checkedIn = dueCheckins.filter(a => a.hasRecent).length;
   const coverage = dueCheckins.length ? Math.round((checkedIn / dueCheckins.length) * 100) : 100;
 
-  const kmDone = ath.reduce((sum, a) => {
-    const strava = typeof _stravaKmCache !== 'undefined' ? _stravaKmCache[a.id]?.weeklyKm : null;
-    return sum + (strava != null ? strava : (a.currRunKm || 0));
-  }, 0);
+  const kmDone = ath.reduce((sum, a) => sum + (a.currRunKm || 0), 0);
   const kmTarget = ath.reduce((sum, a) => sum + (parseFloat(a.target?.['Weekly KM Target']) || 0), 0);
   const kmPct = kmTarget > 0 ? Math.round(kmDone / kmTarget * 100) : null;
 
@@ -7402,9 +7487,8 @@ function buildTableRow(a) {
     recovHtml = `<div class="tcell"><span class="tcell-num ${rc}">${a.recoveryScore}${recDelta}</span><div class="tcell-bar ${rc}" style="width:${pct}%"></div></div>`;
   }
 
-  // Weekly KM — prefer Strava cache, fall back to session accumulation
-  const _skm = typeof _stravaKmCache !== 'undefined' ? _stravaKmCache[a.id] : null;
-  const km = _skm?.weeklyKm != null ? _skm.weeklyKm : (a.currRunKm || 0);
+  // Weekly KM from what the athlete submitted through the portal.
+  const km = a.currRunKm || 0;
   const kmTarget = parseFloat(a.target?.['Weekly KM Target']) || 0;
   let kmHtml = '<span class="tdim">—</span>';
   let kmTdAttr = '';
@@ -7514,7 +7598,7 @@ const TABLE_SORT_GETTERS = {
   name:       a => a.id,
   wk:         a => a.weekNum ?? -1,
   recovery:   a => a.recoveryScore ?? -1,
-  km:         a => { const s = typeof _stravaKmCache !== 'undefined' ? _stravaKmCache[a.id] : null; return s?.weeklyKm != null ? s.weeklyKm : (a.currRunKm || 0); },
+  km:         a => a.currRunKm || 0,
   compliance: a => a.compliance ?? -1,
   weight:     a => parseFloat(a.bAvg?.wt) || -1,
   energy:     a => a.bAvg?.energy ?? -1,
@@ -8675,7 +8759,9 @@ function buildRunningPanel(a) {
           <span class="run-load-num">${current?.actual ?? '—'}</span><span class="run-load-unit">km this week</span>
         </div>
         <div class="run-load-meta">
-          ${current?.planned ? `<span><b>${current.planned}</b> km prescribed${current.adherencePct != null ? ` · ${current.adherencePct}%` : ''}</span>` : '<span>No volume prescribed this week</span>'}
+          ${current?.planned
+            ? `<span><b>${current.planned}</b> km prescribed${current.adherencePct != null ? ` · ${current.adherencePct}%` : ''}${current.plannedSource === 'date' ? ' <span class="dim" title="These sessions are dated in this week but carry a different week label, so they were matched by date.">· matched by date</span>' : ''}</span>`
+            : `<span>${_prescribedEmptyCopy(a, current)}</span>`}
           ${current?.rolling != null
             ? `<span class="${current.isSpike ? 'bad' : current.isDrop ? 'warn' : ''}"><b>${current.rolling}</b> km 4-week baseline${current.deltaPct != null ? ` · ${current.deltaPct > 0 ? '+' : ''}${current.deltaPct}%` : ''}</span>`
             : '<span class="dim">Not enough completed weeks for a baseline yet</span>'}
@@ -9304,9 +9390,7 @@ function buildAthleteHeader(a, ctx) {
   const peakChip = race.isPeakWeek ? '<span class="fpa-chip is-peak">Peak week</span>' : '';
 
   // ── Vitals ──
-  const kmLogged = (typeof _stravaKmCache !== 'undefined' && _stravaKmCache[a.id]?.weeklyKm != null)
-    ? _stravaKmCache[a.id].weeklyKm
-    : (a.currRunKm || 0);
+  const kmLogged = a.currRunKm || 0;
   const kmTarget = parseFloat(a.target?.['Weekly KM Target']) || 0;
   const kmPct = kmTarget > 0 ? Math.round(kmLogged / kmTarget * 100) : null;
 
@@ -10118,9 +10202,17 @@ function buildFPCard(a, weekOffset = 0) {
     const prCards = a.prs.recent.slice(0, 8).map(pr => {
       const dt = new Date(pr.date + 'T12:00:00');
       const dLabel = dt.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
+      // A PR at the same load for more reps is a rep PR, not a "+0.0kg" load
+      // PR. Reporting a zero delta made a real improvement read as noise.
+      const loadDelta = pr.prev ? Number((pr.weight - pr.prev.weight).toFixed(1)) : null;
+      const repDelta = pr.prev ? pr.reps - pr.prev.reps : null;
+      const deltaLabel = !pr.prev ? 'First logged lift'
+        : loadDelta > 0 ? `+${loadDelta.toFixed(1)}kg`
+        : repDelta > 0 ? `+${repDelta} rep${repDelta === 1 ? '' : 's'} at ${pr.weight}kg`
+        : 'Matched best';
       const prevHtml = pr.prev
-        ? `<div class="fpc-pr-prev"><span class="delta">+${(pr.weight - pr.prev.weight).toFixed(1)}kg</span> from ${pr.prev.weight}×${pr.prev.reps}</div>`
-        : `<div class="fpc-pr-prev"><span class="delta">First logged lift</span></div>`;
+        ? `<div class="fpc-pr-prev"><span class="delta">${deltaLabel}</span> from ${pr.prev.weight}×${pr.prev.reps}</div>`
+        : `<div class="fpc-pr-prev"><span class="delta">${deltaLabel}</span></div>`;
       return `<div class="fpc-pr">
         <div class="fpc-pr-ex">${esc(pr.exercise)}</div>
         <div class="fpc-pr-val">${pr.weight}<span>kg</span> × ${pr.reps}</div>
@@ -12066,723 +12158,24 @@ function _drawFP() {
     _fpOrder.length > 1 ? `${_fpIdx + 1} / ${_fpOrder.length}` : '';
 }
 
-// ── Strava prefetch ───────────────────────────────────────────────────────────
-function _stravaApiUrl(a, { summaryOnly = false, selectedWeek = null } = {}) {
-  const params = new URLSearchParams({ athlete: a.id });
-  if (/^\d{4}-\d{2}-\d{2}$/.test(String(a.effectiveStartDate || ''))) {
-    params.set('history_start', a.effectiveStartDate);
-  } else if (typeof a.weekNum === 'number' && a.weekNum >= 1) {
-    const programmeStart = new Date(currentWeekStart);
-    programmeStart.setDate(programmeStart.getDate() - (a.weekNum - 1) * 7);
-    params.set('history_start', localDateStr(programmeStart));
-  }
-  if (summaryOnly) params.set('summary', '1');
-  if (selectedWeek?.weekStartStr && selectedWeek?.weekEndStr) {
-    params.set('detail_start', selectedWeek.weekStartStr);
-    params.set('detail_end', selectedWeek.weekEndStr);
-  }
-  return `/api/strava?${params}`;
-}
-
-async function loadStravaActivityDetail(athleteId, activityId, detailsElement) {
-  if (!detailsElement?.open || detailsElement.dataset.detailLoading === '1' || detailsElement.dataset.detailLoaded === '1') return;
-  const athlete = _allAthletes.find(item => item.id === athleteId) || _coaches.find(item => item.id === athleteId);
-  if (!athlete) return;
-  detailsElement.dataset.detailLoading = '1';
-  const selectedWeek = getSelectedWeekContext(athlete, _fpWeekOffset);
-  const url = new URL(_stravaApiUrl(athlete, { selectedWeek }), window.location.origin);
-  url.searchParams.set('activity_id', String(activityId));
-  try {
-    const response = await fetch(url.pathname + url.search);
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    detailsElement.dataset.detailLoaded = '1';
-    await loadStravaData(athlete);
-  } catch (error) {
-    detailsElement.dataset.detailLoading = '0';
-    console.warn('Could not load Strava activity detail', error);
-  }
-}
-window.loadStravaActivityDetail = loadStravaActivityDetail;
-
-async function refreshStravaData(athleteId, button) {
-  const athlete = _allAthletes.find(item => item.id === athleteId) || _coaches.find(item => item.id === athleteId);
-  if (!athlete) return;
-  const original = button?.textContent || 'Sync now';
-  if (button) { button.disabled = true; button.textContent = 'Syncing…'; button.setAttribute('aria-busy', 'true'); }
-  try {
-    const selectedWeek = getSelectedWeekContext(athlete, _fpWeekOffset);
-    const url = new URL(_stravaApiUrl(athlete, { selectedWeek }), window.location.origin);
-    url.searchParams.set('force', '1');
-    const response = await fetch(url.pathname + url.search, { cache: 'no-store' });
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    await loadStravaData(athlete);
-  } catch (error) {
-    console.warn('Could not refresh Strava', error);
-    if (button) button.textContent = 'Try again';
-  } finally {
-    if (button?.isConnected) {
-      button.disabled = false;
-      button.removeAttribute('aria-busy');
-      if (button.textContent !== 'Try again') button.textContent = original;
-    }
-  }
-}
-window.refreshStravaData = refreshStravaData;
-
-async function prefetchStravaKm(athletes) {
-  // Reuse recent summaries across refreshes. A coach opening the dashboard
-  // several times should not spend the shared Strava quota each time.
-  let saved = {};
-  try { saved = JSON.parse(localStorage.getItem('dp_strava_summaries') || '{}') || {}; } catch {}
-  const now = Date.now();
-  const pending = [];
-  athletes.forEach(a => {
-    const cached = saved[a.id];
-    if (cached && now - Number(cached.savedAt || 0) < 15 * 60 * 1000) {
-      if (cached.connected) {
-        const stravaTag = document.querySelector(`[data-strava-tag="${a.id}"]`);
-        if (stravaTag) stravaTag.innerHTML = `<span class="fp strava-linked-badge">🟠 Strava</span>`;
-        if (cached.stats?.weeklyKm != null) {
-          applyStravaKm(a.id, cached.stats.weeklyKm, cached.stats.lastWeekKm ?? null, cached.stats.weeklyHistory || []);
-        }
-      }
-    } else pending.push(a);
-  });
-
-  // Fetch in small, paced batches and stop immediately if Strava reports a
-  // shared rate limit. The dashboard keeps its logged/Notion km fallback.
-  const BATCH = 2;
-  let rateLimited = false;
-  for (let i = 0; i < pending.length && !rateLimited; i += BATCH) {
-    const batch = pending.slice(i, i + BATCH);
-    await Promise.allSettled(batch.map(async a => {
-      try {
-        const res = await fetch(_stravaApiUrl(a, { summaryOnly: true }));
-        if (res.status === 429) { rateLimited = true; return; }
-        if (!res.ok) return;
-        const data = await res.json();
-        saved[a.id] = { savedAt: Date.now(), connected: data.connected === true, stats: data.stats || null };
-        try { localStorage.setItem('dp_strava_summaries', JSON.stringify(saved)); } catch {}
-        if (data.connected) {
-          const stravaTag = document.querySelector(`[data-strava-tag="${a.id}"]`);
-          if (stravaTag) stravaTag.innerHTML = `<span class="fp strava-linked-badge">🟠 Strava</span>`;
-          if (data.stats?.weeklyKm != null) {
-            applyStravaKm(
-              a.id,
-              data.stats.weeklyKm,
-              data.stats.lastWeekKm ?? null,
-              data.stats.weeklyHistory || []
-            );
-          }
-        }
-      } catch (_) { /* silent */ }
-    }));
-    if (i + BATCH < pending.length && !rateLimited) {
-      await new Promise(resolve => setTimeout(resolve, 250));
-    }
-  }
-}
-
-// ── Strava km cache + live updater ───────────────────────────────────────────
-const _stravaKmCache = {}; // athleteId → current/previous/history weekly km
-
-function _stravaKmByWeekEnd(strava, currentWeekEnd) {
-  const totals = {};
-  (strava?.weeklyHistory || []).forEach(week => {
-    const weekEnd = String(week?.weekEnd || '').slice(0, 10);
-    const km = Number(week?.km);
-    if (/^\d{4}-\d{2}-\d{2}$/.test(weekEnd) && Number.isFinite(km)) totals[weekEnd] = km;
-  });
-
-  // Keep compatibility with cached/API responses created before weeklyHistory.
-  if (currentWeekEnd && strava?.weeklyKm != null) {
-    totals[currentWeekEnd] = Number(strava.weeklyKm);
-  }
-  if (currentWeekEnd && strava?.lastWeekKm != null) {
-    const previousWeekEnd = new Date(new Date(currentWeekEnd) - 7 * 86400000).toISOString().slice(0, 10);
-    totals[previousWeekEnd] = Number(strava.lastWeekKm);
-  }
-  return totals;
-}
-
-function applyStravaKm(athleteId, weeklyKm, lastWeekKm, weeklyHistory = []) {
-  _stravaKmCache[athleteId] = { weeklyKm, lastWeekKm, weeklyHistory };
-
-  // Refresh the programme strip in-place so historical/current actual bars update
-  // without redrawing the whole athlete view or disturbing scroll/collapse state.
-  const volumeCard = document.querySelector(`[data-programme-volume="${CSS.escape(athleteId)}"]`);
-  const volumeAthlete = _allAthletes.find(x => x.id === athleteId) || _coaches.find(x => x.id === athleteId);
-  if (volumeCard && volumeAthlete) {
-    const volumeData = _programmeVolumeData(volumeAthlete);
-    const volumeContent = volumeCard.querySelector('.fpv-content');
-    if (volumeData && volumeContent) {
-      volumeContent.innerHTML = _programmeVolumeBody(volumeAthlete, volumeData);
-      const current = volumeData.weeks.find(w => w.isCurrent);
-      const summary = volumeCard.querySelector('.fpv-title-summary');
-      if (current && summary) {
-        summary.textContent = `Current W${current.week} · ${current.actual != null ? _fmtProgrammeKm(current.actual) : '—'} / ${current.planned ? _fmtProgrammeKm(current.planned) : '—'} km`;
-      }
-      _positionCurrentProgrammeWeek(volumeCard);
-    }
-  }
-
-  // Live-update the Command Center squad km total as Strava data arrives
-  const ccKm = document.getElementById('cc-squad-km');
-  if (ccKm && _allAthletes.length) {
-    const tot = _allAthletes.reduce((s, x) => {
-      const k = _stravaKmCache[x.id]?.weeklyKm;
-      return s + (k != null ? k : (x.currRunKm || 0));
-    }, 0);
-    ccKm.textContent = tot.toFixed(0);
-  }
-
-  // Load change indicator
-  let loadHtml = '';
-  if (lastWeekKm != null && lastWeekKm > 0) {
-    const pctChange = Math.round((weeklyKm - lastWeekKm) / lastWeekKm * 100);
-    const absChange = Math.abs(pctChange);
-    const sign = pctChange >= 0 ? '+' : '';
-    const col = pctChange > 20 ? '#f87171' : pctChange > 10 ? '#fbbf24' : pctChange < -15 ? '#60a5fa' : '#4ade80';
-    const icon = pctChange > 20 ? '⚠' : pctChange > 10 ? '↑' : pctChange < -15 ? '↓' : '↑';
-    loadHtml = ` <span style="font-size:10px;color:${col};font-family:var(--mono)">${icon}${sign}${pctChange}% vs last wk</span>`;
-  }
-
-  // Full-page card training stat
-  const fpEl = document.querySelector(`[data-fp-km="${athleteId}"]`);
-  if (fpEl) {
-    fpEl.innerHTML = `<strong>${weeklyKm} km</strong> <span style="font-size:10px;color:var(--run)">strava</span>${loadHtml} this week`;
-  }
-
-  // Squad card km bar + table km cell + expand panel km bar
-  document.querySelectorAll(`[data-km-bar="${athleteId}"]`).forEach(barEl => {
-    const kmTarget = parseFloat(barEl.dataset.kmTarget) || 0;
-    const pct = kmTarget > 0 ? Math.min(100, Math.round(weeklyKm / kmTarget * 100)) : 100;
-    const label = kmTarget > 0 ? `${weeklyKm} / ${kmTarget} km` : `${weeklyKm} km`;
-    const fill = barEl.querySelector('.pbar-fill');
-    const val = barEl.querySelector('.pbar-val');
-    if (fill) fill.style.width = (kmTarget > 0 ? pct : 100) + '%';
-    if (val) {
-      // Preserve any child spans (e.g. tcell-sub) by updating only a text node,
-      // or just set innerHTML if it's a simple label span
-      const sub = val.querySelector('.tcell-sub');
-      if (sub) {
-        // Table cell: update the text node before the sub span
-        val.childNodes[0].textContent = String(weeklyKm);
-        sub.textContent = kmTarget > 0 ? ` / ${kmTarget}` : '';
-      } else {
-        val.textContent = label;
-      }
-    }
-  });
-}
-
-async function loadStravaData(a) {
-  const target = document.querySelector(`[data-strava-panel="${a.id}"]`);
-  if (!target) return;
-  const selectedWeek = getSelectedWeekContext(a, _fpWeekOffset);
-
-  try {
-    const res = await fetch(_stravaApiUrl(a, { selectedWeek }));
-    if (!res.ok) {
-      const e = await res.json().catch(() => ({}));
-      if (res.status === 429) {
-        target.outerHTML = `<div class="strava-state" data-strava-panel="${esc(a.id)}">Strava rate limit reached — the rest of the athlete data is available. Retry Strava shortly.</div>`;
-        return;
-      }
-      if (e.code === 'strava_athlete_only') {
-        // Deliberate: the API refuses to show one person's Strava data to
-        // another. Say so, rather than "check /api/strava is configured" beside
-        // a Sync button that can never work.
-        target.outerHTML = `<div class="strava-state" data-strava-panel="${esc(a.id)}">Strava activity is athlete-only — ${esc(a.name || a.id)} sees it in their portal. Coach view uses their submitted training logs.</div>`;
-        return;
-      }
-      throw new Error(e.error || `HTTP ${res.status}`);
-    }
-    const data = await res.json();
-
-    // The server converts a Strava 429 into a 200 with empty arrays and a
-    // warning, so without this the strip printed "Strava sync healthy" above
-    // "No Strava activities for this week" — an affirmative false statement.
-    if (data.warning === 'strava_rate_limited' || data.activitiesAvailable === false) {
-      target.outerHTML = `<div class="strava-state" data-strava-panel="${esc(a.id)}">Strava is rate limiting right now, so this week's activities could not be read. Nothing is missing from ${esc(a.name || a.id)}'s account — try again shortly.</div>`;
-      return;
-    }
-
-    if (!data.connected) {
-      target.outerHTML = `<div data-strava-panel="${esc(a.id)}">
-        <div class="strava-command-bar needs_reconnect"><div class="strava-command-main"><span class="strava-health-dot"></span><div class="strava-command-copy"><div class="strava-command-title">Strava not connected</div><div class="strava-command-meta">Ask ${esc(a.name || a.id)} to connect securely from their athlete portal</div></div></div></div>
-        <div class="strava-connect-note" style="margin-bottom:8px">Activities will appear automatically after authorisation. Coaches never need an athlete's Strava password.</div>
-      </div>`;
-      return;
-    }
-
-    // Weekly summary strip
-    const s = data.stats || {};
-    const connection = data.connection || {};
-    const coverage = connection.coverage || {};
-    const syncLabel = connection.lastSyncAt
-      ? `Synced ${new Date(connection.lastSyncAt).toLocaleString('en-AU', { day:'numeric', month:'short', hour:'numeric', minute:'2-digit' })}`
-      : 'First sync pending';
-    const coverageLabel = `${coverage.cachedActivities || 0} cached · ${coverage.detailedActivities || 0} detailed · ${coverage.heartRateActivities || 0} with HR`;
-    const statusTitle = connection.status === 'needs_reconnect' ? 'Reconnect required'
-      : connection.status === 'limited' ? 'Connected with limited access'
-      : 'Strava sync healthy';
-    const commandBar = `<div class="strava-command-bar ${esc(connection.status || 'healthy')}">
-      <div class="strava-command-main"><span class="strava-health-dot"></span><div class="strava-command-copy"><div class="strava-command-title">${statusTitle}</div><div class="strava-command-meta">${syncLabel} · ${coverageLabel}</div></div></div>
-      <div class="strava-command-actions"><button class="strava-sync-btn" type="button" onclick="refreshStravaData('${esc(a.id)}',this)">Sync now</button></div>
-    </div>`;
-    const scopeNote = connection.status === 'limited'
-      ? `<div class="strava-scope-note"><strong>Limited coaching view.</strong> This athlete should reconnect from the portal so activity history and profile zones can be read in full.</div>`
-      : connection.status === 'needs_reconnect'
-        ? `<div class="strava-scope-note"><strong>Sync paused.</strong> Ask the athlete to reconnect from the portal; cached history remains available here.</div>`
-        : '';
-
-    // Push Strava km into training section + squad card bar
-    if (s.weeklyKm != null) {
-      applyStravaKm(a.id, s.weeklyKm, s.lastWeekKm ?? null, s.weeklyHistory || []);
-    }
-
-    const allActivities = Array.isArray(data.activities) ? data.activities : [];
-    const activityDate = act => String(act?.start_date_local || act?.start_date || '').slice(0, 10);
-    const acts = allActivities.filter(act => {
-      const date = activityDate(act);
-      return date && date >= selectedWeek.weekStartStr && date <= selectedWeek.weekEndStr;
-    });
-    const selectedRuns = acts.filter(act => /run/i.test(act.sport_type || act.type || ''));
-    const selectedKm = selectedRuns.reduce((sum, act) => sum + (Number(act.distance) || 0), 0) / 1000;
-    const selectedMoving = acts.reduce((sum, act) => sum + (Number(act.moving_time) || 0), 0);
-    const selectedElevation = acts.reduce((sum, act) => sum + (Number(act.total_elevation_gain) || 0), 0);
-    const selectedEffort = acts.reduce((sum, act) => sum + (Number(act.suffer_score) || 0), 0);
-    const formatSummaryTime = secs => {
-      const hours = Math.floor(secs / 3600);
-      const mins = Math.round((secs % 3600) / 60);
-      return hours ? `${hours}h ${mins}m` : `${mins}m`;
-    };
-    const weeklyStrip = `
-      <div class="strava-weekly-strip">
-        <div class="strava-wstat"><span class="strava-wval">${selectedKm.toFixed(1)}</span><span class="strava-wlbl">run km · ${selectedWeek.weekLabel || 'selected week'}</span></div>
-        <div class="strava-wstat"><span class="strava-wval">${acts.length}</span><span class="strava-wlbl">Strava activities</span></div>
-        <div class="strava-wstat"><span class="strava-wval">${formatSummaryTime(selectedMoving)}</span><span class="strava-wlbl">moving time</span></div>
-        <div class="strava-wstat"><span class="strava-wval">${Math.round(selectedElevation)}m</span><span class="strava-wlbl">elevation${selectedEffort ? ` · ${selectedEffort} effort` : ''}</span></div>
-      </div>`;
-    const insightData = data.insights || {};
-    const zoneAudit = insightData.zoneDistribution;
-    const decoupling = (insightData.aerobicDecoupling || []).slice(-1)[0];
-    const lapAlert = (insightData.lapExecution || []).slice().sort((x, y) => y.paceDecayPercent - x.paceDecayPercent)[0];
-    const pbs = insightData.personalBests || [];
-    const shoe = (insightData.gear || []).find(item => item.retirementWarning);
-    const gapPoints = insightData.gapProgression || [];
-    const gapLatest = gapPoints[gapPoints.length - 1];
-    const fmtInsightPace = speed => {
-      if (!speed) return '—';
-      const seconds = Math.round(1000 / speed);
-      return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}/km`;
-    };
-    const insightCards = [
-      zoneAudit ? `<div class="strava-insight${zoneAudit.greyPercent > 20 ? ' warn' : ''}"><span class="strava-insight-lbl">80/20 audit</span><strong>${zoneAudit.easyPercent}% easy · ${zoneAudit.hardPercent}% hard</strong><div class="strava-insight-note">${zoneAudit.greyPercent}% in Z3 grey zone</div></div>` : '',
-      decoupling ? `<div class="strava-insight${decoupling.ready ? '' : ' alert'}"><span class="strava-insight-lbl">Aerobic decoupling</span><strong>${decoupling.percent}% HR drift</strong><div class="strava-insight-note">${decoupling.ready ? 'Aerobic base signal is under 5%' : 'Over 5% — review long-run readiness'}</div></div>` : '',
-      lapAlert ? `<div class="strava-insight${lapAlert.paceDecayPercent >= 5 ? ' warn' : ''}"><span class="strava-insight-lbl">Rep execution</span><strong>${lapAlert.paceDecayPercent}% pace decay</strong><div class="strava-insight-note">${lapAlert.lapCount} laps · ${lapAlert.consistencyCvPercent}% variation</div></div>` : '',
-      pbs.length ? `<div class="strava-insight"><span class="strava-insight-lbl">Personal best</span><strong>🏆 ${esc(pbs[0].effort)} PB</strong><div class="strava-insight-note">${esc(pbs[0].activityName)}${pbs.length > 1 ? ` · +${pbs.length - 1} more` : ''}</div></div>` : '',
-      shoe ? `<div class="strava-insight alert"><span class="strava-insight-lbl">Shoe mileage</span><strong>${esc(shoe.name)} · ${shoe.km}km</strong><div class="strava-insight-note">Retirement review recommended</div></div>` : '',
-      gapLatest ? `<div class="strava-insight"><span class="strava-insight-lbl">Grade-adjusted pace</span><strong>${fmtInsightPace(gapLatest.speed)}</strong><div class="strava-insight-note">Progression metric for hilly routes</div></div>` : '',
-    ].filter(Boolean).join('');
-    const coachingInsights = insightCards ? `<div class="strava-insights">${insightCards}</div>` : '';
-
-    if (!acts.length) {
-      target.outerHTML = `<div data-strava-panel="${esc(a.id)}">${commandBar}${scopeNote}${weeklyStrip}${coachingInsights}<div class="strava-state">No Strava activities for ${selectedWeek.weekStartStr} → ${selectedWeek.weekEndStr}</div></div>`;
-      return;
-    }
-
-    const fmtDist = m => (m / 1000).toFixed(2);
-    const fmtPace = (speed) => {
-      if (!speed) return '—';
-      const secPerKm = Math.round(1000 / speed); // round total seconds first — avoids "5:60"
-      const m = Math.floor(secPerKm / 60);
-      const s = (secPerKm % 60).toString().padStart(2, '0');
-      return `${m}:${s}`;
-    };
-    const fmtSwimPace = speed => {
-      if (!speed) return '—';
-      const secPer100m = Math.round(100 / speed);
-      const m = Math.floor(secPer100m / 60);
-      const s = String(secPer100m % 60).padStart(2, '0');
-      return `${m}:${s}`;
-    };
-    const fmtSpeed = speed => speed ? (speed * 3.6).toFixed(1) : '—';
-    const fmtTime = secs => {
-      const h = Math.floor(secs / 3600);
-      const m = Math.floor((secs % 3600) / 60);
-      return h > 0 ? `${h}h ${m}m` : `${m}m`;
-    };
-    const fmtActDate = act => {
-      const local = String(act?.start_date_local || act?.start_date || '');
-      const date = local.slice(0, 10);
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return 'Date unavailable';
-      const d = new Date(`${date}T12:00:00`);
-      const label = d.toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' });
-      const time = local.slice(11, 16);
-      return /^\d{2}:\d{2}$/.test(time) ? `${label} · ${time}` : label;
-    };
-
-    const fmtSplitPace = speed => {
-      if (!speed) return '—';
-      const spm = Math.round(1000 / speed); // round total seconds first — avoids "5:60"
-      const m = Math.floor(spm / 60);
-      const s = (spm % 60).toString().padStart(2, '0');
-      return `${m}:${s}`;
-    };
-    // Strava auto-laps: every full lap ≈1km means the athlete never pressed lap —
-    // those just duplicate the km splits. Only a genuinely structured session
-    // (varied lap distances) earns an Interval Laps table.
-    const hasRealLaps = laps => {
-      if (!laps || laps.length < 2) return false;
-      const full = laps.slice(0, -1); // last lap is usually a partial remainder
-      return full.some(lp => Math.abs((lp.distance || 0) - 1000) > 120);
-    };
-
-    // ── Time-in-HR-zones bar (Z1→Z5 stacked, minutes legend) ──
-    const HRZ_COLORS = ['#94a3b8', '#4ade80', '#facc15', '#fb923c', '#ef4444'];
-    const hrZonesHtml = zones => {
-      if (!zones || !zones.length) return '';
-      const total = zones.reduce((t, z) => t + (z.time || 0), 0);
-      if (total < 120) return ''; // under 2 min of HR data isn't worth a bar
-      const segs = zones.map((z, i) => z.time
-        ? `<span class="hrz-seg" style="width:${(z.time / total * 100).toFixed(1)}%;background:${HRZ_COLORS[i] || HRZ_COLORS[4]}" title="Z${i + 1} · ${Math.round(z.time / 60)} min"></span>` : '').join('');
-      const legend = zones.map((z, i) => (z.time || 0) >= 60
-        ? `<span class="hrz-leg"><span class="hrz-dot" style="background:${HRZ_COLORS[i] || HRZ_COLORS[4]}"></span>Z${i + 1} <strong>${Math.round(z.time / 60)}m</strong></span>` : '').filter(Boolean).join('');
-      return `<div class="hrz-wrap"><div class="hrz-lbl">Time in HR zones</div><div class="hrz-bar">${segs}</div>${legend ? `<div class="hrz-legend">${legend}</div>` : ''}</div>`;
-    };
-
-    // ── Best efforts (Strava's estimated bests within the run; PRs first) ──
-    const fmtEffortTime = secs => {
-      const m = Math.floor(secs / 60), s = secs % 60;
-      return m > 0 ? `${m}:${String(s).padStart(2, '0')}` : `${s}s`;
-    };
-    const bestEffortsHtml = bes => {
-      if (!bes || !bes.length) return '';
-      const show = bes.filter(b => b.pr_rank).concat(bes.filter(b => !b.pr_rank)).slice(0, 4);
-      if (!show.length) return '';
-      return `<div class="be-wrap"><div class="hrz-lbl">Best efforts</div><div class="be-row">${show.map(b =>
-        `<span class="be-chip${b.pr_rank ? ' pr' : ''}">${b.pr_rank ? '🏆 ' : ''}${esc(b.name)} <strong>${fmtEffortTime(b.moving_time)}</strong>${b.pr_rank ? ` · PR #${b.pr_rank}` : ''}</span>`).join('')}</div></div>`;
-    };
-
-    const activityMetric = (act, speedField = 'average_speed') => {
-      const sport = String(act.sport_type || act.type || '');
-      const speed = Number(act[speedField]) || 0;
-      if (/run|walk|hike/i.test(sport)) return { value: fmtPace(speed), unit: '/km' };
-      if (/swim/i.test(sport)) return { value: fmtSwimPace(speed), unit: '/100m' };
-      return { value: fmtSpeed(speed), unit: ' km/h' };
-    };
-    const cadenceMetric = act => {
-      if (!act.average_cadence) return null;
-      const sport = String(act.sport_type || act.type || '');
-      return /run|walk|hike/i.test(sport)
-        ? { value: Math.round(act.average_cadence * 2), unit: 'spm' }
-        : { value: Math.round(act.average_cadence), unit: 'rpm' };
-    };
-    const activityLink = act => act.id
-      ? `<div class="strava-act-links"><a class="strava-act-link" href="https://www.strava.com/activities/${encodeURIComponent(act.id)}" target="_blank" rel="noopener noreferrer">View activity on Strava ↗</a></div>`
-      : '';
-
-    const cards = acts.map(act => {
-      const sport = String(act.sport_type || act.type || 'Activity');
-      const isRun = /run|walk|hike/i.test(sport);
-      const dist = act.distance > 0 ? fmtDist(act.distance) : null;
-      const averageMetric = activityMetric(act);
-      const maxMetric = activityMetric(act, 'max_speed');
-      const time = fmtTime(act.moving_time);
-      const elapsed = act.elapsed_time ? fmtTime(act.elapsed_time) : null;
-      const stoppedSeconds = Math.max(0, (Number(act.elapsed_time) || 0) - (Number(act.moving_time) || 0));
-      const stopped = stoppedSeconds >= 60 ? fmtTime(stoppedSeconds) : null;
-      const hr   = act.average_heartrate ? Math.round(act.average_heartrate) : null;
-      const elev = act.total_elevation_gain ? Math.round(act.total_elevation_gain) : null;
-      const maxHr   = act.max_heartrate  ? Math.round(act.max_heartrate)  : null;
-      const cadence = cadenceMetric(act);
-      const rpe     = act.perceived_exertion != null ? act.perceived_exertion : null;
-      const suffer  = act.suffer_score   ?? null;
-      const cals    = act.calories       ? Math.round(act.calories)       : null;
-      const gear    = act.gear           ? act.gear.name                  : null;
-      const prCount = act.pr_count       ? act.pr_count                   : 0;
-      const wtype   = act.workout_type;
-      const wtypeLabel = wtype === 1 ? 'Race' : wtype === 2 ? 'Long Run' : wtype === 3 ? 'Workout' : null;
-      const gapPace = isRun && act.average_grade_adjusted_speed ? fmtPace(act.average_grade_adjusted_speed) : null;
-      const elevationBand = act.elev_high != null && act.elev_low != null
-        ? `${Math.round(act.elev_low)}–${Math.round(act.elev_high)}m altitude` : null;
-      const chips = [
-        averageMetric.value !== '—' ? `<span class="strava-chip strava-chip-primary"><strong>${averageMetric.value}</strong>${averageMetric.unit}</span>` : '',
-        `<span class="strava-chip strava-chip-primary"><strong>${time}</strong> moving</span>`,
-        elapsed ? `<span class="strava-chip"><strong>${elapsed}</strong> elapsed</span>` : '',
-        stopped ? `<span class="strava-chip"><strong>${stopped}</strong> stopped</span>` : '',
-        maxMetric.value !== '—' ? `<span class="strava-chip">max <strong>${maxMetric.value}</strong>${maxMetric.unit}</span>` : '',
-        gapPace ? `<span class="strava-chip">GAP <strong>${gapPace}</strong>/km</span>` : '',
-        hr    ? `<span class="strava-chip strava-chip-hr">♥ <strong>${hr}</strong>${maxHr ? `–${maxHr}` : ''} bpm</span>` : '',
-        elev  ? `<span class="strava-chip">↑ <strong>${elev}</strong>m</span>` : '',
-        elevationBand ? `<span class="strava-chip">${elevationBand}</span>` : '',
-        cadence ? `<span class="strava-chip">⟳ <strong>${cadence.value}</strong> ${cadence.unit}</span>` : '',
-        act.average_watts ? `<span class="strava-chip"><strong>${Math.round(act.average_watts)}</strong>W avg</span>` : '',
-        act.weighted_average_watts ? `<span class="strava-chip"><strong>${Math.round(act.weighted_average_watts)}</strong>W weighted</span>` : '',
-        act.max_watts ? `<span class="strava-chip"><strong>${Math.round(act.max_watts)}</strong>W max</span>` : '',
-        act.kilojoules ? `<span class="strava-chip"><strong>${Math.round(act.kilojoules)}</strong> kJ</span>` : '',
-        act.average_temp != null ? `<span class="strava-chip"><strong>${Math.round(act.average_temp)}°C</strong> avg temp</span>` : '',
-        suffer  ? `<span class="strava-chip">⚡ <strong>${suffer}</strong> effort</span>` : '',
-        cals    ? `<span class="strava-chip">🔥 <strong>${cals}</strong> kcal</span>` : '',
-        gear    ? `<span class="strava-chip">👟 ${esc(gear)}</span>` : '',
-        act.athlete_count > 1 ? `<span class="strava-chip">👥 group of ${act.athlete_count}</span>` : '',
-        act.device_name ? `<span class="strava-chip">⌚ ${esc(act.device_name)}</span>` : '',
-        prCount ? `<span class="strava-chip strava-chip-pr">🏆 <strong>${prCount}</strong> PR${prCount > 1 ? 's' : ''}</span>` : '',
-        act.achievement_count ? `<span class="strava-chip"><strong>${act.achievement_count}</strong> achievements</span>` : '',
-        act.segment_effort_count ? `<span class="strava-chip"><strong>${act.segment_effort_count}</strong> segments</span>` : '',
-        act.kudos_count ? `<span class="strava-chip"><strong>${act.kudos_count}</strong> kudos</span>` : '',
-        act.comment_count ? `<span class="strava-chip"><strong>${act.comment_count}</strong> comments</span>` : '',
-        (act.total_photo_count || act.photo_count) ? `<span class="strava-chip"><strong>${act.total_photo_count || act.photo_count}</strong> photos</span>` : '',
-        act.trainer ? `<span class="strava-chip">Indoor trainer</span>` : '',
-        act.commute ? `<span class="strava-chip">Commute</span>` : '',
-        act.manual ? `<span class="strava-chip">Manual entry</span>` : '',
-        wtypeLabel ? `<span class="strava-chip strava-chip-pr">${esc(wtypeLabel)}</span>` : '',
-      ].filter(Boolean).join('');
-
-      const descHtml = act.description
-        ? `<div class="strava-act-desc">"${esc(act.description)}"</div>` : '';
-
-      const rpeHtml = rpe != null
-        ? `<div class="strava-act-rpe">RPE <strong>${rpe}</strong>/10</div>` : '';
-
-      // One table per activity: a structured session (real, varied laps) shows
-      // Interval Laps; a continuous run shows KM Splits. Never both — Strava's
-      // automatic 1km laps are just the km splits repeated.
-      const _realLaps = hasRealLaps(act.laps);
-      const lapsHtml = _realLaps
-        ? (() => {
-            const lapSpeeds = act.laps.map(lp => lp.average_speed).filter(Boolean);
-            const maxLapSpd = Math.max(...lapSpeeds);
-            const minLapSpd = Math.min(...lapSpeeds);
-            const rows = act.laps.map((lp, i) => {
-              const lpDist = lp.distance ? (lp.distance / 1000).toFixed(2) : '—';
-              const lpPace = fmtSplitPace(lp.average_speed);
-              const lpHr   = lp.average_heartrate ? Math.round(lp.average_heartrate) : '—';
-              const lpElev = lp.total_elevation_gain != null ? `${lp.total_elevation_gain > 0 ? '+' : ''}${Math.round(lp.total_elevation_gain)}` : '—';
-              const barW = lapSpeeds.length > 1 && lp.average_speed ? Math.round(((lp.average_speed - minLapSpd) / (maxLapSpd - minLapSpd || 1)) * 60) + 20 : 0;
-              return `<tr><td>${i + 1}</td><td>${lpDist}km</td><td><span class="split-pace-wrap"><span class="split-pace-bar" style="width:${barW}%"></span><strong>${lpPace}</strong></span></td><td>${lpHr}</td><td>${lpElev}m</td></tr>`;
-            }).join('');
-            return `<details class="strava-laps-wrap"><summary class="strava-laps-toggle">▾ Interval Laps (${act.laps.length})</summary>
-              <table class="strava-splits" style="margin-top:6px">
-                <thead><tr><th>#</th><th>dist</th><th>pace</th><th>hr</th><th>elev</th></tr></thead>
-                <tbody>${rows}</tbody>
-              </table></details>`;
-          })() : '';
-
-      const splitsHtml = (!_realLaps && act.splits_metric && act.splits_metric.length)
-        ? (() => {
-            const speeds = act.splits_metric.map(sp => sp.average_speed).filter(Boolean);
-            const maxSpd = Math.max(...speeds);
-            const minSpd = Math.min(...speeds);
-            const bestIdx = speeds.indexOf(maxSpd);
-            const rows = act.splits_metric.map((sp, i) => {
-              const spHr   = sp.average_heartrate ? Math.round(sp.average_heartrate) : '—';
-              const spElev = sp.elevation_difference != null ? (sp.elevation_difference > 0 ? `+${Math.round(sp.elevation_difference)}` : Math.round(sp.elevation_difference)) : '—';
-              const barW = speeds.length > 1 && sp.average_speed ? Math.round(((sp.average_speed - minSpd) / (maxSpd - minSpd || 1)) * 60) + 20 : 0;
-              const paceClass = i === bestIdx ? ' pace-fast' : (i === speeds.indexOf(minSpd) && speeds.length > 1 ? ' pace-slow' : '');
-              return `<tr>
-                <td>${sp.split}</td>
-                <td class="${paceClass}"><span class="split-pace-wrap"><span class="split-pace-bar" style="width:${barW}%"></span><strong>${fmtSplitPace(sp.average_speed)}</strong></span></td>
-                <td>${spHr}</td>
-                <td>${spElev}m</td>
-              </tr>`;
-            }).join('');
-            return `<div class="strava-laps-wrap"><div class="strava-laps-toggle" style="cursor:default;pointer-events:none">KM Splits</div>
-            <table class="strava-splits" style="margin-top:6px">
-              <thead><tr><th>km</th><th>pace</th><th>hr</th><th>elev</th></tr></thead>
-              <tbody>${rows}</tbody>
-            </table></div>`;
-          })() : '';
-
-      const distanceHtml = dist ? `${dist}<span>km</span>` : `<span>${esc(sport)}</span>`;
-      return `<details class="strava-act" data-atype="${esc(sport)}" data-athlete-id="${esc(a.id)}" data-activity-id="${encodeURIComponent(act.id)}" data-detail-loaded="${act.laps?.length || act.hr_zones?.length || act.description ? '1' : '0'}" ontoggle="loadStravaActivityDetail(this.dataset.athleteId,this.dataset.activityId,this)" style="display:block;padding:0">
-        <summary class="strava-act-summary">
-          <div class="strava-act-left">
-            <div class="strava-act-name">${esc(act.name)}</div>
-            <div class="strava-act-date">${fmtActDate(act)} · ${esc(act.sport_type || act.type || 'Activity')}</div>
-          </div>
-          <div class="strava-act-dist-inline">${distanceHtml}</div>
-          <span class="strava-act-chevron">▾</span>
-        </summary>
-        <div style="padding:0 14px 12px">
-          <div class="strava-act-chips">${chips}</div>
-          ${descHtml}
-          ${rpeHtml}
-          ${hrZonesHtml(act.hr_zones)}
-          ${bestEffortsHtml(act.best_efforts)}
-          ${lapsHtml}
-          ${splitsHtml}
-          ${activityLink(act)}
-        </div>
-      </details>`;
-    }).join('');
-
-    target.outerHTML = `<div data-strava-panel="${esc(a.id)}">${commandBar}${scopeNote}${weeklyStrip}${coachingInsights}<div class="strava-acts">${cards}</div></div>`;
-
-    // ── Populate day-by-day Strava columns ──────────────────────────────────
-    // Use start_date_local (athlete's local timezone) so the date matches the
-    // calendar day the athlete actually ran on, not the UTC date.
-    const _actsByDate = {};
-    (data.activities || []).forEach(act => {
-      const d = (act.start_date_local || act.start_date || '').split('T')[0];
-      if (d) { if (!_actsByDate[d]) _actsByDate[d] = []; _actsByDate[d].push(act); }
-    });
-
-    document.querySelectorAll(`[data-wd-strava-id="${a.id}"]`).forEach(col => {
-      // Never overwrite athlete-owned file detail with a third-party API result.
-      if (Number(col.dataset.directActivityCount || 0) > 0) return;
-      const dateStr = col.dataset.wdStravaDate;
-      if (!dateStr) return;
-      const dayActs = _actsByDate[dateStr] || [];
-      if (!dayActs.length) { col.innerHTML = ''; return; }
-
-      col.innerHTML = dayActs.map(act => {
-        const sport   = String(act.sport_type || act.type || 'Activity');
-        const isRun   = /run|walk|hike/i.test(sport);
-        const isLift  = /weight|crossfit|workout/i.test(sport);
-        const dist    = act.distance > 10 ? (act.distance / 1000).toFixed(2) : null;
-        const averageMetric = activityMetric(act);
-        const maxMetric = activityMetric(act, 'max_speed');
-        const hr      = act.average_heartrate ? Math.round(act.average_heartrate) : null;
-        const maxHr   = act.max_heartrate     ? Math.round(act.max_heartrate)     : null;
-        const timeStr = fmtTime(act.moving_time || 0);
-        const elapsed = act.elapsed_time ? fmtTime(act.elapsed_time) : null;
-        const stoppedSeconds = Math.max(0, (Number(act.elapsed_time) || 0) - (Number(act.moving_time) || 0));
-        const stopped = stoppedSeconds >= 60 ? fmtTime(stoppedSeconds) : null;
-        const elev    = act.total_elevation_gain > 0 ? Math.round(act.total_elevation_gain) : null;
-        const cadence = cadenceMetric(act);
-        const cals    = act.calories          ? Math.round(act.calories) : null;
-        const suffer  = act.suffer_score      ?? null;
-        const gear    = act.gear              ? act.gear.name : null;
-        const rpe     = act.perceived_exertion != null ? act.perceived_exertion : null;
-        const prCount = act.pr_count          || 0;
-        const wtype   = act.workout_type;
-        const wtypeLabel = wtype === 1 ? 'Race' : wtype === 2 ? 'Long Run' : wtype === 3 ? 'Workout' : null;
-
-        const accent = isRun ? '#fc4c02' : isLift ? '#818cf8' : '#3b82f6';
-
-        // Summary chips (shown always)
-        const summaryChips = [
-          averageMetric.value !== '—' ? `<span class="wd-strava-stat primary"><strong>${averageMetric.value}</strong>${averageMetric.unit}</span>` : '',
-          dist                 ? `<span class="wd-strava-stat primary"><strong>${dist}</strong>km</span>` : '',
-          hr                   ? `<span class="wd-strava-stat">♥ <strong>${hr}</strong>${maxHr ? `–${maxHr}` : ''}</span>` : '',
-          `<span class="wd-strava-stat"><strong>${timeStr}</strong></span>`,
-          prCount ? `<span class="wd-strava-stat is-achievement">🏆 ${prCount} PR</span>` : '',
-          wtypeLabel ? `<span class="wd-strava-stat is-achievement">${esc(wtypeLabel)}</span>` : '',
-        ].filter(Boolean).join('');
-
-        // Expanded detail chips
-        const gapPace = isRun && act.average_grade_adjusted_speed ? fmtPace(act.average_grade_adjusted_speed) : null;
-        const elevationBand = act.elev_high != null && act.elev_low != null
-          ? `${Math.round(act.elev_low)}–${Math.round(act.elev_high)}m altitude` : null;
-        const detailChips = [
-          elapsed ? `<span class="wd-strava-stat"><strong>${elapsed}</strong> elapsed</span>` : '',
-          stopped ? `<span class="wd-strava-stat"><strong>${stopped}</strong> stopped</span>` : '',
-          maxMetric.value !== '—' ? `<span class="wd-strava-stat">max <strong>${maxMetric.value}</strong>${maxMetric.unit}</span>` : '',
-          gapPace ? `<span class="wd-strava-stat">GAP <strong>${gapPace}</strong>/km</span>` : '',
-          elev    ? `<span class="wd-strava-stat">↑ <strong>${elev}</strong>m</span>` : '',
-          elevationBand ? `<span class="wd-strava-stat">${elevationBand}</span>` : '',
-          cadence ? `<span class="wd-strava-stat">⟳ <strong>${cadence.value}</strong> ${cadence.unit}</span>` : '',
-          act.average_watts ? `<span class="wd-strava-stat"><strong>${Math.round(act.average_watts)}</strong>W avg</span>` : '',
-          act.weighted_average_watts ? `<span class="wd-strava-stat"><strong>${Math.round(act.weighted_average_watts)}</strong>W weighted</span>` : '',
-          act.max_watts ? `<span class="wd-strava-stat"><strong>${Math.round(act.max_watts)}</strong>W max</span>` : '',
-          act.kilojoules ? `<span class="wd-strava-stat"><strong>${Math.round(act.kilojoules)}</strong> kJ</span>` : '',
-          act.average_temp != null ? `<span class="wd-strava-stat"><strong>${Math.round(act.average_temp)}°C</strong> avg temp</span>` : '',
-          suffer  ? `<span class="wd-strava-stat">⚡ <strong>${suffer}</strong> effort</span>` : '',
-          cals    ? `<span class="wd-strava-stat">🔥 <strong>${cals}</strong> kcal</span>` : '',
-          gear    ? `<span class="wd-strava-stat">👟 ${esc(gear)}</span>` : '',
-          act.athlete_count > 1 ? `<span class="wd-strava-stat">👥 group of ${act.athlete_count}</span>` : '',
-          act.device_name ? `<span class="wd-strava-stat">⌚ ${esc(act.device_name)}</span>` : '',
-          rpe != null ? `<span class="wd-strava-stat">RPE <strong>${rpe}</strong>/10</span>` : '',
-          act.achievement_count ? `<span class="wd-strava-stat"><strong>${act.achievement_count}</strong> achievements</span>` : '',
-          act.segment_effort_count ? `<span class="wd-strava-stat"><strong>${act.segment_effort_count}</strong> segments</span>` : '',
-          act.kudos_count ? `<span class="wd-strava-stat"><strong>${act.kudos_count}</strong> kudos</span>` : '',
-          act.comment_count ? `<span class="wd-strava-stat"><strong>${act.comment_count}</strong> comments</span>` : '',
-          (act.total_photo_count || act.photo_count) ? `<span class="wd-strava-stat"><strong>${act.total_photo_count || act.photo_count}</strong> photos</span>` : '',
-          act.trainer ? `<span class="wd-strava-stat">Indoor trainer</span>` : '',
-          act.commute ? `<span class="wd-strava-stat">Commute</span>` : '',
-          act.manual ? `<span class="wd-strava-stat">Manual entry</span>` : '',
-        ].filter(Boolean).join('');
-
-        const descHtml = act.description
-          ? `<div class="wd-strava-desc">"${esc(act.description)}"</div>` : '';
-
-        // Splits table — scrollable fixed-height box
-        // One table only: real varied laps → Interval Laps; otherwise KM Splits
-        const _realLaps = hasRealLaps(act.laps);
-        let splitsHtml = '';
-        if (!_realLaps && act.splits_metric && act.splits_metric.length) {
-          const speeds = act.splits_metric.map(sp => sp.average_speed).filter(Boolean);
-          const maxSpd = Math.max(...speeds), minSpd = Math.min(...speeds);
-          const bestIdx = speeds.indexOf(maxSpd);
-          const rows = act.splits_metric.map((sp, i) => {
-            const spHr   = sp.average_heartrate ? Math.round(sp.average_heartrate) : '—';
-            const spElev = sp.elevation_difference != null ? (sp.elevation_difference > 0 ? `+${Math.round(sp.elevation_difference)}` : Math.round(sp.elevation_difference)) : '—';
-            const barW   = speeds.length > 1 && sp.average_speed ? Math.round(((sp.average_speed - minSpd) / (maxSpd - minSpd || 1)) * 60) + 20 : 0;
-            const pCls   = i === bestIdx ? ' pace-fast' : '';
-            return `<tr>
-              <td>${sp.split}</td>
-              <td class="${pCls}"><span class="split-pace-wrap"><span class="split-pace-bar" style="width:${barW}%"></span><strong>${fmtSplitPace(sp.average_speed)}</strong></span></td>
-              <td>${spHr}</td>
-              <td>${spElev}m</td>
-            </tr>`;
-          }).join('');
-          splitsHtml = `<div style="margin-top:8px"><div class="strava-laps-toggle" style="cursor:default;pointer-events:none;margin-bottom:4px">KM Splits</div><div class="wd-splits-scroll">
-            <table class="strava-splits">
-              <thead><tr><th>km</th><th>pace</th><th>hr</th><th>elev</th></tr></thead>
-              <tbody>${rows}</tbody>
-            </table>
-          </div></div>`;
-        }
-
-        // Laps table (interval sessions) — same scrollable box
-        let lapsHtml = '';
-        if (_realLaps) {
-          const lapSpeeds = act.laps.map(lp => lp.average_speed).filter(Boolean);
-          const maxLS = Math.max(...lapSpeeds), minLS = Math.min(...lapSpeeds);
-          const lapRows = act.laps.map((lp, i) => {
-            const lpDist = lp.distance ? (lp.distance / 1000).toFixed(2) : '—';
-            const lpHr   = lp.average_heartrate ? Math.round(lp.average_heartrate) : '—';
-            const lpElev = lp.total_elevation_gain != null ? `${lp.total_elevation_gain > 0 ? '+' : ''}${Math.round(lp.total_elevation_gain)}` : '—';
-            const barW   = lapSpeeds.length > 1 && lp.average_speed ? Math.round(((lp.average_speed - minLS) / (maxLS - minLS || 1)) * 60) + 20 : 0;
-            return `<tr><td>${i + 1}</td><td>${lpDist}km</td><td><span class="split-pace-wrap"><span class="split-pace-bar" style="width:${barW}%"></span><strong>${fmtSplitPace(lp.average_speed)}</strong></span></td><td>${lpHr}</td><td>${lpElev}m</td></tr>`;
-          }).join('');
-          lapsHtml = `<div style="margin-top:8px"><div class="strava-laps-toggle" style="cursor:default;pointer-events:none;margin-bottom:4px">Interval Laps</div><div class="wd-splits-scroll">
-            <table class="strava-splits">
-              <thead><tr><th>#</th><th>dist</th><th>pace</th><th>hr</th><th>elev</th></tr></thead>
-              <tbody>${lapRows}</tbody>
-            </table>
-          </div></div>`;
-        }
-
-        const hasDetail = detailChips || descHtml || splitsHtml || lapsHtml || act.id
-          || (act.hr_zones && act.hr_zones.length) || (act.best_efforts && act.best_efforts.length);
-
-        return `<details class="wd-strava-act" style="border-left-color:${accent}">
-          <summary class="wd-strava-summary">
-            <div class="wd-strava-act-type" style="color:${accent}">${esc(sport)}${hasDetail ? ' <span class="wd-strava-chevron">▾</span>' : ''}</div>
-            <div class="wd-strava-act-name">${esc(act.name)}</div>
-            <div class="wd-strava-stats">${summaryChips}</div>
-          </summary>
-          ${hasDetail ? `<div class="wd-strava-detail">
-            ${detailChips ? `<div class="wd-strava-stats" style="margin-top:6px">${detailChips}</div>` : ''}
-            ${descHtml}
-            ${hrZonesHtml(act.hr_zones)}
-            ${bestEffortsHtml(act.best_efforts)}
-            ${lapsHtml}
-            ${splitsHtml}
-            ${activityLink(act)}
-          </div>` : ''}
-        </details>`;
-      }).join('');
-    });
-
-  } catch (err) {
-    if (target) target.outerHTML = `<div class="strava-state" data-strava-panel="${esc(a.id)}">Could not load Strava data — check /api/strava is configured</div>`;
-  }
-}
+// ── Removed: coach-side Strava read ──────────────────────────────────────────
+// _stravaApiUrl, prefetchStravaKm, loadStravaData, refreshStravaData,
+// loadStravaActivityDetail, applyStravaKm, _stravaKmCache and _stravaKmByWeekEnd
+// used to live here. They fetched /api/strava on the coach's behalf and fed
+// Strava-derived weekly km into the squad km total and sort, the programme
+// volume "actual" bars, the mileage chart and the athlete vitals.
+//
+// api/strava.js has always answered a coach-authenticated request with 403
+// strava_athlete_only, so none of it could populate and the whole cluster had
+// become unreachable: nothing outside it called in. What it left behind was a
+// "Strava actual" chart legend and a per-athlete badge for a series that could
+// never fill, which misstated provenance to a coach, and a client wired
+// directly into a source the dashboard is not allowed to read.
+//
+// Legitimate device data reaches coaches through athlete_activity_uploads
+// (renderImportedActivity) and through the athlete's own submitted logs, whose
+// _stravaConfirmed / _stravaSummary provenance is built server-side in
+// api/coach-data.js and is deliberately kept.
 
 function progressPhotoTypeKey(photo) {
   return String(photo?.type || photo?.publicId || '')
@@ -12989,8 +12382,8 @@ function _drawWH() {
 }
 
 // ── Compact weekly-mileage sparkline for the athlete card "Body & Mileage" ────
-// Mirrors the weight sparkline: amber bars = completed weekly KM (check-in, or
-// Strava where available), dashed line = planned target. Click → full history
+// Mirrors the weight sparkline: amber bars = completed weekly KM from the
+// athlete's check-in, dashed line = planned target. Click → full history
 // overlay (where the large Weekly Mileage chart lives). Returns '' if no data.
 function buildMileageMini(a) {
   const WK_MS = 7 * 86400000;
@@ -13011,26 +12404,13 @@ function buildMileageMini(a) {
   let pts = [...weeklies]
     .sort((x, y) => String(x['Week Ending']).localeCompare(String(y['Week Ending'])))
     .map(w => { const we = String(w['Week Ending']).slice(0, 10); const c = parseFloat(w['Weekly Run KM']);
-      return { date: we, completed: isNaN(c) ? null : c, planned: plannedFor(we), strava: null }; });
+      return { date: we, completed: isNaN(c) ? null : c, planned: plannedFor(we) }; });
 
-  const skm = (typeof _stravaKmCache !== 'undefined') ? _stravaKmCache[a.id] : null;
-  if (skm && curEnd) {
-    const stravaByDate = _stravaKmByWeekEnd(skm, curEnd);
-    Object.entries(stravaByDate).forEach(([date, km]) => {
-      let point = pts.find(p => p.date === date);
-      if (!point) {
-        point = { date, completed: null, planned: plannedFor(date), strava: null };
-        pts.push(point);
-      }
-      point.strava = km;
-    });
-    pts.sort((x, y) => x.date.localeCompare(y.date));
-  }
   pts = pts.slice(-10);
-  if (!pts.some(p => p.completed != null || p.strava != null || p.planned != null)) return '';
+  if (!pts.some(p => p.completed != null || p.planned != null)) return '';
 
-  const latestPt = [...pts].reverse().find(p => p.completed != null || p.strava != null);
-  const latest = latestPt ? (latestPt.strava != null ? latestPt.strava : latestPt.completed) : null;
+  const latestPt = [...pts].reverse().find(p => p.completed != null);
+  const latest = latestPt ? latestPt.completed : null;
   const latestPlanned = latestPt ? latestPt.planned : null;
   let capTxt = '', capCol = 'var(--dim)';
   if (latest != null && latestPlanned != null && latestPlanned > 0) {
@@ -13041,7 +12421,7 @@ function buildMileageMini(a) {
 
   const W = 220, H = 44, totalH = 60, pad = 4;
   const vals = [];
-  pts.forEach(p => { if (p.completed != null) vals.push(p.completed); if (p.planned != null) vals.push(p.planned); if (p.strava != null) vals.push(p.strava); });
+  pts.forEach(p => { if (p.completed != null) vals.push(p.completed); if (p.planned != null) vals.push(p.planned); });
   const maxV = Math.max(1, ...vals);
   const n = pts.length, slot = (W - pad * 2) / n;
   const barW = Math.max(3, Math.min(20, slot * 0.6));
@@ -13058,7 +12438,6 @@ function buildMileageMini(a) {
   }).join('');
   const plXY = pts.map((p, i) => p.planned != null ? { x: cx(i), y: toY(p.planned) } : null).filter(Boolean);
   const plLine = plXY.length >= 2 ? `<polyline points="${plXY.map(q => q.x.toFixed(1) + ',' + q.y.toFixed(1)).join(' ')}" fill="none" stroke="var(--str)" stroke-width="1.5" stroke-dasharray="4 3" stroke-linecap="round"/>` : '';
-  const stravaDot = pts.map((p, i) => p.strava != null ? `<circle cx="${cx(i).toFixed(1)}" cy="${toY(p.strava).toFixed(1)}" r="3" fill="#fc4c02" stroke="var(--surface)" stroke-width="1"/>` : '').join('');
 
   const _mn = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const _fmt = d => { const p = d.split('-'); return parseInt(p[2]) + ' ' + _mn[parseInt(p[1]) - 1]; };
@@ -13075,15 +12454,14 @@ function buildMileageMini(a) {
     + (capTxt ? '<span style="font-family:var(--mono);font-size:10px;font-weight:700;color:' + capCol + ';margin-left:4px">' + capTxt + '</span>' : '')
     + '</div>'
     + '<svg viewBox="0 0 ' + W + ' ' + totalH + '" width="100%" height="' + totalH + '" style="display:block;overflow:visible">'
-    + bars + plLine + stravaDot + dateLabels
+    + bars + plLine + dateLabels
     + '</svg>'
     + '</div>';
 }
 
 // ── Per-athlete weekly mileage trend ──────────────────────────────────────────
-// Completed KM (amber bars) come from the weekly check-in 'Weekly Run KM', with
-// Strava's live weekly distance overlaid (orange dots) on the current/previous
-// week where connected. The dashed blue line is the planned weekly KM target
+// Completed KM (amber bars) come from the weekly check-in 'Weekly Run KM'.
+// The dashed blue line is the planned weekly KM target
 // (from targetByWeek → 'Weekly KM Target'). Soft-fails to a friendly message
 // when an athlete has no mileage history yet.
 let _mtRange = 16; // weeks shown in the mileage trend
@@ -13140,22 +12518,8 @@ function buildMileageTrend(a) {
   let pts = sorted.map(w => {
     const we = String(w['Week Ending']).slice(0, 10);
     const c  = parseFloat(w['Weekly Run KM']);
-    return { date: we, completed: isNaN(c) ? null : c, planned: plannedFor(we), strava: null };
+    return { date: we, completed: isNaN(c) ? null : c, planned: plannedFor(we) };
   });
-
-  // Strava overlay: use every available weekly aggregate.
-  const skm = (typeof _stravaKmCache !== 'undefined') ? _stravaKmCache[a.id] : null;
-  let stravaByDate = {};
-  if (skm && curEnd) {
-    stravaByDate = _stravaKmByWeekEnd(skm, curEnd);
-    Object.keys(stravaByDate).forEach(date => {
-      if (!pts.some(p => p.date === date)) {
-        pts.push({ date, completed: null, planned: plannedFor(date), strava: null });
-      }
-    });
-    pts.sort((x, y) => x.date.localeCompare(y.date));
-  }
-  pts.forEach(p => { if (stravaByDate[p.date] != null) p.strava = stravaByDate[p.date]; });
 
   if (pts.length > _mtRange) pts = pts.slice(pts.length - _mtRange);
 
@@ -13166,7 +12530,7 @@ function buildMileageTrend(a) {
     </select>
   </div>`;
 
-  const hasData = pts.some(p => p.completed != null || p.planned != null || p.strava != null);
+  const hasData = pts.some(p => p.completed != null || p.planned != null);
   let chartHtml = '<p style="font-family:var(--mono);font-size:11px;color:var(--wh-dim)">No mileage data yet.</p>';
 
   if (hasData) {
@@ -13174,7 +12538,7 @@ function buildMileageTrend(a) {
     const cW = CW - pL - pR;
 
     const allVals = [];
-    pts.forEach(p => { if (p.completed != null) allVals.push(p.completed); if (p.planned != null) allVals.push(p.planned); if (p.strava != null) allVals.push(p.strava); });
+    pts.forEach(p => { if (p.completed != null) allVals.push(p.completed); if (p.planned != null) allVals.push(p.planned); });
     const rawMax = Math.max(1, ...allVals);
     const vStep = rawMax <= 10 ? 2 : rawMax <= 30 ? 5 : rawMax <= 60 ? 10 : rawMax <= 120 ? 20 : 50;
     const vMax = Math.ceil(rawMax / vStep) * vStep;
@@ -13209,9 +12573,6 @@ function buildMileageTrend(a) {
     const plannedDots = pts.map((p, i) => p.planned != null
       ? `<circle cx="${cx(i).toFixed(1)}" cy="${toY(p.planned).toFixed(1)}" r="3" fill="var(--wh-str)"><title>${_fmtD(p.date)} · ${p.planned} km planned</title></circle>` : '').join('');
 
-    const stravaDots = pts.map((p, i) => p.strava != null
-      ? `<circle cx="${cx(i).toFixed(1)}" cy="${toY(p.strava).toFixed(1)}" r="4.5" fill="#fc4c02" stroke="var(--wh-bg)" stroke-width="1.5"><title>${_fmtD(p.date)} · ${p.strava} km (Strava)</title></circle>` : '').join('');
-
     const step = Math.max(1, Math.ceil(n / 10));
     const xLabels = pts.map((p, i) => {
       if (i % step !== 0 && i !== n - 1) return '';
@@ -13219,16 +12580,16 @@ function buildMileageTrend(a) {
       return `<text x="${cx(i).toFixed(1)}" y="${pT + CH + 18}" font-family="var(--mono)" font-size="8" fill="var(--wh-dim)" text-anchor="${anchor}">${_fmtD(p.date)}</text>`;
     }).join('');
 
-    const compVals = pts.map(p => p.completed != null ? p.completed : (p.strava != null ? p.strava : null)).filter(v => v != null);
+    const compVals = pts.map(p => p.completed).filter(v => v != null);
     const latest = compVals.length ? compVals[compVals.length - 1] : null;
     const last4 = compVals.slice(-4);
     const avg4 = last4.length ? Math.round(last4.reduce((s, v) => s + v, 0) / last4.length * 10) / 10 : null;
     const peak = compVals.length ? Math.max(...compVals) : null;
 
     let adhTxt = '—';
-    const bothW = pts.filter(p => p.planned != null && (p.completed != null || p.strava != null));
+    const bothW = pts.filter(p => p.planned != null && p.completed != null);
     if (bothW.length) {
-      const tc = bothW.reduce((s, p) => s + (p.completed != null ? p.completed : p.strava), 0);
+      const tc = bothW.reduce((s, p) => s + p.completed, 0);
       const tp = bothW.reduce((s, p) => s + p.planned, 0);
       if (tp > 0) adhTxt = Math.round(tc / tp * 100) + '%';
     }
@@ -13244,11 +12605,10 @@ function buildMileageTrend(a) {
     const legend = `<div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:10px;font-family:var(--mono);font-size:9px;color:var(--wh-dim)">
       <span style="display:inline-flex;align-items:center;gap:5px"><span style="width:11px;height:11px;background:var(--wh-run);border-radius:2px;display:inline-block"></span>Completed (check-in)</span>
       <span style="display:inline-flex;align-items:center;gap:5px"><span style="width:14px;border-top:2px dashed var(--wh-str);display:inline-block"></span>Planned target</span>
-      <span style="display:inline-flex;align-items:center;gap:5px"><span style="width:10px;height:10px;background:#fc4c02;border-radius:50%;display:inline-block"></span>Strava actual</span>
     </div>`;
 
     chartHtml = statRow + `<svg viewBox="0 0 ${CW} ${pT + CH + pB}" width="100%" style="display:block;overflow:visible;margin-top:8px">
-      ${gridLines}${bars}${plannedPath}${plannedDots}${stravaDots}${xLabels}
+      ${gridLines}${bars}${plannedPath}${plannedDots}${xLabels}
     </svg>` + legend;
   }
 
@@ -13468,12 +12828,6 @@ function copyDM(athleteId) {
   const niggles = ((w?.['Run Niggles'] || '') + ' ' + (w?.['Lifts Niggles'] || '')).trim();
   if (isBad(niggles)) {
     lines.push(`Want to chat about the niggle you mentioned - how's that feeling now?`);
-  }
-
-  const stravaData = _stravaKmCache[athleteId];
-  if (stravaData?.weeklyKm != null && stravaData?.lastWeekKm != null && stravaData.lastWeekKm > 0) {
-    const pct = Math.round((stravaData.weeklyKm - stravaData.lastWeekKm) / stravaData.lastWeekKm * 100);
-    if (pct > 20) lines.push(`Noticed your km jumped ${pct}% this week - make sure you're managing recovery well 🙏`);
   }
 
   // Compliance nudge

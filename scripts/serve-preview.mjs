@@ -7,6 +7,7 @@ import { extname, join, normalize } from 'node:path';
 import * as FIXTURE from './preview-fixture.mjs';
 
 const root = new URL('../public/', import.meta.url).pathname;
+const fontRoot = new URL('./preview-fonts/', import.meta.url).pathname;
 const TYPES = {
   '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css',
   '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml',
@@ -107,10 +108,36 @@ createServer(async (req, res) => {
     return res.end(JSON.stringify({ ok: false, error: 'No fixture for this route' }));
   }
 
+  // Local IBM Plex, so the harness can prove the condensed face is really
+  // applied on a machine with no route to fonts.googleapis.com. Production is
+  // untouched: index.html still carries the Google Fonts link, and this only
+  // rewrites the copy the preview serves.
+  if (url.pathname.startsWith('/preview-fonts/')) {
+    const name = url.pathname.slice('/preview-fonts/'.length).replace(/[^A-Za-z0-9._-]/g, '');
+    try {
+      const body = await readFile(join(fontRoot, name));
+      res.writeHead(200, {
+        'Content-Type': name.endsWith('.css') ? 'text/css' : 'font/woff2',
+        'Cache-Control': 'no-store',
+      });
+      return res.end(body);
+    } catch {
+      res.writeHead(404); return res.end('font not found');
+    }
+  }
+
   const path = decodeURIComponent(url.pathname);
   const file = join(root, normalize(path === '/' ? '/index.html' : path).replace(/^(\.\.[/\\])+/, ''));
   try {
-    const body = await readFile(file);
+    let body = await readFile(file);
+    if (extname(file) === '.html') {
+      // Point the page at the local faces instead of Google Fonts. Same families,
+      // same weights, so what renders is what production renders.
+      body = Buffer.from(String(body).replace(
+        /<link href="https:\/\/fonts\.googleapis\.com\/css2\?[^"]*" rel="stylesheet">/,
+        '<link href="/preview-fonts/plex.css" rel="stylesheet">'
+      ));
+    }
     res.writeHead(200, { 'Content-Type': TYPES[extname(file)] || 'application/octet-stream' });
     res.end(body);
   } catch {

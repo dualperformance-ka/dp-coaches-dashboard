@@ -681,3 +681,84 @@ export async function programmeHistory(code, sb) {
   );
   return { ok: true, entries: Array.isArray(rows) ? rows : [] };
 }
+
+// ── Duplicate a session's prescription ───────────────────────────────────────
+//
+// planned_sessions carries only the legacy free-text prescription columns. The
+// prescription a coach actually builds lives in session_exercises (strength) and
+// run_steps (structured running), and duplicating the parent row alone produced
+// a session with neither: an empty prescription for the athlete, and nothing for
+// Phase 3's prescribed-vs-actual to match against, while the coach was told the
+// session had been copied.
+//
+// Runs server-side and after the parent insert so a copy cannot half-succeed in
+// the browser. Failure here is reported rather than swallowed: a duplicate that
+// silently loses its prescription is the bug this exists to fix.
+export async function copyPrescription(sourceSessionId, targetSessionId, sb) {
+  const source = encodeURIComponent(String(sourceSessionId));
+  const [exercises, steps] = await Promise.all([
+    sb(`session_exercises?planned_session_id=eq.${source}&select=*&order=position.asc&limit=200`),
+    sb(`run_steps?planned_session_id=eq.${source}&select=*&order=step_order.asc&limit=200`),
+  ]);
+
+  const exerciseRows = Array.isArray(exercises) ? exercises : [];
+  const stepRows = Array.isArray(steps) ? steps : [];
+  let copiedExercises = 0;
+  let copiedSteps = 0;
+
+  if (exerciseRows.length) {
+    const rows = exerciseRows.map((row) => {
+      const { id, planned_session_id, created_at, updated_at, ...rest } = row;
+      return { ...rest, planned_session_id: targetSessionId };
+    });
+    await sb('session_exercises', { method: 'POST', body: rows, prefer: 'return=minimal' });
+    copiedExercises = rows.length;
+  }
+
+  if (stepRows.length) {
+    // run_steps is a tree: a repeat block owns its children through
+    // parent_step_id. The copies need the ids the database assigns to the new
+    // parents, so parents are inserted first and their old id is mapped to the
+    // new one before the children go in.
+    const parents = stepRows.filter((row) => !row.parent_step_id);
+    const children = stepRows.filter((row) => row.parent_step_id);
+    const newIdByOldId = new Map();
+
+    for (const row of parents) {
+      const { id, planned_session_id, parent_step_id, created_at, updated_at, ...rest } = row;
+      const created = await sb('run_steps', {
+        method: 'POST',
+        body: [{ ...rest, planned_session_id: targetSessionId, parent_step_id: null }],
+        prefer: 'return=representation',
+      });
+      const createdId = Array.isArray(created) && created[0] ? created[0].id : null;
+      if (createdId) newIdByOldId.set(id, createdId);
+      copiedSteps += 1;
+    }
+
+    const orphaned = [];
+    for (const row of children) {
+      const { id, planned_session_id, parent_step_id, created_at, updated_at, ...rest } = row;
+      const newParent = newIdByOldId.get(parent_step_id);
+      // A child whose parent did not copy would become a detached step that the
+      // repeat expansion never reaches. Dropping it silently would understate the
+      // prescription, so it is counted and reported instead.
+      if (!newParent) { orphaned.push(id); continue; }
+      await sb('run_steps', {
+        method: 'POST',
+        body: [{ ...rest, planned_session_id: targetSessionId, parent_step_id: newParent }],
+        prefer: 'return=minimal',
+      });
+      copiedSteps += 1;
+    }
+
+    if (orphaned.length) {
+      throw httpError(
+        `Copied ${copiedSteps} of ${stepRows.length} run steps: ${orphaned.length} had no parent to attach to`,
+        500
+      );
+    }
+  }
+
+  return { copiedExercises, copiedSteps };
+}

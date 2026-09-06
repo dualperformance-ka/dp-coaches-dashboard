@@ -280,6 +280,15 @@ function weekLabelFor(code, dateStr) {
   return `Week ${Math.max(0, Math.floor(days / 7))}`;
 }
 
+// JAMES's whole current week is labelled "Deload" rather than "Week N". Coaches
+// type these labels by hand, so a non-numeric one is ordinary, and it is exactly
+// the case that used to render "No volume prescribed this week" while four
+// sessions sat on that week's calendar: _plannedKmForWeek matched on the label
+// alone. With the date fallback in place his volume resolves and the card says
+// it was matched by date. A word rather than a wrong number on purpose: a stray
+// "Week 99" would also invent a 99-week programme in the volume strip.
+const DRIFTED_LABEL = { code: 'JAMES', label: 'Deload' };
+
 const PLAN = PLAN_SPEC.map(([code, offset, title, type, status]) => {
   const id = psid();
   const plannedDate = wk(offset + 3);
@@ -290,7 +299,9 @@ const PLAN = PLAN_SPEC.map(([code, offset, title, type, status]) => {
     title,
     session_type: type,
     planned_date: plannedDate, // offsets are relative to midweek
-    week_label: weekLabelFor(code, plannedDate),
+    week_label: code === DRIFTED_LABEL.code && weekLabelFor(code, plannedDate) === weekLabelFor(code, wk(3))
+      ? DRIFTED_LABEL.label
+      : weekLabelFor(code, plannedDate),
     status,
     library_id: null,
     run_details: null,
@@ -498,25 +509,19 @@ export function sessions() {
 // is exactly the dishonesty §12.2 forbids, so the dashboard must fall back to
 // session totals and say why.
 export function activityUploads() {
+  // Field names match server/activity-file.js, which is what run-analysis.js reads.
+  const lap = (distanceM, seconds, avgHr) => ({
+    distanceM, movingTimeS: seconds, elapsedTimeS: seconds,
+    avgSpeedMps: Number((distanceM / seconds).toFixed(4)), avgHr,
+  });
   const khangLaps = [
-    { lap_index: 1, distance_km: 2.0,  moving_time_s: 690, avg_pace_s_per_km: 345, avg_hr: 138 },
-    ...[0, 1, 2, 3, 4].map(i => ({
-      lap_index: 2 + i * 2,
-      distance_km: 1.0,
-      moving_time_s: 245 + i * 3,          // rep fade, deliberately mild
-      avg_pace_s_per_km: 245 + i * 3,
-      avg_hr: 168 + i * 2,
-    })),
-    { lap_index: 12, distance_km: 2.0, moving_time_s: 700, avg_pace_s_per_km: 350, avg_hr: 142 },
+    lap(2000, 690, 138),
+    ...[0, 1, 2, 3, 4].map(i => lap(1000, 245 + i * 3, 168 + i * 2)), // mild rep fade
+    lap(2000, 700, 142),
   ];
 
-  const jamesLaps = Array.from({ length: 26 }, (_, i) => ({
-    lap_index: i + 1,
-    distance_km: 1.0,
-    moving_time_s: 331 + Math.round(Math.sin(i / 3) * 9),
-    avg_pace_s_per_km: 331 + Math.round(Math.sin(i / 3) * 9),
-    avg_hr: 148 + Math.round(i / 3),
-  }));
+  const jamesLaps = Array.from({ length: 26 }, (_, i) =>
+    lap(1000, 331 + Math.round(Math.sin(i / 3) * 9), 148 + Math.round(i / 3)));
 
   return [
     {
@@ -604,7 +609,7 @@ export function prescription(sessionId) {
       steps.push(parent);
       steps.push({
         id: `${plan.id}-work`, planned_session_id: plan.id, parent_step_id: parent.id,
-        step_order: 0, step_type: 'work', repeat_count: null,
+        step_order: 0, step_type: 'interval', repeat_count: null,
         distance_km: Number(m[2]), duration_sec: null, intensity_type: 'threshold',
         pace_min: '4:00', pace_max: '4:10', hr_zone: 'Z4', rpe: 8,
         effort: 'Threshold', instructions: '', coach_notes: '',
@@ -619,7 +624,7 @@ export function prescription(sessionId) {
     } else {
       steps.push({
         id: `${plan.id}-main`, planned_session_id: plan.id, parent_step_id: null,
-        step_order: order++, step_type: 'work', repeat_count: null,
+        step_order: order++, step_type: 'run', repeat_count: null,
         distance_km: plan.distance_km, duration_sec: null, intensity_type: 'easy',
         pace_min: '5:10', pace_max: '5:40', hr_zone: 'Z2', rpe: 4,
         effort: 'Steady', instructions: '', coach_notes: '',
