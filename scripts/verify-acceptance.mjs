@@ -97,7 +97,10 @@ ask('Status is understandable without colour',
 ask('Coach can navigate the squad quickly','rows: '+await p.evaluate(()=>document.querySelectorAll('tr.dash-trow').length), true);
 // 19 calendar weeks
 await p.evaluate(()=>document.getElementById('tab-programming-btn').click()); await p.waitForTimeout(1200);
-const cal = await p.evaluate(()=>(document.body.innerText.match(/\d{1,2} \w{3} – \d{1,2} \w{3}/)||[''])[0]);
+// The week range renders uppercase and abbreviates September as "SEPT", so the
+// month is three OR four letters. The old pattern hard-coded three lowercase-
+// friendly ones and reported "none" for a range that was on screen.
+const cal = await p.evaluate(()=>(document.body.innerText.match(/\d{1,2} [A-Za-z]{3,4}\s*[–—-]\s*\d{1,2} [A-Za-z]{3,4}/i)||[''])[0]);
 ask('Coach can inspect programme weeks accurately', cal||'none', !!cal);
 // 20 strava boundary
 ask('Strava API data is absent from coach display','requests to /api/strava: '+strava.length, strava.length===0);

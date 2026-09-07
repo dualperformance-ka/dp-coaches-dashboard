@@ -179,6 +179,41 @@ test('the injected mobile nav is hidden on every viewport the phone layer does n
   assert.deepEqual(missing, [], 'these tokens are read inside calc() but declared nowhere');
 });
 
+test('no template-literal syntax leaks into static markup', () => {
+  // DP_ICON('run') is a function call, and inside a template literal
+  // ${DP_ICON('run')} is an interpolation. Written into plain HTML in the body
+  // it is neither: nothing interpolates it, so the coach reads the characters
+  // ${DP_ICON('run')} on screen. That shipped on the session editor's
+  // "What kind of session?" row, where three of the four buttons were static
+  // markup rather than a rendered string.
+  //
+  // Script and style bodies are blanked first, keeping line numbers, so this
+  // only looks at markup the browser parses as HTML.
+  const blank = (m, body) => m.replace(body, body.replace(/[^\n]/g, ''));
+  let markup = index.replace(/<script\b[^>]*>([\s\S]*?)<\/script>/g, (m, b) => blank(m, b));
+  markup = markup.replace(/<style\b[^>]*>([\s\S]*?)<\/style>/g, (m, b) => blank(m, b));
+
+  const leaks = markup.split('\n')
+    .map((line, i) => ({ n: i + 1, line: line.trim() }))
+    .filter(r => r.line.includes('${'))
+    .map(r => `${r.n}: ${r.line.slice(0, 90)}`);
+  assert.deepEqual(leaks, [], 'these render as literal text, not as values');
+});
+
+test('icons declared in static markup are hydrated', () => {
+  // Static markup declares its icon as an attribute and dp-icons.js fills it,
+  // so there is still one icon set rather than SVG paths pasted into the HTML.
+  const icons = read('dp-icons.js');
+  assert.match(icons, /icon\.hydrate\s*=\s*hydrate/, 'the hydrator must be exposed');
+  assert.match(icons, /hydrate\(document\)/, 'it must run on load, not only on demand');
+
+  const declared = [...index.matchAll(/data-dp-icon="([\w-]+)"/g)].map(m => m[1]);
+  assert.ok(declared.length > 0, 'the session-type row declares its icons this way');
+  const known = [...icons.matchAll(/^\s{4}([a-z]+):\s*'/gm)].map(m => m[1]);
+  const unknown = [...new Set(declared)].filter(n => !known.includes(n));
+  assert.deepEqual(unknown, [], 'a data-dp-icon name with no icon behind it renders nothing at all');
+});
+
 test('!important stays far below where Phase 4 started', () => {
   const loaded = [...index.matchAll(/<link rel="stylesheet" href="\/([\w.-]+\.css)/g)].map(m => m[1]);
   const inline = [...index.matchAll(/<style>([\s\S]*?)<\/style>/g)].map(m => m[1]).join('\n');

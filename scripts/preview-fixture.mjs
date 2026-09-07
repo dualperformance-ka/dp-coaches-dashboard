@@ -16,7 +16,7 @@
 //
 // The roster is chosen to cover the states the validation matrix asks for
 // rather than to look tidy:
-//   KHANG  submitted run with device laps that DO line up with the prescription
+//   KAI  submitted run with device laps that DO line up with the prescription
 //   SARAH  submitted strength, stagnant load, day awaiting review
 //   JAMES  submitted long run whose device auto-lapped every km — lap matching
 //          must refuse to pair those laps to prescribed steps
@@ -53,7 +53,7 @@ const wk = offsetDays => {
 };
 
 const ATHLETES = [
-  { code: 'KHANG', name: 'Khang Tran',    startDays: 63,  coach: 'KARL' },
+  { code: 'KAI', name: 'Kai Tran',    startDays: 63,  coach: 'KARL' },
   { code: 'SARAH', name: 'Sarah Chen',    startDays: 112, coach: 'KARL' },
   { code: 'JAMES', name: 'James Okafor',  startDays: 84,  coach: 'KARL' },
   { code: 'ANNA',  name: 'Anna Petrov',   startDays: 21,  coach: 'ALEX' },
@@ -97,11 +97,11 @@ export function body() {
         'date:Date:start': iso(d),
         Date: iso(d),
         Weight: Number((72 + ai * 3.5 - (27 - d) * 0.03 + drift * 0.25).toFixed(1)),
-        'Sleep Score': Math.round(74 + drift * 9 - (a.code === 'KHANG' && d < 4 ? 14 : 0)),
-        Energy: Math.max(1, Math.round(7 + drift - (a.code === 'KHANG' && d < 4 ? 3 : 0))),
+        'Sleep Score': Math.round(74 + drift * 9 - (a.code === 'KAI' && d < 4 ? 14 : 0)),
+        Energy: Math.max(1, Math.round(7 + drift - (a.code === 'KAI' && d < 4 ? 3 : 0))),
         Stress: Math.max(1, Math.round(4 - drift + (a.code === 'TOM' && d < 7 ? 2 : 0))),
         Soreness: Math.max(1, Math.round(3 + (a.code === 'LUCA' && d < 8 ? 3 : 0) + drift * 0.5)),
-        Notes: a.code === 'KHANG' && d === 1 ? 'Right calf tight, 7/10 through the reps.' : '',
+        Notes: a.code === 'KAI' && d === 1 ? 'Right calf tight, 7/10 through the reps.' : '',
         _source: 'portal_supabase',
         _submittedAt: stamp(d),
         _updatedAt: stamp(d),
@@ -152,16 +152,16 @@ export function weekly() {
         'Run Completed': 4 - (a.code === 'TOM' && w === 0 ? 2 : 0),
         'Run Planned': 5,
         'Weekly Run KM': 48 + ai * 6 + (4 - w) * 3 + (a.code === 'LUCA' && w === 0 ? 22 : 0),
-        'Run Feel /10': 7 - (a.code === 'KHANG' && w === 0 ? 3 : 0),
+        'Run Feel /10': 7 - (a.code === 'KAI' && w === 0 ? 3 : 0),
         'Runs Wins': w === 0 ? 'Held pace on the tempo.' : '',
-        'Run Niggles': a.code === 'KHANG' && w === 0 ? 'Right calf.' : '',
+        'Run Niggles': a.code === 'KAI' && w === 0 ? 'Right calf.' : '',
         'Lift Completed': 2,
         'Lift Planned': 3,
         'Lift Feel /10': 7,
         'Lift Wins': '',
         'Lifts Niggles': '',
         'Sleep hrs': 7.2,
-        'Energy /10': 7 - (a.code === 'KHANG' && w === 0 ? 2 : 0),
+        'Energy /10': 7 - (a.code === 'KAI' && w === 0 ? 2 : 0),
         'Soreness /10': 3 + (a.code === 'LUCA' && w === 0 ? 3 : 0),
         'Nutrition Adherence /10': 8,
         Fuelling: 'On plan',
@@ -187,7 +187,7 @@ export function weekly() {
 // invitation to set something the coach cannot set.
 export function goals() {
   const races = {
-    KHANG: { race: 'Adelaide Marathon',   inDays: 42 },
+    KAI: { race: 'Adelaide Marathon',   inDays: 42 },
     SARAH: { race: 'Barossa Half',        inDays: 21 },
     JAMES: { race: 'Melbourne Marathon',  inDays: 77 },
     LUCA:  { race: 'City-Bay 12km',       inDays: 119 },
@@ -228,15 +228,15 @@ let seq = 0;
 const psid = () => `ps-${String(++seq).padStart(4, '0')}`;
 
 const PLAN_SPEC = [
-  // KHANG — marathon build
-  ['KHANG', -7, 'Easy 10km',            'Run',      'Completed'],
-  ['KHANG', -5, 'Threshold 5×1km',      'Run',      'Completed'],
-  ['KHANG', -3, 'Long run 26km',        'Run',      'Completed'],
-  ['KHANG', -1, 'Threshold 5×1km',      'Run',      'Planned'],
-  ['KHANG',  0, 'Easy 8km',             'Run',      'Planned'],
-  ['KHANG',  2, 'Long run 28km',        'Run',      'Planned'],
-  ['KHANG', -6, 'Lower A',              'Strength', 'Completed'],
-  ['KHANG',  1, 'Upper B',              'Strength', 'Planned'],
+  // KAI — marathon build
+  ['KAI', -7, 'Easy 10km',            'Run',      'Completed'],
+  ['KAI', -5, 'Threshold 5×1km',      'Run',      'Completed'],
+  ['KAI', -3, 'Long run 26km',        'Run',      'Completed'],
+  ['KAI', -1, 'Threshold 5×1km',      'Run',      'Planned'],
+  ['KAI',  0, 'Easy 8km',             'Run',      'Planned'],
+  ['KAI',  2, 'Long run 28km',        'Run',      'Planned'],
+  ['KAI', -6, 'Lower A',              'Strength', 'Completed'],
+  ['KAI',  1, 'Upper B',              'Strength', 'Planned'],
   // SARAH — hybrid
   ['SARAH', -6, 'Easy 8km',             'Run',      'Completed'],
   ['SARAH', -4, 'Upper B',              'Strength', 'Completed'],
@@ -267,16 +267,41 @@ const PLAN_SPEC = [
   ['TOM',    2, 'Gold Coast Marathon',  'Run',      'Planned'],
 ];
 
+// The dashboard computes an athlete's programme week from their start date, and
+// _plannedKmForWeek() then matches planned rows by week_label TEXT. A fixture
+// that stamps one label on every row silently reads as "nothing prescribed" for
+// any athlete whose computed week differs, so labels are derived here the same
+// way the dashboard derives them.
+function weekLabelFor(code, dateStr) {
+  const a = ATHLETES.find(x => x.code === code);
+  const start = new Date(iso(a.startDays));
+  const when = new Date(dateStr);
+  const days = Math.floor((when - start) / DAY);
+  return `Week ${Math.max(0, Math.floor(days / 7))}`;
+}
+
+// JAMES's whole current week is labelled "Deload" rather than "Week N". Coaches
+// type these labels by hand, so a non-numeric one is ordinary, and it is exactly
+// the case that used to render "No volume prescribed this week" while four
+// sessions sat on that week's calendar: _plannedKmForWeek matched on the label
+// alone. With the date fallback in place his volume resolves and the card says
+// it was matched by date. A word rather than a wrong number on purpose: a stray
+// "Week 99" would also invent a 99-week programme in the volume strip.
+const DRIFTED_LABEL = { code: 'JAMES', label: 'Deload' };
+
 const PLAN = PLAN_SPEC.map(([code, offset, title, type, status]) => {
   const id = psid();
+  const plannedDate = wk(offset + 3);
   return {
     id,
     notion_page_id: id,
     athlete_code: code,
     title,
     session_type: type,
-    planned_date: wk(offset + 3), // offsets are relative to midweek
-    week_label: 'Week 9',
+    planned_date: plannedDate, // offsets are relative to midweek
+    week_label: code === DRIFTED_LABEL.code && weekLabelFor(code, plannedDate) === weekLabelFor(code, wk(3))
+      ? DRIFTED_LABEL.label
+      : weekLabelFor(code, plannedDate),
     status,
     library_id: null,
     run_details: null,
@@ -307,6 +332,17 @@ export const planning = () => PLAN.map(r => ({ ...r }));
 const planIdFor = (code, titleMatch) =>
   (PLAN.find(p => p.athlete_code === code && titleMatch.test(p.title)) || {}).id;
 
+// Submitted logs are dated to the session they belong to, not to "N days ago".
+// They used to use iso(N), which silently walked away from the plan: PLAN is
+// anchored to this week's Monday, so on a Monday every "3 days ago" log landed
+// in the previous week and the current week showed nothing submitted for any
+// athlete. That is the state the reviewable-day control and half the queue
+// signals depend on, so the acceptance run scored differently depending on
+// which day of the week it was run. Anchoring both to the same Monday makes
+// the fixture read the same on every day.
+const planDateFor = (code, titleMatch) =>
+  (PLAN.find(p => p.athlete_code === code && titleMatch.test(p.title)) || {}).planned_date;
+
 // ── athlete_data (ticked / logs / ex_picks) ──────────────────────────────────
 // This is where Rule 1 lives. `ticked` means the athlete tapped the box.
 // `logs` means they sent data. ANNA appears in ticked and not in logs.
@@ -327,7 +363,26 @@ export function athleteSettings() {
         add(logs, p.athlete_code, p.id,
           p.session_type === 'Run'
             ? { distance: p.distance_km || 8, pace: '4:58', rpe: 6 }
-            : [{ exercise: 'Back Squat', sets: [{ reps: 8, weight: 100 }] }]);
+            : {
+                // SARAH's bench is deliberately parked at 70kg across the block:
+                // a formal overload recommendation must not be produced for it.
+                'Back Squat': [
+                  { weight: 110, reps: 8, rpe: 8, done: true },
+                  { weight: 110, reps: 8, rpe: 8, done: true },
+                  { weight: 110, reps: 7, rpe: 9, done: true },
+                ],
+                'Barbell Bench Press': [
+                  { weight: 70, reps: 9, rpe: 8, done: true },
+                  { weight: 70, reps: 9, rpe: 8, done: true },
+                  { weight: 70, reps: 8, rpe: 9, done: true },
+                ],
+                // No rep range on the prescription and no load logged: the
+                // engine has nothing to recommend from and must say so.
+                'Farmers Carry': [
+                  { weight: null, reps: null, rpe: 7, done: true },
+                ],
+                __submittedAt: stamp(1),
+              });
       });
 
   // ANNA: ticked both sessions, submitted neither. The tick blob has the id,
@@ -397,7 +452,7 @@ export function sessions() {
       ['Weighted Pull Up',     [10, 10, 12.5, 12.5, 15, 15, 17.5, 20]],
       ['Bodyweight Push Up',   [0, 0, 0, 0, 0, 0, 0, 0]],
     ],
-    KHANG: [
+    KAI: [
       ['Back Squat',           [80, 82.5, 85, 85, 87.5, 90, 90, 92.5]],
       ['Split Squat',          [20, 20, 22.5, 22.5, 25, 25, 27.5, 27.5]],
     ],
@@ -409,10 +464,10 @@ export function sessions() {
       const log = lifts.map(([name, loads]) => {
         const load = loads[7 - s];
         // Bodyweight movements carry no load. Tonnage must not invent one.
-        const setLine = load
-          ? `3 × 8 @ ${load}kg`
-          : `3 × 12 @ bodyweight`;
-        return `${name}: ${setLine}`;
+        const sets = load
+          ? [1, 2, 3].map(n => `Set ${n}: ${load}kg x ${n === 3 ? 7 : 8} @ RPE ${n === 3 ? 9 : 8}`)
+          : [1, 2, 3].map(n => `Set ${n}: bodyweight x 12`);
+        return `${name}: ${sets.join(' | ')}`;
       }).join('\n');
       push(code, date, s === 0 ? 'Lower A' : 'Lower A', 'Strength', log, {
         submittedAt: `${date}T18:40:00.000Z`,
@@ -422,29 +477,32 @@ export function sessions() {
 
   // One deliberately unparseable strength line — tonnage must skip it rather
   // than manufacture a number.
-  push('LUCA', iso(2), 'Upper A', 'Strength',
-    'Back Squat: felt heavy, stopped early\nWeighted Pull Up: 3 × 6 @ 20kg', {
-      submittedAt: `${iso(2)}T18:40:00.000Z`,
+  push('LUCA', planDateFor('LUCA', /^Lower B$/) || iso(2), 'Lower B', 'Strength',
+    'Back Squat: felt heavy, stopped early\nWeighted Pull Up: Set 1: 20kg x 6 @ RPE 8 | Set 2: 20kg x 5 @ RPE 9', {
+      submittedAt: `${planDateFor('LUCA', /^Lower B$/) || iso(2)}T18:40:00.000Z`,
     });
 
   // Running logs
+  // Each entry is dated to its own completed planned session, so a submitted
+  // log always sits on the day the coach prescribed it.
   const runs = [
-    ['KHANG', 3, 'Long run 26km',   26.1, '5:18'],
-    ['KHANG', 5, 'Threshold 5×1km', 12.4, '4:41'],
-    ['KHANG', 7, 'Easy 10km',       10.2, '5:44'],
-    ['SARAH', 2, 'Threshold 4×1km', 10.8, '4:29'],
-    ['SARAH', 6, 'Easy 8km',         8.1, '5:52'],
-    ['JAMES', 3, 'Long run 26km',   26.4, '5:31'],
-    ['JAMES', 5, 'Easy 9km',         9.1, '5:49'],
-    ['TOM',   3, 'Race pace 3×2km', 14.2, '4:12'],
-    ['TOM',   5, 'Easy 8km',         8.0, '5:38'],
+    ['KAI',   'Long run 26km',   26.1, '5:18'],
+    ['KAI',   'Threshold 5×1km', 12.4, '4:41'],
+    ['KAI',   'Easy 10km',       10.2, '5:44'],
+    ['SARAH', 'Threshold 4×1km', 10.8, '4:29'],
+    ['SARAH', 'Easy 8km',         8.1, '5:52'],
+    ['JAMES', 'Long run 26km',   26.4, '5:31'],
+    ['JAMES', 'Easy 9km',         9.1, '5:49'],
+    ['TOM',   'Race pace 3×2km', 14.2, '4:12'],
+    ['TOM',   'Easy 8km',         8.0, '5:38'],
   ];
-  runs.forEach(([code, d, name, km, pace]) => {
-    const date = iso(d);
+  runs.forEach(([code, name, km, pace]) => {
+    const date = planDateFor(code, new RegExp('^' + name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$'));
+    if (!date) return;
     push(code, date, name, 'Run',
       `Distance: ${km}km\nAverage pace: ${pace}/km\nRPE: ${/Threshold|Race pace/.test(name) ? 8 : 4}`, {
         submittedAt: `${date}T06:20:00.000Z`,
-        notes: code === 'KHANG' && d === 3 ? 'Calf tightened at 20km, eased off.' : '',
+        notes: code === 'KAI' && /Long run/.test(name) ? 'Calf tightened at 20km, eased off.' : '',
       });
   });
 
@@ -459,37 +517,31 @@ export function sessions() {
 }
 
 // ── athlete_activity_uploads ─────────────────────────────────────────────────
-// KHANG's threshold file has clean manual laps that correspond 1:1 with the
+// KAI's threshold file has clean manual laps that correspond 1:1 with the
 // prescribed 5 × 1km. JAMES's long run was auto-lapped every kilometre by his
 // watch: 26 laps against a prescription of one continuous effort. Pairing those
 // is exactly the dishonesty §12.2 forbids, so the dashboard must fall back to
 // session totals and say why.
 export function activityUploads() {
+  // Field names match server/activity-file.js, which is what run-analysis.js reads.
+  const lap = (distanceM, seconds, avgHr) => ({
+    distanceM, movingTimeS: seconds, elapsedTimeS: seconds,
+    avgSpeedMps: Number((distanceM / seconds).toFixed(4)), avgHr,
+  });
   const khangLaps = [
-    { lap_index: 1, distance_km: 2.0,  moving_time_s: 690, avg_pace_s_per_km: 345, avg_hr: 138 },
-    ...[0, 1, 2, 3, 4].map(i => ({
-      lap_index: 2 + i * 2,
-      distance_km: 1.0,
-      moving_time_s: 245 + i * 3,          // rep fade, deliberately mild
-      avg_pace_s_per_km: 245 + i * 3,
-      avg_hr: 168 + i * 2,
-    })),
-    { lap_index: 12, distance_km: 2.0, moving_time_s: 700, avg_pace_s_per_km: 350, avg_hr: 142 },
+    lap(2000, 690, 138),
+    ...[0, 1, 2, 3, 4].map(i => lap(1000, 245 + i * 3, 168 + i * 2)), // mild rep fade
+    lap(2000, 700, 142),
   ];
 
-  const jamesLaps = Array.from({ length: 26 }, (_, i) => ({
-    lap_index: i + 1,
-    distance_km: 1.0,
-    moving_time_s: 331 + Math.round(Math.sin(i / 3) * 9),
-    avg_pace_s_per_km: 331 + Math.round(Math.sin(i / 3) * 9),
-    avg_hr: 148 + Math.round(i / 3),
-  }));
+  const jamesLaps = Array.from({ length: 26 }, (_, i) =>
+    lap(1000, 331 + Math.round(Math.sin(i / 3) * 9), 148 + Math.round(i / 3)));
 
   return [
     {
       id: 'up-0001',
-      athlete_code: 'KHANG',
-      athlete_name: 'Khang Tran',
+      athlete_code: 'KAI',
+      athlete_name: 'Kai Tran',
       activity_name: 'Threshold 5×1km',
       sport_type: 'Run',
       activity_date: iso(5),
@@ -571,7 +623,7 @@ export function prescription(sessionId) {
       steps.push(parent);
       steps.push({
         id: `${plan.id}-work`, planned_session_id: plan.id, parent_step_id: parent.id,
-        step_order: 0, step_type: 'work', repeat_count: null,
+        step_order: 0, step_type: 'interval', repeat_count: null,
         distance_km: Number(m[2]), duration_sec: null, intensity_type: 'threshold',
         pace_min: '4:00', pace_max: '4:10', hr_zone: 'Z4', rpe: 8,
         effort: 'Threshold', instructions: '', coach_notes: '',
@@ -586,7 +638,7 @@ export function prescription(sessionId) {
     } else {
       steps.push({
         id: `${plan.id}-main`, planned_session_id: plan.id, parent_step_id: null,
-        step_order: order++, step_type: 'work', repeat_count: null,
+        step_order: order++, step_type: 'run', repeat_count: null,
         distance_km: plan.distance_km, duration_sec: null, intensity_type: 'easy',
         pace_min: '5:10', pace_max: '5:40', hr_zone: 'Z2', rpe: 4,
         effort: 'Steady', instructions: '', coach_notes: '',
