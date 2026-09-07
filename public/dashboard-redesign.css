@@ -142,7 +142,7 @@ header {
 .sf.active { background: #f5f5f3; color: #101114; border-color: #f5f5f3; }
 .filter-divider { opacity: .55; }
 
-.main { max-width: 1440px; padding: 22px clamp(14px, 3vw, 34px) 64px; }
+.main { max-width: var(--content-max, 1680px); padding: 22px clamp(14px, 3vw, 34px) 64px; }
 
 /* Intro block inserted by dashboard-redesign.js */
 .dp-page-intro {
@@ -394,8 +394,14 @@ body[data-theme="pride"] .card { animation:none !important; border-width:1px !im
   --dim: rgba(205,219,232,.46);
   --amber: #92d2ed;
   --amber-dim: #c8ecfa;
-  --run: #92d2ed;
-  --str: #dce8f5;
+  /* Running and strength must stay visually separable — they are the two things
+     a coach is comparing on almost every screen. These were both set to the
+     readout blue, which collapsed run/strength colour coding across the whole
+     dashboard (the mileage chart drew its bars and its planned line in two
+     shades of the same hue). Warmed onto the Instrument palette rather than
+     reverted to the original hard amber. */
+  --run: #e9a03c;
+  --str: #7fb2e8;
   --ok: #52d39d;
   --warn: #f2b766;
   --alert: #f08282;
@@ -432,8 +438,8 @@ body[data-theme="light"] {
   --dim: rgba(14,24,34,.48);
   --amber: #1f8bb8;
   --amber-dim: #146b90;
-  --run: #1f8bb8;
-  --str: #243547;
+  --run: #a8620a;
+  --str: #2f5c8f;
   --ok: #157f58;
   --warn: #a56618;
   --alert: #c44a58;
@@ -600,9 +606,26 @@ body[data-theme="light"] .theme-btn.active { color: #fff; background: #146b90; }
 @media (max-width: 980px) {
   header { padding: 14px 16px; }
   .logo-kicker { font-size: 24px; }
-  .h-right { width: 100%; justify-content: flex-start; }
+
+  /* .h-right used to be width:100% here, which only makes sense if the header
+     wraps onto a second line. It never has: the base header rule is a nowrap
+     flex row and every layer since has kept it that way. So the control cluster
+     was laid out at the full width of the header's content box while still
+     sitting beside the 328px logo, and the page scrolled sideways by exactly
+     the width of the logo block from 721px (where the phone layer stops) up to
+     980px. Sizing it to its content and pinning it right is what the other two
+     layers already do. */
+  .h-right {
+    width: auto;
+    flex: 1 1 auto;
+    min-width: 0;
+    flex-wrap: nowrap;
+    justify-content: flex-end;
+  }
+
   .summary-bar { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
+
 
 @media (max-width: 720px) {
   header, body[data-theme="light"] header { position: static; background: #081019; }

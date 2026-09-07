@@ -73,5 +73,43 @@
   }
 
   icon.names = Object.keys(ICONS);
+
+  /**
+   * Fill every <span data-dp-icon="name"> under `root` with its icon.
+   *
+   * Most call sites build HTML inside a template literal, where DP_ICON('x')
+   * is just a function call. Static markup in the body cannot do that: a
+   * ${DP_ICON('run')} written into plain HTML is not interpolated by anything
+   * and renders as those characters, which is exactly what shipped on the
+   * session editor's "What kind of session?" row. Markup that is not a
+   * template literal declares the icon as an attribute instead and gets
+   * hydrated here.
+   *
+   * Safe to call repeatedly: a hydrated node is marked and skipped.
+   */
+  function hydrate(root) {
+    var scope = root || document;
+    var nodes = scope.querySelectorAll('[data-dp-icon]');
+    for (var i = 0; i < nodes.length; i += 1) {
+      var el = nodes[i];
+      if (el.getAttribute('data-dp-icon-done') === '1') continue;
+      var svg = icon(el.getAttribute('data-dp-icon'), {
+        size: el.getAttribute('data-dp-icon-size') || null,
+        label: el.getAttribute('data-dp-icon-label') || null,
+      });
+      if (!svg) continue;
+      el.innerHTML = svg;
+      el.setAttribute('data-dp-icon-done', '1');
+    }
+  }
+  icon.hydrate = hydrate;
+
   window.DP_ICON = icon;
+
+  // This file loads near the end of <body>, so everything above it is parsed.
+  // The second pass covers markup that follows the script tag.
+  hydrate(document);
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function () { hydrate(document); });
+  }
 })();

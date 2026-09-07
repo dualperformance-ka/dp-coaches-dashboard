@@ -327,6 +327,31 @@ for (const [, asset, version] of shellVersions) {
     failures.push(`${asset} changed but is still served as ?v=${version}. Bump it in index.html, then run --update-versions.`);
   }
 }
+// ── The service worker precaches SHELL_ASSETS by exact URL, query string
+//    included. If index.html asks for dashboard-mobile-final.css?v=20260907-34
+//    while SHELL_ASSETS still lists ?v=20260906-31, the worker warms a URL
+//    nothing requests and the file the page actually needs is not in the shell
+//    cache at all. Nothing errors: it just quietly stops being offline-ready,
+//    and the bumped VERSION makes it look like the bump was done properly.
+//    Bumping an asset means bumping it in BOTH files. ────────────────────────
+{
+  const sw = existsSync(join(publicDir, 'sw.js'))
+    ? readFileSync(join(publicDir, 'sw.js'), 'utf8') : '';
+  const shellWants = Object.fromEntries(
+    [...index.matchAll(/(?:href|src)="\/?((?:js\/)?[\w.-]+\.(?:css|js))\?v=([\w.-]+)"/g)]
+      .map(m => [m[1], m[2]]));
+  const drift = [...sw.matchAll(/'\/((?:js\/)?[\w.-]+\.(?:css|js))\?v=([\w.-]+)'/g)]
+    .filter(([, asset, version]) => shellWants[asset] && shellWants[asset] !== version)
+    .map(([, asset, version]) => `${asset}: sw.js has ?v=${version}, index.html asks for ?v=${shellWants[asset]}`);
+  if (drift.length) {
+    failures.push(
+      `${drift.length} asset(s) are versioned differently in sw.js and index.html:\n  ` +
+      drift.join('\n  ') +
+      `\nThe service worker would precache a URL the page never requests.`
+    );
+  }
+}
+
 if (process.argv.includes('--update-versions')) {
   writeFileSync(manifestPath, JSON.stringify(observed, null, 2) + '\n');
   console.log(`Recorded versions for ${Object.keys(observed).length} versioned assets.`);

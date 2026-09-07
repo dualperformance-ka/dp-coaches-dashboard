@@ -541,6 +541,7 @@ body[data-theme="light"] .dp-mobilenav { color:var(--muted); background:rgba(255
 body[data-theme="light"] .dp-mnav-item { color:var(--muted); }
 body[data-theme="light"] .dp-mnav-item.active { color:#12688f; }
 body[data-theme="light"] .dp-sheet-cell { color:var(--text); background:var(--surface2); border-color:var(--border); }
+body[data-theme="light"] .dp-sheet-title { color:var(--text); }
 
 /* Focus is visible against either palette. */
 body[data-theme="light"] button:focus-visible,

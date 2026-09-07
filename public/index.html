@@ -1928,7 +1928,7 @@ body[data-theme="light"] .strava-command-bar{background:linear-gradient(135deg,r
 .week-jump-btn:disabled{opacity:.35;cursor:not-allowed}
 @media(max-width:720px){.week-jump{align-items:stretch;flex-direction:column;gap:9px;padding:9px 11px}.week-jump-identity{gap:9px}.week-jump-main{font-size:18px}.week-jump-sub{display:none}.week-jump-controls{justify-content:stretch;flex-wrap:nowrap}.week-jump-btn{flex:1;padding:7px 5px;font-size:8px}}
 </style>
-<link rel="stylesheet" href="/dashboard-redesign.css?v=20260906-17">
+<link rel="stylesheet" href="/dashboard-redesign.css?v=20260907-34">
 <link rel="stylesheet" href="/dashboard-detail-cleanup.css?v=20260906-17">
 <link rel="stylesheet" href="/dashboard-comprehensive.css?v=20260906-23">
 <script src="/coach-auth.js"></script>
@@ -2249,7 +2249,7 @@ body[data-theme="light"] .theme-btn.active{background:rgba(255,255,255,.22);colo
   .sum-card{flex:1 1 100%}
 }
 </style>
-<link rel="stylesheet" href="/dashboard-theme-system.css?v=20260906-20">
+<link rel="stylesheet" href="/dashboard-theme-system.css?v=20260907-34">
 <link rel="stylesheet" href="/dashboard-desktop.css?v=20260906-17">
 <link rel="stylesheet" href="/triage.css?v=20260906-32">
 <link rel="stylesheet" href="/programming.css?v=20260906-17">
@@ -2258,7 +2258,7 @@ body[data-theme="light"] .theme-btn.active{background:rgba(255,255,255,.22);colo
 <link rel="stylesheet" href="/instrument.css?v=20260906-33">
 <!-- Phone layer, deliberately last: see the header of dashboard-mobile-final.css.
      Loading it here is what lets every phone rule drop its !important. -->
-<link rel="stylesheet" href="/dashboard-mobile-final.css?v=20260906-31">
+<link rel="stylesheet" href="/dashboard-mobile-final.css?v=20260907-34">
 <div class="ma-backdrop" id="ma-backdrop" role="dialog" aria-modal="true" aria-label="Manage athletes" onclick="if(event.target===this)closeManageAthletes()">
   <div class="ma-card">
     <div class="ma-head">
@@ -2749,10 +2749,10 @@ function refreshRosterDrivenUI() {
       <div id="ps-mode-picker">
         <div class="po-label" style="margin-bottom:8px">What kind of session?</div>
         <div class="ps-mode-row">
-          <button type="button" class="ps-mode-btn" id="ps-mode-run" onclick="setPsMode('run')">${DP_ICON('run')} Running</button>
-          <button type="button" class="ps-mode-btn" id="ps-mode-str" onclick="setPsMode('strength')">${DP_ICON('dumbbell')} Strength</button>
+          <button type="button" class="ps-mode-btn" id="ps-mode-run" onclick="setPsMode('run')"><span data-dp-icon="run"></span> Running</button>
+          <button type="button" class="ps-mode-btn" id="ps-mode-str" onclick="setPsMode('strength')"><span data-dp-icon="dumbbell"></span> Strength</button>
           <button type="button" class="ps-mode-btn" id="ps-mode-other" onclick="setPsMode('other')">✦ Other</button>
-          <button type="button" class="ps-mode-btn" id="ps-mode-disc" onclick="setPsMode('discovery')">${DP_ICON('note')} Discovery</button>
+          <button type="button" class="ps-mode-btn" id="ps-mode-disc" onclick="setPsMode('discovery')"><span data-dp-icon="note"></span> Discovery</button>
         </div>
       </div>
       <div id="ps-form" style="display:none">
@@ -13104,7 +13104,7 @@ document.getElementById('gen-btn').addEventListener('click', generateAI);
 </script>
 <script src="/dashboard-redesign.js?v=20260906-17" defer></script>
 <script src="/coaching-actions.js?v=3" defer></script>
-<script src="/dp-icons.js?v=20260906-30"></script>
+<script src="/dp-icons.js?v=20260907-35"></script>
 <script src="/dashboard-mobilenav.js?v=20260906-17" defer></script>
 <script src="/triage.js?v=20260906-17" defer></script>
 <script src="/weekly-sport-targets.js?v=3" defer></script>

@@ -19,13 +19,55 @@
    still resolve against each other exactly as they did.
 
    Rules for changing this file:
-     - Every top-level block must be a max-width media query. check-portal.mjs
-       enforces that, because an unscoped rule here would outrank the shared
+     - Every top-level block must be a max-width media query, with the single
+       exception of the BASE CONTRACT block immediately below, which may only
+       declare --dp-* tokens and display:none. check-portal.mjs enforces both
+       halves, because any other unscoped rule here would outrank the shared
        design system on desktop.
      - You should not need !important. If you reach for it, the rule probably
        belongs in a component file instead, or two selectors are fighting and
        that fight is the actual bug.
    ============================================================================ */
+
+
+/* ══════ BASE CONTRACT (the only unscoped block in this file) ══════════════
+   These rules are deliberately NOT inside a media query, and the file cannot
+   work without them.
+
+   They used to live at the top of dashboard-mobile.css. When that file was
+   folded into this one, only its @media blocks were carried across and its
+   <link> was removed, so these went off the page entirely. Two things broke:
+
+     1. .dp-mobilenav and .dp-sheet are injected into every page by
+        dashboard-mobilenav.js, on every viewport. The phone layout below
+        turns them on. NOTHING was turning them off above 720px, so the bar
+        and the More sheet rendered unstyled in normal document flow at the
+        bottom of the desktop dashboard.
+     2. The four --dp-* tokens are read inside calc() roughly twenty times
+        below. An undefined custom property makes calc() invalid at
+        computed-value time, which drops the whole declaration, so the phone
+        lost its content bottom padding, its scroll padding and its header
+        height, and content scrolled under the fixed bar.
+
+   Both are enforced by check-portal.mjs now rather than left to review.
+
+   Source order does the work: these come before the @media blocks, a media
+   query adds no specificity, so display:flex/block below wins on the phone
+   and display:none stands everywhere else. No !important needed.
+   ────────────────────────────────────────────────────────────────────────── */
+
+:root {
+  --dp-hdr-h: 56px;
+  --dp-tab-h: 44px;
+  --dp-safe-top: env(safe-area-inset-top, 0px);
+  --dp-safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Phone furniture, hidden until the phone layer below switches it on. */
+.dp-mobilenav,
+.dp-sheet,
+.dp-sheet-backdrop { display: none; }
+
 
 
 /* ══════ from dashboard-mobile.css ══════ */
