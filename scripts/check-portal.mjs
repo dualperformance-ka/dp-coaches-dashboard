@@ -132,7 +132,14 @@ for (const name of loadedStyles) {
 //    The allowance is verified, not asserted. Any file listed after
 //    instrument.css is read, and every top-level block in it must be a
 //    max-width media query. The moment someone adds an unscoped rule to such a
-//    file it fails here rather than silently outranking the design system. ────
+//    file it fails here rather than silently outranking the design system.
+//
+//    One narrow carve-out, because the phone layer genuinely owns two unscoped
+//    things and shipping without them broke production: the --dp-* tokens it
+//    reads inside calc(), and the display:none that keeps the injected mobile
+//    nav and More sheet off every viewport the phone layer does not claim. A
+//    top-level block may therefore declare ONLY custom properties named --dp-*
+//    or the single declaration display:none. Anything else still fails. ───────
 const styleLinks = [...index.matchAll(/<link[^>]+href="\/([\w.-]+\.css)/g)].map((m) => m[1]);
 if (!styleLinks.includes('instrument.css')) {
   failures.push('instrument.css is not loaded — the dashboard would drift from the athlete portal');
@@ -159,7 +166,11 @@ if (!styleLinks.includes('instrument.css')) {
         depth -= 1;
         if (depth === 0) {
           if (selector && !/^@media\s*\(\s*max-width\s*:\s*\d+px\s*\)$/.test(selector)) {
-            offenders.push(selector.slice(0, 60));
+            // The carve-out: --dp-* tokens and display:none, nothing else.
+            const body = css.slice(css.indexOf('{', start) + 1, i);
+            const bad = body.split(';').map((d) => d.trim()).filter(Boolean)
+              .filter((d) => !/^--dp-[\w-]+\s*:/.test(d) && !/^display\s*:\s*none$/.test(d));
+            if (bad.length) offenders.push(`${selector.slice(0, 44)} { ${bad[0].slice(0, 40)} }`);
           }
           start = i + 1;
         }
@@ -171,6 +182,119 @@ if (!styleLinks.includes('instrument.css')) {
         `(e.g. "${offenders[0]}"). Only max-width media queries may follow the design system.`
       );
     }
+  }
+}
+
+// ── The mobile nav's base contract.
+//
+//    dashboard-mobilenav.js appends .dp-mobilenav, .dp-sheet and
+//    .dp-sheet-backdrop to document.body on EVERY viewport; the phone layer
+//    switches them on inside a media query. So an unscoped display:none has to
+//    exist somewhere, or the bar and the sheet render unstyled in normal flow
+//    on desktop. That is exactly what shipped once, when the phone files were
+//    consolidated and only their @media blocks were carried across.
+//
+//    The same consolidation dropped the top-level --dp-* tokens those media
+//    blocks read inside calc(). An undefined custom property makes calc()
+//    invalid at computed-value time and the browser discards the whole
+//    declaration, silently, so the phone lost its content bottom padding and
+//    content scrolled under the fixed bar. Neither failure is visible to a
+//    test that only asserts a rule exists somewhere in the file.
+//
+//    Both are checked here against the top-level cascade only. ───────────────
+{
+  const loadedCss = styleLinks
+    .map((name) => {
+      try { return readFileSync(join(publicDir, name), 'utf8').replace(/\/\*[\s\S]*?\*\//g, ''); }
+      catch { return ''; }
+    })
+    .join('\n');
+
+  // Depth-0 blocks: what actually applies with no media query in play.
+  const topLevel = [];
+  {
+    let depth = 0, selector = '', start = 0, open = -1;
+    for (let i = 0; i < loadedCss.length; i += 1) {
+      const ch = loadedCss[i];
+      if (ch === '{') {
+        if (depth === 0) { selector = loadedCss.slice(start, i).replace(/\s+/g, ' ').trim(); open = i; }
+        depth += 1;
+      } else if (ch === '}') {
+        depth -= 1;
+        if (depth === 0) {
+          if (selector && !selector.startsWith('@')) {
+            topLevel.push({ selector, body: loadedCss.slice(open + 1, i) });
+          }
+          start = i + 1;
+        }
+      }
+    }
+  }
+
+  for (const cls of ['.dp-mobilenav', '.dp-sheet', '.dp-sheet-backdrop']) {
+    const hidden = topLevel.some((r) =>
+      r.selector.split(',').some((sel) => sel.trim() === cls) &&
+      /(^|;)\s*display\s*:\s*none\s*(!important)?\s*(;|$)/.test(r.body));
+    if (!hidden) {
+      failures.push(
+        `${cls} has no unscoped display:none in the loaded stylesheets. ` +
+        `dashboard-mobilenav.js injects it on every viewport, so it will render ` +
+        `unstyled at the bottom of the desktop dashboard.`
+      );
+    }
+  }
+
+  // --dp-* tokens, scope-aware. A token only has to be declared somewhere at
+  // least as wide as every place it is read: declared at top level it covers
+  // everything, declared inside max-width:720px it covers the 380px block but
+  // not the other way round. Undeclared entirely is the failure that shipped.
+  const widthOf = (cond) => {
+    const m = /max-width\s*:\s*(\d+)px/.exec(cond);
+    return m ? Number(m[1]) : Infinity;
+  };
+  const declared = new Map(), consumed = new Map();
+  {
+    const media = [];
+    let i = 0, start = 0;
+    while (i < loadedCss.length) {
+      const ch = loadedCss[i];
+      if (ch === '{') {
+        const head = loadedCss.slice(start, i).trim();
+        if (head.startsWith('@')) {
+          media.push(head.startsWith('@media') ? widthOf(head) : Infinity);
+          start = i + 1;
+        } else {
+          let d = 1, j = i + 1;
+          while (d && j < loadedCss.length) {
+            if (loadedCss[j] === '{') d += 1;
+            else if (loadedCss[j] === '}') d -= 1;
+            j += 1;
+          }
+          const body = loadedCss.slice(i + 1, j - 1);
+          const scope = media.length ? Math.min(...media) : Infinity;
+          const push = (map, k) => map.set(k, (map.get(k) || new Set()).add(scope));
+          for (const m of body.matchAll(/(--dp-[\w-]+)\s*:/g)) push(declared, m[1]);
+          for (const m of body.matchAll(/var\(\s*(--dp-[\w-]+)/g)) push(consumed, m[1]);
+          i = j; start = i;
+          continue;
+        }
+      } else if (ch === '}') {
+        media.pop();
+        start = i + 1;
+      }
+      i += 1;
+    }
+  }
+  const unreachable = [...consumed].filter(([token, uses]) => {
+    const decls = declared.get(token);
+    return !decls || [...uses].some((u) => ![...decls].some((d) => d >= u));
+  }).map(([token]) => token);
+  if (unreachable.length) {
+    failures.push(
+      `${unreachable.length} --dp-* token(s) are read by var() where nothing declares them ` +
+      `(${unreachable.slice(0, 4).join(', ')}). Inside calc() an undefined token voids the whole ` +
+      `declaration, so the rule disappears with no error.`
+    );
   }
 }
 

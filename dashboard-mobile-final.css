@@ -1,0 +1,1417 @@
+/* Dual Performance — phone layer
+   ============================================================================
+   THE single stylesheet for <=720px, and it LOADS LAST, after instrument.css.
+   Both of those facts are load-bearing.
+
+   Before this file, phone rules were spread across dashboard-mobile.css (loaded
+   3rd), dashboard-comprehensive.css (4th) and dashboard-mobile-polish.css (7th),
+   while five stylesheets loaded after all of them. A media query adds nothing to
+   specificity, so an ordinary single-class rule in instrument.css beat a phone
+   rule on equal specificity purely by source order, and the three phone files
+   also fought each other. Every one of those rules therefore carried !important
+   to claw its value back: 559 of them, 92% of all !important in the product,
+   almost none describing a genuine conflict. dashboard-mobile.css even carried a
+   header claiming it "loads LAST", which it did not.
+
+   Collapsing the three into one file at the end of the cascade removes the
+   conflict rather than shouting over it, and every flag came out. Relative order
+   within this file is the order those three files used to load in, so the rules
+   still resolve against each other exactly as they did.
+
+   Rules for changing this file:
+     - Every top-level block must be a max-width media query, with the single
+       exception of the BASE CONTRACT block immediately below, which may only
+       declare --dp-* tokens and display:none. check-portal.mjs enforces both
+       halves, because any other unscoped rule here would outrank the shared
+       design system on desktop.
+     - You should not need !important. If you reach for it, the rule probably
+       belongs in a component file instead, or two selectors are fighting and
+       that fight is the actual bug.
+   ============================================================================ */
+
+
+/* ══════ BASE CONTRACT (the only unscoped block in this file) ══════════════
+   These rules are deliberately NOT inside a media query, and the file cannot
+   work without them.
+
+   They used to live at the top of dashboard-mobile.css. When that file was
+   folded into this one, only its @media blocks were carried across and its
+   <link> was removed, so these went off the page entirely. Two things broke:
+
+     1. .dp-mobilenav and .dp-sheet are injected into every page by
+        dashboard-mobilenav.js, on every viewport. The phone layout below
+        turns them on. NOTHING was turning them off above 720px, so the bar
+        and the More sheet rendered unstyled in normal document flow at the
+        bottom of the desktop dashboard.
+     2. The four --dp-* tokens are read inside calc() roughly twenty times
+        below. An undefined custom property makes calc() invalid at
+        computed-value time, which drops the whole declaration, so the phone
+        lost its content bottom padding, its scroll padding and its header
+        height, and content scrolled under the fixed bar.
+
+   Both are enforced by check-portal.mjs now rather than left to review.
+
+   Source order does the work: these come before the @media blocks, a media
+   query adds no specificity, so display:flex/block below wins on the phone
+   and display:none stands everywhere else. No !important needed.
+   ────────────────────────────────────────────────────────────────────────── */
+
+:root {
+  --dp-hdr-h: 56px;
+  --dp-tab-h: 44px;
+  --dp-safe-top: env(safe-area-inset-top, 0px);
+  --dp-safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Phone furniture, hidden until the phone layer below switches it on. */
+.dp-mobilenav,
+.dp-sheet,
+.dp-sheet-backdrop { display: none; }
+
+
+
+/* ══════ from dashboard-mobile.css ══════ */
+
+@media (max-width: 720px) {
+/* ── 1. Header: one compact sticky row ─────────────────── */
+  header,
+  body[data-theme="light"] header { position: sticky;
+    top: 0;
+    z-index: 120;
+    display:flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: space-between;
+    gap:8px;
+    
+    
+    
+    padding-top:calc(6px + var(--dp-safe-top));
+    background:rgba(8, 16, 25, .96);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px); }
+.logo-block { width:auto;
+    flex: 0 0 auto;
+    gap:8px;
+    align-items: center; }
+.logo-mark, .logo-mark-sm { height: 28px; width:auto; }
+.logo-wordmark { display:none; }
+.logo-kicker { font-size:14px; letter-spacing:.05em; white-space: nowrap; }
+.logo-role, .coach-pill, .updated { display:none; }
+.h-right { display:flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: flex-end;
+    width:auto;
+    flex: 1 1 auto;
+    min-width: 0;
+    gap:6px; }
+.coach-select { width:auto;
+    max-width:118px;
+    min-height:34px;
+    font-size:10px;
+    padding:6px 8px; }
+/* Manage + Refresh as icon buttons (premium pass hid manage entirely) */
+  #manage-athletes-btn,
+  #gen-btn { display:inline-flex; }
+#gen-btn[style*="display:none"], #gen-btn[style*="display: none"] { display:none; }
+#manage-athletes-btn, .refresh-btn { width:34px;
+    min-height:34px;
+    padding:0;
+    font-size:0;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto; }
+#manage-athletes-btn::before { content: '\2699'; font-size:15px; }
+.refresh-btn::before { content: '\21BB'; font-size:15px; }
+#manage-athletes-btn::before, .refresh-btn::before { line-height:1; }
+/* Compact theme toggle, never full-width */
+  .theme-toggle { display:flex;
+    width:auto;
+    min-height:34px;
+    flex: 0 0 auto;
+    grid-column: auto;
+    padding:2px; }
+.theme-btn { flex: 0 0 auto;
+    min-width: 0;
+    height: 28px;
+    padding:0 9px;
+    font-size:9px; }
+/* ── 2. Tab bar: sticky directly under the header ──────── */
+  .tab-bar,
+  body[data-theme="light"] .tab-bar { position: sticky;
+    top: calc(var(--dp-hdr-h) + var(--dp-safe-top));
+    z-index: 110;
+    display:flex;
+    align-items: stretch;
+    gap:2px;
+    padding:0 8px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    background:rgba(8, 16, 25, .96);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px); }
+.tab-bar::-webkit-scrollbar { display:none; }
+.tab { flex: 0 0 auto;
+    min-height:var(--dp-tab-h);
+    padding:12px 12px 10px;
+    font-size:12px;
+    white-space: nowrap;
+    scroll-snap-align: start; }
+/* Filter card is content, never sticky (kills the 3rd sticky layer) */
+  .filter-bar,
+  body[data-theme="light"] .filter-bar { position: relative;
+    top: auto;
+    z-index: 10;
+    display:flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: stretch;
+    gap:9px;
+    margin:10px 10px 0;
+    padding:11px;
+    border-radius:16px; }
+/* Full-width rows by default */
+  .filter-bar > .search-input,
+  .filter-bar > .sort-select,
+  .filter-bar > .sf-group:first-of-type { flex: 1 1 100%; }
+.search-input { min-width: 0; min-height:42px; font-size:14px; border-radius:10px; }
+.sort-select { min-height:40px; border-radius:10px; font-size:12.5px; }
+.filter-label, .filter-divider { display:none; }
+/* Status pills: snug scroll row with snap + a right-edge fade cue */
+  .filter-bar > .sf-group:first-of-type,
+  .filter-bar .sf-group:not(#dash-week-controls):not(:has(#view-cards-btn)) { display:flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    scroll-snap-type: x proximity;
+    gap:6px;
+    margin:0 -2px;
+    padding:2px 14px 2px 2px;
+    -webkit-mask-image: linear-gradient(90deg, #000 82%, transparent);
+    mask-image: linear-gradient(90deg, #000 82%, transparent); }
+.filter-bar .sf-group::-webkit-scrollbar { display:none; }
+.filter-bar > .sf-group:first-of-type .sf { scroll-snap-align: start; }
+.sf { flex: 0 0 auto;
+    min-height:36px;
+    padding:7px 14px;
+    font-size:11.5px;
+    white-space: nowrap; }
+/* ── Week nav → compact segmented control ─────────────────── */
+  #dash-week-controls { display:grid;
+    grid-template-columns:1fr 1fr 1fr;
+    gap:0;
+    overflow: visible;
+    margin:0;
+    padding:3px;
+    background:var(--surface2, #131a22);
+    border:1px solid var(--border, rgba(255,255,255,.08));
+    border-radius:11px;
+    -webkit-mask-image: none;
+    mask-image: none; }
+#dash-week-controls .sf { flex: 1;
+    min-height:36px;
+    padding:0 4px;
+    border:0;
+    border-radius:8px;
+    background:transparent;
+    font-size:10px;
+    letter-spacing:0;
+    justify-content: center;
+    text-align: center; }
+#dash-week-controls .sf:disabled { opacity: .38; }
+#dash-week-controls .sf:not(:disabled):active { background:rgba(121,195,232,.12); }
+/* ── Cards / Table → segmented toggle (portal-style) ──────── */
+  .filter-bar .sf-group:has(#view-cards-btn) { display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:0;
+    overflow: visible;
+    margin:0;
+    padding:3px;
+    background:var(--surface2, #131a22);
+    border:1px solid var(--border, rgba(255,255,255,.08));
+    border-radius:11px;
+    -webkit-mask-image: none;
+    mask-image: none; }
+.filter-bar .sf-group:has(#view-cards-btn) .sf { flex: 1;
+    min-height:38px;
+    border:0;
+    border-radius:8px;
+    background:transparent;
+    color:var(--muted, #8fa3b5);
+    justify-content: center;
+    font-size:12px;
+    font-weight: 600; }
+.filter-bar .sf-group:has(#view-cards-btn) .sf.active { background:var(--brand, #79c3e8);
+    /* Theme-aware ink on the brand fill; see --readout-ink. */
+    color:var(--readout-ink, #06101a);
+    border:0; }
+/* Put week-nav and view-toggle side by side to save vertical space */
+  #dash-week-controls { order: 4; flex: 1 1 calc(58% - 5px); }
+.filter-bar .sf-group:has(#view-cards-btn) { order: 5; flex: 1 1 calc(42% - 5px); }
+/* ── 3. Page intro: fix the giant headline ─────────────── */
+  .dp-page-intro { display:block; }
+.dp-page-title { letter-spacing:0;
+    overflow-wrap: anywhere; }
+.dp-eyebrow { font-size:9px; }
+.dp-page-subtitle { font-size:12.5px; line-height:1.5; margin-top:6px; max-width:none; }
+.dp-intro-date { display:inline-block; margin-top:8px; font-size:9px; }
+/* ── 4. Week nav + view toggle: tight rows ──────────────── */
+  .dash-week-nav { flex-direction: column; align-items: stretch; gap:8px; padding:10px; }
+.dwn-controls { display:grid;
+    grid-template-columns:repeat(3, 1fr);
+    gap:6px;
+    width:100%; }
+.dwn-btn { min-height:38px; padding:6px 4px; font-size:9px; white-space: nowrap; }
+/* ── 5. Priority score cards ────────────────────────────── */
+  .cc-hero { padding:14px; }
+.cc-score-card { padding:10px 6px; min-width: 0; }
+.summary-bar { grid-template-columns:repeat(2, minmax(0, 1fr)); gap:8px; }
+.sum-card { padding:12px; }
+.sum-num { font-size:24px; }
+/* ── 6b. Athlete full-page: stat CARDS, not sideways slide ──
+     The hero metrics / scores / bottom stats were flex rows set to
+     overflow-x:auto (a horizontal swipe). On mobile we turn them into
+     wrapping card grids so every stat is visible in one view. */
+
+  /* 6-metric hero row → 2×3 card grid */
+  #fp-overlay .pcard-metrics,
+  .pcard-metrics { display:grid;
+    grid-template-columns:repeat(3, 1fr);
+    gap:7px;
+    padding:11px 12px;
+    overflow: visible; }
+.pcard-metrics .pm { border-right: 0;
+    padding:10px 5px;
+    background:var(--surface2, #131a22);
+    border:1px solid var(--border, rgba(255,255,255,.08));
+    border-radius:10px; }
+.pcard-metrics .pm-lbl { margin-bottom:5px; }
+.pcard-metrics .pm-val { font-size:19px; }
+/* Weekly check-in scores row → card grid */
+  #fp-overlay .scores,
+  .scores { display:grid;
+    grid-template-columns:repeat(3, 1fr);
+    gap:7px;
+    padding:10px 12px;
+    overflow: visible; }
+.scores .sc { border-right: 0;
+    padding:9px 5px;
+    background:var(--surface2, #131a22);
+    border:1px solid var(--border, rgba(255,255,255,.08));
+    border-radius:10px; }
+.scores .sc-lbl { margin-bottom:4px; }
+.scores .sc-val { font-size:16px; }
+/* Bottom stats strip → wrapping cards (overrides inline column count) */
+  #fp-overlay .pcard-stats,
+  .pcard-stats { display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(92px, 1fr));
+    gap:7px;
+    padding:10px 12px;
+    overflow: visible; }
+.pcard-stats .pstat { border-right: 0;
+    padding:10px 6px;
+    background:var(--bg, #060b11);
+    border:1px solid var(--border, rgba(255,255,255,.08));
+    border-radius:10px; }
+/* Coaches-tab score row (same pattern) */
+  .coach-scores { display:grid;
+    grid-template-columns:repeat(3, 1fr);
+    gap:7px;
+    padding:10px 12px;
+    overflow: visible; }
+.coach-scores .sc { border-right: 0;
+    background:var(--surface2, #131a22);
+    border:1px solid var(--border, rgba(255,255,255,.08));
+    border-radius:10px; }
+/* Body block: weight + its metric chips stack cleanly */
+  #fp-overlay .body-grid, .body-grid { flex-direction: column;
+    gap:12px; }
+.bmet { display:grid;
+    grid-template-columns:repeat(3, 1fr);
+    gap:7px;
+    width:100%; }
+.bmet .bm { background:var(--surface2, #131a22);
+    border:1px solid var(--border, rgba(255,255,255,.08));
+    border-radius:10px;
+    padding:9px 5px; }
+/* Training split stays 2-up but tighter; feels like paired cards */
+  #fp-overlay .pcard-training { grid-template-columns:1fr 1fr; gap:7px; padding:10px 12px; }
+.pcard-training .ptrain { border-right: 0;
+    background:var(--surface2, #131a22);
+    border:1px solid var(--border, rgba(255,255,255,.08));
+    border-radius:10px;
+    padding:10px; }
+#fp-overlay .sec { padding:10px 12px; }
+#fp-overlay .fp-body { padding-left:10px; padding-right:10px; }
+/* ── 6. Athlete TABLE → per-athlete cards (no sideways scroll) ──
+     13 columns can't live in a horizontal-scroll table on a phone.
+     We collapse each row into a card: name/meta header, then the
+     metrics as small labelled stat cells. Labels come from data-label
+     stamped by dashboard-mobilenav.js. */
+  #grid.table-mode .dash-table-wrap { overflow-x: visible; }
+#grid.table-mode .dash-table { display:block;
+    min-width: 0;
+    table-layout: auto;
+    border-collapse: separate; }
+#grid.table-mode .dash-table colgroup,
+  #grid.table-mode .dash-table thead { display:none; }
+#grid.table-mode .dash-table tbody { display:block; }
+#grid.table-mode .dash-trow { display:grid;
+    
+    
+    
+    
+    background:var(--surface, #0f151d);
+    border:1px solid var(--border, rgba(255,255,255,.08)); }
+#grid.table-mode .dash-trow.trow-red { border-left: 3px solid rgba(240,130,130,.7); }
+#grid.table-mode .dash-trow.trow-amber { border-left: 3px solid rgba(242,183,102,.7); }
+#grid.table-mode .dash-trow td { display:flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap:3px;
+    padding:0;
+    text-align: left;
+    overflow: visible;
+    min-width: 0; }
+/* metric label above each value */
+  #grid.table-mode .dash-trow td:not(:first-child)::before { content: attr(data-label);
+    
+    font-size:7px;
+    font-weight: 700;
+    
+    text-transform: uppercase; }
+/* name cell = full-width card header */
+  #grid.table-mode .dash-trow td:first-child { grid-column: 1 / -1;
+    padding-bottom:9px;
+    margin-bottom:3px;
+    border-bottom: 1px solid var(--border, rgba(255,255,255,.07)); }
+#grid.table-mode .dash-trow td:first-child::before { display:none; }
+#grid.table-mode .tname { font-family:var(--cond, sans-serif);  font-weight: 900; letter-spacing:.03em; }
+#grid.table-mode .tmeta { font-size:10px; margin-top:2px; }
+/* status cell spans full width at the foot of the card */
+  #grid.table-mode .dash-trow td:last-child { grid-column: 1 / -1; }
+/* drop empty metric cells so cards stay tight */
+  #grid.table-mode .dash-trow td:not(:first-child):not(:last-child):has(> .tdim:only-child) { display:none; }
+#grid.table-mode .trow-expand td { display:block; padding:0; border:0; }
+.texp-panel { grid-template-columns:1fr; }
+.texp-left { border-right: 0; border-bottom: 1px solid var(--border); }
+/* ── This Week's Plan rows: no date/badge overlap ─────────── */
+  .sched-session-row { display:grid;
+    grid-template-columns:auto 1fr auto;
+    align-items: center;
+    column-gap:8px;
+    row-gap:5px;
+    padding:10px 0; }
+.sched-session-row .sched-date { grid-row: 1; grid-column: 1; min-width: 0; font-size:10px; padding-top:0; }
+.sched-session-row > .sbadge { grid-row: 1; grid-column: 2; justify-self: start; }
+.sched-session-row .sched-status-icon,
+  .sched-session-row .po-edit-icon { grid-row: 1; grid-column: 3; justify-self: end; }
+.sched-session-row .sched-session-name { grid-row: 2; grid-column: 1 / -1; font-size:13px; }
+/* Week detail day-by-day rows stack cleanly too */
+  .wd-row { grid-template-columns:1fr; row-gap:8px; padding:12px 14px; }
+.wd-date { width:auto; padding-top:0; }
+/* ── 7. Content padding + safe areas ────────────────────── */
+  .main, .plan-section, .coaches-section, .sched-section { padding:14px 10px calc(48px + var(--dp-safe-bottom)); }
+/* Full-page overlays respect the notch too */
+  #fp-overlay .fp-topbar, #wh-overlay .wh-topbar { padding-top:calc(10px + var(--dp-safe-top)); }
+.fp-hint { display:none; }
+/* Comfortable tap targets everywhere */
+  button, select { touch-action: manipulation; }
+}
+
+
+
+@media (max-width: 720px) {
+/* Hide the top tab bar entirely — bottom nav is the navigation now.
+     This also removes the sticky offset that was causing overlap. */
+  .tab-bar { display:none; }
+/* Room so content never hides behind the fixed bar */
+  .main, .plan-section, .coaches-section, .sched-section { padding-bottom:calc(78px + var(--dp-safe-bottom)); }
+.dp-mobilenav { display:flex;
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    z-index: 140;
+    justify-content: space-around;
+    align-items: stretch;
+    
+    
+    background:rgba(10, 14, 18, .93);
+    backdrop-filter: blur(20px) saturate(1.3);
+    -webkit-backdrop-filter: blur(20px) saturate(1.3);
+    border-top:1px solid rgba(121, 195, 232, .12) !important; }
+.dp-mnav-item { flex: 1 1 0;
+    min-width: 0;
+    display:flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap:3px;
+    
+    background:none;
+    border:0;
+    
+    color:rgba(240, 237, 232, .52);
+    cursor: pointer;
+    transition: color .15s ease, background .15s ease;
+    -webkit-tap-highlight-color: transparent; }
+.dp-mnav-item:active { background:rgba(121, 195, 232, .07); }
+.dp-mnav-item.active { color:var(--brand, #79c3e8); }
+.dp-mnav-ic { position: relative;
+    display:flex;
+    align-items: center;
+    justify-content: center; }
+/* Active pill glow behind the icon, portal-style */
+  .dp-mnav-item.active .dp-mnav-ic::before { content: '';
+    position: absolute;
+    
+    border-radius:999px;
+    
+    z-index: -1; }
+.dp-mnav-lbl { line-height:1;
+    max-width:100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap; }
+/* Count badges mirrored from the top bar */
+  .dp-mnav-badge { position: absolute;
+    top: -3px; right: -7px;
+    min-width: 15px;
+    height: 15px;
+    padding:0 4px;
+    border-radius:999px;
+    background:var(--brand, #79c3e8);
+    /* Theme-aware ink on the brand fill: near-black on the pale dark-theme
+       blue, white on the darker light-theme blue. Hardcoded near-black
+       measured 4.26:1 in light. */
+    color:var(--readout-ink, #06101a);
+    font-family:var(--mono, monospace);
+    font-size:9px;
+    font-weight: 700;
+    line-height:15px;
+    text-align: center; }
+.dp-mnav-badge.dot { min-width: 8px; width:8px; height: 8px;
+    padding:0; top: 0; right: -2px; }
+/* ── More sheet ─────────────────────────────────────────── */
+  .dp-sheet-backdrop { display:block;
+    position: fixed; inset: 0;
+    z-index: 145;
+    background:rgba(4, 8, 12, 0);
+    pointer-events: none;
+    transition: background .2s ease; }
+.dp-sheet-backdrop.open { background:rgba(4, 8, 12, .55);
+    pointer-events: auto;
+    backdrop-filter: blur(2px); }
+.dp-sheet { display:block;
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    z-index: 150;
+    transform:translateY(110%);
+    transition: transform .26s cubic-bezier(.22, 1, .36, 1);
+    background:#10151b;
+    border-top:1px solid rgba(121, 195, 232, .16);
+    
+    
+    box-shadow: 0 -18px 50px rgba(0, 0, 0, .5); }
+.dp-sheet.open { transform:translateY(0); }
+.dp-sheet-grip { width:38px; height: 4px;
+    margin:4px auto 12px;
+    border-radius:999px;
+    background:rgba(240, 237, 232, .22); }
+.dp-sheet-title { font-family:var(--cond, sans-serif);
+    font-size:16px;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing:.06em;
+    color:var(--text, #f0ede8);
+    margin:0 2px 14px; }
+.dp-sheet-grid { display:grid; }
+.dp-sheet-cell { display:flex;
+    flex-direction: column;
+    align-items: center;
+    gap:8px;
+    
+    background:rgba(255, 255, 255, .03);
+    border:1px solid rgba(255, 255, 255, .07);
+    border-radius:14px;
+    color:rgba(240, 237, 232, .82);
+    
+    font-size:10px;
+    letter-spacing:.03em;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent; }
+.dp-sheet-cell:active { background:rgba(121, 195, 232, .09); }
+.dp-sheet-cell.active { border-color:rgba(121, 195, 232, .4);
+    color:var(--brand, #79c3e8); }
+.dp-sheet-ic { position: relative;
+    display:flex; align-items: center; justify-content: center;
+    width:28px; height: 28px; }
+.dp-sheet-ic svg { width:24px; height: 24px; }
+/* Hide the redundant in-header refresh/gear duplicates? No — keep them.
+     But drop the now-unused bottom padding guard on overlays. */
+  #fp-overlay, #wh-overlay { padding-bottom:0; }
+}
+
+
+
+@media (max-width: 400px) {
+.coach-select { max-width:96px; }
+.logo-kicker { display:none; }
+.theme-btn { padding:0 7px; font-size:8px; }
+.dp-page-title { font-size:21px; }
+.dp-mnav-lbl { font-size:8px; }
+}
+
+
+
+/* ══════ from dashboard-comprehensive.css ══════ */
+
+@media(max-width:760px) {
+.coach-actions { border-radius:11px }
+.coach-actions-head { align-items:flex-start;padding:14px }
+.coach-actions-head h2 { font-size:19px }
+.coach-action-new { padding:8px 9px }
+.coach-action-filters { padding:0 14px 11px }
+.coach-action-main { grid-template-columns:72px 1fr;padding:11px 10px }
+.coach-action-meta { grid-column:2 }
+.coach-action-complete { margin-right:8px }
+.coach-action-grid { grid-template-columns:1fr }
+.coach-action-grid .span-2 { grid-column:span 1 }
+.coach-action-dialog { padding:18px }
+.dp-access-card { padding:24px }
+.dp-logout-btn { display:none}
+}
+
+
+
+@media(max-width:720px) {
+:root { --dp-hdr-h:54px }
+body { min-width:0;overflow-x:hidden }
+/* One calm header row: identity + two utilities + one theme control. */
+  header,body[data-theme="light"] header { position:sticky;top:0;z-index:130;
+    min-height:var(--dp-hdr-h);height:var(--dp-hdr-h);
+    padding:6px 10px;background:rgba(7,14,22,.96); }
+header .logo-block { width:auto;flex:0 0 auto;align-items:center }
+header .logo-wordmark { display:none}
+header .logo-mark-sm { display:block;width:29px;height:29px;object-fit:contain }
+header .h-right { display:flex;flex:1 1 auto;min-width:0;width:auto;justify-content:flex-end;gap:5px }
+header #gen-btn,header .theme-toggle,header .updated { display:none}
+header .coach-select { flex:0 1 102px;width:auto;max-width:102px;min-height:34px;padding:5px 7px;border-radius:999px }
+header #manage-athletes-btn,header #refresh-btn,header .dp-theme-switch { display:inline-flex;width:34px;height:34px;min-height:34px;
+    flex:0 0 34px;align-items:center;justify-content:center;padding:0;
+    border:1px solid rgba(255,255,255,.14) !important;border-radius:999px;background:rgba(255,255,255,.05) !important;color:#eef4f8;cursor:pointer }
+.dp-theme-switch { font-size:16px }
+.dp-theme-switch:active { background:rgba(121,195,232,.16) }
+/* Overview controls: search + status stay visible; secondary controls collapse. */
+  #filter-bar,body[data-theme="light"] #filter-bar { position:relative;top:0;display:flex;flex-wrap:wrap;
+    gap:7px;margin:8px 8px 0;padding:8px;border-radius:13px;
+    box-shadow:0 10px 26px rgba(0,0,0,.22) }
+#filter-bar>.search-input { order:1;flex:1 1 calc(100% - 90px);width:auto;min-height:38px }
+.dp-mobile-filter-toggle { order:2;display:inline-flex;align-items:center;justify-content:center;flex:0 0 76px;min-height:38px;
+    padding:0 10px;border:1px solid var(--border-mid);border-radius:10px;background:var(--surface2);
+    color:var(--brand-text);font:700 10px var(--mono);text-transform:uppercase;letter-spacing:.04em }
+#filter-bar>.sf-group:first-of-type { order:3;flex:1 1 100%;padding-block:0 }
+#filter-bar>.sort-select { order:4 }
+#dash-week-controls { order:5 }
+#filter-bar>.sf-group:has(#view-cards-btn) { order:6 }
+#filter-bar>.sort-select,#dash-week-controls,#filter-bar>.sf-group:has(#view-cards-btn) { display:none}
+#filter-bar.mobile-expanded>.sort-select { display:block;flex:1 1 100% }
+#filter-bar.mobile-expanded #dash-week-controls { display:grid;flex:1 1 100% }
+#filter-bar.mobile-expanded>.sf-group:has(#view-cards-btn) { display:grid;flex:1 1 100% }
+#filter-bar .sf { min-height:34px;padding:6px 12px;font-size:10px }
+/* Compact overview intro—no orphaned paragraph between controls and priorities. */
+  .main { padding:10px 8px calc(82px + var(--dp-safe-bottom)) }
+.dp-page-intro { display:flex;align-items:flex-end;justify-content:space-between;gap:8px;margin:0 2px 10px !important;padding:2px 2px 0 }
+.dp-page-intro>div:first-child { min-width:0 }
+.dp-page-title { font-size:23px;line-height:1;margin:2px 0 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis }
+.dp-page-subtitle { display:none}
+.dp-intro-date { margin:0;padding:5px 8px;font-size:7px;white-space:nowrap }
+.dp-eyebrow { font-size:7px }
+.command-center { margin-bottom:9px }
+.cc-panel { border-radius:13px }
+.cc-hero { padding:12px }
+.cc-title { font-size:19px }
+.cc-score-card { min-height:58px;display:flex;flex-direction:column;justify-content:center }
+.cc-athlete { min-height:48px }
+/* Every non-overview destination gets a clear, compact screen title. */
+  .dp-mobile-section-head { display:block;margin:13px 10px 0;padding:0 2px 4px }
+.dp-mobile-section-head h1 { margin:3px 0 0;font:900 25px/1 var(--cond);text-transform:uppercase;letter-spacing:.035em;color:var(--text) }
+.dp-mobile-section-head p { margin:4px 0 0;font-size:11px;line-height:1.35;color:var(--muted) }
+.dp-mobile-section-kicker { font:800 7px/1 var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--brand-text) }
+/* Programming: thumb-friendly athlete rail and single-column week. */
+  .plan-section,.coaches-section,.sync-section,.apps-section,.notif-section { width:100%;max-width:none !important;padding:10px 8px calc(82px + var(--dp-safe-bottom)) }
+.plan-toolbar { display:block;padding:9px;margin-bottom:10px;border-radius:13px }
+.plan-ath-chips { display:flex;flex-wrap:nowrap;gap:6px;overflow-x:auto;
+    margin:0 -2px 9px;padding:2px 18px 4px 2px;scroll-snap-type:x proximity;scrollbar-width:none;
+    -webkit-mask-image:linear-gradient(90deg,#000 86%,transparent);mask-image:linear-gradient(90deg,#000 86%,transparent) }
+.plan-ath-chips::-webkit-scrollbar { display:none}
+.plan-chip { flex:0 0 auto;min-height:36px;padding:7px 12px;scroll-snap-align:start }
+#tab-programming-content #prog-week-toolbar { display:grid;grid-template-columns:1fr 1fr;gap:7px;width:100% }
+#tab-programming-content #prog-week-toolbar[hidden] { display:none}
+#tab-programming-content #prog-week-toolbar>.sf-group { grid-column:1/-1;display:grid;grid-template-columns:repeat(3,1fr);gap:3px;overflow:visible;padding:3px;background:var(--surface2);border:1px solid var(--border);border-radius:10px }
+#tab-programming-content #prog-week-toolbar>.sf-group .sf { width:100%;padding:5px 3px;font-size:9px }
+#tab-programming-content #prog-week-toolbar>.plan-action-btn:first-of-type { grid-column:1/-1 }
+.plan-action-btn { min-height:40px;padding:7px 9px;font-size:9px }
+.plan-week-meta,.nut-meta { padding:0 3px;margin-bottom:8px;font-size:8px;line-height:1.45 }
+.plan-grid { display:grid;grid-template-columns:1fr;gap:8px }
+.plan-day { min-height:0;padding:10px;border-radius:12px }
+.plan-day-head { font-size:9px;padding-bottom:7px }
+.plan-card { padding:10px;border-radius:9px }
+.plan-card-title { font-size:16px }
+.plan-add-btn { min-height:38px;margin-top:2px }
+.plan-lib-head { align-items:flex-start }
+.plan-lib-grid { grid-template-columns:1fr }
+/* Nutrition: the 780px desktop table becomes editable week cards. */
+  #tab-programming-content #prog-block-toolbar { display:grid;grid-template-columns:1fr;gap:7px;width:100% }
+#tab-programming-content #prog-block-toolbar[hidden] { display:none}
+#tab-programming-content .nut-prog { display:grid;grid-template-columns:1fr minmax(112px,auto);align-items:center;min-height:43px;padding:5px 7px 5px 10px;border:1px solid var(--border);border-radius:10px;background:var(--surface2) }
+#tab-programming-content .nut-prog .nut-input { width:100%;min-height:34px }
+#tab-programming-content #prog-block-toolbar .plan-action-btn { width:100% }
+.nut-table-wrap { overflow:visible;border:0;background:transparent;box-shadow:none }
+.nut-table,.nut-table tbody { display:block;width:100%;min-width:0 }
+.nut-table thead { display:none}
+.nut-table .nut-row { display:grid;grid-template-columns:1fr 1fr;gap:9px 7px;margin-bottom:9px;padding:12px;background:var(--surface);border:1px solid var(--border);border-radius:13px }
+.nut-table .nut-row.current { border-left:4px solid var(--amber);border-color:var(--wk-open-line);border-left-color:var(--amber);background:linear-gradient(135deg,var(--wk-open-bg),transparent 65%),var(--surface) }
+.nut-table .nut-row td { display:flex;flex-direction:column;align-items:stretch;gap:4px;padding:0;border:0;background:transparent;min-width:0;white-space:normal }
+.nut-table .nut-row td::before { content:attr(data-label);font:700 7px var(--mono);letter-spacing:.09em;text-transform:uppercase;color:var(--dim) }
+.nut-table .nut-row td:nth-child(1) { grid-column:1/-1;display:block;padding-bottom:7px;border-bottom:1px solid var(--border) }
+.nut-table .nut-row td:nth-child(9),.nut-table .nut-row td:nth-child(11) { grid-column:1/-1 }
+.nut-table .nut-row td:nth-child(12) { grid-column:1/-1;display:flex;flex-direction:row;gap:7px }
+.nut-table .nut-row td:nth-child(12)::before { display:none}
+.nut-table .nut-input,.nut-table .nut-input.wide,.nut-table .nut-input.km { width:100%;min-height:40px;font-size:13px }
+.nut-table .nut-save { flex:1;min-height:40px }
+.nut-table .nut-del { min-width:42px;min-height:40px;margin:0 }
+/* Data health: readable cards instead of a 980px sideways table. */
+  .sync-intro { padding:12px;align-items:flex-start }
+.sync-score-row { display:grid;grid-template-columns:1fr 1fr;width:100%;gap:6px }
+.sync-score { min-width:0;padding:9px }
+#sync-health { grid-template-columns:1fr 1fr }
+.sync-table-wrap { overflow:visible;border:0;background:transparent }
+.sync-table,.sync-table tbody { display:block;width:100%;min-width:0 }
+.sync-table thead { display:none}
+.sync-table tbody tr { display:grid;grid-template-columns:1fr 1fr;gap:9px 7px;margin-bottom:9px;padding:12px;background:var(--surface);border:1px solid var(--border);border-radius:13px }
+.sync-table tbody tr.bad { border-left:3px solid var(--alert) }
+.sync-table tbody tr.warn { border-left:3px solid var(--warn) }
+.sync-table tbody td { display:flex;flex-direction:column;align-items:flex-start;gap:4px;padding:0;border:0;background:transparent;white-space:normal;min-width:0 }
+.sync-table tbody td::before { font:700 7px var(--mono);letter-spacing:.09em;text-transform:uppercase;color:var(--dim) }
+.sync-table tbody td:nth-child(1) { grid-column:1/-1;padding-bottom:7px;border-bottom:1px solid var(--border) }
+.sync-table tbody td:nth-child(1)::before { display:none}
+.sync-table tbody td:nth-child(2)::before { content:'Status' }
+.sync-table tbody td:nth-child(3)::before { content:'Master profile' }
+.sync-table tbody td:nth-child(4)::before { content:'Start date' }
+.sync-table tbody td:nth-child(5)::before { content:'Weekly check-in' }
+.sync-table tbody td:nth-child(6)::before { content:'Body · 14d' }
+.sync-table tbody td:nth-child(7)::before { content:'Nutrition · 14d' }
+.sync-table tbody td:nth-child(8)::before { content:'Sessions · 21d' }
+.sync-table tbody td:nth-child(9)::before { content:'Plan this week' }
+.sync-table tbody td:nth-child(10)::before { content:'Target' }
+.sync-table tbody td:nth-child(11) { grid-column:1/-1;padding-top:7px;border-top:1px solid var(--border) }
+.sync-table tbody td:nth-child(11)::before { content:'Issue' }
+.sync-name { font-size:18px }
+.sync-muted { white-space:normal;overflow-wrap:anywhere }
+/* Pipeline, applications, notifications and coaches. */
+  .apps-grid,.coaches-grid { grid-template-columns:1fr;gap:9px;min-width:0 }
+.app-card,.coach-card { min-width:0;border-radius:13px }
+.app-card-head { padding:13px }
+.app-name { font-size:20px }
+.app-body { padding:12px }
+.app-field-val { font-size:13px;overflow-wrap:anywhere }
+.app-actions { display:grid;grid-template-columns:1fr 1fr;padding:10px }
+.app-accept-btn,.app-reject-btn { min-height:42px;padding:8px }
+.notif-header { align-items:flex-start;flex-wrap:wrap;line-height:1.4 }
+.notif-mark-seen { margin-left:0;min-height:36px }
+.cn-composer { padding:12px;border-radius:13px }
+.cn-row { display:grid;grid-template-columns:1fr;gap:8px }
+.cn-row select,.cn-row input,.cn-composer textarea { width:100%;min-width:0;min-height:44px;font-size:13px }
+.cn-composer textarea { min-height:120px }
+.cn-foot { align-items:stretch;flex-direction:column }
+.cn-send-btn { min-height:44px;width:100% }
+.coaches-intro { align-items:flex-start;padding:12px;margin-bottom:10px }
+.coach-card-head { padding:13px }
+.coach-name { font-size:22px }
+.coach-card-head-top { gap:8px }
+.coach-wk-badge { padding:5px 8px }
+.coach-wk-num { font-size:20px }
+.coach-body-row { display:grid;grid-template-columns:1fr 1fr;gap:7px;padding:10px }
+.coach-training,.coach-notes { padding:11px }
+/* Shared action queue keeps context visible instead of truncating it. */
+  .coach-actions { margin-bottom:9px }
+.coach-action-title { white-space:normal;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-height:1.3 }
+.coach-action-meta { white-space:normal;line-height:1.35 }
+/* Editors behave as native-feeling bottom sheets. */
+  .po-overlay { align-items:flex-end;padding:0 }
+.po-modal { width:100%;max-width:none;max-height:94dvh;border-radius:20px 20px 0 0;overflow:auto }
+.po-modal-head { position:sticky;top:0;z-index:3;background:var(--surface) }
+.po-modal-foot { position:sticky;bottom:0;z-index:3;background:var(--surface);padding-bottom:calc(12px + var(--dp-safe-bottom)) }
+.po-field-row,.ps-mode-row { grid-template-columns:1fr;display:grid}
+.po-input { min-height:44px;font-size:14px }
+.ma-backdrop { align-items:flex-end;padding:0 }
+.ma-card { max-width:none;border-radius:20px 20px 0 0;padding:18px 14px calc(18px + var(--dp-safe-bottom)) }
+.ma-add-grid { grid-template-columns:1fr }
+.ma-add-name { grid-column:auto }
+/* Athlete detail remains usable at 320–430px. */
+  #fp-overlay .fp-topbar { height:auto;min-height:54px;padding:8px }
+#fp-overlay .fp-nav { gap:4px }
+.fp-nav-btn { padding:6px 9px }
+.fp-idx { min-width:30px }
+#fp-overlay .fpc-name { font-size:clamp(34px,12vw,48px);overflow-wrap:anywhere }
+#fp-overlay .fpc-hero-actions { display:grid;grid-template-columns:1fr 1fr;gap:7px }
+#fp-overlay .fpc-act-btn { min-height:40px;padding:7px;font-size:9px }
+#fp-overlay .fpc-section { padding:15px 13px }
+#fp-overlay .fpc-scores { grid-template-columns:repeat(2,1fr);margin-inline:-13px }
+#fp-overlay .fpc-score { padding:13px 5px;border-bottom:1px solid var(--border) }
+#fp-overlay .fpc-score-val { font-size:28px }
+#fp-overlay .fpc-train-pair,#fp-overlay .fpc-body-nutr { grid-template-columns:1fr }
+#fp-overlay .fpc-sess-row { display:grid;grid-template-columns:1fr 1fr;gap:7px }
+#fp-overlay .fpc-sess { padding:12px }
+#wh-overlay .wh-body { padding:14px 8px 70px }
+.wh-section { padding:14px 12px;border-radius:12px }
+#wh-overlay .wh-section>div[style*="overflow-x:auto"] { margin-inline:-12px;padding-inline:12px }
+.dp-mobilenav { min-height:62px;padding-top:5px }
+.dp-sheet-grid { grid-template-columns:1fr 1fr }
+.dp-sheet-cell { min-height:84px }
+}
+
+
+
+@media(max-width:380px) {
+header .coach-select { max-width:84px }
+header #manage-athletes-btn,header #refresh-btn,header .dp-theme-switch { width:32px;height:32px;flex-basis:32px }
+.dp-mobile-section-head h1 { font-size:23px }
+.cc-score { grid-template-columns:repeat(2,1fr) }
+.nut-table .nut-row,.sync-table tbody tr { grid-template-columns:1fr }
+.nut-table .nut-row td,.sync-table tbody td { grid-column:1 }
+}
+
+
+
+/* ══════ from dashboard-mobile-polish.css ══════ */
+
+@media (max-width: 720px) {
+:root { --dp-mobile-edge: 12px;
+    --dp-mobile-nav-h: 68px;
+    --dp-mobile-header-row: 52px; }
+*, *::before, *::after { box-sizing: border-box; }
+html { width:100%;
+    max-width:100%;
+    overflow-x: clip;
+    scroll-padding-top: calc(var(--dp-mobile-header-row) + var(--dp-safe-top));
+    scroll-padding-bottom: calc(var(--dp-mobile-nav-h) + var(--dp-safe-bottom)); }
+body { width:100%;
+    max-width:100%;
+    overflow-x: clip;
+    -webkit-text-size-adjust: 100%;
+    background:radial-gradient(circle at 100% 0, rgba(121,195,232,.075), transparent 24rem),
+      var(--bg); }
+main,
+  [id^="tab-"][id$="-content"],
+  .triage-shell,
+  .main,
+  .plan-section,
+  .coaches-section,
+  .sync-section,
+  .apps-section,
+  .notif-section,
+  .sched-section { width:100%;
+    max-width:100%;
+    min-width: 0; }
+input, select, textarea, button, table, img, svg { max-width:100%; }
+/* Installed iPhones draw into the status-bar area. Keep every header control
+     below the notch instead of forcing a fixed 54px box over the system clock. */
+  header,
+  body[data-theme="light"] header { min-height:calc(var(--dp-mobile-header-row) + var(--dp-safe-top));
+    height: auto;
+    padding:calc(6px + var(--dp-safe-top)) var(--dp-mobile-edge) 6px;
+    border-bottom-color: rgba(146,210,237,.12);
+    box-shadow: 0 8px 24px rgba(0,0,0,.18); }
+header .logo-mark-sm { width:27px;
+    height: 27px; }
+header .h-right { gap:4px; }
+header .coach-select { max-width:94px;
+    min-height:32px;
+    height: 32px;
+    padding-inline: 9px 22px;
+    border-color:rgba(255,255,255,.11) !important;
+    background-color:rgba(255,255,255,.045) !important; }
+header #manage-athletes-btn,
+  header #refresh-btn,
+  header .dp-theme-switch { width:32px;
+    height: 32px;
+    min-height:32px;
+    flex-basis: 32px;
+    border-color:rgba(255,255,255,.11) !important;
+    background:rgba(255,255,255,.045) !important; }
+.dp-access-gate { align-items: center;
+    padding:calc(14px + var(--dp-safe-top))
+      var(--dp-mobile-edge)
+      calc(14px + var(--dp-safe-bottom));
+    overflow-y: auto; }
+.dp-access-card { gap:8px;
+    padding:22px 18px;
+    border-radius:16px;
+    max-height: calc(100dvh - var(--dp-safe-top) - var(--dp-safe-bottom) - 28px);
+    overflow-y: auto; }
+.dp-access-logo { width:190px; margin-bottom:10px; }
+.dp-access-card h1 { font-size:26px; }
+.dp-access-card p { margin-bottom:8px; font-size:13px; }
+.dp-access-card .dp-access-remember { min-height:46px;
+    margin-top:1px;
+    padding:7px 2px; }
+.dp-access-card .dp-access-remember input { width:20px;
+    height: 20px;
+    min-height:20px;
+    flex-basis: 20px; }
+.dp-access-remember strong { font-size:13px; }
+.dp-access-card .dp-access-remember small { font-size:10.5px; }
+/* Shared mobile rhythm */
+  .main,
+  .plan-section,
+  .coaches-section,
+  .sync-section,
+  .apps-section,
+  .notif-section,
+  .sched-section { padding-left:var(--dp-mobile-edge);
+    padding-right:var(--dp-mobile-edge);
+    padding-bottom:calc(var(--dp-mobile-nav-h) + 22px + var(--dp-safe-bottom)); }
+.dp-mobile-section-head { margin:16px 0 0;
+    padding:0 var(--dp-mobile-edge) 7px; }
+.dp-mobile-section-head h1 { font-size:clamp(22px, 6.4vw, 26px);
+    line-height:1; }
+.dp-mobile-section-head p { color:var(--muted);
+    font-size:12px;
+    line-height:1.4; }
+/* The Today screen is the mobile typography reference: Geist for readable
+     interface copy and headings, with Geist Mono reserved for dates, metrics
+     and small metadata. Legacy tabs previously mixed condensed, mono and UI
+     treatments for equivalent controls, which made each destination feel like
+     a different product. */
+  #tab-athletes-content,
+  #tab-programming-content,
+  #tab-coaches-content,
+  #tab-sync-content,
+  #tab-apps-content,
+  #tab-notif-content,
+  #tab-send-content { font-family:var(--font-ui); }
+.dp-mobile-section-head h1,
+  .coach-actions-head h2,
+  .coach-action-dialog-head h2,
+  .plan-card-title,
+  .plan-lib-name,
+  .nut-wk,
+  .coach-name,
+  .sync-name,
+  .app-name,
+  .fpc-name,
+  .week-jump-main { font-family:var(--font-ui) !important;
+    font-weight: 800;
+    letter-spacing:-.04em;
+    text-transform: none; }
+.plan-chip,
+  .nut-athlete-tab,
+  .plan-action-btn,
+  .plan-add-btn,
+  .nut-save,
+  .nut-del,
+  .app-accept-btn,
+  .app-reject-btn,
+  .notif-mark-seen,
+  .cn-send-btn,
+  .coach-action-new,
+  .coach-action-filters button,
+  .coach-action-complete,
+  .dp-mobile-filter-toggle,
+  .sf,
+  .fp-back,
+  .fp-nav-btn,
+  .fpc-act-btn,
+  .week-jump-btn { font-family:var(--font-ui);
+    font-weight: 650;
+    letter-spacing:0;
+    text-transform: none; }
+.dp-mobile-section-kicker,
+  .plan-week-meta,
+  .nut-meta,
+  .plan-day-head,
+  .app-meta,
+  .app-field-lbl,
+  .sync-table tbody td::before,
+  .nut-table .nut-row td::before,
+  .sum-num,
+  .cc-score-num,
+  .fpc-score-val,
+  .sync-score-num,
+  .fp-idx { font-family:var(--font-data);
+    font-variant-numeric: tabular-nums; }
+/* Today should feel like a mobile command screen, not a desktop hero squeezed
+     into a phone. */
+  .triage-page { min-height:calc(100dvh - var(--dp-mobile-header-row));
+    padding-bottom:calc(var(--dp-mobile-nav-h) + 18px + var(--dp-safe-bottom)); }
+.triage-shell { padding:20px var(--dp-mobile-edge) 24px; }
+.triage-hero { margin-bottom:16px; }
+.triage-eyebrow { margin-bottom:6px; font-size:8px; }
+.triage-hero h1 { max-width:330px;
+    font-size:clamp(30px, 8.5vw, 36px);
+    line-height:1;
+    letter-spacing:-.04em; }
+.triage-hero p { margin-top:8px;
+    font-size:12px;
+    line-height:1.45; }
+.triage-date { margin-top:10px !important;
+    padding:6px 9px;
+    font-size:8px; }
+.triage-state { min-height:180px; border-radius:14px; }
+.triage-summary { gap:6px !important; margin-bottom:10px; }
+.triage-stat { min-height:72px; padding:11px 8px !important; }
+.triage-stat-value { font-size:21px !important; }
+.triage-stat-label { margin-top:6px; font-size:8px !important; line-height:1.25 !important; }
+.triage-row { border-radius:14px !important; }
+/* Overview filter: one quiet row until the coach asks for more. */
+  #filter-bar,
+  body[data-theme="light"] #filter-bar { margin:8px var(--dp-mobile-edge) 0;
+    padding:8px;
+    gap:7px;
+    border-radius:14px; }
+#filter-bar > .search-input { min-height:42px;
+    padding:9px 12px;
+    font-size:13px; }
+.dp-mobile-filter-toggle { min-height:42px;
+    flex-basis: 78px;
+    border-color:rgba(146,210,237,.24);
+    background:rgba(146,210,237,.08);
+    color:#bde7f8;
+    font-size:9px; }
+#filter-bar > .filter-label + .sf-group { display:none;
+    margin:0;
+    padding:2px 10px 2px 0; }
+#filter-bar.mobile-expanded > .filter-label + .sf-group { display:flex; }
+#filter-bar .sf { min-height:36px;
+    padding:7px 12px;
+    font-size:10px; }
+#filter-bar.mobile-expanded > .sort-select { min-height:42px; }
+/* Overview heading and date read as a single header, not two floating items. */
+  .dp-page-intro { align-items: center;
+    margin:3px 2px 11px !important;
+    padding-top:5px !important; }
+.dp-page-title { max-width:70vw;
+    font-size:clamp(20px, 5.7vw, 24px);
+    line-height:1.08;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip; }
+.dp-intro-date { color:var(--muted);
+    background:var(--surface2);
+    border-color:var(--border); }
+/* Priority panel: remove the washed-out block and restore metric hierarchy. */
+  .cc-panel { overflow: hidden; }
+.cc-hero,
+  body[data-theme="light"] .cc-hero { display:grid;
+    grid-template-columns:minmax(0, 1fr) auto;
+    align-items: center;
+    gap:12px 8px;
+    padding:14px;
+    color:var(--text);
+    background:linear-gradient(155deg, var(--surface), var(--surface2));
+    border-bottom: 1px solid var(--border);
+    box-shadow: inset 0 2px 0 rgba(121,195,232,.28); }
+.cc-kicker { color:var(--brand-text); }
+.cc-title { color:var(--text);
+    font-size:20px;
+    line-height:1.03; }
+.cc-toggle { grid-column: 2;
+    grid-row: 1;
+    min-height:32px;
+    padding:6px 9px;
+    color:var(--brand-text);
+    background:var(--brand-bg);
+    border-color:var(--brand-border);
+    font-family:var(--font-ui);
+    font-size:9px;
+    letter-spacing:.02em; }
+.cc-score { grid-column: 1 / -1;
+    grid-row: 2;
+    display:grid;
+    grid-template-columns:repeat(3, minmax(0, 1fr));
+    gap:7px;
+    width:100%; }
+.cc-score-card,
+  body[data-theme="light"] .cc-score-card { min-height:62px;
+    padding:9px 5px;
+    color:var(--text);
+    background:var(--surface2);
+    border:1px solid var(--border-mid);
+    border-radius:10px;
+    box-shadow: none; }
+.cc-score-num { font-size:23px; }
+.cc-score-lbl,
+  body[data-theme="light"] .cc-score-lbl { margin-top:5px;
+    color:var(--muted);
+    font-family:var(--font-ui);
+    font-size:8px;
+    font-weight: 700;
+    letter-spacing:.04em; }
+.command-center.collapsed .cc-hero { border-bottom: 0; }
+.cc-body { background:var(--surface); }
+.cc-athlete { padding-inline: 12px; }
+/* Coaching action queue: readable warning, stable touch rows, no clipped filters. */
+  .coach-actions { border-radius:14px; }
+.coach-actions-head { padding:14px 13px 11px; }
+.coach-actions-head h2 { font-size:20px; }
+.coach-action-new { min-height:36px; }
+.coach-data-warning,
+  body[data-theme="light"] .coach-data-warning { margin:0 13px 11px;
+    padding:10px 11px;
+    color:var(--warn);
+    background:color-mix(in srgb, var(--warn) 8%, transparent);
+    border-color:color-mix(in srgb, var(--warn) 24%, transparent);
+    line-height:1.45; }
+.coach-action-filters { padding:0 13px 11px;
+    scrollbar-width: none; }
+.coach-action-filters::-webkit-scrollbar { display:none; }
+.coach-action-filters button { min-height:32px; }
+.coach-action-row { align-items: stretch; }
+.coach-action-main { min-height:62px; }
+.coach-action-complete { align-self: center; min-height:34px; }
+/* Athlete cards get clear separation and reliable data contrast. */
+  #grid.table-mode .dash-trow { gap:10px 7px;
+    margin-bottom:10px;
+    padding:12px;
+    border-radius:14px;
+    box-shadow: 0 8px 22px rgba(15,35,49,.06); }
+/* Contain the dense editing and data surfaces. Purposeful chip rails may
+     scroll; cards, forms and rows may not push the page wider than the phone. */
+  .plan-toolbar,
+  .plan-grid,
+  .plan-day,
+  .plan-card,
+  .nut-table-wrap,
+  .nut-row,
+  .sync-intro,
+  .sync-table-wrap,
+  .sync-table tbody tr,
+  .apps-grid,
+  .app-card,
+  .coaches-grid,
+  .coach-card,
+  .cn-composer,
+  .cn-row,
+  .coach-actions,
+  .coach-action-row { width:100%;
+    max-width:100%;
+    min-width: 0; }
+.plan-card-title,
+  .app-name,
+  .app-field-val,
+  .coach-action-title,
+  .coach-action-meta,
+  .sync-muted,
+  .cn-composer label { overflow-wrap: anywhere; }
+#grid.table-mode .dash-trow td:not(:first-child)::before { color:var(--muted);
+    font-family:var(--font-ui);
+    letter-spacing:.05em; }
+#grid.table-mode .tname { font-size:19px; }
+/* Mobile keeps full desktop data parity. Every populated summary field is a
+     compact stat tile; empty desktop cells remain visible as an honest dash. */
+  #grid.table-mode .dash-trow { grid-template-columns:repeat(3, minmax(0, 1fr)); }
+#grid.table-mode .dash-trow td:nth-child(n+2):not(:last-child),
+  #grid.table-mode .dash-trow td:not(:first-child):not(:last-child):has(> .tdim:only-child) { display:flex;
+    min-height:52px;
+    justify-content: center;
+    padding:7px;
+    background:var(--surface2);
+    border:1px solid var(--border);
+    border-radius:9px; }
+#grid.table-mode .dash-trow td:nth-child(n+2):not(:last-child) > * { max-width:100%; }
+#grid.table-mode .dash-trow td:first-child { position: relative;
+    padding-right:88px; }
+#grid.table-mode .dash-trow td:first-child::after { content: 'Open profile →';
+    position: absolute;
+    top: 2px;
+    right: 0;
+    color:var(--brand-text);
+    font-family:var(--font-ui);
+    font-size:9px;
+    font-weight: 750;
+    letter-spacing:.01em;
+    text-transform: none; }
+#grid.table-mode .dash-trow td:last-child { padding-top:8px;
+    border-top:1px solid var(--border); }
+#grid.table-mode .trow-expand { display:none; }
+/* Dedicated athlete screen: no horizontal rails, compact 3-up metrics, and
+     a two-row sticky toolbar whose back action never leaves the viewport. */
+  #fp-overlay { width:100%;
+    max-width:100%;
+    overflow-x: clip;
+    overscroll-behavior: contain; }
+#fp-overlay { /* Keeps the athlete workspace's sticky header clear of the taller mobile
+       top bar. Consumed by .fpa-sticky and .wd-date. */
+    --fpa-topbar-h: calc(56px + var(--dp-safe-top));
+    --fpa-sticky-h: 118px; }
+#fp-overlay .fp-topbar { position: sticky;
+    top: 0;
+    z-index: 20;
+    display:grid;
+    grid-template-columns:minmax(0, 1fr) auto;
+    align-items: center;
+    gap:6px;
+    min-height:calc(56px + var(--dp-safe-top));
+    padding:calc(8px + var(--dp-safe-top)) 10px 8px; }
+#fp-overlay .fp-back { min-width: 0;
+    min-height:40px;
+    padding:8px 10px;
+    overflow: hidden;
+    text-align: left;
+    text-overflow: ellipsis;
+    white-space: nowrap; }
+#fp-overlay .fp-nav { display:grid;
+    grid-template-columns:auto auto auto;
+    align-items: center;
+    gap:3px; }
+#fp-overlay .fp-nav-btn { min-height:40px;
+    padding:7px 8px;
+    font-size:9px; }
+#fp-overlay .fp-idx { min-width: 26px;
+    font-size:8px;
+    text-align: center; }
+#fp-overlay .fp-topbar > div:last-child { display:none; }
+#fp-overlay .fp-body { width:100%;
+    max-width:100%;
+    margin:0;
+    padding:10px 8px calc(24px + var(--dp-safe-bottom));
+    overflow-x: clip; }
+/* The week context is the first orientation cue for a coach opening an
+     athlete. Give it a full-width reading order instead of squeezing the
+     athlete, week and state into one desktop row. */
+  #fp-overlay .week-jump { gap:10px;
+    padding:12px;
+    border-radius:14px;
+    box-shadow: 0 12px 32px rgba(0,0,0,.24); }
+#fp-overlay .week-jump-identity { display:block;
+    min-width: 0; }
+#fp-overlay .week-jump-main-row { align-items: center;
+    justify-content: space-between;
+    gap:8px; }
+#fp-overlay .week-jump-main { min-width: 0;
+    font-size:clamp(19px, 6vw, 24px);
+    line-height:1.05;
+    overflow-wrap: anywhere; }
+#fp-overlay .week-jump-status { flex: 0 0 auto;
+    max-width:42%;
+    overflow: hidden;
+    text-overflow: ellipsis; }
+#fp-overlay .fpc-hero { margin-bottom:9px;
+    padding:14px 12px;
+    border-radius:14px; }
+#fp-overlay .fpc-name { font-size:clamp(28px, 8.6vw, 34px);
+    line-height:1; }
+#fp-overlay .fpc-hero-actions { gap:6px; }
+#fp-overlay .fpc-section { margin-bottom:9px;
+    padding:13px 11px;
+    border-radius:12px; }
+#fp-overlay .fpc-section-title { margin-bottom:11px;
+    padding-bottom:9px !important;
+    font-family:var(--font-ui);
+    font-size:15px;
+    font-weight: 800;
+    letter-spacing:-.01em;
+    line-height:1.2; }
+#fp-overlay .fpc-scores { grid-template-columns:repeat(3, minmax(0, 1fr));
+    gap:6px;
+    margin-inline: -11px;
+    padding:8px 11px; }
+#fp-overlay .fpc-score { min-width: 0;
+    padding:10px 4px;
+    border:1px solid var(--border);
+    border-radius:9px;
+    background:var(--surface2); }
+#fp-overlay .fpc-score-lbl { margin-bottom:5px;
+    font-size:7px; }
+#fp-overlay .fpc-score-val { font-size:24px; }
+#fp-overlay .texp-week-switch,
+  #fp-overlay .dwn-controls,
+  #fp-overlay .week-jump-controls { width:100%;
+    display:grid;
+    grid-template-columns:repeat(3, minmax(0, 1fr)); }
+#fp-overlay .texp-week-btn,
+  #fp-overlay .dwn-btn,
+  #fp-overlay .week-jump-btn { min-width: 0;
+    min-height:42px;
+    padding:8px 4px;
+    white-space: normal;
+    line-height:1.2; }
+/* Strength sets keep the scan-friendly four-column table on phones, but the
+     exercise cell owns two internal rows: name/set first, swap context second.
+     A nowrap swap badge previously collapsed the exercise name to zero width. */
+  #fp-overlay .wd-ex-table { width:calc(100% + 16px);
+    max-width:none;
+    margin:10px -8px 0;
+    border-radius:10px; }
+#fp-overlay .wd-ext-head,
+  #fp-overlay .wd-ext-row { grid-template-columns:minmax(0, 1fr) 56px 38px 38px;
+    gap:4px;
+    padding:9px 8px; }
+#fp-overlay .wd-ext-head { align-items: center;
+    font-size:7px;
+    letter-spacing:.07em; }
+#fp-overlay .wd-ext-row { min-height:48px;
+    align-items: center; }
+#fp-overlay .wd-ext-ex { display:grid;
+    grid-template-columns:minmax(0, 1fr) auto;
+    grid-auto-rows: auto;
+    align-items: center;
+    gap:4px 6px;
+    min-width: 0;
+    font-size:12px;
+    line-height:1.3; }
+#fp-overlay .wd-ext-exname { grid-column: 1;
+    grid-row: 1;
+    min-width: 0;
+    overflow-wrap: anywhere; }
+#fp-overlay .wd-ext-setlbl { grid-column: 2;
+    grid-row: 1;
+    align-self: center;
+    margin-left:0;
+    padding-right:0;
+    font-size:7.5px; }
+#fp-overlay .wd-ext-swap { grid-column: 1 / -1;
+    grid-row: 2;
+    justify-self: start;
+    display:block;
+    width:auto;
+    max-width:100%;
+    margin-top:1px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap; }
+#fp-overlay .wd-ext-num { min-width: 0;
+    font-size:11.5px; }
+#fp-overlay .wd-ext-num.w em { font-size:8px; }
+#fp-overlay .wd-ext-pb { display:block;
+    width:fit-content;
+    margin:0 auto 3px; }
+#fp-overlay .wd-ext-missed { min-width: 0;
+    overflow-wrap: normal;
+    white-space: normal;
+    line-height:1.25; }
+#fp-overlay img,
+  #fp-overlay svg,
+  #fp-overlay table { max-width:100%; }
+/* The old phone layer removed day-specific Strava detail entirely. Keep it
+     in the one-column timeline, directly below that day's coaching data. */
+  #fp-overlay .wd-strava-col { display:block;
+    width:100%;
+    min-width: 0; }
+#fp-overlay .wd-strava-col:empty { display:none; }
+/* Secondary editing surfaces behave like native sheets and remain clear of
+     the home indicator. Inputs stay at iOS' non-zooming text size. */
+  .po-modal,
+  .ma-card,
+  .wst-dialog,
+  .dmo-dialog { max-width:100vw; }
+.po-modal-body,
+  .ma-body,
+  .wst-grid,
+  .dmo-body { min-width: 0; }
+.po-input,
+  .ma-card input,
+  .ma-card select,
+  .wst-field input,
+  .wst-field select,
+  .dmo-field input,
+  .dmo-field select,
+  .dmo-field textarea,
+  .cn-row input,
+  .cn-row select,
+  .cn-composer textarea { font-size:16px; }
+.wst-dialog,
+  .dmo-dialog { padding-bottom:var(--dp-safe-bottom); }
+/* Long chip rails stay swipeable without clipping the selected athlete. */
+  .plan-ath-chips,
+  .nut-athlete-tabs { scroll-padding-left: 2px;
+    scrollbar-width: none; }
+.plan-ath-chips::-webkit-scrollbar,
+  .nut-athlete-tabs::-webkit-scrollbar { display:none; }
+.plan-chip,
+  .nut-athlete-tab { min-height:38px; }
+/* Forms and tables use one type scale on phones. */
+  input, select, textarea, button { font-family:var(--font-ui); }
+.cn-composer,
+  .plan-toolbar,
+  .nut-table-wrap,
+  .sync-intro,
+  .sync-table-wrap,
+  .app-card,
+  .coach-card { border-radius:14px; }
+/* Application headers follow the active palette instead of staying black in light mode. */
+  body[data-theme="light"] .app-card-head { color:var(--text);
+    background:linear-gradient(180deg, var(--surface2), var(--surface3));
+    border-bottom: 1px solid var(--border); }
+body[data-theme="light"] .app-name { color:var(--text); }
+body[data-theme="light"] .app-meta { color:var(--muted); }
+/* Bottom navigation is a true app bar with 48px touch targets. */
+  .dp-mobilenav { min-height:var(--dp-mobile-nav-h);
+    padding:5px 8px calc(5px + var(--dp-safe-bottom));
+    gap:2px;
+    border-top-color:rgba(146,210,237,.14) !important;
+    box-shadow: 0 -12px 34px rgba(0,0,0,.32); }
+.dp-mnav-item { min-height:48px;
+    padding:4px 2px 3px;
+    border-radius:12px; }
+.dp-mnav-item.active { background:transparent; }
+.dp-mnav-ic { width:25px; height: 25px; }
+.dp-mnav-ic svg { width:21px; height: 21px; }
+.dp-mnav-item.active .dp-mnav-ic::before { display:block;
+    inset: -4px -11px;
+    background:rgba(121,195,232,.13); }
+.dp-mnav-lbl { font-family:var(--font-ui);
+    font-size:9px;
+    font-weight: 700;
+    letter-spacing:.01em; }
+.dp-sheet-cell { min-height:76px;
+    padding:11px 5px;
+    font-family:var(--font-ui);
+    font-weight: 700; }
+.dp-sheet { padding:7px var(--dp-mobile-edge) calc(14px + var(--dp-safe-bottom));
+    border-radius:22px 22px 0 0; }
+.dp-sheet-title { margin-bottom:10px; }
+.dp-sheet-grid { grid-template-columns:repeat(3, minmax(0, 1fr)); gap:7px; }
+/* Never let an app-update notice cover the fixed navigation. */
+  body > .dp-app-toast[role="status"] { left: 10px;
+    right: 10px;
+    bottom: calc(var(--dp-mobile-nav-h) + 10px + var(--dp-safe-bottom));
+    width:auto;
+    max-width:none;
+    justify-content: space-between;
+    gap:9px;
+    padding:10px 11px;
+    border-radius:12px;
+    font-family:var(--font-ui);
+    font-size:11px; }
+body > .dp-app-toast[role="status"] button { min-height:34px; }
+/* Authentication and athlete detail are focused flows. Update/install
+     prompts wait until the coach returns to the dashboard instead of covering
+     the primary action or logged set data. */
+  .dp-access-gate:not(.is-hidden) ~ .dp-app-toast,
+  #fp-overlay[aria-hidden="false"] ~ .dp-app-toast { display:none; }
+}
+
+
+
+@media (max-width: 380px) {
+:root { --dp-mobile-edge: 10px; }
+header .coach-select { max-width:78px; }
+.dp-page-title { max-width:64vw; }
+.cc-score { grid-template-columns:repeat(3, minmax(0, 1fr)); }
+.cc-score-card { min-height:58px; }
+.cc-score-num { font-size:21px; }
+.coach-actions-head { gap:8px; }
+.coach-action-new { padding-inline: 8px; }
+#fp-overlay .fp-back { font-size:9px; padding-inline: 7px; }
+#fp-overlay .fp-nav-btn { padding-inline: 6px; }
+.triage-hero h1 { font-size:29px; }
+.triage-summary { grid-template-columns:repeat(3, minmax(0, 1fr)) !important; }
+.dp-mnav-lbl { font-size:8.5px; }
+}
+
+

@@ -97,22 +97,86 @@ test('the phone layer stays the last stylesheet and stays phone-scoped', () => {
   assert.equal(links[links.length - 1], 'dashboard-mobile-final.css');
   assert.equal(links[links.length - 2], 'instrument.css');
 
+  // One carve-out, and it is the reason this test was rewritten. The phone
+  // layer owns two unscoped things: the --dp-* tokens its media blocks read
+  // inside calc(), and the display:none that keeps the injected mobile nav off
+  // every viewport the phone layer does not claim. Shipping without them put a
+  // band of unstyled nav markup at the bottom of the desktop dashboard and
+  // stripped the phone's content bottom padding. Anything else stays banned.
   const phone = read('dashboard-mobile-final.css').replace(/\/\*[\s\S]*?\*\//g, '');
-  let depth = 0, start = 0;
-  const unscoped = [];
+  let depth = 0, start = 0, open = -1;
+  const offenders = [];
   for (let i = 0; i < phone.length; i += 1) {
     if (phone[i] === '{') {
       if (depth === 0) {
         const sel = phone.slice(start, i).replace(/\s+/g, ' ').trim();
-        if (sel && !/^@media\s*\(\s*max-width/.test(sel)) unscoped.push(sel.slice(0, 50));
+        if (sel && !/^@media\s*\(\s*max-width/.test(sel)) { open = i; offenders.push({ sel }); }
       }
       depth += 1;
     } else if (phone[i] === '}') {
       depth -= 1;
-      if (depth === 0) start = i + 1;
+      if (depth === 0) {
+        const last = offenders[offenders.length - 1];
+        if (last && last.open === undefined && open > start) {
+          last.body = phone.slice(open + 1, i);
+          last.open = open;
+        }
+        start = i + 1;
+      }
     }
   }
-  assert.deepEqual(unscoped, [], 'an unscoped rule here would outrank the design system on desktop');
+  const illegal = offenders.flatMap(r => (r.body || '')
+    .split(';').map(d => d.trim()).filter(Boolean)
+    .filter(d => !/^--dp-[\w-]+\s*:/.test(d) && !/^display\s*:\s*none$/.test(d))
+    .map(d => `${r.sel} { ${d} }`));
+  assert.deepEqual(illegal, [], 'an unscoped rule here would outrank the design system on desktop');
+});
+
+test('the injected mobile nav is hidden on every viewport the phone layer does not claim', () => {
+  // dashboard-mobilenav.js appends .dp-mobilenav, .dp-sheet and
+  // .dp-sheet-backdrop to document.body unconditionally, on every screen. The
+  // phone layer switches them on inside @media (max-width: 720px). Something
+  // unscoped therefore has to switch them off, or they render as plain blocks
+  // in normal flow at the bottom of the desktop dashboard: oversized icons and
+  // badge counts running into their labels, which is what reached production.
+  const links = [...index.matchAll(/<link rel="stylesheet" href="\/([\w.-]+\.css)/g)].map(m => m[1]);
+  const loaded = links.map(f => read(f).replace(/\/\*[\s\S]*?\*\//g, '')).join('\n');
+
+  const topLevel = [];
+  let depth = 0, start = 0, open = -1, sel = '';
+  for (let i = 0; i < loaded.length; i += 1) {
+    if (loaded[i] === '{') {
+      if (depth === 0) { sel = loaded.slice(start, i).replace(/\s+/g, ' ').trim(); open = i; }
+      depth += 1;
+    } else if (loaded[i] === '}') {
+      depth -= 1;
+      if (depth === 0) {
+        if (sel && !sel.startsWith('@')) topLevel.push({ sel, body: loaded.slice(open + 1, i) });
+        start = i + 1;
+      }
+    }
+  }
+
+  for (const cls of ['.dp-mobilenav', '.dp-sheet', '.dp-sheet-backdrop']) {
+    const hidden = topLevel.some(r =>
+      r.sel.split(',').some(one => one.trim() === cls) &&
+      /(^|;)\s*display\s*:\s*none\s*(!important)?\s*(;|$)/.test(r.body));
+    assert.ok(hidden, `${cls} needs an unscoped display:none or it renders unstyled on desktop`);
+  }
+
+  // Same failure, silent half: an undefined custom property makes calc()
+  // invalid at computed-value time and the browser drops the whole
+  // declaration. That is how the phone lost its content bottom padding.
+  //
+  // This asserts only that every --dp-* token read inside calc() is declared
+  // somewhere. A token declared inside @media (max-width: 720px) and read only
+  // inside blocks at that width or narrower is legitimate, and several are;
+  // check-portal.mjs does the width-aware version of this comparison. What is
+  // never legitimate is a token declared nowhere at all, which is what shipped.
+  const declared = new Set([...loaded.matchAll(/(--dp-[\w-]+)\s*:/g)].map(m => m[1]));
+  const readInCalc = new Set([...loaded.matchAll(/calc\([^;{}]*var\(\s*(--dp-[\w-]+)/g)].map(m => m[1]));
+  const missing = [...readInCalc].filter(t => !declared.has(t));
+  assert.deepEqual(missing, [], 'these tokens are read inside calc() but declared nowhere');
 });
 
 test('!important stays far below where Phase 4 started', () => {
