@@ -8,22 +8,14 @@ const contrast=(f,bg)=>{const a=lum(f),d=lum(bg);return +(((Math.max(a,d)+.05)/(
 const flatten=(fg,bg)=>{const m=String(fg).match(/[\d.]+/g)||[];const a=m.length>3?+m[3]:1;
   const F=m.slice(0,3).map(Number),B=rgb(bg);return `rgb(${F.map((v,i)=>Math.round(v*a+B[i]*(1-a))).join(',')})`;};
 
-for (const [w,h,theme] of [[1440,900,'dark'],[1440,900,'light'],[390,844,'dark'],[390,844,'light']]) {
-  const key=`${w===1440?'desktop':'mobile'}-${theme}`;
-  const c=await b.newContext({viewport:{width:w,height:h}});
-  await c.addInitScript(()=>{try{sessionStorage.setItem('dp_dashboard_key','preview');sessionStorage.setItem('dp_dashboard_coach','KARL')}catch{}});
-  const p=await c.newPage();
-  const errs=[]; p.on('pageerror',e=>errs.push(e.message.slice(0,140)));
-  p.on('console',m=>{if(m.type()==='error'&&!/ERR_CONNECTION|ERR_FAILED/.test(m.text()))errs.push(m.text().slice(0,120))});
-  await p.goto('http://localhost:4173/index.html',{waitUntil:'networkidle'});
-  await p.evaluate(()=>document.fonts.ready);
-  await p.evaluate(t=>document.body.setAttribute('data-theme',t),theme);
-  await p.waitForTimeout(1600);
-  const r=await p.evaluate(()=>{
-    const probe=n=>{const s=document.createElement('span');s.style.cssText=`color:var(${n});position:absolute;visibility:hidden`;document.body.appendChild(s);const v=getComputedStyle(s).color;s.remove();return v};
-    const meas=f=>{const s=document.createElement('span');s.textContent='HANDLEBAR MEASUREMENT 0123456789';s.style.cssText=`font:700 40px ${f};position:absolute;visibility:hidden;white-space:nowrap`;document.body.appendChild(s);const x=Math.round(s.getBoundingClientRect().width);s.remove();return x};
-    // Sample every small/muted text node actually on screen for the contrast audit.
-    const samples=[];
+
+// The sample collector, installed on the page so every surface can be measured
+// with the same rules. It used to be inline in the landing-view evaluate, which
+// is why it only ever audited the first screen: 27 AA failures sat unnoticed in
+// the athlete workspace's lift table, where a dark recess wash was being applied
+// in light theme too.
+const COLLECTOR = `window.collectSamples = function () {
+  const samples = [];
     document.querySelectorAll('body *').forEach(el=>{
       const rc=el.getBoundingClientRect(); if(!rc.width||!rc.height) return;
       if(!el.textContent.trim() || el.children.length) return;
@@ -40,11 +32,11 @@ for (const [w,h,theme] of [[1440,900,'dark'],[1440,900,'light'],[390,844,'dark']
         const ns=getComputedStyle(node);
         if(ns.backgroundImage && ns.backgroundImage!=='none'){ hasImage=true; break; }
         const col=ns.backgroundColor||'';
-        let parts=(col.match(/[\d.]+/g)||[]).map(Number);
+        let parts=(col.match(/[\\d.]+/g)||[]).map(Number);
         // color(srgb ...) has 0-1 components; rgb() has 0-255. Reading the
         // former as the latter turned near-white backgrounds into near-black
         // and invented contrast failures.
-        if(/^color\(/.test(col)) parts=parts.map((v,i)=>i<3?v*255:v);
+        if(/^color\\(/.test(col)) parts=parts.map((v,i)=>i<3?v*255:v);
         const alpha=parts.length>3?parts[3]:(parts.length?1:0);
         if(alpha>0){
           if(alpha>=1){ opaque=parts.slice(0,3); break; }
@@ -59,9 +51,28 @@ for (const [w,h,theme] of [[1440,900,'dark'],[1440,900,'light'],[390,844,'dark']
         const L=layers[i];
         base=[0,1,2].map(k=>L.rgb[k]*L.a + base[k]*(1-L.a));
       }
-      const bg=`rgb(${base.map(v=>Math.round(v)).join(',')})`;
+      const bg=\`rgb(\${base.map(v=>Math.round(v)).join(',')})\`;
       samples.push({cls:(el.className||'').toString().slice(0,28),size:parseFloat(cs.fontSize),weight:cs.fontWeight,color:cs.color,bg});
     });
+  return samples;
+};`;
+
+for (const [w,h,theme] of [[1440,900,'dark'],[1440,900,'light'],[390,844,'dark'],[390,844,'light']]) {
+  const key=`${w===1440?'desktop':'mobile'}-${theme}`;
+  const c=await b.newContext({viewport:{width:w,height:h}});
+  await c.addInitScript(()=>{try{sessionStorage.setItem('dp_dashboard_key','preview');sessionStorage.setItem('dp_dashboard_coach','KARL')}catch{}});
+  await c.addInitScript(COLLECTOR);
+  const p=await c.newPage();
+  const errs=[]; p.on('pageerror',e=>errs.push(e.message.slice(0,140)));
+  p.on('console',m=>{if(m.type()==='error'&&!/ERR_CONNECTION|ERR_FAILED/.test(m.text()))errs.push(m.text().slice(0,120))});
+  await p.goto('http://localhost:4173/index.html',{waitUntil:'networkidle'});
+  await p.evaluate(()=>document.fonts.ready);
+  await p.evaluate(t=>document.body.setAttribute('data-theme',t),theme);
+  await p.waitForTimeout(1600);
+  const r=await p.evaluate(()=>{
+    const probe=n=>{const s=document.createElement('span');s.style.cssText=`color:var(${n});position:absolute;visibility:hidden`;document.body.appendChild(s);const v=getComputedStyle(s).color;s.remove();return v};
+    const meas=f=>{const s=document.createElement('span');s.textContent='HANDLEBAR MEASUREMENT 0123456789';s.style.cssText=`font:700 40px ${f};position:absolute;visibility:hidden;white-space:nowrap`;document.body.appendChild(s);const x=Math.round(s.getBoundingClientRect().width);s.remove();return x};
+    const samples=collectSamples();
     return {
       run:probe('--run'), str:probe('--str'), dim:probe('--dim'), muted:probe('--muted'),
       surface:probe('--surface'), text:probe('--text'),
@@ -75,6 +86,23 @@ for (const [w,h,theme] of [[1440,900,'dark'],[1440,900,'light'],[390,844,'dark']
       samples,
     };
   });
+  // The landing view is one screen of many. The athlete workspace carries the
+  // densest small text in the product, and its lift ledger is where the light
+  // theme was failing, so every surface a coach actually reads gets measured.
+  for (const [label, setup] of [
+    ['workspace-overview', () => { window.showFP('LUCA'); }],
+    ['workspace-training', () => window.switchAthleteTab('training')],
+    ['workspace-strength', () => window.switchAthleteTab('strength')],
+    ['workspace-running',  () => window.switchAthleteTab('running')],
+  ]) {
+    try {
+      await p.evaluate(setup);
+      await p.waitForTimeout(900);
+      const more = await p.evaluate(() => window.collectSamples());
+      r.samples.push(...more.map(x => ({ ...x, surface: label })));
+    } catch { /* a surface that will not open is a separate failure, not this one */ }
+  }
+
   const lab=([r,g,bb])=>{const f=c=>{c/=255;return c>0.04045?((c+0.055)/1.055)**2.4:c/12.92};const[R,G,B]=[f(r),f(g),f(bb)];
     const X=(R*.4124+G*.3576+B*.1805)/.95047,Y=R*.2126+G*.7152+B*.0722,Z=(R*.0193+G*.1192+B*.9505)/1.08883;
     const g2=t=>t>0.008856?Math.cbrt(t):7.787*t+16/116;return[116*g2(Y)-16,500*(g2(X)-g2(Y)),200*(g2(Y)-g2(Z))]};

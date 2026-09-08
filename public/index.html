@@ -941,7 +941,12 @@ body[data-theme="pride"] .texp-name{background:linear-gradient(90deg,#FF8C00,#FF
 .no-results-txt{font-family:var(--mono);font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em}
 
 /* ── Full-page overlay ── */
-#fp-overlay{position:fixed;inset:0;background:var(--bg);z-index:300;overflow-y:auto;display:none}
+/* overflow-x:clip, not hidden: clip does not make a scroll container, so the
+   sticky header and .wd-date keep working. .fp-topbar is sticky vertically
+   only, so anything that overflows sideways drags the Back to Squad button
+   off the left edge as the coach scrolls across. Wide content that is meant
+   to scroll does it in its own box (.fpa-table-wrap), never in the overlay. */
+#fp-overlay{position:fixed;inset:0;background:var(--bg);z-index:300;overflow-y:auto;overflow-x:clip;display:none}
 .fp-topbar{background:#0a0a0a;padding:0 20px;height:50px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10;gap:12px}
 .fp-back{background:transparent;border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.65);font-family:var(--mono);font-size:10px;padding:6px 14px;border-radius:6px;cursor:pointer;text-transform:uppercase;letter-spacing:.07em;transition:all .15s}
 .fp-back:hover{color:#fff;border-color:rgba(255,255,255,.5)}
@@ -1485,6 +1490,18 @@ body[data-theme="light"] .plan-chip.coach::before{color:#92400e}
 .wd-strava-stats{display:flex;flex-wrap:wrap;gap:3px}
 .wd-strava-stat{font-family:var(--mono);font-size:9px;color:var(--muted);background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:2px 7px;white-space:nowrap}
 .wd-strava-stat strong{color:var(--text)}
+/* Prescription steps are sentences the coach wrote, not stat values. They were
+   reusing .wd-strava-stat, which is nowrap because it is built for "8.2km" and
+   "45.8min". One warmup line was 469px of unbreakable text: it pushed the
+   workspace 114px wider than the window, and because .fp-topbar is sticky only
+   vertically, scrolling across slid "Back to Squad" to left:-94px where it
+   could not be clicked. */
+.wd-submitted-plan .wd-strava-stat{white-space:normal;overflow-wrap:anywhere;line-height:1.45;text-align:left}
+/* How a set felt to the athlete, in the words the portal recorded. */
+.wd-ext-effort{font-family:var(--mono);font-size:8px;letter-spacing:.05em;text-transform:uppercase;border:1px solid currentColor;border-radius:999px;padding:1px 5px;margin-left:6px;white-space:nowrap;vertical-align:1px}
+.wd-ext-effort.strain{color:var(--alert)}
+.wd-ext-effort.headroom{color:var(--warn,var(--chart-amber))}
+.wd-ext-effort.ontarget{color:var(--done)}
 .wd-strava-stat.primary{background:rgba(252,76,2,.08);border-color:rgba(252,76,2,.25)}
 .wd-strava-stat.primary strong{color:#fc4c02}
 .wd-strava-summary{list-style:none;cursor:pointer;user-select:none}
@@ -2249,7 +2266,7 @@ body[data-theme="light"] .theme-btn.active{background:rgba(255,255,255,.22);colo
   .sum-card{flex:1 1 100%}
 }
 </style>
-<link rel="stylesheet" href="/dashboard-theme-system.css?v=20260907-34">
+<link rel="stylesheet" href="/dashboard-theme-system.css?v=20260909-37">
 <link rel="stylesheet" href="/dashboard-desktop.css?v=20260906-17">
 <link rel="stylesheet" href="/triage.css?v=20260906-32">
 <link rel="stylesheet" href="/programming.css?v=20260906-17">
@@ -8391,6 +8408,17 @@ function buildCallPrep(a) {
 // ── Exercise log renderer ─────────────────────────────────────────────────────
 // Strength log format: "ExerciseName: Set 1: 40kg × 12reps | Set 2: 65kg × 10reps\n..."
 // Run log format:      "Distance: 13km | Duration: 96min | Pace: 6:40 | RPE: 6.5/10 | Feel: 😐"
+// The athlete's calibration for a set, in their own words from the portal.
+// Seven values are in use: technical failure, more in tank, on target,
+// form broke, on target (at limit), too easy, too hard. Grouped by what a coach
+// does about them rather than by how they are spelled.
+function effortTone(effort) {
+  const e = String(effort || '').toLowerCase();
+  if (/technical failure|form broke|too hard/.test(e)) return 'strain';
+  if (/more in tank|too easy/.test(e)) return 'headroom';
+  return 'ontarget';
+}
+
 function renderExerciseLog(logStr, isRun, priorBests, plannedExs, swaps) {
   if (!logStr) return '';
   if (isRun) {
@@ -8421,10 +8449,33 @@ function renderExerciseLog(logStr, isRun, priorBests, plannedExs, swaps) {
     const exName = line.substring(0, colonSet).trim();
     const setsStr = line.substring(colonSet + 2); // "Set 1: Xkg × Yreps | Set 2: ..."
     const priorBest = priorBests && priorBests[exName.toLowerCase()];
-    const sets = setsStr.split('|').map(s => {
-      const m = s.trim().match(/Set\s*\d+:\s*(.+)/);
-      const val = m ? m[1].trim() : s.trim();
-      if (!val) return null;
+    // The portal writes the athlete's calibration for a set as its own
+    // pipe-separated chunk beside that set, not inside it:
+    //
+    //   Seated Hamstring Curl: Set 1: 36kg × 10reps | Set 2: 40kg × 10reps
+    //     | Effort: too hard | Set 3: 29kg × 10reps
+    //
+    // "Effort: too hard" belongs to Set 2, which is why Set 3 drops to 29kg.
+    // Splitting on the pipe and treating every chunk as a set turned it into a
+    // set of its own: a row with no weight or reps, and, because the row number
+    // comes from position, every real set after it was numbered one too high.
+    // A coach reading load progression was being shown the wrong set numbers.
+    const sets = [];
+    let pendingEffort = null;
+    setsStr.split('|').forEach(chunk => {
+      const s = chunk.trim();
+      if (!s) return;
+      const effortMatch = s.match(/^Effort:\s*(.+)$/i);
+      if (effortMatch) {
+        const value = effortMatch[1].trim();
+        // Normally it follows its set. If it somehow leads, hold it for the next.
+        if (sets.length) sets[sets.length - 1].effort = value;
+        else pendingEffort = value;
+        return;
+      }
+      const m = s.match(/Set\s*\d+:\s*(.+)/);
+      const val = m ? m[1].trim() : s;
+      if (!val) return;
       const wm = val.match(/([\d.]+)\s*kg/i);
       const rm = val.match(/[×x]\s*([\d.]+)\s*(?:reps?)?/i) || val.match(/([\d.]+)\s*reps?/i);
       const pm = val.match(/@\s*RPE\s*([\d.]+)/i);
@@ -8435,8 +8486,9 @@ function renderExerciseLog(logStr, isRun, priorBests, plannedExs, swaps) {
         const e1rm = w * (1 + r / 30);
         pb = e1rm > priorBest.e1rm + 0.5;
       }
-      return { w, r, rpe: pm ? pm[1] : null, raw: val, pb };
-    }).filter(Boolean);
+      sets.push({ w, r, rpe: pm ? pm[1] : null, raw: val, pb, effort: pendingEffort });
+      pendingEffort = null;
+    });
     if (!sets.length) return;
     // Saved-but-empty (e.g. "—kg × — reps"): opened in the logger, not done.
     const empty = sets.every(st => st.w === null && st.r === null);
@@ -8496,7 +8548,12 @@ function renderExerciseLog(logStr, isRun, priorBests, plannedExs, swaps) {
       const swapTag = en.swap
         ? `<span class="wd-ext-swap" title="Programmed: ${esc(en.swap.programmed)}${en.swap.muscleGroup ? ` · ${esc(en.swap.muscleGroup)}` : ''}">swapped for ${esc(en.swap.programmed)}</span>`
         : '';
-      const exCell = `<span class="wd-ext-ex">${first ? `<span class="wd-ext-exname">${esc(en.exName)}</span>${swapTag}` : ''}<em class="wd-ext-setlbl">Set ${si + 1}</em></span>`;
+      // Calibration sits on the set it describes, so the set numbering stays
+      // the athlete's own and the coach can see which load felt wrong.
+      const effortTag = st.effort
+        ? `<span class="wd-ext-effort ${effortTone(st.effort)}" title="How this set felt to the athlete">${esc(st.effort)}</span>`
+        : '';
+      const exCell = `<span class="wd-ext-ex">${first ? `<span class="wd-ext-exname">${esc(en.exName)}</span>${swapTag}` : ''}<em class="wd-ext-setlbl">Set ${si + 1}</em>${effortTag}</span>`;
       const parsed = st.w !== null || st.r !== null;
       if (!parsed) {
         bodyRows.push(`<div class="wd-ext-row${first ? ' grp' : ''}">${exCell}<span class="wd-ext-raw">${esc(st.raw)}</span></div>`);

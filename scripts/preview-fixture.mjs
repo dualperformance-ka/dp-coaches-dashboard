@@ -461,12 +461,19 @@ export function sessions() {
   Object.entries(strength).forEach(([code, lifts]) => {
     for (let s = 7; s >= 0; s--) {
       const date = iso(s * 7 + 1);
-      const log = lifts.map(([name, loads]) => {
+      const log = lifts.map(([name, loads], li) => {
         const load = loads[7 - s];
         // Bodyweight movements carry no load. Tonnage must not invent one.
         const sets = load
           ? [1, 2, 3].map(n => `Set ${n}: ${load}kg x ${n === 3 ? 7 : 8} @ RPE ${n === 3 ? 9 : 8}`)
           : [1, 2, 3].map(n => `Set ${n}: bodyweight x 12`);
+        // The portal records how a set felt as its own chunk beside that set,
+        // not inside it. Ledger rendering has to keep it off the set numbering,
+        // so the fixture carries the real shape and all three tones.
+        if (load) {
+          const feel = ['Effort: technical failure', 'Effort: more in tank', 'Effort: on target (at limit)'][li % 3];
+          sets.splice(2, 0, feel);
+        }
         return `${name}: ${sets.join(' | ')}`;
       }).join('\n');
       push(code, date, s === 0 ? 'Lower A' : 'Lower A', 'Strength', log, {

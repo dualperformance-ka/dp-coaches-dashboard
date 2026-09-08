@@ -524,7 +524,29 @@ body[data-theme="light"] .dp-access-card select {
 
 /* Athlete detail top bar is chrome; the content below follows the active theme. */
 .fp-topbar { color:var(--chrome-text); background:var(--chrome); }
-.fp-topbar .fp-back,.fp-topbar .fp-nav-btn { color:rgba(243,248,251,.70); border-color:rgba(255,255,255,.17); }
+/* The workspace command bar takes its surface from --chrome, which flips with
+   the theme, but these controls hardcoded a near-white ink. In light theme that
+   put rgba(243,248,251,.70) on #f4f2ed: 1.03:1, an empty outline where "Back to
+   Squad" should be, and the same for prev/next, the counter and the hint. The
+   whole bar was invisible. They follow the chrome ink now, in both themes. */
+.fp-topbar .fp-back,
+.fp-topbar .fp-nav-btn { color:rgba(236,233,226,.86); border-color:rgba(236,233,226,.24); }
+.fp-topbar .fp-idx { color:rgba(236,233,226,.74); }
+.fp-topbar .fp-hint { color:rgba(236,233,226,.70); }
+.fp-topbar .theme-btn { color:rgba(236,233,226,.74); }
+.fp-topbar .theme-btn.active { color:var(--chrome); background:rgba(236,233,226,.88); }
+
+body[data-theme="light"] .fp-topbar .fp-back,
+body[data-theme="light"] .fp-topbar .fp-nav-btn { color:rgba(27,26,24,.88); border-color:rgba(27,26,24,.28); }
+body[data-theme="light"] .fp-topbar .fp-idx { color:rgba(27,26,24,.80); }
+body[data-theme="light"] .fp-topbar .fp-hint { color:rgba(27,26,24,.76); }
+body[data-theme="light"] .fp-topbar .theme-btn { color:rgba(27,26,24,.80); }
+body[data-theme="light"] .fp-topbar .theme-btn.active { color:var(--chrome); background:rgba(27,26,24,.88); }
+
+/* --green-text is tuned for a dark surface. On the light green chip it lands at
+   3.94:1, under the AA floor for an 8px label. --done is the light theme's
+   green ink and already clears it. */
+body[data-theme="light"] .week-jump-status.current { color:var(--done); }
 body[data-theme="light"] #fp-overlay { color:var(--text); background:var(--bg); }
 body[data-theme="light"] .fpc-act-btn {
   color:var(--muted);
@@ -542,6 +564,15 @@ body[data-theme="light"] .dp-mnav-item { color:var(--muted); }
 body[data-theme="light"] .dp-mnav-item.active { color:#12688f; }
 body[data-theme="light"] .dp-sheet-cell { color:var(--text); background:var(--surface2); border-color:var(--border); }
 body[data-theme="light"] .dp-sheet-title { color:var(--text); }
+
+/* The lift ledger recesses its table with a black wash. In dark theme that
+   deepens the surface and reads correctly. In light theme the same wash turns
+   the card mid-grey, and every dark ink on it loses contrast: 27 of the 73 text
+   nodes in the table were under the AA floor, including the weight and rep
+   numbers a coach reads to judge load progression. Light gets a light recess. */
+body[data-theme="light"] .wd-ex-table { background: rgba(0, 0, 0, .045); }
+body[data-theme="light"] .wd-ext-row.pb { background: rgba(139, 92, 246, .09); }
+body[data-theme="light"] .wd-session.str { background: rgba(96, 165, 250, .06); }
 
 /* Focus is visible against either palette. */
 body[data-theme="light"] button:focus-visible,
