@@ -12968,18 +12968,85 @@ function buildWeightHistory(a) {
 // Keyboard shortcuts: Escape = close, ←→ = navigate
 // The sticky athlete header carries a lot on first read and very little once a
 // coach is deep in a panel, so it sheds the vitals detail after a short scroll.
+// Pure, so the stability of the pair can be tested without a browser: given how
+// far the header collapses, condense far enough down the page that the
+// re-anchor does not land back at the top, and expand far enough above where
+// the condense lands that neither can trigger the other.
+function fpaCondenseThresholds(drop) {
+  const condenseAt = Math.max(140, drop + 60);
+  return { condenseAt, expandAt: Math.max(20, condenseAt - drop - 40) };
+}
+window.fpaCondenseThresholds = fpaCondenseThresholds;
+
 (function initAthleteHeaderCondense() {
   const overlay = document.getElementById('fp-overlay');
   if (!overlay) return;
-  // A single class toggle against a value the scroll event already settled, so
-  // no rAF throttle: one would leave its "pending" flag stuck if the tab were
-  // hidden mid-scroll, and the header would then stop responding entirely.
-  let condensed = null;
+
+  // .fpa-sticky is position:sticky, so it still occupies its space in the
+  // scrolling flow. Condensing it removes real height, everything below moves
+  // up, and Chrome re-anchors scrollTop by that same amount to keep the content
+  // under the cursor still.
+  //
+  // With one threshold for both directions that is a feedback loop. Condensing
+  // at scrollTop 180 dropped the header by 113px, scroll anchoring put
+  // scrollTop at 67, 67 was under the threshold so the class came straight off,
+  // the header grew back, scrollTop returned to 180, and round again: seven
+  // flips in a single wheel gesture, each one moving the page by the height of
+  // the header. That is the scrolling glitch.
+  //
+  // Two thresholds fix it, but they cannot be constants. The height the
+  // condense removes is 113px on a desktop, 175px between 560 and 900px, and
+  // 372px on a phone, where the vitals row is hidden outright. A threshold
+  // smaller than the drop is worse than useless: condensing would anchor the
+  // coach back to the top of the page. So the header is measured once, and both
+  // thresholds are derived from what it actually does.
+  let condensed = false;
+  let drop = null;      // height the condense removes, measured not guessed
+  let condenseAt = 140;
+  let expandAt = 24;
+
+  const sticky = () => overlay.querySelector('.fpa-sticky');
+
+  // The condensed height is published for anything that sticks underneath the
+  // header. .wd-date used a hardcoded --fpa-sticky-h of 140px, which is 13px
+  // short on a desktop and 86px short on a narrow window, so the day labels in
+  // the ledger slid up behind the header instead of sitting below it.
+  const publishHeight = (el) => {
+    const h = Math.round(el.getBoundingClientRect().height);
+    if (h > 0) overlay.style.setProperty('--fpa-sticky-h', h + 'px');
+  };
+
+  // One extra layout, once per workspace open, rather than one per scroll.
+  const measure = (el) => {
+    const was = el.classList.contains('is-condensed');
+    const expanded = el.getBoundingClientRect().height;
+    el.classList.add('is-condensed');
+    const shrunk = el.getBoundingClientRect().height;
+    el.classList.toggle('is-condensed', was);
+    drop = Math.max(0, Math.round(expanded - shrunk));
+    ({ condenseAt, expandAt } = fpaCondenseThresholds(drop));
+  };
+
   overlay.addEventListener('scroll', () => {
-    const next = overlay.scrollTop > 140;
+    const el = sticky();
+    if (!el) return;
+    if (drop === null) measure(el);
+
+    const y = overlay.scrollTop;
+    const next = condensed ? y > expandAt : y > condenseAt;
     if (next === condensed) return;
+
     condensed = next;
-    overlay.querySelector('.fpa-sticky')?.classList.toggle('is-condensed', next);
+    el.classList.toggle('is-condensed', next);
+    publishHeight(el);
+  }, { passive: true });
+
+  // A resize changes the drop and the condensed height both. Re-measure rather
+  // than carry a value from the previous layout.
+  addEventListener('resize', () => {
+    drop = null;
+    const el = sticky();
+    if (el) publishHeight(el);
   }, { passive: true });
 })();
 

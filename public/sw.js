@@ -16,7 +16,7 @@
 // it for you — and if sw.js is byte-identical the browser never installs a new
 // worker, no "Update available" toast appears, and the activate purge never runs.
 // scripts/bump-sw-version.mjs does it for you: `node scripts/bump-sw-version.mjs`.
-const VERSION = 'dp-coaches-v47-icon-hydration';
+const VERSION = 'dp-coaches-v48-scroll-condense';
 const SHELL_CACHE = `${VERSION}-shell`;
 const STATIC_CACHE = `${VERSION}-static`;
 const FONT_CACHE = `${VERSION}-fonts`;
