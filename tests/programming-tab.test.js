@@ -144,22 +144,29 @@ test('Calendar and Programming are separate tabs over one panel', () => {
   assert.match(source, /if \(PROG_TABS\.includes\(tab\)\) renderProgramming\(\)/);
 });
 
-test('the view toggle names content, not time units', () => {
+test('the view switch names content, not time units, and says its scope', () => {
   const start = html.indexOf('id="prog-view-toggle"');
-  const toggle = html.slice(start, html.indexOf('</div>', start));
-  assert.match(toggle, />Sessions</);
-  assert.match(toggle, />Weekly Targets</);
+  const toggle = html.slice(start, html.indexOf('</div>\n    </div>', start));
+  for (const name of ['Calendar', 'Sessions', 'Weekly Targets']) {
+    assert.match(toggle, new RegExp(`${name}</span>`), `${name} segment`);
+  }
   assert.doesNotMatch(toggle, />Week</);
   assert.doesNotMatch(toggle, />Block</);
-  assert.doesNotMatch(toggle, /prog-view-squad/);
+  // Each segment states its scope, so neither name has to carry it alone.
+  assert.match(toggle, /Whole squad · one week/);
+  assert.match(toggle, /One athlete · day by day/);
+  assert.match(toggle, /Mileage &amp; macros · per week/);
+  // Every segment goes through goProgView so the switch and the tabs agree.
+  assert.equal(toggle.match(/onclick="goProgView\(/g)?.length, 3);
 });
 
 test('Programming reopens on a single-athlete view, never the squad board', () => {
   const source = functionSource('_progDetailView');
   assert.match(source, /'block' \? 'block' : 'week'/);
-  // The toggle has nothing to offer while the squad board is up.
+  // The switch covers all three views, so it stays up on the squad board too.
   const render = functionSource('renderProgramming');
-  assert.match(render, /toggle\.hidden = _progView === 'squad'/);
+  assert.match(render, /\['week', 'squad', 'block'\]\.forEach/);
+  assert.doesNotMatch(render, /toggle\.hidden/);
   assert.match(render, /_syncProgTabButtons\(\)/);
 });
 

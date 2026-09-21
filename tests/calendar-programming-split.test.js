@@ -33,7 +33,8 @@ vm.runInContext(
   + `const TAB_CONTENT_ID={applications:'apps',notifications:'notif',calendar:'programming'};`
   + `const PROG_TABS=['calendar','programming'];`
   + `let _pipelineView='applications';`
-  + `${src('primaryTabFor')} ${src('_progDetailView')} ${src('switchTab')}`, ctx);
+  + `const PROG_VIEWS=new Set(['week','squad','block']);`
+  + `${src('primaryTabFor')} ${src('_progDetailView')} ${src('switchTab')} ${src('goProgView')}`, ctx);
 
 const view = () => vm.runInContext('_progView', ctx);
 const panel = () => nodes.get('tab-programming-content').style.display;
@@ -60,3 +61,23 @@ check('legacy nutrition → Weekly Targets',   view()==='block' && panel()==='',
 ctx.switchTab('planning');
 check('legacy planning → Sessions',          view()==='week', view());
 check('both tabs rendered the panel',        rendered.length===4, JSON.stringify(rendered));
+
+// The view switch and the tab bar are one choice with two affordances. Driving
+// the switch must move the tab, not leave the two disagreeing.
+const go = v => vm.runInContext(`goProgView(${JSON.stringify(v)})`, ctx);
+
+go('squad');
+check('switch → Calendar selects the squad board', view()==='squad', view());
+check('switch → Calendar lights the Calendar tab', lit('tab-calendar-btn') && !lit('tab-programming-btn'),
+      `cal=${lit('tab-calendar-btn')} prog=${lit('tab-programming-btn')}`);
+check('switch → Calendar keeps the panel up',      panel()==='', panel());
+
+go('block');
+check('switch → Weekly Targets from the board',    view()==='block', view());
+check('switch → Weekly Targets lights Programming', lit('tab-programming-btn') && !lit('tab-calendar-btn'),
+      `cal=${lit('tab-calendar-btn')} prog=${lit('tab-programming-btn')}`);
+
+let stored = null;
+ctx.localStorage.setItem = (k, v) => { if (k === 'dp_prog_view') stored = v; };
+go('week');  check('switch → Sessions is remembered',        stored==='week', stored);
+go('squad'); check('the squad board is never remembered',    stored==='week', stored);

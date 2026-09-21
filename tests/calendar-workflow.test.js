@@ -111,11 +111,16 @@ test('move and duplicate exist and only apply to a saved session', () => {
 });
 
 test('the squad board covers the roster without the single-athlete controls', () => {
-  // The squad board is reached from its own Calendar tab, not a view toggle.
-  assert.doesNotMatch(html, /id="prog-view-squad"/);
+  // The squad board has its own Calendar tab, and a Calendar segment in the
+  // view switch that routes through the same tab rather than around it.
   assert.match(html, /id="tab-calendar-btn"/);
   assert.match(html, /onclick="switchTab\('calendar'\)"/);
   assert.match(html, /if \(tab === 'calendar'\) _progView = 'squad'/);
+  assert.match(html, /id="prog-view-squad" aria-selected="false" onclick="goProgView\('squad'\)"/);
+  const go = functionSource('goProgView');
+  assert.match(go, /switchTab\(_progView === 'squad' \? 'calendar' : 'programming'\)/);
+  // 'squad' is the Calendar tab's view, never the remembered detail view.
+  assert.match(go, /if \(_progView !== 'squad'\)/);
   assert.match(html, /id="prog-squad-body"/);
   const board = functionSource('renderSquadBoard');
   // Coaches train too, but the board is the athlete roster.
