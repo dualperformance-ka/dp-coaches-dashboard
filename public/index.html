@@ -1387,9 +1387,14 @@ body[data-theme="light"] .plan-chip.coach::before{color:#92400e}
 .plan-lib-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
 .plan-lib-title{font-family:var(--mono);font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:var(--text)}
 .plan-lib-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px}
-.plan-lib-card{background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:10px;cursor:pointer;transition:all .12s}
+.plan-lib-card{position:relative;background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:10px;cursor:pointer;transition:all .12s}
 .plan-lib-card:hover{border-color:rgba(245,158,11,.5)}
-.plan-lib-name{font-family:var(--cond);font-size:15px;font-weight:600;color:var(--text)}
+.plan-lib-name{font-family:var(--cond);font-size:15px;font-weight:600;color:var(--text);padding-right:28px}
+.plan-lib-dup{position:absolute;top:6px;right:6px;display:flex;align-items:center;justify-content:center;width:26px;height:26px;padding:0;border-radius:6px;border:1px solid var(--border-mid);background:var(--surface2);color:var(--dim);font-size:12px;line-height:1;cursor:pointer;opacity:0;transition:opacity .12s,color .12s,border-color .12s,background .12s}
+.plan-lib-card:hover .plan-lib-dup,.plan-lib-dup:focus-visible{opacity:1}
+.plan-lib-dup:hover{color:var(--brand-text);border-color:var(--brand-border);background:var(--brand-bg)}
+/* Touch has no hover, so the action cannot be hidden behind one there. */
+@media (hover:none){.plan-lib-dup{opacity:1}}
 .plan-lib-meta{font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:4px;line-height:1.6}
 .plan-lib-tag{display:inline-block;font-family:var(--mono);font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:1px 6px;border-radius:4px;background:rgba(96,165,250,.12);border:1px solid rgba(96,165,250,.3);color:#60a5fa;margin-left:6px}
 .pw-ex-row{border:1px solid var(--border);border-radius:8px;padding:8px;margin-bottom:8px;background:var(--surface)}
@@ -3004,6 +3009,7 @@ function refreshRosterDrivenUI() {
     </div>
     <div class="po-modal-foot">
       <button class="po-btn save" onclick="saveLibSession()">Save Template</button>
+      <button class="po-btn clear" id="pl-duplicate" onclick="duplicateLibFromEditor()" style="display:none" title="Start a new template from what is on screen">⧉ Duplicate</button>
       <button class="po-btn clear" id="pl-archive" onclick="archiveLibSession()" style="display:none">Archive</button>
     </div>
   </div>
@@ -3036,6 +3042,7 @@ function refreshRosterDrivenUI() {
     </div>
     <div class="po-modal-foot">
       <button class="po-btn save" onclick="saveSplit()">Save Split</button>
+      <button class="po-btn clear" id="pw-duplicate" onclick="duplicateSplitFromEditor()" style="display:none" title="Start a new split from what is on screen">⧉ Duplicate</button>
       <button class="po-btn clear" id="pw-archive" onclick="archiveSplit()" style="display:none">Archive</button>
     </div>
   </div>
@@ -5288,6 +5295,9 @@ function renderPlanLibrary() {
       const audience = splitAudienceLabel(s);
       const preview = exs.slice(0, 3).map(e => e.exercise).filter(Boolean).map(esc).join(' · ');
       return `<div class="plan-lib-card" onclick="openSplitEditor('${s.id}')">
+        <button type="button" class="plan-lib-dup" title="Duplicate this split"
+                aria-label="Duplicate ${esc(s.name)}"
+                onclick="event.stopPropagation();duplicateSplit('${s.id}')">&#10697;</button>
         <div class="plan-lib-name">${esc(s.name)}${audience ? `<span class="plan-lib-tag">${esc(audience)}</span>` : ''}</div>
         <div class="plan-lib-meta">${exs.length} exercises</div>
         ${preview ? `<div class="plan-lib-meta">${preview}${exs.length > 3 ? ' …' : ''}</div>` : ''}
@@ -5301,6 +5311,9 @@ function renderPlanLibrary() {
     _libCache.map(l => {
       const meta = [l.session_type, l.distance, l.target_pace, l.intensity].filter(Boolean).map(esc).join(' · ');
       return `<div class="plan-lib-card" onclick="openLibEditor('${l.id}')">
+        <button type="button" class="plan-lib-dup" title="Duplicate this template"
+                aria-label="Duplicate ${esc(l.name)}"
+                onclick="event.stopPropagation();duplicateLibSession('${l.id}')">&#10697;</button>
         <div class="plan-lib-name">${esc(l.name)}</div>
         ${meta ? `<div class="plan-lib-meta">${meta}</div>` : ''}
         ${l.description ? `<div class="plan-lib-meta">${esc(l.description.length > 110 ? l.description.slice(0, 110) + '…' : l.description)}</div>` : ''}
@@ -5312,10 +5325,20 @@ function renderPlanLibrary() {
 let _pwEditingId = null;
 
 function openSplitEditor(id) {
+  _fillSplitEditor(id ? _splitsCache.find(x => x.id === id) : null, id || null);
+}
+
+// Fills the editor from a split object. A null id means the save inserts, so
+// this covers New, Edit and Duplicate with one path rather than three.
+function _fillSplitEditor(s, id, { copy = false } = {}) {
   _pwEditingId = id || null;
-  const s = id ? _splitsCache.find(x => x.id === id) : null;
-  document.getElementById('pw-title').textContent = s ? 'Edit Split' : 'New Split';
-  document.getElementById('pw-archive').style.display = s ? '' : 'none';
+  const editing = Boolean(id);
+  document.getElementById('pw-title').textContent =
+    editing ? 'Edit Split' : (copy ? 'Duplicate Split' : 'New Split');
+  // Archive and Duplicate both act on a saved row, so neither applies to a
+  // copy that does not exist yet.
+  document.getElementById('pw-archive').style.display = editing ? '' : 'none';
+  document.getElementById('pw-duplicate').style.display = editing ? '' : 'none';
   document.getElementById('pw-name').value = s?.name || '';
   document.getElementById('pw-ath').value  = s?.athlete_code || '';
   const list = document.getElementById('pw-ex-list');
@@ -5323,8 +5346,56 @@ function openSplitEditor(id) {
   (s?.exercises || []).forEach(ex => addSplitExRow(ex));
   if (!s) addSplitExRow();
   document.getElementById('pw-overlay').classList.remove('hidden');
-  _snapshotModal('pw-overlay');
-  setTimeout(() => document.getElementById('pw-name').focus(), 60);
+  // A copy is filled in but saved nowhere, so it must read as dirty: closing
+  // it without saving throws the whole thing away and should say so.
+  if (copy) _modalSnapshots['pw-overlay'] = '';
+  else _snapshotModal('pw-overlay');
+  setTimeout(() => {
+    const name = document.getElementById('pw-name');
+    name.focus();
+    // Renaming is the first thing you do to a copy.
+    if (copy) name.select();
+  }, 60);
+}
+
+// Copying a split is how a coach builds a variant of one that already works.
+// The name must change: splitsForAthlete() keys its picker map by name, so a
+// copy that kept the name would silently displace the split it came from.
+function _uniqueCopyName(base, taken) {
+  const used = new Set([...taken].map(n => String(n || '').toLowerCase()));
+  const root = String(base || '').trim().replace(/ copy(?: \d+)?$/i, '') || 'Untitled';
+  let name = `${root} copy`;
+  for (let n = 2; used.has(name.toLowerCase()); n += 1) name = `${root} copy ${n}`;
+  return name;
+}
+
+// Splits share a namespace only within an audience: a KHANG split and a global
+// split may share a name without colliding in any one athlete's picker.
+function _splitNamesInScope(athleteCode, exceptId) {
+  const scope = athleteCode || null;
+  return _splitsCache
+    .filter(x => x.id !== exceptId && (x.athlete_code || null) === scope)
+    .map(x => x.name);
+}
+
+function duplicateSplit(id) {
+  const source = _splitsCache.find(x => x.id === id);
+  if (!source) return;
+  _fillSplitEditor(
+    { ...source, name: _uniqueCopyName(source.name, _splitNamesInScope(source.athlete_code, null)) },
+    null, { copy: true });
+}
+
+// Duplicates what is on screen, unsaved edits included: a coach who has just
+// tweaked three exercises means to copy the tweaks, not the stored row.
+function duplicateSplitFromEditor() {
+  const athleteCode = document.getElementById('pw-ath').value.trim().toUpperCase() || null;
+  _fillSplitEditor({
+    name: _uniqueCopyName(document.getElementById('pw-name').value,
+                          _splitNamesInScope(athleteCode, null)),
+    athlete_code: athleteCode,
+    exercises: _collectSplitExercises(),
+  }, null, { copy: true });
 }
 function closeSplitEditor() {
   delete _modalSnapshots['pw-overlay'];
@@ -5387,11 +5458,24 @@ function _collectSplitExercises() {
 async function saveSplit() {
   const name = document.getElementById('pw-name').value.trim();
   if (!name) { alert('Split needs a name.'); return; }
+  const athleteCode = document.getElementById('pw-ath').value.trim().toUpperCase() || null;
+  // splitsForAthlete() builds the session picker as a Map keyed by name, so a
+  // second split with the same name in the same audience does not sit beside
+  // the first, it replaces it — and splitForTitle() then resolves logged
+  // sessions to whichever one survived. Refuse the save instead.
+  const clash = _splitNamesInScope(athleteCode, _pwEditingId)
+    .find(existing => String(existing).toLowerCase() === name.toLowerCase());
+  if (clash) {
+    alert(`${athleteCode ? athleteCode + ' already has' : 'There is already'} a split called "${clash}". `
+      + 'Two splits with one name replace each other in the session picker, so give this one a different name.');
+    document.getElementById('pw-name').select();
+    return;
+  }
   const exercises = _collectSplitExercises();
   if (!exercises.length) { alert('Add at least one exercise.'); return; }
   const patch = {
     name,
-    athlete_code: document.getElementById('pw-ath').value.trim().toUpperCase() || null,
+    athlete_code: athleteCode,
     exercises,
     updated_at: new Date().toISOString(),
   };
@@ -5420,10 +5504,36 @@ async function archiveSplit() {
   renderPlanLibrary();
 }
 function openLibEditor(id) {
+  _fillLibEditor(id ? _libCache.find(x => x.id === id) : null, id || null);
+}
+
+// Templates are referenced by library_id rather than by name, so a copy only
+// needs a name a human can tell apart, not a unique key.
+function duplicateLibSession(id) {
+  const source = _libCache.find(x => x.id === id);
+  if (!source) return;
+  _fillLibEditor({ ...source, name: _uniqueCopyName(source.name, _libCache.map(x => x.name)) },
+    null, { copy: true });
+}
+
+function duplicateLibFromEditor() {
+  const v = id => document.getElementById(id).value.trim();
+  _fillLibEditor({
+    name: _uniqueCopyName(v('pl-name'), _libCache.map(x => x.name)),
+    session_type: v('pl-type'), intensity: v('pl-intensity'), distance: v('pl-distance'),
+    duration: v('pl-duration'), target_pace: v('pl-pace'), rpe: v('pl-rpe'),
+    warm_up: v('pl-warmup'), cool_down: v('pl-cooldown'), goal: v('pl-goal'),
+    description: v('pl-description'),
+  }, null, { copy: true });
+}
+
+function _fillLibEditor(l, id, { copy = false } = {}) {
   _plEditingId = id || null;
-  const l = id ? _libCache.find(x => x.id === id) : null;
-  document.getElementById('pl-title').textContent = l ? 'Edit Template' : 'New Template';
-  document.getElementById('pl-archive').style.display = l ? '' : 'none';
+  const editing = Boolean(id);
+  document.getElementById('pl-title').textContent =
+    editing ? 'Edit Template' : (copy ? 'Duplicate Template' : 'New Template');
+  document.getElementById('pl-archive').style.display = editing ? '' : 'none';
+  document.getElementById('pl-duplicate').style.display = editing ? '' : 'none';
   document.getElementById('pl-name').value        = l?.name || '';
   document.getElementById('pl-type').value        = l?.session_type || '';
   document.getElementById('pl-intensity').value   = l?.intensity || '';
@@ -5436,8 +5546,13 @@ function openLibEditor(id) {
   document.getElementById('pl-goal').value        = l?.goal || '';
   document.getElementById('pl-description').value = l?.description || '';
   document.getElementById('pl-overlay').classList.remove('hidden');
-  _snapshotModal('pl-overlay');
-  setTimeout(() => document.getElementById('pl-name').focus(), 60);
+  if (copy) _modalSnapshots['pl-overlay'] = '';
+  else _snapshotModal('pl-overlay');
+  setTimeout(() => {
+    const name = document.getElementById('pl-name');
+    name.focus();
+    if (copy) name.select();
+  }, 60);
 }
 function closeLibEditor() {
   delete _modalSnapshots['pl-overlay'];
