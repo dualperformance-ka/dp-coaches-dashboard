@@ -13,10 +13,13 @@
   var PRIMARY = [
     { key: 'triage',      label: 'Today',    icon: 'today'    },
     { key: 'athletes',    label: 'Squad',    icon: 'squad'    },
-    { key: 'programming', label: 'Calendar', icon: 'plan'     },
+    { key: 'programming', label: 'Programming', icon: 'plan' },
     { key: 'applications', label: 'Pipeline', icon: 'pipeline' }
   ];
+  // The squad board is a wide table, so on a phone it earns a More slot rather
+  // than a thumb slot; the single-athlete Sessions view is the mobile one.
   var MORE = [
+    { key: 'calendar',      label: 'Calendar',  icon: 'plan'    },
     { key: 'send',          label: 'Notify',    icon: 'send'    },
     { key: 'notifications', label: 'New leads', icon: 'bell'    },
     { key: 'coaches',       label: 'Coach team',icon: 'coaches' },
@@ -29,6 +32,7 @@
     triage:       'tab-triage-count',
     athletes:     'tab-ath-count',
     programming:  'tab-programming-count',
+    calendar:     'tab-calendar-count',
     sync:         'tab-sync-count',
     applications: 'tab-pipeline-count',
     notifications:'tab-notif-count'

@@ -29,7 +29,7 @@ test('Today reads vitals, then the one queue, then the coach rail', () => {
   assert.ok(triageShell > commandCenter);
   assert.ok(rail > triageShell);
   assert.ok(reviewQueue > rail && coachingActions > reviewQueue);
-  assert.match(html, /'triage', 'athletes', 'programming'/);
+  assert.match(html, /'triage', 'athletes', 'calendar', 'programming'/);
 });
 
 test('the desktop layout gives the queue the working column and sticks the rail', () => {

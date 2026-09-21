@@ -34,7 +34,8 @@ test('legacy tab aliases select the matching Programming view', () => {
   assert.match(source, /tab === 'planning' \|\| tab === 'nutrition'/);
   assert.match(source, /tab === 'nutrition' \? 'block' : 'week'/);
   assert.match(source, /tab = 'programming'/);
-  assert.match(source, /if \(tab === 'programming'\) renderProgramming\(\)/);
+  // Calendar and Programming share the panel, so both tabs render it.
+  assert.match(source, /if \(PROG_TABS\.includes\(tab\)\) renderProgramming\(\)/);
 });
 
 test('view mode round-trips through dp_prog_view', () => {
@@ -123,4 +124,47 @@ test('phone layout remaps every Block cell into a labelled card row', () => {
   assert.match(html, /content:attr\(data-label\)/);
   assert.match(functionSource('renderNutTable'), /data-label="Key session"/);
   assert.match(functionSource('renderNutTable'), /data-label="Days adjusted"/);
+});
+
+// ── Calendar / Programming split ─────────────────────────────────────────────
+// "Week" and "Block" described time units, not content: Week is session
+// programming, Block is weekly mileage and macros. The views are now named for
+// what they hold, and the squad board has its own tab.
+
+test('Calendar and Programming are separate tabs over one panel', () => {
+  assert.match(html, /id="tab-calendar-btn"/);
+  assert.match(html, /id="tab-programming-btn"/);
+  // One content div, so the visibility loop must compare content ids.
+  assert.match(html, /calendar: 'programming'/);
+  const source = functionSource('switchTab');
+  assert.match(source, /const activeContentId = TAB_CONTENT_ID\[tab\] \|\| tab/);
+  assert.match(source, /contentId === activeContentId/);
+  assert.match(source, /if \(tab === 'calendar'\) _progView = 'squad'/);
+  assert.match(source, /tab === 'programming' && _progView === 'squad'/);
+  assert.match(source, /if \(PROG_TABS\.includes\(tab\)\) renderProgramming\(\)/);
+});
+
+test('the view toggle names content, not time units', () => {
+  const start = html.indexOf('id="prog-view-toggle"');
+  const toggle = html.slice(start, html.indexOf('</div>', start));
+  assert.match(toggle, />Sessions</);
+  assert.match(toggle, />Weekly Targets</);
+  assert.doesNotMatch(toggle, />Week</);
+  assert.doesNotMatch(toggle, />Block</);
+  assert.doesNotMatch(toggle, /prog-view-squad/);
+});
+
+test('Programming reopens on a single-athlete view, never the squad board', () => {
+  const source = functionSource('_progDetailView');
+  assert.match(source, /'block' \? 'block' : 'week'/);
+  // The toggle has nothing to offer while the squad board is up.
+  const render = functionSource('renderProgramming');
+  assert.match(render, /toggle\.hidden = _progView === 'squad'/);
+  assert.match(render, /_syncProgTabButtons\(\)/);
+});
+
+test('both tabs carry the planned-session badge', () => {
+  const source = functionSource('updatePlanningBadge');
+  assert.match(source, /'tab-programming-count', 'tab-calendar-count'/);
+  assert.match(html, /id="tab-calendar-count"/);
 });

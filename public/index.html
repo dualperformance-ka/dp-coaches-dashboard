@@ -1966,7 +1966,7 @@ body[data-theme="light"] .strava-command-bar{background:linear-gradient(135deg,r
 <a class="dp-skip-link" href="#tab-triage-content">Skip to main content</a>
 <!-- Shortcut feedback for screen readers, and the "g" chord's visible hint. -->
 <div id="dp-live-region" class="dp-visually-hidden" role="status" aria-live="polite"></div>
-<div id="dp-go-hint" class="dp-go-hint" hidden aria-hidden="true">g then <kbd>t</kbd> today <kbd>s</kbd> squad <kbd>c</kbd> calendar <kbd>p</kbd> pipeline</div>
+<div id="dp-go-hint" class="dp-go-hint" hidden aria-hidden="true">g then <kbd>t</kbd> today <kbd>s</kbd> squad <kbd>c</kbd> calendar <kbd>g</kbd> programming <kbd>p</kbd> pipeline</div>
 
 
 <!-- ── Plan Override Modal ── -->
@@ -2542,8 +2542,11 @@ function refreshRosterDrivenUI() {
   <button class="tab" id="tab-athletes-btn" role="tab" aria-selected="false" onclick="switchTab('athletes')">
     Squad <span class="tab-badge" id="tab-ath-count">—</span>
   </button>
+  <button class="tab" id="tab-calendar-btn" role="tab" aria-selected="false" onclick="switchTab('calendar')">
+    Calendar <span class="tab-badge" id="tab-calendar-count">—</span>
+  </button>
   <button class="tab" id="tab-programming-btn" role="tab" aria-selected="false" onclick="switchTab('programming')">
-    Calendar <span class="tab-badge" id="tab-programming-count">—</span>
+    Programming <span class="tab-badge" id="tab-programming-count">—</span>
   </button>
   <button class="tab" id="tab-pipeline-btn" role="tab" aria-selected="false" onclick="switchTab('applications')">
     Pipeline <span class="tab-badge" id="tab-pipeline-count">—</span>
@@ -2709,10 +2712,12 @@ function refreshRosterDrivenUI() {
   <div class="plan-section">
     <div class="plan-toolbar">
       <div class="plan-ath-chips" id="prog-ath-chips"></div>
+      <!-- Squad is no longer a toggle: the whole-squad week board is its own
+           Calendar tab. What is left is the two zoom levels of one athlete's
+           programme, named for what they hold rather than their time unit. -->
       <div class="prog-view-toggle" id="prog-view-toggle" aria-label="Programming view">
-        <button type="button" id="prog-view-week" onclick="setProgView('week')">Week</button>
-        <button type="button" id="prog-view-squad" onclick="setProgView('squad')">Squad</button>
-        <button type="button" id="prog-view-block" onclick="setProgView('block')">Block</button>
+        <button type="button" id="prog-view-week" onclick="setProgView('week')" title="Day-by-day sessions for this athlete">Sessions</button>
+        <button type="button" id="prog-view-block" onclick="setProgView('block')" title="Mileage and macro targets for every week of the programme">Weekly Targets</button>
       </div>
       <div class="plan-toolbar-right prog-toolbar" id="prog-week-toolbar">
         <div class="sf-group">
@@ -3361,10 +3366,15 @@ function _migrateProgAthleteSelection() {
 }
 let _progAthlete = _migrateProgAthleteSelection();
 let _progWeekOffset = 0;
-let _progView = (() => {
+// Which of the two single-athlete views the Programming tab reopens on. Only
+// 'week' (Sessions) and 'block' (Weekly Targets) are stored: 'squad' belongs to
+// the Calendar tab now, so a value left over from the old three-way toggle
+// reads back as Sessions rather than stranding Programming on the squad board.
+function _progDetailView() {
   try { return localStorage.getItem('dp_prog_view') === 'block' ? 'block' : 'week'; }
   catch { return 'week'; }
-})();
+}
+let _progView = _progDetailView();
 let _planLibOpen = false;
 
 function _isoDate(d) {
@@ -3566,8 +3576,12 @@ function useNutritionPlanRows(rows, settings, loadError = null) {
       _programmeRestarts[r.athlete_code] = r.value;
     }
   });
-  const badge = document.getElementById('tab-programming-count');
-  if (badge && _nutPlansLoadError) badge.textContent = '!';
+  if (_nutPlansLoadError) {
+    ['tab-programming-count', 'tab-calendar-count'].forEach(id => {
+      const badge = document.getElementById(id);
+      if (badge) badge.textContent = '!';
+    });
+  }
   return _nutPlans.map(r => ({
     Name: r.athlete_code, Week: r.week_label,
     Calories: r.calories || '', Protein: r.protein || '', Carbs: r.carbs || '',
@@ -4077,7 +4091,7 @@ function renderNutTable() {
     const keySession = _keySessionForWeek(r.athlete_code, r.week_label);
     const adjustedDays = window.DailyMacroOverridesEditor?.publishedCountForWeek(r.week_label) || 0;
     return `<tr class="nut-row${isCur ? ' current selected' : ''}">
-      <td data-label="Week"><select class="nut-week-select" id="nut-${i}-week" title="${esc(displayWeekLabel(r.week_label))}" onchange="relabelNutWeek(${i},this.value)">${_nutWeekOptions(r)}</select><span class="nut-week-cap">Programme week${isCur ? '<span class="nut-now">OPEN</span>' : ''}<button type="button" class="nut-open" onclick="openProgWeek('${esc(r.week_label)}')" title="Open ${esc(displayWeekLabel(r.week_label))} in Week view">View &#8599;</button></span></td>
+      <td data-label="Week"><select class="nut-week-select" id="nut-${i}-week" title="${esc(displayWeekLabel(r.week_label))}" onchange="relabelNutWeek(${i},this.value)">${_nutWeekOptions(r)}</select><span class="nut-week-cap">Programme week${isCur ? '<span class="nut-now">OPEN</span>' : ''}<button type="button" class="nut-open" onclick="openProgWeek('${esc(r.week_label)}')" title="Open ${esc(displayWeekLabel(r.week_label))} in Sessions">View &#8599;</button></span></td>
       <td data-label="Calories"><input class="nut-input" id="nut-${i}-cal" value="${fv('calories')}" placeholder="kcal" oninput="nutDirty(${i})"></td>
       <td data-label="Protein"><input class="nut-input" id="nut-${i}-pro" value="${fv('protein')}" placeholder="g" oninput="nutDirty(${i})"></td>
       <td data-label="Carbs"><input class="nut-input" id="nut-${i}-carb" value="${fv('carbs')}" placeholder="g" oninput="nutDirty(${i})"></td>
@@ -4257,12 +4271,12 @@ function _renderProgContext() {
   const weekLabel = _progAthlete ? _progSelectedWeekLabel(_progAthlete) : null;
   if (_progView === 'squad') {
     const codes = _progAthleteCodes().filter(code => !COACHES.has(code));
-    context.innerHTML = `Whole squad, one week · <b>${codes.length}</b> athlete${codes.length === 1 ? '' : 's'} · ${fmt(ws)} – ${fmt(we)}`;
+    context.innerHTML = `Calendar · whole squad, one week · <b>${codes.length}</b> athlete${codes.length === 1 ? '' : 's'} · ${fmt(ws)} – ${fmt(we)}`;
     return;
   }
   context.innerHTML = _progView === 'week'
-    ? `One athlete, one week · <b>${esc(_progAthlete || 'No athlete')}</b> · <b>${esc(displayWeekLabel(weekLabel || 'Week'))}</b> · ${fmt(ws)} – ${fmt(we)}`
-    : `Same athlete, same block · <b>${esc(_progAthlete || 'No athlete')}</b> · ${_progAthlete ? getProgWeeks(_progAthlete) : DEFAULT_PROG_WEEKS}-week programme · selected <b>${esc(displayWeekLabel(weekLabel || 'Week'))}</b>`;
+    ? `Sessions · what <b>${esc(_progAthlete || 'no athlete')}</b> trains day by day · <b>${esc(displayWeekLabel(weekLabel || 'Week'))}</b> · ${fmt(ws)} – ${fmt(we)}`
+    : `Weekly targets · mileage and macros per week for <b>${esc(_progAthlete || 'no athlete')}</b> · ${_progAthlete ? getProgWeeks(_progAthlete) : DEFAULT_PROG_WEEKS}-week programme · selected <b>${esc(displayWeekLabel(weekLabel || 'Week'))}</b>`;
 }
 
 const PROG_VIEWS = new Set(['week', 'squad', 'block']);
@@ -4271,6 +4285,18 @@ function setProgView(view) {
   _progView = PROG_VIEWS.has(view) ? view : 'week';
   try { localStorage.setItem('dp_prog_view', _progView); } catch {}
   renderProgramming();
+}
+
+// Clicking a view inside the panel must also light the right top tab, or the
+// coach ends up on the squad board with Programming still underlined.
+function _syncProgTabButtons() {
+  const active = _progView === 'squad' ? 'calendar' : 'programming';
+  PROG_TABS.forEach(key => {
+    const button = document.getElementById(`tab-${key}-btn`);
+    if (!button) return;
+    button.classList.toggle('active', key === active);
+    button.setAttribute('aria-selected', String(key === active));
+  });
 }
 
 function renderProgramming() {
@@ -4301,8 +4327,13 @@ function renderProgramming() {
     const button = document.getElementById(id);
     if (button) button.hidden = _progView === 'squad';
   });
-  ['week', 'squad', 'block'].forEach(view =>
+  // The toggle picks between the two single-athlete views, so it has nothing to
+  // offer on the squad board — that is a tab of its own.
+  const toggle = document.getElementById('prog-view-toggle');
+  if (toggle) toggle.hidden = _progView === 'squad';
+  ['week', 'block'].forEach(view =>
     document.getElementById(`prog-view-${view}`)?.classList.toggle('active', _progView === view));
+  _syncProgTabButtons();
   // Block view hides the week toolbar (above) but still read _progWeekOffset
   // through _progSelectedWeekLabel. Browse the Week or Squad view two weeks
   // ahead, switch to Block, and an athlete in his discovery week was reported
@@ -4604,15 +4635,17 @@ function squadBoardAdd(code, dateISO) {
 }
 
 function updatePlanningBadge() {
-  const el = document.getElementById('tab-programming-count');
-  if (!el) return;
-  if (_nutPlansLoadError) { el.textContent = '!'; return; }
+  const badges = ['tab-programming-count', 'tab-calendar-count']
+    .map(id => document.getElementById(id)).filter(Boolean);
+  if (!badges.length) return;
+  if (_nutPlansLoadError) { badges.forEach(el => { el.textContent = '!'; }); return; }
   const saved = _progWeekOffset; _progWeekOffset = 0;
   const ws = _planWeekStart(); _progWeekOffset = saved;
   const wsISO = _isoDate(ws);
   const we = new Date(ws); we.setDate(we.getDate() + 6);
   const weISO = _isoDate(we);
-  el.textContent = _planRowsSB.filter(r => r.planned_date && r.planned_date >= wsISO && r.planned_date <= weISO).length;
+  const planned = _planRowsSB.filter(r => r.planned_date && r.planned_date >= wsISO && r.planned_date <= weISO).length;
+  badges.forEach(el => { el.textContent = planned; });
 }
 
 // ── Copy week → next week ─────────────────────────────────────────────────────
@@ -10620,8 +10653,8 @@ function buildFPCard(a, weekOffset = 0) {
   // cannot do from here.
   const emptyCopy = {
     overview: 'Nothing logged for this athlete yet. Their overview fills in once they submit a session or a daily check-in through the portal.',
-    training: 'No sessions prescribed for this week. Add sessions in Calendar to start programming.',
-    running:  'No running volume yet. Prescribe a week in Calendar and this will show prescribed against actual as sessions come in.',
+    training: 'No sessions prescribed for this week. Add sessions in Programming → Sessions to start programming.',
+    running:  'No running volume yet. Prescribe a week in Programming → Sessions and this will show prescribed against actual as sessions come in.',
     strength: 'No strength sessions submitted yet. Progression, estimated 1RM and personal bests appear once the athlete logs a gym session.',
     body:     'No body, nutrition or photo data yet. The athlete logs these daily in their portal.',
     checkins: 'No weekly check-ins submitted yet. The athlete completes these in their portal at the end of each week.',
@@ -11387,8 +11420,12 @@ async function decideApplication(notionId, name, decision) {
 // notifications and the notify composer were three top-level tabs for one
 // funnel; they are now sub-views of Pipeline and keep their own content divs.
 const PIPELINE_TABS = ['applications', 'notifications', 'send'];
-const ALL_TABS = ['triage', 'athletes', 'programming', 'coaches', 'sync', ...PIPELINE_TABS];
-const TAB_CONTENT_ID = { applications: 'apps', notifications: 'notif' };
+const ALL_TABS = ['triage', 'athletes', 'calendar', 'programming', 'coaches', 'sync', ...PIPELINE_TABS];
+// Calendar and Programming are two doors into the same panel: Calendar opens it
+// on the squad board, Programming on the selected athlete. They share a content
+// div, so the visibility loop below compares content ids, not tab keys.
+const TAB_CONTENT_ID = { applications: 'apps', notifications: 'notif', calendar: 'programming' };
+const PROG_TABS = ['calendar', 'programming'];
 
 // Which primary button lights up for a given internal tab key.
 function primaryTabFor(tab) {
@@ -11409,17 +11446,25 @@ function switchTab(tab) {
   if (!ALL_TABS.includes(tab)) tab = 'triage';
   if (PIPELINE_TABS.includes(tab)) _pipelineView = tab;
 
-  // Content panels keep their existing ids and markup.
+  // Calendar and Programming point at one content div, so a tab-key comparison
+  // would let the loop hide the panel it had just shown. Compare content ids.
+  const activeContentId = TAB_CONTENT_ID[tab] || tab;
   ALL_TABS.forEach(t => {
-    const content = document.getElementById(`tab-${TAB_CONTENT_ID[t] || t}-content`);
+    const contentId = TAB_CONTENT_ID[t] || t;
+    const content = document.getElementById(`tab-${contentId}-content`);
     if (content) {
       content.setAttribute('role', 'tabpanel');
-      content.style.display = t === tab ? '' : 'none';
+      content.style.display = contentId === activeContentId ? '' : 'none';
     }
   });
 
+  // The top tab now chooses the view. Calendar is the squad board; Programming
+  // restores whichever single-athlete view the coach last had open.
+  if (tab === 'calendar') _progView = 'squad';
+  else if (tab === 'programming' && _progView === 'squad') _progView = _progDetailView();
+
   const primary = primaryTabFor(tab);
-  ['triage', 'athletes', 'programming', 'pipeline'].forEach(key => {
+  ['triage', 'athletes', 'calendar', 'programming', 'pipeline'].forEach(key => {
     const btn = document.getElementById(`tab-${key}-btn`);
     if (!btn) return;
     const active = key === primary;
@@ -11446,14 +11491,14 @@ function switchTab(tab) {
   // Navigation should never be blocked by a slow or incomplete data render.
   // Paint the destination first, then hydrate its content independently.
   try {
-    if (tab === 'programming') renderProgramming();
+    if (PROG_TABS.includes(tab)) renderProgramming();
     if (tab === 'send') cnPopulate();
   } catch (err) {
     console.warn('[tabs] content render failed for ' + tab, err);
   }
 
   const needsFullData = new Set([
-    'triage', 'athletes', 'programming', 'coaches', 'sync', 'applications', 'notifications',
+    'triage', 'athletes', 'calendar', 'programming', 'coaches', 'sync', 'applications', 'notifications',
   ]).has(tab);
   if (needsFullData && !_fullDashboardLoaded && !_fullDashboardLoading) load();
 }
@@ -11466,7 +11511,10 @@ function switchTab(tab) {
 const CMDK_DESTINATIONS = [
   { label: 'Today',            hint: 'Decision queue',        run: () => switchTab('triage') },
   { label: 'Squad',            hint: 'Roster table',          run: () => switchTab('athletes') },
-  { label: 'Calendar',         hint: 'Programming',           run: () => switchTab('programming') },
+  { label: 'Calendar',         hint: 'Squad week board',      run: () => switchTab('calendar') },
+  { label: 'Programming',      hint: 'Sessions & targets',    run: () => switchTab('programming') },
+  { label: 'Sessions',         hint: 'Programming',           run: () => { switchTab('programming'); setProgView('week'); } },
+  { label: 'Weekly Targets',   hint: 'Programming',           run: () => { switchTab('programming'); setProgView('block'); } },
   { label: 'Pipeline',         hint: 'Applications',          run: () => switchTab('applications') },
   { label: 'Notify athletes',  hint: 'Send a message',        run: () => switchTab('send') },
   { label: 'Sync health',      hint: 'Settings',              run: () => switchTab('sync') },
@@ -11695,7 +11743,7 @@ document.addEventListener('keydown', event => {
 // typing, so they can never eat a character in a note or a search field:
 //
 //   1-7   jump to a workspace tab, in the order the tabs appear
-//   g t/s/c/p   go to Today, Squad, Calendar or Pipeline
+//   g t/s/c/g/p go to Today, Squad, Calendar, Programming or Pipeline
 //   r     resolve the focused decision-queue row
 //
 // _isTyping() already guards the "/" shortcut and is reused here rather than
@@ -11704,8 +11752,9 @@ document.addEventListener('keydown', event => {
 const _GO_TARGETS = {
   t: { id: 'tab-triage-btn',      label: 'Today'    },
   s: { id: 'tab-athletes-btn',    label: 'Squad'    },
-  c: { id: 'tab-programming-btn', label: 'Calendar' },
-  p: { id: 'tab-pipeline-btn',    label: 'Pipeline' },
+  c: { id: 'tab-calendar-btn',    label: 'Calendar'    },
+  g: { id: 'tab-programming-btn', label: 'Programming' },
+  p: { id: 'tab-pipeline-btn',    label: 'Pipeline'    },
 };
 let _goPending = false;
 let _goTimer = null;
@@ -13229,8 +13278,8 @@ document.getElementById('gen-btn').addEventListener('click', generateAI);
 <script src="/dashboard-redesign.js?v=20260906-17" defer></script>
 <script src="/coaching-actions.js?v=3" defer></script>
 <script src="/dp-icons.js?v=20260907-35"></script>
-<script src="/dashboard-mobilenav.js?v=20260906-17" defer></script>
-<script src="/triage.js?v=20260906-17" defer></script>
+<script src="/dashboard-mobilenav.js?v=20260921-01" defer></script>
+<script src="/triage.js?v=20260921-01" defer></script>
 <script src="/weekly-sport-targets.js?v=3" defer></script>
 <script src="/daily-macro-overrides.js?v=3" defer></script>
 <script src="/programming.js?v=4" defer></script>

@@ -10,17 +10,19 @@ const workspaceCss = fs.readFileSync(
 );
 
 // Eight top-level tabs mixed daily coaching with administration. The bar now
-// carries four coaching destinations; Applications / new leads / the notify
+// carries five coaching destinations; Applications / new leads / the notify
 // composer became Pipeline sub-views, and Sync, the coach team and roster
-// management moved behind Settings.
+// management moved behind Settings. Calendar (the squad week board) and
+// Programming (one athlete's sessions and weekly targets) are separate doors
+// into one panel, because a single tab holding both read as one thing.
 
-test('the tab bar offers four coaching destinations plus search and settings', () => {
+test('the tab bar offers five coaching destinations plus search and settings', () => {
   const barStart = html.indexOf('<div class="tab-bar" role="tablist"');
   const bar = html.slice(barStart, html.indexOf('\n</div>', barStart));
   const primary = [...bar.matchAll(/id="tab-(\w+)-btn"/g)]
     .map(m => m[1])
     .filter(key => key !== 'search');
-  assert.deepEqual(primary, ['triage', 'athletes', 'programming', 'pipeline']);
+  assert.deepEqual(primary, ['triage', 'athletes', 'calendar', 'programming', 'pipeline']);
   assert.match(bar, /id="tab-search-btn"/);
   assert.match(bar, /id="settings-btn"/);
   // The three retired tabs must not still have top-level buttons.
@@ -42,7 +44,7 @@ test('pipeline sub-views keep their existing content panels and badge ids', () =
 test('switchTab still accepts every legacy key its callers pass', () => {
   // triage.js calls switchTab('send') and switchTab('planning'); the command
   // centre and mobile nav pass the rest.
-  assert.match(html, /const ALL_TABS = \['triage', 'athletes', 'programming', 'coaches', 'sync', \.\.\.PIPELINE_TABS\]/);
+  assert.match(html, /const ALL_TABS = \['triage', 'athletes', 'calendar', 'programming', 'coaches', 'sync', \.\.\.PIPELINE_TABS\]/);
   assert.match(html, /if \(tab === 'planning' \|\| tab === 'nutrition'\)/);
   assert.match(html, /if \(tab === 'pipeline'\) tab = _pipelineView/);
 });
