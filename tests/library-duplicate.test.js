@@ -128,3 +128,38 @@ test('the card action does not also open the card it sits on', () => {
   assert.match(html, /@media \(hover:none\)\{\.plan-lib-dup\{opacity:1\}\}/);
   assert.match(html, /\.plan-lib-card:hover \.plan-lib-dup,\.plan-lib-dup:focus-visible\{opacity:1\}/);
 });
+
+// ── Creating a split without going through the library ─────────────────────
+// "+ Split" on the Programming toolbar opens the same editor the library's own
+// + Split does. That makes a latent desync reachable: the save path showed the
+// library without recording that it was open.
+
+test('the toolbar offers + Split beside + Session', () => {
+  const start = html.indexOf('id="plan-add-btn"');
+  const row = html.slice(start, html.indexOf('</div>', start));
+  assert.match(row, /id="plan-split-btn"[^>]*onclick="openSplitEditor\(null\)"/);
+  // It sits between + Session and Library, not at the far end of the row.
+  assert.ok(row.indexOf('plan-add-btn') < row.indexOf('plan-split-btn'));
+  assert.ok(row.indexOf('plan-split-btn') < row.indexOf('plan-lib-btn'));
+});
+
+test('+ Split stands down on the squad board with the other athlete controls', () => {
+  assert.match(src('renderProgramming'),
+    /\['plan-copy-btn', 'plan-add-btn', 'plan-split-btn', 'plan-lib-btn'\]/);
+});
+
+test('showing the library after a save records that it is open', () => {
+  // The bug: render without the flag, and the button reads "Library" while the
+  // library is on screen, then the next renderProgramming() jumps to the grid.
+  const show = src('showPlanLibrary');
+  assert.match(show, /_planLibOpen = true/);
+  assert.ok(show.indexOf('_planLibOpen = true') < show.indexOf('renderPlanLibrary()'),
+    'the flag must be set before the render reads it');
+
+  // Every save and archive path goes through it, so none can leave the two
+  // out of step.
+  for (const fn of ['saveSplit', 'archiveSplit', 'saveLibSession', 'archiveLibSession']) {
+    assert.match(src(fn), /showPlanLibrary\(\)/, `${fn} uses the flag-setting path`);
+    assert.doesNotMatch(src(fn), /[^w]renderPlanLibrary\(\)/, `${fn} does not render behind the flag`);
+  }
+});

@@ -128,9 +128,17 @@ test('the squad board covers the roster without the single-athlete controls', ()
   assert.match(board, /planWeekSummary\(weekRows\)/);
   assert.match(board, /squadBoardAdd\(/);
 
-  // Copy week, add session and the library act on the selected athlete.
+  // Every control that acts on the selected athlete stands down while the
+  // whole squad is on screen. Asserted by membership rather than by pinning
+  // the exact array, so adding a control to the toolbar does not read as a
+  // regression here — it just has to be listed.
   const render = functionSource('renderProgramming');
-  assert.match(render, /\['plan-copy-btn', 'plan-add-btn', 'plan-lib-btn'\]/);
+  const hidden = render.match(/\[([^\]]*)\]\.forEach\(id => \{\s*const button/);
+  assert.ok(hidden, 'renderProgramming must hide a list of athlete-scoped controls');
+  const ids = [...hidden[1].matchAll(/'([\w-]+)'/g)].map(m => m[1]);
+  for (const id of ['plan-copy-btn', 'plan-add-btn', 'plan-split-btn', 'plan-lib-btn']) {
+    assert.ok(ids.includes(id), `${id} must stand down on the squad board`);
+  }
   assert.match(render, /button\.hidden = _progView === 'squad'/);
 });
 

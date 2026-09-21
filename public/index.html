@@ -2775,6 +2775,7 @@ function refreshRosterDrivenUI() {
         </div>
         <button class="plan-action-btn" id="plan-copy-btn" onclick="copyPlanWeek()" title="Copy this week's sessions to next week">⧉ Copy → Next Wk</button>
         <button class="plan-action-btn" id="plan-add-btn" onclick="openPlanSession(null)">+ Session</button>
+        <button class="plan-action-btn" id="plan-split-btn" onclick="openSplitEditor(null)" title="Build a new strength split without opening the library first">+ Split</button>
         <button class="plan-action-btn" id="plan-lib-btn" onclick="togglePlanLibrary()">Library</button>
       </div>
       <div class="plan-toolbar-right prog-toolbar" id="prog-block-toolbar" hidden>
@@ -4387,7 +4388,7 @@ function renderProgramming() {
   // Copy week, add session and the library all act on the selected athlete, so
   // they have no meaning while the whole squad is on screen. Week navigation
   // does, and stays.
-  ['plan-copy-btn', 'plan-add-btn', 'plan-lib-btn'].forEach(id => {
+  ['plan-copy-btn', 'plan-add-btn', 'plan-split-btn', 'plan-lib-btn'].forEach(id => {
     const button = document.getElementById(id);
     if (button) button.hidden = _progView === 'squad';
   });
@@ -5273,6 +5274,18 @@ async function duplicatePlanSession() {
 // ── Session library view ──────────────────────────────────────────────────────
 let _plEditingId = null;
 
+// The save and archive paths used to call renderPlanLibrary() directly, which
+// puts the library on screen without recording that it is open: the button
+// still read "Library" while the library was showing, and the next
+// renderProgramming() would drop the coach back on the week grid. Unreachable
+// while the editors could only be opened from inside the library, reachable the
+// moment + Split sits on the toolbar. Landing here after a save is deliberate —
+// it is the only confirmation the split exists, and "← Planner" is one click back.
+function showPlanLibrary() {
+  _planLibOpen = true;
+  renderPlanLibrary();
+}
+
 function togglePlanLibrary() {
   _planLibOpen = !_planLibOpen;
   if (_planLibOpen) renderPlanLibrary(); else renderPlanGrid();
@@ -5491,7 +5504,7 @@ async function saveSplit() {
       _splitsCache.sort((a, b) => a.name.localeCompare(b.name));
     }
     closeSplitEditor();
-    renderPlanLibrary();
+    showPlanLibrary();
   } catch(e) { alert('Save failed: ' + (e.message || e)); }
 }
 async function archiveSplit() {
@@ -5501,7 +5514,7 @@ async function archiveSplit() {
   catch (error) { alert('Archive failed: ' + error.message); return; }
   _splitsCache = _splitsCache.filter(x => x.id !== _pwEditingId);
   closeSplitEditor();
-  renderPlanLibrary();
+  showPlanLibrary();
 }
 function openLibEditor(id) {
   _fillLibEditor(id ? _libCache.find(x => x.id === id) : null, id || null);
@@ -5582,7 +5595,7 @@ async function saveLibSession() {
       _libCache.sort((a, b) => a.name.localeCompare(b.name));
     }
     closeLibEditor();
-    renderPlanLibrary();
+    showPlanLibrary();
   } catch(e) { alert('Save failed: ' + (e.message || e)); }
 }
 async function archiveLibSession() {
@@ -5592,7 +5605,7 @@ async function archiveLibSession() {
   catch (error) { alert('Archive failed: ' + error.message); return; }
   _libCache = _libCache.filter(x => x.id !== _plEditingId);
   closeLibEditor();
-  renderPlanLibrary();
+  showPlanLibrary();
 }
 
 // ── Plan override modal state ─────────────────────────────────────────────────
