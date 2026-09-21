@@ -6,6 +6,7 @@ import {
   materialiseSession,
   parseRepRange,
   parseRestSeconds,
+  searchExerciseLibrary,
   splitEntryToExercise,
 } from '../server/programming.js';
 
@@ -103,6 +104,24 @@ test('alternatives are bounded and stringified', () => {
 });
 
 // ── Lazy materialisation ─────────────────────────────────────────────────────
+
+test('the exercise picker requests the complete commercial library', async () => {
+  let requestedPath = '';
+  const rows = Array.from({ length: 427 }, (_, index) => ({
+    id: `exercise-${index}`,
+    name: `Exercise ${index}`,
+    category: index >= 397 ? 'Triceps' : 'Back',
+  }));
+
+  const result = await searchExerciseLibrary('', async (path) => {
+    requestedPath = path;
+    return rows;
+  });
+
+  assert.match(requestedPath, /(?:^|&)limit=1000(?:&|$)/);
+  assert.equal(result.results.length, 427);
+  assert.equal(result.results.filter((row) => row.category === 'Triceps').length, 30);
+});
 
 const COACH = { handle: 'KARL', role: 'admin' };
 
