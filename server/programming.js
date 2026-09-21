@@ -619,7 +619,7 @@ export async function searchExerciseLibrary(query, sb) {
     ? `&name=ilike.*${encodeURIComponent(term.replace(/[*%]/g, ''))}*`
     : '';
   const rows = await sb(
-    `exercise_library?archived=eq.false${filter}&select=id,name,category,muscle_group,equipment,thumbnail_url,cues&order=category.asc,name.asc&limit=400`
+    `exercise_library?archived=eq.false${filter}&select=id,name,category,muscle_group,equipment,thumbnail_url,cues&order=category.asc,name.asc&limit=1000`
   );
   const results = Array.isArray(rows) ? rows : [];
 
