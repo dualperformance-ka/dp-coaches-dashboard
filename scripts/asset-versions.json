@@ -35,6 +35,10 @@
     "version": "3",
     "sha": "a4d055be95dd"
   },
+  "coach-parity.css": {
+    "version": "20260923-01",
+    "sha": "3f05d8892a0f"
+  },
   "instrument.css": {
     "version": "20260906-33",
     "sha": "aa09c3fcac14"
@@ -60,8 +64,12 @@
     "sha": "439392dcc995"
   },
   "triage.js": {
-    "version": "20260921-01",
-    "sha": "6a3b050c77d8"
+    "version": "20260923-01",
+    "sha": "10fcce2302c6"
+  },
+  "coach-parity.js": {
+    "version": "20260923-01",
+    "sha": "0895a360131b"
   },
   "weekly-sport-targets.js": {
     "version": "3",
@@ -80,8 +88,8 @@
     "sha": "83e1c83da86e"
   },
   "strength-analysis.js": {
-    "version": "20260906-17",
-    "sha": "f1e02257f808"
+    "version": "20260923-01",
+    "sha": "fdad72bfc87d"
   },
   "app.js": {
     "version": "2",

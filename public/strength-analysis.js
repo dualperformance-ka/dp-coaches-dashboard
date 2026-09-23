@@ -91,9 +91,13 @@ export function estimate1RM(weight, reps) {
  * @param {object} logs        portal logs blob, keyed by session id
  * @param {object[]} sessions  [{ id, date }] from planned_sessions
  * @param {object[]} textLogs  [{ date, exerciseLog }] fallback rows
+ * @param {object[]} structuredLogs [{ date, exercise, sets }] typed raw_sets
+ *   from training_session_logs. The most reliable source, so it goes first;
+ *   the blob and the text parser only fill exercise-days it did not cover.
  */
-export function collectExerciseHistory(logs, sessions, textLogs = []) {
+export function collectExerciseHistory(logs, sessions, textLogs = [], structuredLogs = []) {
   const byExercise = new Map();
+  const structuredDays = new Set();
 
   const add = (name, date, sets) => {
     const clean = sets.map(normaliseSet).filter(set => set.weight != null || set.reps != null);
@@ -110,13 +114,25 @@ export function collectExerciseHistory(logs, sessions, textLogs = []) {
     if (session && session.id != null) dateById.set(String(session.id), session.date || null);
   }
 
-  // 1. Structured blob.
+  // 0. Typed raw_sets.
+  for (const row of structuredLogs || []) {
+    if (!row || !row.date || !Array.isArray(row.sets)) continue;
+    const key = matchKey(row.exercise);
+    if (!key || structuredDays.has(`${key}|${row.date}`)) continue;
+    const before = byExercise.get(key)?.instances.length || 0;
+    add(row.exercise, row.date, row.sets);
+    if ((byExercise.get(key)?.instances.length || 0) > before) structuredDays.add(`${key}|${row.date}`);
+  }
+
+  // 1. Structured blob, for exercise-days the typed rows did not cover.
   for (const [sessionId, entry] of Object.entries(logs || {})) {
     if (sessionId.startsWith('__')) continue;
     if (!entry || typeof entry !== 'object' || Array.isArray(entry)) continue;
     for (const [exercise, sets] of Object.entries(entry)) {
       if (exercise.startsWith('__') || !Array.isArray(sets)) continue;
-      add(exercise, dateById.get(String(sessionId)), sets);
+      const date = dateById.get(String(sessionId));
+      if (date && structuredDays.has(`${matchKey(exercise)}|${date}`)) continue;
+      add(exercise, date, sets);
     }
   }
 

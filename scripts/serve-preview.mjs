@@ -34,9 +34,9 @@ const TRIAGE = () => ({
     {
       athleteCode: 'KAI', athleteName: 'Kai Tran', flag: 'pain', severity: 'critical',
       priority: 10070, fingerprint: 'pain|' + iso(1) + '|7|none',
-      signal: `Pain 7/10 reported yesterday after Threshold 5×1km.`,
+      signal: `Coach alert with pain 7/10 (right calf) reported yesterday after Threshold 5×1km.`,
       action: { type: 'open_athlete', label: 'Open session', athleteCode: 'KAI' },
-      evidence: {},
+      evidence: { pain: { date: iso(1), score: 7, coachAlert: true, location: 'right calf' } },
     },
     {
       athleteCode: 'ANNA', athleteName: 'Anna Petrov', flag: 'gone_quiet', severity: 'high',
@@ -76,6 +76,7 @@ const TRIAGE = () => ({
 // coach-data modes are listed before the bare full-payload route.
 const FIXTURES = [
   [/^\/api\/coach-data.*mode=triage/, TRIAGE],
+  [/^\/api\/coach-data.*mode=weekly_summary/, target => FIXTURE.weeklySummary(new URL(target, 'http://x').searchParams.get('code') || 'KAI')],
   [/^\/api\/coach-data.*mode=activity_streams/, () => ({ ok: true, id: 'up-0001', streams: [] })],
   [/^\/api\/coach-data/, () => FIXTURE.coachData()],
   [/^\/api\/athletes\?action=acknowledgements/, () => ({ ok: true, acknowledgements: [], signals: [] })],

@@ -230,11 +230,8 @@ test('!important stays far below where Phase 4 started', () => {
 test('files that ship but are never loaded are not silently growing', () => {
   const loaded = new Set([...index.matchAll(/<link rel="stylesheet" href="\/([\w.-]+\.css)/g)].map(m => m[1]));
   const dead = readdirSync(PUBLIC).filter(f => f.endsWith('.css') && !loaded.has(f));
-  // These four are known and are to be deleted in the GitHub UI, which a web
-  // upload cannot do. The assertion is that the list does not get longer.
-  assert.deepEqual(
-    dead.sort(),
-    ['dashboard-mobile-polish.css', 'dashboard-mobile.css', 'desktop.css', 'icons.css', 'styles.css'].sort(),
-    `unexpected unloaded stylesheet: ${dead.join(', ')}`
-  );
+  // The five known dead stylesheets (dashboard-mobile-polish, dashboard-mobile,
+  // desktop, icons, styles) were deleted on main on 2026-09-07. Nothing shipped
+  // in public/ may now go unloaded.
+  assert.deepEqual(dead.sort(), [], `unexpected unloaded stylesheet: ${dead.join(', ')}`);
 });

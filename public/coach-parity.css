@@ -1,0 +1,153 @@
+/* Coach parity surfaces: pain entries, call decision, goals, athlete messages,
+   data requests, notification health and the coach weekly review.
+   Tokens only; both themes come from dashboard-theme-system.css. */
+
+/* ── Pain and athlete note ─────────────────────────────────────────────── */
+.cp-pain {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  font-size: 11.5px;
+  color: var(--muted);
+  white-space: normal;
+}
+.cp-pain.is-alert { border-color: var(--red-border, var(--alert)); background: var(--red-bg, transparent); color: var(--red-text, var(--alert)); }
+.cp-pain.is-low { border-color: var(--amber-border, var(--border)); background: var(--amber-bg, transparent); color: var(--amber-text, var(--text)); }
+.cp-pain.is-none { opacity: .75; }
+.cp-athlete-note { margin-top: 4px; font-size: 12px; color: var(--text); line-height: 1.45; }
+.cp-athlete-note span { font-family: var(--mono); font-size: 9.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--dim); margin-right: 4px; }
+.triage-pain { margin-top: 4px; font-size: 12px; color: var(--red-text, var(--alert)); }
+.today-workspace .triage-pain { grid-column: 2; }
+
+/* ── Call decision ─────────────────────────────────────────────────────── */
+.cp-call-decision {
+  margin-top: 10px;
+  padding: 9px 12px;
+  border: 1px solid var(--brand-border);
+  border-left-width: 3px;
+  border-radius: 8px;
+  background: var(--brand-bg);
+}
+.cp-call-decision.is-compact { padding: 6px 10px; margin-top: 8px; }
+.cp-call-decision-label { font-family: var(--mono); font-size: 9.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--brand-text); }
+.cp-call-decision-text { margin-top: 2px; font-size: 13px; color: var(--text); line-height: 1.45; overflow-wrap: anywhere; }
+
+/* ── Goals ─────────────────────────────────────────────────────────────── */
+.cp-goal-list { margin: 0; display: grid; gap: 6px; }
+.cp-goal-list.is-rationale { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
+.cp-goal-row { display: grid; grid-template-columns: minmax(96px, 150px) minmax(0, 1fr); gap: 10px; align-items: baseline; }
+.cp-goal-row dt { font-family: var(--mono); font-size: 10px; letter-spacing: .07em; text-transform: uppercase; color: var(--dim); }
+.cp-goal-row dd { margin: 0; font-size: 13px; color: var(--text); overflow-wrap: anywhere; }
+@media (max-width: 520px) {
+  .cp-goal-row { grid-template-columns: 1fr; gap: 1px; }
+}
+
+/* ── Panels (rail + notify) ────────────────────────────────────────────── */
+.cp-panel {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: var(--shadow-soft);
+  padding: 15px 16px;
+  margin-top: 12px;
+}
+.cp-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.cp-panel-head h2 { margin: 0; font-family: var(--cond); font-size: 15px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--text); }
+.cp-count { font-family: var(--mono); font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: var(--surface2); color: var(--text); white-space: nowrap; }
+.cp-count.is-alert { background: var(--red-bg, var(--surface2)); color: var(--red-text, var(--alert)); }
+.cp-count.is-warn { background: var(--amber-bg, var(--surface2)); color: var(--amber-text, var(--text)); }
+.cp-count.is-clear { background: var(--green-bg, var(--surface2)); color: var(--green-text, var(--ok)); }
+.cp-sub { margin: 6px 0 10px; font-size: 11px; color: var(--dim); line-height: 1.45; }
+.cp-empty { margin: 8px 0 0; font-size: 12px; color: var(--dim); }
+.cp-partial {
+  margin: 8px 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--amber-border, var(--border));
+  background: var(--amber-bg, transparent);
+  color: var(--amber-text, var(--text));
+  font-size: 12px;
+  line-height: 1.45;
+}
+.cp-link { background: none; border: 0; padding: 0; font: inherit; color: var(--brand-text); text-decoration: underline; cursor: pointer; }
+.cp-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.cp-item { border: 1px solid var(--border); border-radius: 10px; padding: 9px 11px; background: var(--surface); }
+.cp-item.is-read, .cp-item.is-completed { opacity: .72; }
+.cp-item.is-overdue { border-color: var(--red-border, var(--alert)); }
+.cp-item.is-due_soon { border-color: var(--amber-border, var(--border)); }
+.cp-item-head { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.cp-athlete {
+  background: none; border: 0; padding: 0; cursor: pointer; text-align: left;
+  font-family: var(--cond); font-size: 13px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--text);
+}
+.cp-athlete:hover { text-decoration: underline; }
+.cp-athlete:focus-visible, .cp-btn:focus-visible, .cws-nav-btn:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; border-radius: 4px; }
+.cp-age, .cp-meta { font-family: var(--mono); font-size: 10px; color: var(--dim); }
+.cp-state { font-family: var(--mono); font-size: 9.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--dim); white-space: nowrap; }
+.cp-state.is-overdue { color: var(--red-text, var(--alert)); }
+.cp-state.is-due_soon { color: var(--amber-text, var(--text)); }
+.cp-state.is-completed { color: var(--green-text, var(--ok)); }
+.cp-body { margin: 5px 0; font-size: 12.5px; line-height: 1.5; color: var(--text); white-space: pre-wrap; overflow-wrap: anywhere; }
+.cp-item-foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+.cp-item-foot .cp-meta { flex: 1 1 auto; }
+.cp-btn {
+  background: transparent;
+  border: 1px solid var(--border-mid);
+  border-radius: 6px;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  padding: 7px 11px;
+  min-height: 32px;
+  cursor: pointer;
+}
+.cp-btn:hover:not(:disabled) { border-color: var(--ok); color: var(--ok); }
+.cp-btn:disabled { opacity: .5; cursor: default; }
+
+/* ── Tables (notify health, weekly endurance) ──────────────────────────── */
+.cp-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; max-width: 100%; }
+.cp-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.cp-table th, .cp-table td { padding: 6px 8px; border-top: 1px solid var(--border); text-align: left; white-space: nowrap; }
+.cp-table thead th { border-top: 0; font-family: var(--mono); font-size: 9.5px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--dim); }
+.cp-table tbody th { font-weight: 600; color: var(--text); }
+.cp-table tr.is-no_device td, .cp-flag { color: var(--amber-text, var(--text)); }
+.cp-notify-line { font-size: 12px; color: var(--muted); line-height: 1.5; }
+.cp-notify-state { font-weight: 600; color: var(--text); }
+.cp-notify-line.is-no_device .cp-notify-state { color: var(--amber-text, var(--text)); }
+.notif-section #notify-health { margin-top: 16px; }
+
+/* ── Coach weekly review ───────────────────────────────────────────────── */
+.cws-nav { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+.cws-week { text-align: center; font-family: var(--cond); font-weight: 700; font-size: 15px; letter-spacing: .04em; text-transform: uppercase; color: var(--text); }
+.cws-week small { display: block; font-family: var(--mono); font-size: 10px; font-weight: 400; letter-spacing: 0; text-transform: none; color: var(--dim); }
+.cws-nav-btn { min-width: 44px; min-height: 44px; border: 1px solid var(--border-mid); border-radius: 8px; background: transparent; color: var(--text); font-size: 18px; cursor: pointer; }
+.cws-nav-btn:disabled { opacity: .35; cursor: default; }
+.cws-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; }
+.cws-tile { border: 1px solid var(--border); border-radius: 10px; padding: 9px 11px; min-width: 0; }
+.cws-lbl { font-family: var(--mono); font-size: 9.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--dim); }
+.cws-num { margin-top: 3px; font-family: var(--cond); font-size: 22px; font-weight: 700; color: var(--text); }
+.cws-num span { font-size: 14px; color: var(--muted); }
+.cws-num.cws-word { font-size: 16px; }
+.cws-sub { margin-top: 2px; font-size: 11px; color: var(--muted); }
+.cws-na { color: var(--dim); }
+.cws-row { margin-top: 12px; }
+.cws-row .cws-lbl { margin-bottom: 5px; }
+.cws-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.cws-chip { padding: 3px 9px; border-radius: 999px; border: 1px solid var(--border); font-size: 11.5px; color: var(--text); }
+.cws-table { margin-top: 2px; }
+.cws-source { display: block; margin-top: 2px; font-family: var(--mono); font-size: 9.5px; font-weight: 400; letter-spacing: 0; text-transform: none; color: var(--muted); white-space: normal; }
+.cws-note { margin: 6px 0 0; font-size: 11px; color: var(--dim); line-height: 1.45; }
+.cws-list { margin: 0; padding-left: 16px; font-size: 12.5px; color: var(--text); line-height: 1.55; }
+.cws-list.is-attention li.is-high { color: var(--red-text, var(--alert)); }
+.cws-list.is-attention li.is-medium { color: var(--amber-text, var(--text)); }
+.cws-warn { margin: 10px 0 0; padding-left: 16px; font-size: 11px; color: var(--dim); }
+.cws .cws-body > .cp-empty, .cws .cws-body > .cp-partial { margin-top: 0; }
+@media (max-width: 520px) {
+  .cws-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

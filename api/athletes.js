@@ -26,6 +26,12 @@ import {
   saveWeeklySportTarget,
 } from '../server/weekly-sport-targets.js';
 import {
+  MESSAGE_ACTIONS,
+  REQUEST_ACTIONS,
+  updateContactMessage,
+  updateDataRequest,
+} from '../server/coach-operations.js';
+import {
   listDailyMacroOverrides,
   removeDailyMacroOverride,
   saveDailyMacroOverride,
@@ -998,6 +1004,24 @@ export default async function handler(req, res) {
 
     if (action === 'signal_restore') {
       return res.status(200).json(await restoreSignal(req.body?.code, req.body?.signal_type));
+    }
+
+    // ── Coach operational queues ──────────────────────────────────────────
+    // Private athlete messages and data-rights requests. Service-role tables:
+    // the browser never writes them. The row's athlete must be in this coach's
+    // scope, the transition is validated server-side, and the acting coach is
+    // recorded on the row.
+    if (MESSAGE_ACTIONS.has(action) || REQUEST_ACTIONS.has(action)) {
+      const coachRow = await resolveCoachIdentity(req, sb);
+      const deps = {
+        sb,
+        coach: coachRow.name || coachRow.handle || coach,
+        assertAllowed: code => assertAthleteAllowed(coachRow, code, sb),
+      };
+      if (MESSAGE_ACTIONS.has(action)) {
+        return res.status(200).json(await updateContactMessage(action, req.body?.id, deps));
+      }
+      return res.status(200).json(await updateDataRequest(action, req.body?.id, deps));
     }
 
     if (action === 'add') {

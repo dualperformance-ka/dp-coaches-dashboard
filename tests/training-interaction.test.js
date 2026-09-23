@@ -195,5 +195,8 @@ test('submitted exercises cannot bypass enabled column requirements', () => {
   const refreshEnd = source.indexOf('function refreshStrengthExerciseStates', refreshStart);
   const refreshSource = source.slice(refreshStart, refreshEnd);
   assert.doesNotMatch(refreshSource, /strengthExerciseWasSubmitted|isSessionLogged/);
-  assert.match(source, /renderedRows\.every\(function\(set\)\{return !!set\.done&&strengthSavedSetHasRequiredInputs/);
+  // The callback gained a rowIndex (the effort requirement applies to one row)
+  // when the portal copy was refreshed; the rule it guards is unchanged: every
+  // rendered row must be done AND carry its required inputs.
+  assert.match(source, /renderedRows\.every\(function\(set(?:,\s*rowIndex)?\)\{[^}]*?return !!set\.done&&strengthSavedSetHasRequiredInputs/);
 });

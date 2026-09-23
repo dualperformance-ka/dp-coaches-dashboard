@@ -2,6 +2,8 @@
 // Server-side bridge from athlete portal Supabase tables to the coaches dashboard.
 // Requires SUPABASE_URL and SUPABASE_SERVICE_KEY in the dashboard Vercel project.
 import { coachError, requireCoach, setCoachCors } from '../server/coach-auth.js';
+import { emptyOperations, loadOperations } from '../server/coach-operations.js';
+import { loadCoachWeeklySummary } from '../server/coach-weekly-summary.js';
 
 const TABLES = {
   body: 'daily_body_logs',
@@ -153,7 +155,60 @@ async function selectAthleteSettings() {
   try { return text ? JSON.parse(text) : []; } catch { throw new Error('Invalid Supabase response for athlete settings'); }
 }
 
-function mapBody(row) {
+// ── Body-log pain projection ────────────────────────────────────────────────
+// The portal sends pain, painLocation and coachAlert inside the body log. Rows
+// written after 20260923090000_daily_body_pain_typed_columns carry them as typed
+// columns too; older rows (or an environment where the backfill has not run)
+// only have raw_payload. Typed values win; raw_payload is the fallback. The
+// rules match the portal's projectBodyPain() and the SQL backfill exactly.
+export function parsePainScore(value) {
+  if (typeof value === 'number') {
+    return Number.isInteger(value) && value >= 0 && value <= 10 ? value : null;
+  }
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  if (!/^\d{1,2}(\.0+)?$/.test(trimmed)) return null;
+  const n = Number(trimmed);
+  return n >= 0 && n <= 10 ? n : null;
+}
+
+function explicitBoolean(value) {
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'string') {
+    const v = value.trim().toLowerCase();
+    if (v === 'true') return true;
+    if (v === 'false') return false;
+  }
+  return null;
+}
+
+function payloadObject(row) {
+  const payload = row?.raw_payload;
+  return payload && typeof payload === 'object' && !Array.isArray(payload) ? payload : {};
+}
+
+export function bodyPainFields(row = {}) {
+  const payload = payloadObject(row);
+  const typedPain = parsePainScore(row.pain);
+  const pain = typedPain !== null ? typedPain : parsePainScore(payload.pain);
+  const typedLocation = String(row.pain_location ?? '').trim();
+  const rawLocation = typeof payload.painLocation === 'string' ? payload.painLocation.trim() : '';
+  const location = (typedLocation || rawLocation).slice(0, 200) || null;
+  const explicit = explicitBoolean(payload.coachAlert);
+  // A typed true always stands. A row whose pain was projected into the typed
+  // column already had its alert decided by the same rule at write time, so
+  // its typed false stands too. Only an untyped row is decided here: an
+  // explicit payload alert wins, and without one a valid score of 5+ raises it.
+  let coachAlert;
+  if (row.coach_alert === true) coachAlert = true;
+  else if (typedPain !== null) coachAlert = false;
+  else coachAlert = explicit !== null ? explicit : pain !== null && pain >= 5;
+  const noteText = typeof payload.noteText === 'string' ? payload.noteText.trim().slice(0, 2000) : null;
+  return { pain, painLocation: location, coachAlert, noteText: noteText || null };
+}
+
+export function mapBody(row) {
+  const pain = bodyPainFields(row);
   return {
     AthleteID: row.athlete_code,
     AthleteName: row.athlete_name,
@@ -165,6 +220,12 @@ function mapBody(row) {
     Stress: row.stress,
     Soreness: row.soreness,
     Notes: row.notes,
+    // Structured pain entry. Coaches read these rather than parsing the
+    // generated "Pain 7/10 · left knee · ..." Notes string.
+    Pain: pain.pain,
+    'Pain Location': pain.painLocation,
+    'Coach Alert': pain.coachAlert,
+    'Athlete Note': pain.noteText,
     _source: 'portal_supabase',
     _submittedAt: row.submitted_at,
     _updatedAt: row.updated_at,
@@ -229,6 +290,36 @@ export function submittedStravaSummary(row) {
   };
 }
 
+function typedNumber(value) {
+  if (value === null || value === undefined || value === '') return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+// raw_sets is athlete-submitted JSON. Only the numeric set fields a coach needs
+// are passed through, capped, so nothing else inside it can ride along.
+const RAW_SET_FIELDS = ['weight', 'reps', 'repsLeft', 'repsRight', 'rpe', 'done', 'effort', 'side', 'unit'];
+export function safeRawSets(value) {
+  if (!Array.isArray(value)) return null;
+  const sets = value.slice(0, 30).map(set => {
+    if (!set || typeof set !== 'object' || Array.isArray(set)) return null;
+    const out = {};
+    for (const key of RAW_SET_FIELDS) {
+      if (!Object.hasOwn(set, key)) continue;
+      const raw = set[key];
+      if (key === 'done') out.done = raw === true;
+      else if (key === 'effort' || key === 'side' || key === 'unit') {
+        if (typeof raw === 'string' && raw.trim()) out[key] = raw.trim().slice(0, 40);
+      } else {
+        const n = typedNumber(raw);
+        if (n !== null) out[key] = n;
+      }
+    }
+    return Object.keys(out).length ? out : null;
+  }).filter(Boolean);
+  return sets.length ? sets : null;
+}
+
 export function mapSession(row) {
   const code = row.athlete_code || '';
 
@@ -252,6 +343,14 @@ export function mapSession(row) {
     'Muscle Group': row.muscle_group || '',
     'Is Swap': row.is_swap === true,
     'Rep Mode': row.rep_mode || '',
+    // Typed metrics the portal already stores. Analysis prefers these over
+    // re-parsing 'Exercise Log'; null means not recorded, never zero.
+    'Distance KM': typedNumber(row.distance_km),
+    'Duration Min': typedNumber(row.duration_min),
+    Pace: row.pace ? String(row.pace).slice(0, 40) : null,
+    RPE: typedNumber(row.rpe),
+    Feel: typedNumber(row.feel),
+    'Raw Sets': safeRawSets(row.raw_sets),
     // Safe coach-facing provenance only. Raw Strava payloads, activity ids,
     // tokens, routes and activity detail remain server-side/athlete-only.
     _stravaConfirmed: sessionWasStravaConfirmed(row),
@@ -305,7 +404,7 @@ function normaliseText(value) {
   return String(value || '').trim().toLowerCase();
 }
 
-function weeklyFingerprint(row) {
+export function weeklyFingerprint(row) {
   return JSON.stringify([
     String(row.week_ending || '').slice(0, 10),
     normaliseNumber(row.run_completed),
@@ -329,6 +428,7 @@ function weeklyFingerprint(row) {
     normaliseNumber(row.motivation),
     normaliseText(row.upcoming_impact),
     normaliseText(row.testimonial),
+    normaliseText(row.call_decision),
   ]);
 }
 
@@ -377,7 +477,7 @@ function cleanWeeklyRows(rows) {
   };
 }
 
-function mapWeekly(row) {
+export function mapWeekly(row) {
   return {
     Name: row.athlete_code,
     'Week Ending': row.week_ending || null,
@@ -402,6 +502,9 @@ function mapWeekly(row) {
     Motivation: row.motivation,
     'Upcoming Impact': row.upcoming_impact,
     Testimonial: row.testimonial,
+    // What the athlete wants from this week's call. An agenda item, not a
+    // risk signal: it feeds call prep, never the triage queue.
+    'Call Decision': row.call_decision ?? null,
     _athleteCode: row.athlete_code,
     _weekKey: row.week_key,
     _source: 'portal_supabase',
@@ -410,7 +513,7 @@ function mapWeekly(row) {
   };
 }
 
-function mapGoal(row) {
+export function mapGoal(row) {
   return {
     athlete_code: row.athlete_code,
     athlete_name: row.athlete_name,
@@ -425,6 +528,12 @@ function mapGoal(row) {
     time_half: row.time_half,
     time_marathon: row.time_marathon,
     long_run_pace: row.long_run_pace,
+    strength_intent: row.strength_intent ?? null,
+    strength_priorities: row.strength_priorities ?? null,
+    strength_lift: row.strength_lift ?? null,
+    strength_current_load: normaliseNumber(row.strength_current_load),
+    strength_target_load: normaliseNumber(row.strength_target_load),
+    strength_reps: normaliseNumber(row.strength_reps),
     why: row.why,
     milestone_w4: row.milestone_w4,
     milestone_w8: row.milestone_w8,
@@ -695,9 +804,10 @@ function painSignalCopy(signal, completed, planned, today, quietDays) {
   const timing = whenCopy(String(signal.log_date), today);
   let sentence;
 
-  if (signal.coach_alert && hasPain) sentence = `Coach alert with pain ${pain}/10 reported ${timing}`;
-  else if (signal.coach_alert) sentence = `Coach alert raised ${timing}`;
-  else sentence = `Pain ${pain}/10 reported ${timing}`;
+  const where = signal.pain_location ? ` (${String(signal.pain_location).slice(0, 80)})` : '';
+  if (signal.coach_alert && hasPain) sentence = `Coach alert with pain ${pain}/10${where} reported ${timing}`;
+  else if (signal.coach_alert) sentence = `Coach alert raised${where} ${timing}`;
+  else sentence = `Pain ${pain}/10${where} reported ${timing}`;
 
   if (completed) {
     const session = completed.session_name || completed.session_category || 'a completed session';
@@ -863,7 +973,14 @@ export function buildTriageQueue({
     .map(row => ({ ...row, code: normaliseCode(row.code) }))
     .filter(row => row.code);
   const activeCodes = new Set(active.map(row => row.code));
-  const body = (bodyRows || []).filter(row => activeCodes.has(normaliseCode(row.athlete_code)));
+  // Typed pain columns win; raw_payload fills in for rows written before the
+  // portal projected them. Either way the queue sees one normalised shape.
+  const body = (bodyRows || [])
+    .filter(row => activeCodes.has(normaliseCode(row.athlete_code)))
+    .map(row => {
+      const pain = bodyPainFields(row);
+      return { ...row, pain: pain.pain, coach_alert: pain.coachAlert, pain_location: pain.painLocation };
+    });
   const sessions = (sessionRows || []).filter(row => activeCodes.has(normaliseCode(row.athlete_code)));
   const bodyRecentlyActive = new Set(
     body
@@ -989,6 +1106,7 @@ export function buildTriageQueue({
           date: painSignal.log_date,
           score: painScore,
           coachAlert,
+          location: painSignal.pain_location || null,
         } : null,
         trainingContext: completed ? {
           source: 'training_session_logs',
@@ -1088,24 +1206,32 @@ function isMissingTriageColumn(error) {
   return /pain|coach_alert/i.test(message) && /column|schema cache|does not exist|could not find/i.test(message);
 }
 
-async function selectTriageBodyRows(painStart) {
+// Most complete projection first. raw_payload is always selected so pain still
+// reaches the queue when the typed columns are absent (the dashboard triage
+// migration was never applied live) or not yet backfilled. It is used for the
+// pain fields only and never leaves this function's caller.
+const TRIAGE_BODY_PROJECTIONS = [
+  'athlete_code,log_date,pain,pain_location,coach_alert,raw_payload,submitted_at',
+  'athlete_code,log_date,pain,coach_alert,raw_payload,submitted_at',
+  'athlete_code,log_date,raw_payload,submitted_at',
+];
+
+export async function selectTriageBodyRows(painStart, select = selectRows) {
   const query = {
     log_date: `gte.${painStart}`,
     order: 'log_date.desc,submitted_at.desc',
   };
-  try {
-    return await selectRows('daily_body_logs', {
-      ...query,
-      select: 'athlete_code,log_date,pain,coach_alert,submitted_at',
-    });
-  } catch (error) {
-    if (!isMissingTriageColumn(error)) throw error;
-    console.warn('[coach-data:triage] pain columns unavailable; continuing with gone-quiet only');
-    return selectRows('daily_body_logs', {
-      ...query,
-      select: 'athlete_code,log_date,submitted_at',
-    });
+  let lastError;
+  for (const projection of TRIAGE_BODY_PROJECTIONS) {
+    try {
+      return await select('daily_body_logs', { ...query, select: projection });
+    } catch (error) {
+      if (!isMissingTriageColumn(error)) throw error;
+      lastError = error;
+      console.warn('[coach-data:triage] body projection unavailable, falling back:', projection);
+    }
   }
+  throw lastError;
 }
 
 async function loadTriage() {
@@ -1187,6 +1313,22 @@ export default async function handler(req, res) {
     if (mode === 'triage') {
       return res.status(200).json(await loadTriage());
     }
+    // The athlete's weekly review, coach side. Same metric rules as the
+    // portal card, coach-safe sources only (never strava_activities).
+    if (mode === 'weekly_summary') {
+      try {
+        const result = await loadCoachWeeklySummary({
+          code: req.query?.code,
+          programmeWeekId: req.query?.programmeWeekId || req.query?.week || '',
+          select: selectRows,
+        });
+        return res.status(200).json({ ok: true, ...result });
+      } catch (error) {
+        if (Number(error?.status) >= 400 && Number(error?.status) < 500) return coachError(res, error);
+        console.error('[coach-data:weekly_summary]', error);
+        return res.status(502).json({ ok: false, error: 'The weekly review could not be loaded' });
+      }
+    }
     // One activity's sensor streams. The bulk load deliberately omits them (they
     // are ~250KB per activity and blew the response limit), so the detail panel
     // asks for them only when a coach actually opens an activity.
@@ -1209,6 +1351,11 @@ export default async function handler(req, res) {
     }
 
     const activityCutoff = new Date(Date.now() - 120 * 86400000).toISOString().slice(0, 10);
+    // Operational queues degrade independently and never fail the full load.
+    const operationsPromise = loadOperations(selectRows).catch(error => {
+      console.warn('[coach-data] operations unavailable:', error.message);
+      return { ...emptyOperations(), operationsMissing: ['contact_messages', 'data_requests', 'notify_status'] };
+    });
     const [body, nutrition, sessions, weeklyRaw, goals, nutritionPlans, athleteSettings, sessionLibrary, workoutSplits, applicationDecisions, plannedRows, athletes, sessionReviews, signalState, activityUploads] = await Promise.all([
       selectAll(TABLES.body, 'log_date'),
       selectAll(TABLES.nutrition, 'log_date'),
@@ -1262,6 +1409,7 @@ export default async function handler(req, res) {
       logsRows, plannedRows, athletes, structuredRows: sessions,
     });
     const sessionsOut = sessions.map(mapSession).concat(reconciled.rows);
+    const operations = await operationsPromise;
 
     return res.status(200).json({
       ok: true,
@@ -1284,6 +1432,16 @@ export default async function handler(req, res) {
         activityUploads: activityUploads.length,
         sessionReviews: sessionReviews.length,
         signalState: signalState.length,
+        contactMessages: operations.contactMessages.length,
+        dataRequests: operations.dataRequests.length,
+        notifyStatus: operations.notifyStatus.length,
+      },
+      operationsCounts: operations.operationsCounts,
+      // A source that failed is named here rather than reported as an empty,
+      // successful queue.
+      dataQuality: {
+        partial: operations.operationsMissing.length > 0,
+        missingSources: operations.operationsMissing,
       },
       integrity: {
         weeklyConflicts: weeklyIntegrity.conflicts,
@@ -1305,6 +1463,9 @@ export default async function handler(req, res) {
       sessionReviews,
       signalState,
       activityUploads: activityUploads.map(mapActivityUpload),
+      contactMessages: operations.contactMessages,
+      dataRequests: operations.dataRequests,
+      notifyStatus: operations.notifyStatus,
     });
   } catch (error) {
     console.error('[coach-data]', error);
@@ -1314,7 +1475,12 @@ export default async function handler(req, res) {
       source: 'portal_supabase',
       generatedAt: new Date().toISOString(),
       error: error.message,
-      counts: { body: 0, nutrition: 0, sessions: 0, weekly: 0, goals: 0, planning: 0, nutritionPlans: 0, athleteSettings: 0, sessionLibrary: 0, workoutSplits: 0, applicationDecisions: 0, activityUploads: 0, sessionReviews: 0, signalState: 0 },
+      counts: { body: 0, nutrition: 0, sessions: 0, weekly: 0, goals: 0, planning: 0, nutritionPlans: 0, athleteSettings: 0, sessionLibrary: 0, workoutSplits: 0, applicationDecisions: 0, activityUploads: 0, sessionReviews: 0, signalState: 0, contactMessages: 0, dataRequests: 0, notifyStatus: 0 },
+      operationsCounts: emptyOperations().operationsCounts,
+      dataQuality: { partial: true, missingSources: ['contact_messages', 'data_requests', 'notify_status'] },
+      contactMessages: [],
+      dataRequests: [],
+      notifyStatus: [],
       body: [],
       nutrition: [],
       sessions: [],

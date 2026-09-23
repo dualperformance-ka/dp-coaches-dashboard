@@ -101,7 +101,11 @@ export function body() {
         Energy: Math.max(1, Math.round(7 + drift - (a.code === 'KAI' && d < 4 ? 3 : 0))),
         Stress: Math.max(1, Math.round(4 - drift + (a.code === 'TOM' && d < 7 ? 2 : 0))),
         Soreness: Math.max(1, Math.round(3 + (a.code === 'LUCA' && d < 8 ? 3 : 0) + drift * 0.5)),
-        Notes: a.code === 'KAI' && d === 1 ? 'Right calf tight, 7/10 through the reps.' : '',
+        Notes: a.code === 'KAI' && d === 1 ? 'Pain 7/10 · right calf · tight through the reps' : '',
+        Pain: a.code === 'KAI' && d === 1 ? 7 : a.code === 'KAI' ? 0 : null,
+        'Pain Location': a.code === 'KAI' && d === 1 ? 'right calf' : null,
+        'Coach Alert': a.code === 'KAI' && d === 1,
+        'Athlete Note': a.code === 'KAI' && d === 1 ? 'Tight through the reps, eased on the cool-down.' : null,
         _source: 'portal_supabase',
         _submittedAt: stamp(d),
         _updatedAt: stamp(d),
@@ -170,6 +174,7 @@ export function weekly() {
         Motivation: 8,
         'Upcoming Impact': '',
         Testimonial: '',
+        'Call Decision': a.code === 'KAI' && w === 0 ? 'Keep the long run or swap it for a bike while the calf settles?' : null,
         _athleteCode: a.code,
         _weekKey: ending,
         _source: 'portal_supabase',
@@ -209,8 +214,14 @@ export function goals() {
       time_half: '1:31:05',
       time_marathon: code === 'TOM' ? '3:12:40' : null,
       long_run_pace: '5:10',
-      why: '',
-      milestone_w4: '', milestone_w8: '', milestone_w12: '',
+      why: code === 'KAI' ? 'Break 3 hours before I turn 40.' : '',
+      milestone_w4: code === 'KAI' ? 'Four weeks without a missed long run' : '', milestone_w8: '', milestone_w12: '',
+      strength_intent: code === 'KAI' ? 'Injury Resilience' : null,
+      strength_priorities: code === 'KAI' ? 'Calves & Achilles, Glutes' : null,
+      strength_lift: code === 'KAI' ? 'Single-leg Calf Raise' : null,
+      strength_current_load: code === 'KAI' ? 20 : null,
+      strength_target_load: code === 'KAI' ? 32.5 : null,
+      strength_reps: code === 'KAI' ? 12 : null,
       _source: 'portal_supabase',
       _submittedAt: stamp(30),
       _updatedAt: stamp(30),
@@ -724,6 +735,57 @@ export function coachData() {
     sessionReviews: [],
     signalState: [],
     activityUploads: au,
+    contactMessages: [
+      { id: '41', athleteCode: 'KAI', body: 'Calf has been tight since Tuesday. Not sure if I should run the long one.', createdAt: stamp(0.3), readAt: null, readBy: null },
+      { id: '40', athleteCode: 'SARAH', body: 'Work trip Thursday, can we move the session?', createdAt: stamp(2), readAt: null, readBy: null },
+      { id: '38', athleteCode: 'TOM', body: 'Thanks for the taper plan.', createdAt: stamp(5), readAt: stamp(4), readBy: 'Karl' },
+    ],
+    dataRequests: [
+      { id: '0f30b419-62ad-4bef-80e2-35eb71eb8ccb', athleteCode: 'LUCA', kind: 'wearable_deletion', note: null,
+        requestedAt: stamp(25), acknowledgedAt: stamp(24), acknowledgedBy: 'Alex', completedAt: null, completedBy: null,
+        dueAt: stamp(-5), daysOpen: 25, state: 'due_soon' },
+    ],
+    notifyStatus: ATHLETES.map((a, i) => ({
+      athleteCode: a.code, devices: a.code === 'ANNA' ? 0 : 1, managed: a.code !== 'TOM', exempt: a.code === 'TOM',
+      coachPref: true, queued: a.code === 'KAI' ? 2 : 0, unread: i % 3,
+      lastNotification: stamp(i * 0.5), lastPush: a.code === 'ANNA' ? null : stamp(i * 0.5 + 0.1), lastCoachSent: null,
+      delivery: a.code === 'ANNA' ? 'no_device' : 'pushing',
+    })),
+    operationsCounts: { messagesUnread: 2, messagesTotal: 3, dataRequestsOpen: 1, dataRequestsOverdue: 0, dataRequestsTotal: 1, notifyAthletes: ATHLETES.length, notifyNoDevice: 1, notifyQueued: 2 },
+    dataQuality: { partial: false, missingSources: [] },
+  };
+}
+
+// ── /api/coach-data?mode=weekly_summary ──────────────────────────────────────
+export function weeklySummary(code = 'KAI') {
+  return {
+    ok: true,
+    athleteCode: code,
+    summary: {
+      version: 1, audience: 'coach', generatedAt: new Date().toISOString(),
+      period: { type: 'week', label: 'Week 9', weekNumber: 9, startDate: wk(-7), endDate: wk(-1), state: 'complete' },
+      training: {
+        plannedSessions: 7, completedSessions: 5, completionPercent: 71,
+        byType: { running: { planned: 4, completed: 3 }, strength: { planned: 2, completed: 2 }, cycling: { planned: 1, completed: 0 }, swimming: { planned: 0, completed: 0 }, other: { planned: 0, completed: 0 } },
+        missedSessions: [{ id: 'p1', title: 'Threshold 5×1km', date: wk(-4), type: 'running' }, { id: 'p2', title: 'Recovery ride', date: wk(-2), type: 'cycling' }],
+      },
+      endurance: {
+        running: { plannedDistanceKm: 52, plannedDistanceSource: 'typed', actualSessions: 3, actualDistanceKm: 41.6, actualDurationMinutes: 212, actualSource: 'portal_logs+activity_uploads', actualSourceLabel: 'Portal logs and uploaded files' },
+        cycling: { plannedDistanceKm: 30, plannedDistanceSource: 'title', actualSessions: 0, actualDistanceKm: null, actualDurationMinutes: null, actualSource: 'portal_logs', actualSourceLabel: 'Confirmed portal logs' },
+        swimming: { plannedDistanceKm: null, actualSessions: 0, actualDistanceKm: null, actualDurationMinutes: null, actualSource: 'portal_logs', actualSourceLabel: 'Confirmed portal logs' },
+      },
+      strength: { plannedSessions: 2, completedSessions: 2, exercisesLogged: 9, workingSets: 27, measurableVolumeKg: 8420, volumeCoverage: { eligibleSets: 27, measuredSets: 25, excludedSets: 2 }, personalBestsStatus: 'calculated',
+        personalBests: [{ type: 'load', exercise: 'Single-leg Calf Raise', value: 22.5, unit: 'kg', previous: 20, delta: 2.5, date: wk(-3) }] },
+      readiness: { daysLogged: 6, average: 68, previousWeekAverage: 74, changeFromPreviousWeek: -6 },
+      bodyweight: { entries: 5, firstKg: 72.4, lastKg: 72.1, changeKg: -0.3 },
+      checkIn: { submitted: true, weekEnding: wk(-1) },
+      attention: [
+        { code: 'pain_reported', severity: 'high', message: 'Pain at right calf was recorded on 1 day.' },
+        { code: 'sessions_not_logged', severity: 'medium', message: '2 past planned sessions have not been logged.' },
+      ],
+      dataQuality: { partial: false, missingSources: [], warnings: [], stravaExcluded: true },
+    },
+    navigation: { weeks: [], currentId: 'w9', previousId: 'w8', nextId: 'w10' },
   };
 }
 

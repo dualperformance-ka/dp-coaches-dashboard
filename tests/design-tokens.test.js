@@ -67,13 +67,11 @@ test('running and strength stay separable in the theme that actually renders', (
   // measures separation in CIE Lab rather than by hue, because two colours can
   // sit far apart in hue degrees and still be indistinguishable as 2px strokes.
 
-  // Load order as declared in index.html. Anything appended later wins.
-  const LOADED = [
-    'dashboard-redesign.css', 'dashboard-detail-cleanup.css', 'dashboard-mobile.css',
-    'dashboard-comprehensive.css', 'dashboard-theme-system.css', 'dashboard-desktop.css',
-    'dashboard-mobile-polish.css', 'triage.css', 'programming.css',
-    'weekly-sport-targets.css', 'daily-macro-overrides.css', 'instrument.css',
-  ];
+  // Load order read from index.html itself, so a stylesheet added, removed or
+  // reordered there is resolved exactly as the browser resolves it. (A fixed
+  // list here went stale when dashboard-mobile.css and friends were deleted.)
+  const LOADED = [...html.matchAll(/<link rel="stylesheet" href="\/([\w.-]+\.css)/g)].map(m => m[1]);
+  assert.ok(LOADED.includes('dashboard-theme-system.css') && LOADED.length >= 8, 'stylesheet load order was not found');
 
   const stripComments = source => source.replace(/\/\*[\s\S]*?\*\//g, '');
 

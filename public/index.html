@@ -2304,6 +2304,7 @@ body[data-theme="light"] .theme-btn.active{background:rgba(255,255,255,.22);colo
 <link rel="stylesheet" href="/programming.css?v=20260906-17">
 <link rel="stylesheet" href="/weekly-sport-targets.css?v=3">
 <link rel="stylesheet" href="/daily-macro-overrides.css?v=3">
+<link rel="stylesheet" href="/coach-parity.css?v=20260923-01">
 <link rel="stylesheet" href="/instrument.css?v=20260906-33">
 <!-- Phone layer, deliberately last: see the header of dashboard-mobile-final.css.
      Loading it here is what lets every phone rule drop its !important. -->
@@ -2700,6 +2701,8 @@ function refreshRosterDrivenUI() {
     <section class="today-rail" aria-label="Coach workload">
       <div id="review-queue"></div>
       <div id="coaching-actions"></div>
+      <div id="athlete-messages"></div>
+      <div id="data-requests"></div>
     </section>
   </div>
 </main>
@@ -3114,6 +3117,7 @@ function refreshRosterDrivenUI() {
         <span class="cn-status" id="cn-status"></span>
       </div>
     </div>
+    <div id="notify-health"></div>
   </div>
 </div>
 
@@ -6335,6 +6339,11 @@ async function fetchCoachDataSB() {
       sessionReviews: [],
       signalState: [],
       activityUploads: [],
+      contactMessages: [],
+      dataRequests: [],
+      notifyStatus: [],
+      operationsCounts: {},
+      dataQuality: { partial: true, missingSources: ['contact_messages', 'data_requests', 'notify_status'] },
       counts: {},
   };
 
@@ -6362,6 +6371,12 @@ async function fetchCoachDataSB() {
       sessionReviews: Array.isArray(data.sessionReviews) ? data.sessionReviews : [],
       signalState: Array.isArray(data.signalState) ? data.signalState : [],
       activityUploads: Array.isArray(data.activityUploads) ? data.activityUploads : [],
+      contactMessages: Array.isArray(data.contactMessages) ? data.contactMessages : [],
+      dataRequests: Array.isArray(data.dataRequests) ? data.dataRequests : [],
+      notifyStatus: Array.isArray(data.notifyStatus) ? data.notifyStatus : [],
+      operationsCounts: data.operationsCounts || {},
+      // A missing optional source is named, never shown as an empty queue.
+      dataQuality: data.dataQuality || { partial: true, missingSources: ['contact_messages', 'data_requests', 'notify_status'] },
       counts: data.counts || {},
       integrity: data.integrity || { weeklyConflicts: [], weeklySuppressed: 0 },
       generatedAt: data.generatedAt || null,
@@ -6479,6 +6494,7 @@ function mergeWeekly(supaRows, notionRows) {
     normNumber(row['Motivation']),
     normText(row['Upcoming Impact']),
     normText(row['Testimonial']),
+    normText(row['Call Decision']),
   ]);
 
   // The first collection is authoritative. For the final merge this is the
@@ -6802,7 +6818,7 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [
     const _stravaConfirmed = r._stravaConfirmed === true ||
       /^\s*matched from strava\b/i.test(String(r['Exercise Log'] || r.exerciseLog || ''));
     if (!sessionMap[k]) {
-      sessionMap[k] = { ...r, _d: ds, _cat, _isRun, _isStr, _isDisc, _stravaConfirmed, _exercises: [], _swaps: {} };
+      sessionMap[k] = { ...r, _d: ds, _cat, _isRun, _isStr, _isDisc, _stravaConfirmed, _exercises: [], _swaps: {}, _structuredSets: [] };
     } else if (_stravaConfirmed) {
       sessionMap[k]._stravaConfirmed = true;
       if (!sessionMap[k]._stravaSummary && r._stravaSummary) sessionMap[k]._stravaSummary = r._stravaSummary;
@@ -6812,6 +6828,12 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [
     // so we push it directly — no need to prepend the name again.
     const exLine = r['Exercise Log'] || r.exerciseLog || '';
     if (exLine) sessionMap[k]._exercises.push(exLine);
+    // Typed sets (training_session_logs.raw_sets) for this exercise row. The
+    // strength analysis prefers these to re-parsing the Exercise Log text.
+    if (Array.isArray(r['Raw Sets']) && r['Raw Sets'].length) {
+      const exName = r['Exercise Name'] || String(exLine).split(': Set ')[0] || '';
+      if (exName) sessionMap[k]._structuredSets.push({ exercise: exName, sets: r['Raw Sets'] });
+    }
     // One DB row per exercise, so the swap detail lives here and would be lost
     // in the merge. Key it by the exercise actually performed — that is the name
     // the log line carries, and how the renderer finds it again.
@@ -8384,6 +8406,7 @@ function buildCard(a, weekOffset = 0) {
       </div>
       ${w['Testimonial'] ? `<div class="testim">"${esc(w['Testimonial'])}"</div>` : ''}
       ${w['Upcoming Impact'] && w['Upcoming Impact'] !== 'n/a' ? `<div class="impact">${esc(w['Upcoming Impact'])}</div>` : ''}
+      ${window.DP_PARITY?.callDecisionHtml(w, 'compact') || ''}
     </div>`;
   }
 
@@ -8607,7 +8630,9 @@ function buildCallPrep(a) {
     const nutrAdh = parseInt(w['Nutrition Adherence /10']);
     if (nutrAdh && nutrAdh <= 5) issues.push(`Low nutrition adherence (${nutrAdh}/10)`);
 
-    // Ask / Follow-up
+    // Ask / Follow-up. The athlete's own call decision leads the agenda: it is
+    // what they asked to get out of the call. It is not a risk signal.
+    if (isBad(w['Call Decision'])) ask.push('Call decision: ' + w['Call Decision']);
     if (isBad(w['Upcoming Impact'])) ask.push('Upcoming impact: ' + w['Upcoming Impact']);
     if (isBad(w['Social Event Upcoming'])) ask.push('Social event coming up: ' + w['Social Event Upcoming']);
     if (isBad(w['Fuelling'])) ask.push('Fuelling note: ' + w['Fuelling']);
@@ -8984,6 +9009,21 @@ const RUN_TYPE_KEYS = ['long', 'quality', 'easy'];
 
 // One row per completed run, with distance and pace resolved from whichever
 // source has them: an uploaded file first (device truth), then the portal log.
+// Typed run metrics the portal stores alongside the log text. Each value is
+// used when present; only the gaps fall back to parsing 'Exercise Log'.
+function typedRunMetrics(session) {
+  const n = value => (value === null || value === undefined || value === '' || !Number.isFinite(Number(value))) ? null : Number(value);
+  const distanceKm = n(session['Distance KM']);
+  const durationMin = n(session['Duration Min']);
+  const paceSecPerKm = window.DP_RUN?.paceToSeconds ? window.DP_RUN.paceToSeconds(session.Pace) : null;
+  return {
+    distanceKm: distanceKm && distanceKm > 0 ? distanceKm : null,
+    durationSec: durationMin && durationMin > 0 ? Math.round(durationMin * 60) : null,
+    paceSecPerKm: paceSecPerKm || null,
+    rpe: n(session.RPE),
+  };
+}
+
 function athleteRunSessions(a) {
   const RUN = window.DP_RUN;
   if (!RUN) return [];
@@ -9016,17 +9056,22 @@ function athleteRunSessions(a) {
 
   for (const session of a.sessions || []) {
     if (!session._isRun || !session._d || seen.has(session._d)) continue;
-    const parsed = RUN.parseRunLog(session['Exercise Log'] || session.exerciseLog || '');
-    if (!parsed || (!parsed.distanceKm && !parsed.paceSecPerKm)) continue;
+    const typed = typedRunMetrics(session);
+    const text = RUN.parseRunLog(session['Exercise Log'] || session.exerciseLog || '') || {};
+    const distanceKm = typed.distanceKm ?? text.distanceKm ?? null;
+    const durationSec = typed.durationSec ?? text.durationSec ?? null;
+    const paceSecPerKm = typed.paceSecPerKm ?? text.paceSecPerKm
+      ?? (distanceKm > 0 && durationSec > 0 ? Math.round(durationSec / distanceKm) : null);
+    if (!distanceKm && !paceSecPerKm) continue;
     const plan = planByDate.get(session._d);
     out.push({
       date: session._d,
       name: session.Session || plan?.Session || '',
       type: plan?.['Session Type'] || session._cat || 'Run',
-      distanceKm: parsed.distanceKm,
-      paceSecPerKm: parsed.paceSecPerKm,
-      rpe: parsed.rpe,
-      source: 'log',
+      distanceKm,
+      paceSecPerKm,
+      rpe: typed.rpe ?? text.rpe ?? null,
+      source: typed.distanceKm != null || typed.paceSecPerKm != null ? 'log_typed' : 'log',
     });
   }
 
@@ -9401,7 +9446,12 @@ function athleteStrengthHistory(a) {
     .filter(sess => sess._isStr && sess._d)
     .map(sess => ({ date: sess._d, exerciseLog: sess['Exercise Log'] || sess.exerciseLog || '' }));
 
-  const history = STRENGTH.collectExerciseHistory(_logBlobs.get(nid(a.id)) || {}, sessions, textLogs);
+  // Typed raw_sets first, then the compatibility blob, then the text parser.
+  const structuredLogs = (a.sessions || [])
+    .filter(sess => sess._isStr && sess._d && Array.isArray(sess._structuredSets))
+    .flatMap(sess => sess._structuredSets.map(entry => ({ date: sess._d, exercise: entry.exercise, sets: entry.sets })));
+
+  const history = STRENGTH.collectExerciseHistory(_logBlobs.get(nid(a.id)) || {}, sessions, textLogs, structuredLogs);
   _strengthCache.set(a.id, { athlete: a, history });
   return history;
 }
@@ -10079,6 +10129,7 @@ function buildFPCard(a, weekOffset = 0) {
       </div>
       ${w['Testimonial'] ? `<div class="fpc-testim">"${esc(w['Testimonial'])}"</div>` : ''}
       ${w['Upcoming Impact'] && w['Upcoming Impact'] !== 'n/a' ? `<div class="fpc-impact">${DP_ICON('bolt')} ${esc(w['Upcoming Impact'])}</div>` : ''}
+      ${window.DP_PARITY?.callDecisionHtml(w) || ''}
     </div>`;
   }
 
@@ -10450,9 +10501,12 @@ function buildFPCard(a, weekOffset = 0) {
             dayBody.Steps        ? `<span class="wd-metric">${DP_ICON('footprint')} <strong>${esc(dayBody.Steps)}</strong> steps</span>` : '',
           ].filter(Boolean).join('');
           const bNotes = pickFirst(dayBody, ['Notes', 'Note', 'Body Notes']);
-          if (bParts) bodyRowHtml = `<div class="wd-body-row">
-            <span class="wd-metric body-lbl">Body</span>${bParts}</div>
-            ${isBad(bNotes) ? `<div class="wd-sess-notes" style="margin-top:2px">${esc(bNotes)}</div>` : ''}`;
+          // Structured pain from the portal, not the generated Notes prefix.
+          const bPain = window.DP_PARITY?.painChipHtml(dayBody) || '';
+          const bAthleteNote = window.DP_PARITY?.athleteNoteHtml(dayBody) || '';
+          if (bParts || bPain) bodyRowHtml = `<div class="wd-body-row">
+            <span class="wd-metric body-lbl">Body</span>${bParts}${bPain}</div>
+            ${bAthleteNote || (isBad(bNotes) ? `<div class="wd-sess-notes" style="margin-top:2px">${esc(bNotes)}</div>` : '')}`;
         }
 
         // Nutrition metrics (Calories, Protein, Carbs, Fats, Water, Adherence + notes)
@@ -10804,7 +10858,7 @@ function buildFPCard(a, weekOffset = 0) {
             ${pw['Lift Wins'] && pw['Lift Wins'] !== 'n/a' ? `<div class="fpc-train-note good">✓ ${esc(pw['Lift Wins'])}</div>` : ''}
           </div>
         </div>` : '';
-        const textRow = `${pw['Testimonial'] ? `<div class="fpc-testim">"${esc(pw['Testimonial'])}"</div>` : ''}${pw['Upcoming Impact'] && pw['Upcoming Impact'] !== 'n/a' ? `<div class="fpc-impact">${DP_ICON('bolt')} ${esc(pw['Upcoming Impact'])}</div>` : ''}`;
+        const textRow = `${pw['Testimonial'] ? `<div class="fpc-testim">"${esc(pw['Testimonial'])}"</div>` : ''}${pw['Upcoming Impact'] && pw['Upcoming Impact'] !== 'n/a' ? `<div class="fpc-impact">${DP_ICON('bolt')} ${esc(pw['Upcoming Impact'])}</div>` : ''}${window.DP_PARITY?.callDecisionHtml(pw, 'compact') || ''}`;
         return `<div class="fp-prev-row">
           <div class="fp-prev-row-date">${pwWeekLabel}Week ending ${fmtDate(pwEnd)}</div>
           ${scoresRow}${trainRow}${textRow}
@@ -10822,11 +10876,20 @@ function buildFPCard(a, weekOffset = 0) {
   // Training are week-scoped and carry the week strip; the rest span a range.
   const weekStrip = buildAthleteWeekStrip(a, ctx);
   const strengthBestsHtml = buildStrengthBests(a);
+  // The client profile already prints why and milestones when the roster
+  // profile is loaded; the Goals panel only repeats them when it is not.
+  const profileShowsRationale = !!(a.profile && (isBad(a.profile['Your Why']) || isBad(a.profile['Milestone W4']) || isBad(a.profile['Milestone W8']) || isBad(a.profile['Milestone W12'])));
+  const goalsHtml = window.DP_PARITY?.goalsPanelHtml(a.goal, { includeRationale: !profileShowsRationale }) || '';
+  const notifyRow = window.DP_PARITY?.notifyFor(a.id);
+  const notifyHtml = notifyRow ? `<div class="fpc-section"><div class="fpc-section-title">Notifications</div>${window.DP_PARITY.notifyLineHtml(notifyRow)}</div>` : '';
   const emptyPanel = message => `<div class="fpa-empty">${esc(message)}</div>`;
 
   const panels = {
-    overview: [weekStrip, banner, fpActionHtml, wipHtml, scoresHtml, trainingHtml, clientProfileHtml],
-    training: [weekStrip, weekDetailHtml],
+    overview: [weekStrip, banner, fpActionHtml, wipHtml, scoresHtml, trainingHtml, clientProfileHtml, goalsHtml, notifyHtml],
+    // The weekly review is the first card under the week strip: the same week
+    // summary the athlete sees, built server-side from coach-safe sources. It
+    // carries its own programme-week navigation.
+    training: [weekStrip, window.DP_PARITY?.weeklySummaryPlaceholder(a.id) || '', weekDetailHtml],
     running:  [buildRunningPanel(a), programmeVolumeHtml, buildMileageTrend(a)],
     strength: [buildStrengthPanel(a), prsHtml, strengthBestsHtml],
     body:     [trendsHtml, bodyNutrPart, dailyNutrHtml, progressPhotosHtml],
@@ -10967,13 +11030,15 @@ function buildDailyInputsLedger(a, ctx = getSelectedWeekContext(a, 0)) {
     ].filter(([, v]) => v !== null && v !== undefined && v !== '');
 
     const notes = pickFirst(row, ['Notes', 'Note', 'Body Notes']);
+    const painChip = window.DP_PARITY?.painChipHtml(row) || '';
+    const athleteNote = window.DP_PARITY?.athleteNoteHtml(row) || '';
     return `<div class="daily-ledger-box">
       <div class="daily-ledger-title">Body</div>
       <div class="daily-ledger-fields">${fields.length
         ? fields.map(([k, v]) => `<span class="daily-ledger-field"><strong>${esc(v)}</strong> ${esc(k)}</span>`).join('')
-        : `<span class="daily-ledger-empty">No metric fields found</span>`}
+        : painChip ? '' : `<span class="daily-ledger-empty">No metric fields found</span>`}${painChip}
       </div>
-      ${isBad(notes) ? `<div class="daily-ledger-note">${esc(notes)}</div>` : ''}
+      ${athleteNote || (isBad(notes) ? `<div class="daily-ledger-note">${esc(notes)}</div>` : '')}
     </div>`;
   };
 
@@ -11070,6 +11135,7 @@ function buildCoachCard(a) {
       </div>
       ${w['Testimonial'] ? `<div class="testim">"${esc(w['Testimonial'])}"</div>` : ''}
       ${w['Upcoming Impact'] && w['Upcoming Impact'] !== 'n/a' ? `<div class="impact">${DP_ICON('bolt')} ${esc(w['Upcoming Impact'])}</div>` : ''}
+      ${window.DP_PARITY?.callDecisionHtml(w, 'compact') || ''}
     </div>`;
   }
 
@@ -12410,6 +12476,7 @@ async function load({ bust = false } = {}) {
       loadedAt: new Date(),
     };
     render({ athletes, coaches, applications, dataHealth, syncAudit });
+    window.DP_PARITY?.setOperations(coachDataSB, athletes);
     _fullDashboardLoaded = true;
     renderNotifications(applications, _decisions);
     renderApplications(applications, _decisions);
@@ -12638,6 +12705,7 @@ function _drawFP() {
   if (!a) return;
 
   document.getElementById('fp-body').innerHTML = buildFPCard(a, _fpWeekOffset);
+  window.DP_PARITY?.hydrate(document.getElementById('fp-body'));
   document.getElementById('fp-overlay').scrollTop = 0;
   // Applies the remembered tab and runs that panel's deferred work. `silent`
   // because restoring a tab is not the coach choosing one.
@@ -13466,14 +13534,15 @@ document.getElementById('gen-btn').addEventListener('click', generateAI);
 <script src="/coaching-actions.js?v=3" defer></script>
 <script src="/dp-icons.js?v=20260907-35"></script>
 <script src="/dashboard-mobilenav.js?v=20260921-01" defer></script>
-<script src="/triage.js?v=20260921-01" defer></script>
+<script src="/triage.js?v=20260923-01" defer></script>
+<script src="/coach-parity.js?v=20260923-01" defer></script>
 <script src="/weekly-sport-targets.js?v=3" defer></script>
 <script src="/daily-macro-overrides.js?v=3" defer></script>
 <script src="/programming.js?v=4" defer></script>
 <!-- Analysis modules. ES modules so tests can import them directly; each also
      publishes itself on window for the classic-script render code. -->
 <script type="module" src="/run-analysis.js?v=20260906-17"></script>
-<script type="module" src="/strength-analysis.js?v=20260906-17"></script>
+<script type="module" src="/strength-analysis.js?v=20260923-01"></script>
 <script src="/app.js?v=2" defer></script>
 </body>
 </html>

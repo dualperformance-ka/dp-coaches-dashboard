@@ -16,7 +16,7 @@
 // it for you — and if sw.js is byte-identical the browser never installs a new
 // worker, no "Update available" toast appears, and the activate purge never runs.
 // scripts/bump-sw-version.mjs does it for you: `node scripts/bump-sw-version.mjs`.
-const VERSION = 'dp-coaches-v52-toolbar-new-split';
+const VERSION = 'dp-coaches-v53-coach-parity';
 const SHELL_CACHE = `${VERSION}-shell`;
 const STATIC_CACHE = `${VERSION}-static`;
 const FONT_CACHE = `${VERSION}-fonts`;
@@ -38,7 +38,9 @@ const SHELL_ASSETS = [
   '/dp-icons.js?v=20260907-35',
   '/dashboard-mobilenav.js?v=20260921-01',
   '/triage.css?v=20260906-32',
-  '/triage.js?v=20260921-01',
+  '/triage.js?v=20260923-01',
+  '/coach-parity.js?v=20260923-01',
+  '/coach-parity.css?v=20260923-01',
   '/programming.css?v=20260906-17',
   '/weekly-sport-targets.css?v=3',
   '/daily-macro-overrides.css?v=3',
@@ -46,7 +48,7 @@ const SHELL_ASSETS = [
   '/daily-macro-overrides.js?v=3',
   '/programming.js?v=4',
   '/run-analysis.js?v=20260906-17',
-  '/strength-analysis.js?v=20260906-17',
+  '/strength-analysis.js?v=20260923-01',
   '/overload-adapter.js',
   '/progressive-overload.js',
   '/manifest.webmanifest',
