@@ -355,3 +355,18 @@
 #sp-overlay .wd-ext-row.missed { grid-template-columns: minmax(0, 1fr) auto; }
 #sp-overlay .wd-ext-missed { white-space: nowrap; }
 #sp-overlay .wd-run-stats { display: flex; flex-wrap: wrap; gap: 6px 12px; }
+
+/* ── Calendar: coaching team board ─────────────────────────────────────── */
+.sb-team { margin-top: 26px; padding-top: 18px; border-top: 2px dashed var(--border-mid); }
+.sb-team-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; margin-bottom: 10px; }
+.sb-team-head h2 {
+  margin: 0;
+  font-family: var(--cond);
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+.sb-team-note { font-size: 12px; color: var(--muted); }
+.sb-team .squad-board { opacity: .96; }

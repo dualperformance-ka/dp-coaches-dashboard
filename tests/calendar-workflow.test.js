@@ -309,3 +309,27 @@ test('the open week is banded, not tinted at chip alpha', () => {
   assert.doesNotMatch(styles, /\.nut-row\.current td \{ background:rgba\(31,139,184/);
   assert.match(styles, /body\[data-theme="light"\] \.nut-row\.current td \{ background:var\(--wk-open-bg\); \}/);
 });
+
+// ── Coaching team board ──────────────────────────────────────────────────────
+// Coaches are test accounts: kept off the squad board and its totals, but
+// given the same calendar underneath so changes can be tried on them first.
+
+test('the coaching team gets its own calendar board, separate from the squad', () => {
+  const board = functionSource('renderSquadBoard');
+  assert.match(board, /const coachCodes = \[\.\.\.COACHES\]\.filter\(code => _progAthleteCodes\(\)\.includes\(code\)\)/);
+  assert.match(board, /boardTable\(codes, \{ corner: 'Athlete', footLabel: 'Squad' \}\)/);
+  assert.match(board, /boardTable\(coachCodes, \{ corner: 'Coach', footLabel: 'Team' \}\)/);
+  assert.match(board, /class="sb-team"/);
+  // Coach rows resolve through _coaches, where coach data actually lives.
+  assert.match(board, /_allAthletes\.find\(x => x\.id === code\) \|\| _coaches\.find\(x => x\.id === code\)/);
+  // Totals are per table, so coach sessions never inflate the squad's.
+  const table = board.slice(board.indexOf('const boardTable'), board.indexOf('const squadHtml'));
+  assert.match(table, /let squadDone = 0;/);
+});
+
+test('the session view and redraw also find coaches', () => {
+  assert.match(functionSource('_peekContext'), /_coaches\.find\(x => x\.id === code\)/);
+  const refresh = functionSource('refreshSquadPlan');
+  assert.match(refresh, /\.\.\.\(typeof _coaches !== 'undefined' \? _coaches : \[\]\)/);
+  assert.match(refresh, /_progView === 'squad' && typeof renderSquadBoard === 'function'/);
+});

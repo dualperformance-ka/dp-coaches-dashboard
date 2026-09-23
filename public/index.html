@@ -2304,7 +2304,7 @@ body[data-theme="light"] .theme-btn.active{background:rgba(255,255,255,.22);colo
 <link rel="stylesheet" href="/programming.css?v=20260906-17">
 <link rel="stylesheet" href="/weekly-sport-targets.css?v=3">
 <link rel="stylesheet" href="/daily-macro-overrides.css?v=3">
-<link rel="stylesheet" href="/coach-parity.css?v=20260923-04">
+<link rel="stylesheet" href="/coach-parity.css?v=20260924-01">
 <link rel="stylesheet" href="/instrument.css?v=20260906-33">
 <!-- Phone layer, deliberately last: see the header of dashboard-mobile-final.css.
      Loading it here is what lets every phone rule drop its !important. -->
@@ -4340,7 +4340,8 @@ function _renderProgContext() {
   const weekLabel = _progAthlete ? _progSelectedWeekLabel(_progAthlete) : null;
   if (_progView === 'squad') {
     const codes = _progAthleteCodes().filter(code => !COACHES.has(code));
-    context.innerHTML = `Calendar · whole squad, one week · <b>${codes.length}</b> athlete${codes.length === 1 ? '' : 's'} · ${fmt(ws)} – ${fmt(we)}`;
+    const coachCount = [...COACHES].filter(code => _progAthleteCodes().includes(code)).length;
+    context.innerHTML = `Calendar · whole squad, one week · <b>${codes.length}</b> athlete${codes.length === 1 ? '' : 's'}${coachCount ? ` + coaching team` : ''} · ${fmt(ws)} – ${fmt(we)}`;
     return;
   }
   context.innerHTML = _progView === 'week'
@@ -4624,19 +4625,21 @@ function renderSquadBoard() {
   }
   const todayISO = _isoDate(new Date());
 
-  // Coaches train too, but the board is for the athlete roster.
+  // Coaches train too, but the board is for the athlete roster. The coaching
+  // team (the test accounts) gets its own board underneath, so they never
+  // count toward the squad's totals or the athlete count.
   const codes = _progAthleteCodes().filter(code => !COACHES.has(code));
-  if (!codes.length) {
-    root.innerHTML = '<div class="squad-board-empty">No athletes on the roster yet.</div>';
-    return;
-  }
+  const coachCodes = [...COACHES].filter(code => _progAthleteCodes().includes(code));
 
+  // One table per group. Same cells, same session view, same add button, so a
+  // coach can test a change on themselves exactly as an athlete would see it.
+  const boardTable = (groupCodes, { corner, footLabel }) => {
   let squadKm = 0;
   let squadDone = 0;
   let squadTotal = 0;
 
-  const rows = codes.map(code => {
-    const athlete = _allAthletes.find(x => x.id === code);
+  const rows = groupCodes.map(code => {
+    const athlete = _allAthletes.find(x => x.id === code) || _coaches.find(x => x.id === code);
     const weekRows = _planRowsForWeek(code, ws);
     const summary = planWeekSummary(weekRows);
     squadKm += summary.km;
@@ -4690,10 +4693,10 @@ function renderSquadBoard() {
     </tr>`;
   }).join('');
 
-  root.innerHTML = `<table class="squad-board">
+  return `<table class="squad-board">
     <thead>
       <tr>
-        <th class="sb-corner">Athlete</th>
+        <th class="sb-corner">${corner}</th>
         ${days.map(day => `<th class="sb-day${day.iso === todayISO ? ' is-today' : ''}">
           <span class="sb-day-name">${day.label}</span><span class="sb-day-date">${day.date}</span>
         </th>`).join('')}
@@ -4703,13 +4706,29 @@ function renderSquadBoard() {
     <tbody>${rows}</tbody>
     <tfoot>
       <tr>
-        <th scope="row" class="sb-athlete">Squad</th>
+        <th scope="row" class="sb-athlete">${footLabel}</th>
         <td class="sb-foot" colspan="7">${squadDone} of ${squadTotal} sessions done${squadKm ? ` · ${Math.round(squadKm * 10) / 10} km planned` : ''}</td>
         <td class="sb-total"><span class="sb-total-main">${squadTotal ? Math.round(squadDone / squadTotal * 100) : 0}%</span></td>
       </tr>
     </tfoot>
-  </table>
-  <div class="squad-board-key">● submitted &nbsp; ◐ completed &nbsp; ○ not logged &nbsp; ✕ missed &nbsp; ⚑ awaiting review</div>`;
+  </table>`;
+  };
+
+  const squadHtml = codes.length
+    ? boardTable(codes, { corner: 'Athlete', footLabel: 'Squad' })
+    : '<div class="squad-board-empty">No athletes on the roster yet.</div>';
+  const coachHtml = coachCodes.length
+    ? `<section class="sb-team" aria-labelledby="sb-team-title">
+        <div class="sb-team-head">
+          <h2 id="sb-team-title">Coaching team</h2>
+          <span class="sb-team-note">Test accounts. Kept out of the squad totals and counts.</span>
+        </div>
+        ${boardTable(coachCodes, { corner: 'Coach', footLabel: 'Team' })}
+      </section>`
+    : '';
+  root.innerHTML = `${squadHtml}
+  <div class="squad-board-key">● submitted &nbsp; ◐ completed &nbsp; ○ not logged &nbsp; ✕ missed &nbsp; ⚑ awaiting review</div>
+  ${coachHtml}`;
 }
 
 // Adding from the board switches the editor to that athlete first, so the new
@@ -7861,7 +7880,7 @@ const PEEK_FEEDBACK_TEMPLATES = [
 ];
 
 function _peekContext(code, sessionId) {
-  const athlete = _allAthletes.find(x => x.id === code) || null;
+  const athlete = _allAthletes.find(x => x.id === code) || (typeof _coaches !== 'undefined' ? _coaches.find(x => x.id === code) : null) || null;
   const row = (_planRowsSB || []).find(r => r.id === sessionId) || null;
   const date = String(row?.planned_date || '').slice(0, 10);
   const norm = v => String(v || '').trim().toLowerCase();
@@ -8091,7 +8110,8 @@ async function sendSessionFeedback() {
 function refreshSquadPlan() {
   if (!Array.isArray(_allAthletes) || !_allAthletes.length) return;
   const shaped = (_planRowsSB || []).map(planRowToNotionShape);
-  _allAthletes.forEach(a => { a.allPlan = shaped.filter(r => getPlanningAthleteId(r) === a.id); });
+  [..._allAthletes, ...(typeof _coaches !== 'undefined' ? _coaches : [])]
+    .forEach(a => { a.allPlan = shaped.filter(r => getPlanningAthleteId(r) === a.id); });
   (_expandedRows || new Set()).forEach(safeId => {
     const exp = document.getElementById('texp-' + safeId);
     const a = _allAthletes.find(x => x.id.replace(/\W+/g, '-').toLowerCase() === safeId);
@@ -8100,6 +8120,11 @@ function refreshSquadPlan() {
   });
   const fp = document.getElementById('fp-overlay');
   if (fp && fp.style.display === 'block') _drawFP();
+  // The Calendar board reads _planRowsSB directly; redraw it (squad and
+  // coaching team) so a save made from it shows up straight away.
+  if (typeof _progView !== 'undefined' && _progView === 'squad' && typeof renderSquadBoard === 'function') {
+    try { renderSquadBoard(); } catch (error) { console.warn('[calendar] redraw', error); }
+  }
 }
 
 function toggleTableRow(safeId) {
