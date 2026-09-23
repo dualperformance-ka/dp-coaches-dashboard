@@ -320,3 +320,38 @@
 .sp-fb-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 10px; }
 .sp-fb-status { font-size: 12px; color: var(--muted); }
 .sb-session { cursor: pointer; }
+
+/* ── Session peek: strength set table in a narrow drawer ────────────────── */
+/* The shared table uses a 150px exercise column meant for the full-width
+   Training tab. In the ~480px drawer the swap and effort badges squeezed the
+   exercise name to one letter per line. Here the exercise cell stacks: name
+   and set number on the first line, swap and effort badges underneath. */
+#sp-overlay .wd-ex-table { width: 100%; max-width: none; margin: 8px 0 0; border-radius: 10px; }
+#sp-overlay .wd-ext-head,
+#sp-overlay .wd-ext-row { grid-template-columns: minmax(0, 1fr) 64px 40px 40px; gap: 6px; padding: 9px 10px; }
+#sp-overlay .wd-ext-head { align-items: center; }
+#sp-overlay .wd-ext-row { align-items: center; min-height: 44px; }
+#sp-overlay .wd-ext-ex {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 4px 8px;
+  min-width: 0;
+  font-size: 13px;
+  line-height: 1.3;
+}
+#sp-overlay .wd-ext-exname { grid-column: 1; grid-row: 1; min-width: 0; font-weight: 600; overflow-wrap: break-word; word-break: normal; }
+#sp-overlay .wd-ext-setlbl { grid-column: 2; grid-row: 1; margin: 0; padding: 0; white-space: nowrap; }
+#sp-overlay .wd-ext-swap,
+#sp-overlay .wd-ext-effort {
+  grid-column: 1 / -1;
+  justify-self: start;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+#sp-overlay .wd-ext-num { min-width: 0; font-size: 12px; text-align: right; }
+#sp-overlay .wd-ext-pb { display: block; width: fit-content; margin: 0 0 3px auto; }
+#sp-overlay .wd-ext-row.missed { grid-template-columns: minmax(0, 1fr) auto; }
+#sp-overlay .wd-ext-missed { white-space: nowrap; }
+#sp-overlay .wd-run-stats { display: flex; flex-wrap: wrap; gap: 6px 12px; }

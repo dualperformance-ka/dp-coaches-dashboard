@@ -104,3 +104,13 @@ test('edit from the view goes through the Programming editor path', () => {
   assert.match(functionSource('peekOpenAthlete'), /openAthleteFromTriage\(code, \{ tab: 'training', date \}\)/);
   assert.match(functionSource('peekToggleReview'), /await toggleDayReview\(_peek\.code, _peek\.date\);\s*renderSessionPeek\(\)/);
 });
+
+test('the set table stacks exercise names in the narrow drawer instead of squeezing them', () => {
+  const css = readFileSync(new URL('../public/coach-parity.css', import.meta.url), 'utf8');
+  // Scoped to the drawer so the full-width Training tab keeps its layout.
+  assert.match(css, /#sp-overlay \.wd-ext-row \{ grid-template-columns: minmax\(0, 1fr\) 64px 40px 40px;/);
+  assert.match(css, /#sp-overlay \.wd-ext-ex \{[^}]*display: grid;[^}]*grid-template-columns: minmax\(0, 1fr\) auto;/);
+  assert.match(css, /#sp-overlay \.wd-ext-exname \{ grid-column: 1; grid-row: 1;[^}]*word-break: normal;/);
+  // Badges move under the name rather than competing with it for width.
+  assert.match(css, /#sp-overlay \.wd-ext-swap,\s*#sp-overlay \.wd-ext-effort \{[^}]*grid-column: 1 \/ -1;[^}]*white-space: normal;/);
+});
