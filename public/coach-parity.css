@@ -151,3 +151,120 @@
 @media (max-width: 520px) {
   .cws-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   NAVIGATION CLARITY — squad preview actions, clickable sessions, athlete tabs.
+   The squad preview's two exits and the athlete tabs used to be 10px mono
+   labels that read as decoration. They are now real controls.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Squad preview: the two ways out ───────────────────────────────────── */
+.texp-preview .texp-actions { gap: 8px; }
+.texp-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 9px 16px;
+  border: 1px solid var(--border-mid);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: 0;
+  text-transform: none;
+  cursor: pointer;
+  transition: border-color .12s ease, transform .12s ease, filter .12s ease;
+}
+.texp-cta:hover { border-color: var(--brand-border); color: var(--brand-text); transform: translateY(-1px); }
+.texp-cta.is-primary {
+  background: var(--brand);
+  border-color: var(--brand-border);
+  color: var(--readout-ink, #081019);
+}
+.texp-cta.is-primary:hover { color: var(--readout-ink, #081019); filter: brightness(1.06); }
+.texp-cta:focus-visible { outline: 3px solid color-mix(in srgb, var(--brand) 38%, transparent); outline-offset: 2px; }
+
+/* ── Squad preview: every session is a button ──────────────────────────── */
+.texp-day { display: flex; flex-direction: column; gap: 5px; }
+.texp-day.is-none { opacity: 1; }
+.texp-day.is-rest { opacity: .7; }
+.texp-day-name { display: flex; justify-content: space-between; align-items: baseline; }
+.texp-day-name .texp-day-mark { margin: 0; }
+.texp-sess {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  min-height: 44px;
+  padding: 6px 8px;
+  border: 1px solid var(--border-mid);
+  border-radius: 7px;
+  background: var(--surface);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color .12s ease, background .12s ease;
+}
+.texp-sess:hover, .texp-sess:focus-visible { border-color: var(--brand-border); background: var(--brand-bg); outline: none; }
+.texp-sess:focus-visible { box-shadow: 0 0 0 2px var(--brand-border); }
+.texp-sess.is-static { cursor: default; background: transparent; }
+.texp-sess.is-static:hover { border-color: var(--border-mid); background: transparent; }
+.texp-sess.is-log { border-style: dashed; }
+.texp-sess-name { font-size: 11.5px; font-weight: 600; line-height: 1.25; overflow-wrap: anywhere; }
+.texp-sess-cta { font-family: var(--mono); font-size: 9px; letter-spacing: .08em; text-transform: uppercase; color: var(--brand-text); }
+.texp-add {
+  min-height: 44px;
+  border: 1px dashed var(--border-mid);
+  border-radius: 7px;
+  background: transparent;
+  color: var(--dim);
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.texp-add:hover, .texp-add:focus-visible { border-color: var(--brand-border); color: var(--brand-text); outline: none; }
+
+/* ── Athlete workspace tabs: a real segmented control ──────────────────── */
+.fpa .fpa-tabs {
+  gap: 6px;
+  padding: 10px 0 12px;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  background: var(--bg, var(--surface));
+}
+.fpa .fpa-tab {
+  min-height: 42px;
+  padding: 9px 16px;
+  border: 1px solid var(--border-mid);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 13.5px;
+  font-weight: 600;
+  opacity: .82;
+}
+.fpa .fpa-tab:hover { opacity: 1; border-color: var(--brand-border); color: var(--brand-text); }
+.fpa .fpa-tab.is-active {
+  opacity: 1;
+  background: var(--brand);
+  border-color: var(--brand-border);
+  color: var(--readout-ink, #081019);
+  font-weight: 700;
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--brand) 28%, transparent);
+}
+.fpa .fpa-tab-badge { font-size: 10px; padding: 1px 6px; border-radius: 999px; }
+.fpa .fpa-tab.is-active .fpa-tab-badge {
+  background: color-mix(in srgb, var(--readout-ink, #081019) 16%, transparent);
+  color: var(--readout-ink, #081019);
+}
+.fpa .fpa-tab:focus-visible { outline: 3px solid color-mix(in srgb, var(--brand) 38%, transparent); outline-offset: 2px; border-radius: 999px; }
+@media (max-width: 720px) {
+  .fpa .fpa-tabs { padding: 8px 0 10px; }
+  .fpa .fpa-tab { min-height: 40px; padding: 8px 13px; font-size: 13px; }
+}

@@ -2304,7 +2304,7 @@ body[data-theme="light"] .theme-btn.active{background:rgba(255,255,255,.22);colo
 <link rel="stylesheet" href="/programming.css?v=20260906-17">
 <link rel="stylesheet" href="/weekly-sport-targets.css?v=3">
 <link rel="stylesheet" href="/daily-macro-overrides.css?v=3">
-<link rel="stylesheet" href="/coach-parity.css?v=20260923-01">
+<link rel="stylesheet" href="/coach-parity.css?v=20260923-02">
 <link rel="stylesheet" href="/instrument.css?v=20260906-33">
 <!-- Phone layer, deliberately last: see the header of dashboard-mobile-final.css.
      Loading it here is what lets every phone rule drop its !important. -->
@@ -4934,6 +4934,8 @@ function closePlanSession() {
   document.getElementById('ps-overlay').classList.add('hidden');
   delete _modalSnapshots['ps-overlay'];
   _psEditingId = null;
+  // Opened from the squad table or athlete view: show the saved state there too.
+  refreshSquadPlan();
 }
 // ── Run template typeahead ────────────────────────────────────────────────────
 function filterLibSearch() {
@@ -7763,19 +7765,33 @@ function buildTableExpandPanel(a) {
   const planDate = r => String(r['date:Planned Date:start'] || r['Planned Date'] || '').slice(0, 10);
   const todayISO = localDateStr(new Date());
 
+  // Every session is a button. A programmed session opens the same Plan Session
+  // editor Programming uses (openPlanSession, with setProgAthlete first so the
+  // split list and Programming both follow this athlete); a logged-only day
+  // opens the athlete's Training ledger on that date; an empty day adds one.
+  const code = esc(a.id);
   const strip = days.map((iso, i) => {
     const planned = ctx.plan.filter(r => planDate(r) === iso);
     const logged = (a.sessions || []).filter(sess => sess._d === iso);
     const rest = planned.length && planned.every(r =>
       /^rest$/i.test(String(r['Session Type'] || r.Session || '').trim()));
     const state = rest ? 'rest' : logged.length ? 'done' : planned.length ? 'open' : 'none';
-    const label = rest ? 'Rest'
-      : (planned[0]?.Session || planned[0]?.['Session Type'] || logged[0]?.Session || (logged.length ? 'Logged' : '—'));
     const needsReview = logged.length && !isDayReviewed(a.id, iso);
+    const sessions = planned.map(r => {
+      const name = String(r.Session || r['Session Type'] || 'Session');
+      return r._sbId
+        ? `<button type="button" class="texp-sess" onclick="event.stopPropagation();squadOpenSession('${code}','${esc(r._sbId)}')" title="View or edit ${esc(name)}"><span class="texp-sess-name">${esc(name)}</span><span class="texp-sess-cta">Edit</span></button>`
+        : `<div class="texp-sess is-static"><span class="texp-sess-name">${esc(name)}</span></div>`;
+    }).join('');
+    const loggedBtn = logged.length
+      ? `<button type="button" class="texp-sess is-log" onclick="event.stopPropagation();openAthleteFromTriage('${code}',{tab:'training',date:'${iso}'})" title="View what was logged"><span class="texp-sess-name">${planned.length ? 'View log' : esc(String(logged[0].Session || 'Logged'))}</span><span class="texp-sess-cta">${needsReview ? '⚑ Review' : 'View'}</span></button>`
+      : '';
+    const addBtn = !planned.length && !logged.length
+      ? `<button type="button" class="texp-add" onclick="event.stopPropagation();squadBoardAdd('${code}','${iso}')" aria-label="Add a session on ${PLAN_DAYS[i]}">+ Add</button>`
+      : '';
     return `<div class="texp-day is-${state}${iso === todayISO ? ' is-today' : ''}">
-      <div class="texp-day-name">${PLAN_DAYS[i]}</div>
-      <div class="texp-day-label">${esc(String(label).slice(0, 16))}</div>
-      <div class="texp-day-mark">${state === 'done' ? '●' : state === 'open' ? '○' : state === 'rest' ? '—' : ''}${needsReview ? '<span class="texp-day-review" title="Submitted, not yet reviewed">⚑</span>' : ''}</div>
+      <div class="texp-day-name">${PLAN_DAYS[i]}<span class="texp-day-mark">${state === 'done' ? '●' : state === 'open' ? '○' : ''}</span></div>
+      ${sessions}${loggedBtn}${addBtn}
     </div>`;
   }).join('');
 
@@ -7791,14 +7807,40 @@ function buildTableExpandPanel(a) {
     <div class="texp-header" onclick="toggleTableRow('${safeIdH}')" title="Click to collapse">
       <div class="texp-name">${esc(athleteLabel(a))}${fps}</div>
       <div class="texp-actions">
-        <button class="fp-open-btn" onclick="event.stopPropagation();openAthleteFromTriage('${esc(a.id)}',{tab:'overview'})">Open athlete</button>
-        <button class="fp-open-btn" onclick="event.stopPropagation();fpPlanWeek('${esc(a.id)}')">Adjust week</button>
+        <button type="button" class="texp-cta is-primary" onclick="event.stopPropagation();openAthleteFromTriage('${esc(a.id)}',{tab:'overview'})">Open athlete profile <span aria-hidden="true">→</span></button>
+        <button type="button" class="texp-cta" onclick="event.stopPropagation();fpPlanWeek('${esc(a.id)}')">Adjust week in Programming</button>
       </div>
     </div>
     ${signalHtml}
     <div class="texp-week-strip" aria-label="This week">${strip}</div>
     ${summary ? `<div class="texp-week-summary-line">${esc(summary)}</div>` : ''}
   </div>`;
+}
+
+// Squad table → the Programming session editor. setProgAthlete keeps the
+// Programming tab, the split list and the editor subtitle on this athlete, so
+// the edit is the same edit a coach would make from Programming itself.
+function squadOpenSession(code, sessionId) {
+  if (!code || !sessionId) return;
+  setProgAthlete(code);
+  openPlanSession(sessionId);
+}
+
+// After the Plan Session editor closes, the squad preview must show what was
+// saved, moved or deleted. a.allPlan is built at load, so rebuild it from the
+// live planned_sessions cache the editor just updated.
+function refreshSquadPlan() {
+  if (!Array.isArray(_allAthletes) || !_allAthletes.length) return;
+  const shaped = (_planRowsSB || []).map(planRowToNotionShape);
+  _allAthletes.forEach(a => { a.allPlan = shaped.filter(r => getPlanningAthleteId(r) === a.id); });
+  (_expandedRows || new Set()).forEach(safeId => {
+    const exp = document.getElementById('texp-' + safeId);
+    const a = _allAthletes.find(x => x.id.replace(/\W+/g, '-').toLowerCase() === safeId);
+    const cell = exp?.querySelector('td');
+    if (cell && a) cell.innerHTML = buildTableExpandPanel(a);
+  });
+  const fp = document.getElementById('fp-overlay');
+  if (fp && fp.style.display === 'block') _drawFP();
 }
 
 function toggleTableRow(safeId) {
