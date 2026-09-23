@@ -28,9 +28,9 @@ test('the squad preview exits are real buttons, the profile one primary', () => 
   assert.match(css, /\.texp-cta\.is-primary\s*\{[^}]*background: var\(--brand\)/);
 });
 
-test('every programmed session in the squad preview opens the Programming editor', () => {
+test('every programmed session in the squad preview opens the session view', () => {
   const panel = functionSource('buildTableExpandPanel');
-  assert.match(panel, /squadOpenSession\('\$\{code\}','\$\{esc\(r\._sbId\)\}'\)/);
+  assert.match(panel, /openSessionPeek\('\$\{code\}','\$\{esc\(r\._sbId\)\}'\)/);
   // Logged days open the athlete's training ledger on that date; empty days add.
   assert.match(panel, /openAthleteFromTriage\('\$\{code\}',\{tab:'training',date:'\$\{iso\}'\}\)/);
   assert.match(panel, /squadBoardAdd\('\$\{code\}','\$\{iso\}'\)/);

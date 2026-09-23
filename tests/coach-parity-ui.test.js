@@ -110,7 +110,8 @@ test('the dashboard wires every parity surface in', () => {
   assert.match(html, /training: \[weekStrip, window\.DP_PARITY\?\.weeklySummaryPlaceholder\(a\.id\)/);
   assert.match(html, /window\.DP_PARITY\?\.hydrate\(document\.getElementById\('fp-body'\)\)/);
   assert.match(html, /overview: \[[^\]]*goalsHtml, notifyHtml\]/);
-  assert.equal((html.match(/DP_PARITY\?\.painChipHtml\(/g) || []).length, 2);
+  // Body ledger, week detail and the calendar session view.
+  assert.equal((html.match(/DP_PARITY\?\.painChipHtml\(/g) || []).length, 3);
 });
 
 test('Today rows show the structured pain score and location', () => {

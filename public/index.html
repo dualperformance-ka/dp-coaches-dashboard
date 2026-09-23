@@ -2304,7 +2304,7 @@ body[data-theme="light"] .theme-btn.active{background:rgba(255,255,255,.22);colo
 <link rel="stylesheet" href="/programming.css?v=20260906-17">
 <link rel="stylesheet" href="/weekly-sport-targets.css?v=3">
 <link rel="stylesheet" href="/daily-macro-overrides.css?v=3">
-<link rel="stylesheet" href="/coach-parity.css?v=20260923-02">
+<link rel="stylesheet" href="/coach-parity.css?v=20260923-03">
 <link rel="stylesheet" href="/instrument.css?v=20260906-33">
 <!-- Phone layer, deliberately last: see the header of dashboard-mobile-final.css.
      Loading it here is what lets every phone rule drop its !important. -->
@@ -2806,6 +2806,20 @@ function refreshRosterDrivenUI() {
     </div>
     <div id="weekly-sport-targets-editor"></div>
     <div id="daily-macro-overrides-editor"></div>
+  </div>
+</div>
+
+<!-- Session peek: planned vs logged, review, edit, feedback -->
+<div class="po-overlay po-drawer hidden" id="sp-overlay" role="dialog" aria-modal="true" aria-labelledby="sp-title" onclick="if(event.target===this)closeSessionPeek()">
+  <div class="po-modal">
+    <div class="po-modal-head">
+      <div>
+        <div class="po-modal-title" id="sp-title">Session</div>
+        <div class="po-modal-sub" id="sp-sub"></div>
+      </div>
+      <button class="po-close" type="button" aria-label="Close" onclick="closeSessionPeek()">✕</button>
+    </div>
+    <div class="po-modal-body" id="sp-body"></div>
   </div>
 </div>
 
@@ -4644,7 +4658,7 @@ function renderSquadBoard() {
           const km = r.distance_km != null ? `${r.distance_km}km` : '';
           return `<button type="button" class="sb-session is-${state.key}" style="border-left-color:${col}"
                     title="${esc(r.title || 'Session')}${km ? ' · ' + km : ''} · ${esc(state.label)}"
-                    onclick="openPlanSession('${r.id}')">
+                    onclick="openSessionPeek('${esc(code)}','${r.id}')">
             <span class="sb-session-title">${esc(String(r.title || r.session_type || 'Session').slice(0, 18))}</span>
             <span class="sb-session-meta">${esc(km)}<span class="sb-mark" aria-hidden="true">${state.mark}</span></span>
           </button>`;
@@ -7780,7 +7794,7 @@ function buildTableExpandPanel(a) {
     const sessions = planned.map(r => {
       const name = String(r.Session || r['Session Type'] || 'Session');
       return r._sbId
-        ? `<button type="button" class="texp-sess" onclick="event.stopPropagation();squadOpenSession('${code}','${esc(r._sbId)}')" title="View or edit ${esc(name)}"><span class="texp-sess-name">${esc(name)}</span><span class="texp-sess-cta">Edit</span></button>`
+        ? `<button type="button" class="texp-sess" onclick="event.stopPropagation();openSessionPeek('${code}','${esc(r._sbId)}')" title="View ${esc(name)}: what was planned, what was logged, edit or send feedback"><span class="texp-sess-name">${esc(name)}</span><span class="texp-sess-cta">View</span></button>`
         : `<div class="texp-sess is-static"><span class="texp-sess-name">${esc(name)}</span></div>`;
     }).join('');
     const loggedBtn = logged.length
@@ -7824,6 +7838,251 @@ function squadOpenSession(code, sessionId) {
   if (!code || !sessionId) return;
   setProgAthlete(code);
   openPlanSession(sessionId);
+}
+
+// ── Session peek ─────────────────────────────────────────────────────────────
+// The calendar and the squad row are the coach's bird's-eye view. Clicking a
+// session there used to go straight into the editor; now it opens this: what
+// was planned, what the athlete actually logged that day (same renderer as the
+// athlete's Training tab), how their body felt, and three things to do next:
+// mark it reviewed, edit it in the Programming editor, or send feedback to the
+// athlete's portal through the existing /api/notify pipeline.
+let _peek = null;           // { code, sessionId, date }
+const _peekSent = new Map(); // `${code}|${sessionId}` -> { at, pushed }
+
+// No em dashes, confident and direct: this is Dual Performance's own voice.
+const PEEK_FEEDBACK_TEMPLATES = [
+  { key: 'nailed', label: 'Nailed it', text: c => `Nailed ${c.session}. That is the standard. Keep stacking sessions like this` },
+  { key: 'consistency', label: 'Consistency', text: c => c.planned && c.done
+    ? `${c.done} of ${c.planned} sessions done this week. That consistency is what gets results`
+    : `Another session in the bank. That consistency is what gets results` },
+  { key: 'effort', label: 'Controlled effort', text: c => `Great control on ${c.session}. Right effort, right intent. That is how the engine gets built` },
+  { key: 'recovery', label: 'Recovery', text: c => `Good call listening to your body. Recovery is part of the plan, not a break from it` },
+];
+
+function _peekContext(code, sessionId) {
+  const athlete = _allAthletes.find(x => x.id === code) || null;
+  const row = (_planRowsSB || []).find(r => r.id === sessionId) || null;
+  const date = String(row?.planned_date || '').slice(0, 10);
+  const norm = v => String(v || '').trim().toLowerCase();
+  const dayLogs = (athlete?.sessions || []).filter(sess => sess._d === date);
+  const matched = dayLogs.filter(sess => norm(sess.Session) === norm(row?.title));
+  const logs = matched.length ? matched : dayLogs;
+  const uploads = (athlete?.activities || []).filter(act => String(act._d || '').slice(0, 10) === date);
+  const body = (athlete?.body || []).find(b => String(b['date:Date:start'] || b.Date || '').slice(0, 10) === date) || null;
+  // Week consistency for the feedback template: planned vs logged days.
+  let planned = 0; let done = 0;
+  if (date) {
+    const d = new Date(`${date}T00:00:00`);
+    const monday = new Date(d); monday.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+    const mondayISO = localDateStr(monday);
+    const sundayISO = localDateStr(new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + 6));
+    const weekRows = (_planRowsSB || []).filter(r => nid(r.athlete_code) === nid(code) && r.planned_date >= mondayISO && r.planned_date <= sundayISO && !/^rest$/i.test(String(r.session_type || r.title || '')));
+    const loggedDays = new Set((athlete?.sessions || []).map(sess => sess._d).filter(x => x >= mondayISO && x <= sundayISO));
+    planned = weekRows.length;
+    done = weekRows.filter(r => loggedDays.has(r.planned_date) || /^(done|complete|completed)$/i.test(String(r.status || ''))).length;
+  }
+  return { athlete, row, date, logs, matchedByName: matched.length > 0, uploads, body, planned, done };
+}
+
+function _peekPlannedHtml(row) {
+  if (!row) return '<p class="sp-empty">This session is no longer in the plan.</p>';
+  const facts = [
+    ['Type', row.session_type],
+    ['Distance', row.distance_km != null ? `${row.distance_km} km` : null],
+    ['Target pace', row.target_pace],
+    ['Warm up', row.warm_up],
+    ['Intervals', row.intervals],
+    ['Working pace', row.working_pace],
+    ['Rest', row.rest],
+    ['Cool down', row.cool_down],
+    ['Details', row.run_details],
+    ['Coach notes', row.notes],
+  ].filter(([, v]) => v !== null && v !== undefined && String(v).trim() !== '');
+  const split = row.session_type === 'Strength' || !row.session_type ? splitForTitle(row.title, row.athlete_code) : null;
+  const exercises = (split?.exercises || []).slice(0, 12).map(ex => {
+    const name = ex.exercise || ex.name || '';
+    const dose = [ex.workingSets || ex.sets, ex.repRange || ex.reps].filter(Boolean).join(' × ');
+    return `<li>${esc(name)}${dose ? ` <span>${esc(dose)}</span>` : ''}</li>`;
+  }).join('');
+  return `${facts.length ? `<dl class="sp-facts">${facts.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl>` : ''}
+    ${exercises ? `<ul class="sp-exercises">${exercises}</ul>` : ''}
+    ${!facts.length && !exercises ? '<p class="sp-empty">No prescription detail yet. Edit the session to add it.</p>' : ''}`;
+}
+
+function _peekLoggedHtml(ctx) {
+  const { athlete, logs, uploads, date, matchedByName } = ctx;
+  if (!logs.length && !uploads.length) {
+    return `<p class="sp-empty">${date && date > localDateStr(new Date()) ? 'Not due yet.' : 'Nothing logged for this day yet.'}</p>`;
+  }
+  const typed = s => [
+    s['Distance KM'] != null ? `${s['Distance KM']} km` : null,
+    s['Duration Min'] != null ? `${s['Duration Min']} min` : null,
+    s.Pace ? `${s.Pace}` : null,
+    s.RPE != null ? `RPE ${s.RPE}` : null,
+    s.Feel != null ? `Feel ${s.Feel}/10` : null,
+  ].filter(Boolean);
+  const logHtml = logs.map(s => {
+    const exLog = s['Exercise Log'] || s.exerciseLog || '';
+    const priorBests = s._isStr ? detectPRs((athlete?.sessions || []).filter(p => p._isStr && p._d < date)).allTime : null;
+    const plannedExs = s._isStr ? (splitForTitle(s.Session, athlete?.id)?.exercises || null) : null;
+    const metrics = typed(s);
+    return `<div class="sp-log">
+      <div class="sp-log-head">${esc(s.Session || s._cat || 'Session')}${s._stravaConfirmed ? '<span class="strava-source-chip">Confirmed via Strava</span>' : ''}</div>
+      ${metrics.length ? `<div class="sp-metrics">${metrics.map(m => `<span>${esc(m)}</span>`).join('')}</div>` : ''}
+      ${s._isDisc ? `<div class="wd-sess-notes">${esc(exLog || s.Notes || '')}</div>` : renderExerciseLog(exLog, s._isRun, priorBests, plannedExs, s._swaps)}
+      ${s.Notes && !s._isDisc ? `<div class="wd-sess-reflect"><span class="wd-reflect-lbl">Athlete note</span><span class="wd-reflect-txt">${esc(s.Notes)}</span></div>` : ''}
+    </div>`;
+  }).join('');
+  const uploadHtml = uploads.map(act => {
+    const km = Number(act.summary?.distanceM) > 0 ? `${(Number(act.summary.distanceM) / 1000).toFixed(2)} km` : null;
+    const secs = Number(act.summary?.movingTimeS ?? act.summary?.elapsedTimeS);
+    const time = secs > 0 ? `${Math.round(secs / 60)} min` : null;
+    return `<div class="sp-log is-upload"><div class="sp-log-head">${esc(act.activityName || 'Uploaded activity')}<span class="strava-source-chip">Uploaded file</span></div>
+      <div class="sp-metrics">${[act.sportType, km, time].filter(Boolean).map(m => `<span>${esc(m)}</span>`).join('')}</div></div>`;
+  }).join('');
+  const note = !matchedByName && logs.length ? '<p class="sp-hint">Logged under a different name that day, shown here so nothing is missed.</p>' : '';
+  return note + logHtml + uploadHtml;
+}
+
+function _peekBodyHtml(body) {
+  if (!body) return '';
+  const parts = [
+    ['Sleep', body['Sleep Score']], ['Energy', body.Energy], ['Stress', body.Stress], ['Soreness', body.Soreness],
+    ['Weight', body.Weight != null && body.Weight !== '' ? `${body.Weight} kg` : null],
+  ].filter(([, v]) => v !== null && v !== undefined && v !== '');
+  const pain = window.DP_PARITY?.painChipHtml(body) || '';
+  const note = window.DP_PARITY?.athleteNoteHtml(body) || '';
+  if (!parts.length && !pain && !note) return '';
+  return `<section class="sp-section"><h3>How they felt that day</h3>
+    <div class="sp-metrics">${parts.map(([k, v]) => `<span><strong>${esc(v)}</strong> ${esc(k)}</span>`).join('')}${pain}</div>${note}</section>`;
+}
+
+function _peekFeedbackHtml(ctx, code, sessionId) {
+  const title = ctx.row?.title || 'your session';
+  const vars = { session: title, planned: ctx.planned, done: ctx.done };
+  const notify = window.DP_PARITY?.notifyFor(code);
+  const delivery = !notify ? 'Lands in their portal inbox, and on their phone if they have notifications on.'
+    : notify.devices ? `Lands in their portal inbox and pushes to ${notify.devices} device${notify.devices === 1 ? '' : 's'} (outside quiet hours, up to 3 pushes a day).`
+      : 'No registered device, so this lands in their portal inbox only.';
+  const sent = _peekSent.get(`${code}|${sessionId}`);
+  return `<section class="sp-section sp-feedback" aria-labelledby="sp-fb-title">
+    <h3 id="sp-fb-title">Send feedback</h3>
+    <div class="sp-templates" role="group" aria-label="Feedback templates">${PEEK_FEEDBACK_TEMPLATES.map(t =>
+      `<button type="button" class="sp-chip" data-sp-template="${t.key}">${esc(t.label)}</button>`).join('')}</div>
+    <label class="po-label" for="sp-fb-title-input">Title</label>
+    <input id="sp-fb-title-input" class="po-input" type="text" maxlength="80" value="Great work">
+    <label class="po-label" for="sp-fb-msg">Message</label>
+    <textarea id="sp-fb-msg" class="po-input" rows="3" maxlength="500">${esc(PEEK_FEEDBACK_TEMPLATES[0].text(vars))}</textarea>
+    <p class="sp-hint">${esc(delivery)}</p>
+    <div class="sp-fb-foot">
+      <button type="button" class="texp-cta is-primary" id="sp-fb-send" onclick="sendSessionFeedback()">Send to ${esc(athleteLabel(ctx.athlete || { id: code }))}</button>
+      <span class="sp-fb-status" id="sp-fb-status" role="status">${sent ? esc(sent.text) : ''}</span>
+    </div>
+  </section>`;
+}
+
+function renderSessionPeek() {
+  if (!_peek) return;
+  const { code, sessionId } = _peek;
+  const ctx = _peekContext(code, sessionId);
+  _peek.date = ctx.date;
+  _peek.vars = { session: ctx.row?.title || 'your session', planned: ctx.planned, done: ctx.done };
+  const logged = ctx.logs.length > 0 || ctx.uploads.length > 0;
+  const reviewed = logged && isDayReviewed(code, ctx.date);
+  const today = localDateStr(new Date());
+  const state = logged ? 'Completed' : ctx.date && ctx.date < today ? 'Not logged' : 'Planned';
+  document.getElementById('sp-title').textContent = ctx.row?.title || 'Session';
+  document.getElementById('sp-sub').textContent = [athleteLabel(ctx.athlete || { id: code }), ctx.date ? fmtDate(ctx.date) : '', state].filter(Boolean).join(' · ');
+  document.getElementById('sp-body').innerHTML = `
+    <div class="sp-actions">
+      ${logged ? `<button type="button" class="texp-cta${reviewed ? '' : ' is-primary'}" onclick="peekToggleReview()">${reviewed ? '✓ Reviewed · reopen' : 'Mark reviewed'}</button>` : ''}
+      <button type="button" class="texp-cta" onclick="peekEditSession()">Edit session</button>
+      <button type="button" class="texp-cta" onclick="peekOpenAthlete()">Open in athlete profile</button>
+    </div>
+    <section class="sp-section"><h3>Logged</h3>${_peekLoggedHtml(ctx)}</section>
+    ${_peekBodyHtml(ctx.body)}
+    <section class="sp-section"><h3>Planned</h3>${_peekPlannedHtml(ctx.row)}</section>
+    ${_peekFeedbackHtml(ctx, code, sessionId)}`;
+}
+
+function openSessionPeek(code, sessionId) {
+  if (!code || !sessionId) return;
+  _peek = { code: nid(code), sessionId };
+  renderSessionPeek();
+  document.getElementById('sp-overlay').classList.remove('hidden');
+  requestAnimationFrame(() => document.querySelector('#sp-overlay .po-close')?.focus());
+}
+
+function closeSessionPeek() {
+  document.getElementById('sp-overlay')?.classList.add('hidden');
+  _peek = null;
+}
+
+function peekEditSession() {
+  if (!_peek) return;
+  const { code, sessionId } = _peek;
+  closeSessionPeek();
+  squadOpenSession(code, sessionId);
+}
+
+function peekOpenAthlete() {
+  if (!_peek) return;
+  const { code, date } = _peek;
+  closeSessionPeek();
+  openAthleteFromTriage(code, { tab: 'training', date });
+}
+
+async function peekToggleReview() {
+  if (!_peek?.date) return;
+  await toggleDayReview(_peek.code, _peek.date);
+  renderSessionPeek();
+}
+
+document.addEventListener('click', event => {
+  const chip = event.target.closest?.('#sp-overlay [data-sp-template]');
+  if (!chip || !_peek) return;
+  const template = PEEK_FEEDBACK_TEMPLATES.find(t => t.key === chip.dataset.spTemplate);
+  const box = document.getElementById('sp-fb-msg');
+  if (template && box) { box.value = template.text(_peek.vars || {}); box.focus(); }
+});
+
+// Same pipeline as the Notify tab composer (cnSend): /api/notify stores the
+// message in the athlete's portal inbox and pushes it to their phone when it
+// can. The status line reports which of those actually happened.
+async function sendSessionFeedback() {
+  if (!_peek) return;
+  const { code, sessionId } = _peek;
+  const title = (document.getElementById('sp-fb-title-input')?.value || '').trim();
+  const message = (document.getElementById('sp-fb-msg')?.value || '').trim();
+  const status = document.getElementById('sp-fb-status');
+  const button = document.getElementById('sp-fb-send');
+  if (!message) { status.textContent = 'Write a message first.'; return; }
+  const key = maAdminKey(false);
+  if (!key) { status.textContent = 'Unlock the dashboard to send.'; return; }
+  button.disabled = true;
+  status.textContent = 'Sending…';
+  try {
+    const response = await fetch('/api/notify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-admin-key': key },
+      body: JSON.stringify({ code, title, message }),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || !data.ok) throw new Error(data.error || `Send failed (HTTP ${response.status})`);
+    const pushed = Number(data.athletes) > 0;
+    const text = pushed
+      ? `Sent. In their inbox and pushed to their phone.`
+      : `Sent to their portal inbox. Not pushed to a phone (no device, quiet hours or today's push limit).`;
+    _peekSent.set(`${code}|${sessionId}`, { text, at: new Date().toISOString() });
+    status.textContent = text;
+    workflowNotice(`Feedback sent to ${code}`);
+  } catch (error) {
+    status.textContent = error.message || 'Could not send';
+    workflowNotice(`Could not send feedback: ${error.message}`, 'error');
+  } finally {
+    button.disabled = false;
+  }
 }
 
 // After the Plan Session editor closes, the squad preview must show what was
@@ -13457,6 +13716,12 @@ document.addEventListener('keydown', e => {
   // The palette owns the keyboard while it is open.
   const cmdk = document.getElementById('cmdk');
   if (cmdk && !cmdk.hidden) return;
+
+  const peek = document.getElementById('sp-overlay');
+  if (peek && !peek.classList.contains('hidden')) {
+    if (e.key === 'Escape' && !_isTyping()) closeSessionPeek();
+    return;
+  }
 
   const exHistory = document.getElementById('ex-history');
   if (exHistory && !exHistory.classList.contains('hidden')) {
