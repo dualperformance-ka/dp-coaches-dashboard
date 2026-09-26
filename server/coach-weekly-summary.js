@@ -23,10 +23,12 @@ import {
   buildEndurance,
   buildSummary,
   classifySession,
+  dedupeEnduranceLogs,
   isUuid,
   programmeWeekLabel,
   round,
   sessionKeyFor,
+  sportForLogRow,
   sportForStravaActivity,
   toIsoDate,
   weekRangeFromStart,
@@ -57,12 +59,6 @@ export function validAthleteCode(value) {
   return code;
 }
 
-function sportForLog(row) {
-  const category = lower(row.session_category);
-  if (category === 'strength') return null;
-  return sportForStravaActivity({ sport_type: `${category} ${lower(row.session_name)}` })
-    || (category ? 'running' : null);
-}
 
 /**
  * Actual endurance per sport from the two coach-visible sources, never adding
@@ -97,10 +93,12 @@ export function aggregateCoachEndurance({ trainingLogs = [], uploads = [], start
     });
   });
 
-  (Array.isArray(trainingLogs) ? trainingLogs : []).forEach(row => {
+  // Same rules as the athlete's card: classify by category, never by a
+  // substring of the name, and a run logged twice is one run.
+  dedupeEnduranceLogs(Array.isArray(trainingLogs) ? trainingLogs : []).forEach(row => {
     const date = toIsoDate(row.session_date);
     if (!date || date < startDate || date > endDate) return;
-    const sport = sportForLog(row);
+    const sport = sportForLogRow(row);
     if (!sport || !perSport[sport]) return;
     day(sport, date).logs.push({ km: finite(row.distance_km), minutes: finite(row.duration_min) });
   });
@@ -185,8 +183,8 @@ export function buildCoachSummary(input) {
   return summary;
 }
 
-const TRAINING_LOG_COLUMNS = ['session_name', 'session_category', 'session_date', 'exercise_name', 'programmed_exercise', 'raw_sets', 'distance_km', 'duration_min'];
-const TRAINING_LOG_OPTIONAL = ['exercise_name', 'programmed_exercise', 'distance_km', 'duration_min'];
+const TRAINING_LOG_COLUMNS = ['session_name', 'session_category', 'session_date', 'exercise_name', 'programmed_exercise', 'raw_sets', 'distance_km', 'duration_min', 'client_write_id'];
+const TRAINING_LOG_OPTIONAL = ['exercise_name', 'programmed_exercise', 'distance_km', 'duration_min', 'client_write_id'];
 
 async function selectTolerant(select, table, query, columns, optional) {
   let current = [...columns];

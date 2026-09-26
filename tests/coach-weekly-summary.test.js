@@ -13,7 +13,7 @@ import {
 // api/_lib/performance-summary.js (everything above its DATABASE divider). The
 // portal pins the same hash in tests/coach-summary-mirror.test.js, so a rule
 // change on either side fails until both copies match again.
-export const SHARED_RULES_SHA256 = 'd7ac7726980e156b023b846fa6fba5ac8a08c6bce7120781a0adb4692f253ee1';
+export const SHARED_RULES_SHA256 = 'ef01b219c9d6be434294505379ff7513d9f7d42a0d61fbdca757a41700900b18';
 
 test('the shared metric rules match the portal copy byte for byte', () => {
   const source = readFileSync(new URL('../server/performance-summary-core.js', import.meta.url), 'utf8');
@@ -171,4 +171,24 @@ test('the weekly review merges unlinked planned rows and matches prefixed sessio
   assert.equal(t.plannedSessions, 3);
   assert.equal(t.completedSessions, 2);
   assert.deepEqual(t.missedSessions, []);
+});
+
+// Regression (Sep 2026, Thomas Trinh week 12): "Easy 6km + Strides" contains
+// "ride" and read as cycling, and the same run confirmed from Strava and typed
+// in by hand counted twice. The review showed Running 1 / 6 km and a phantom
+// Cycling 2 / 10.1 km.
+test('coach endurance classifies by category and counts a run logged twice once', () => {
+  const out = aggregateCoachEndurance({
+    startDate: '2026-09-21', endDate: '2026-09-27', uploads: [],
+    trainingLogs: [
+      { session_date: '2026-09-22', session_category: 'Run', session_name: 'Recovery Shakeout', distance_km: 6, duration_min: 37.3, client_write_id: 'strava_20278627767' },
+      { session_date: '2026-09-23', session_category: 'Run', session_name: 'Easy 6km + Strides', distance_km: 5.1, duration_min: 31.2, client_write_id: 'strava_20293888820' },
+      { session_date: '2026-09-23', session_category: 'Run', session_name: 'Easy 6km + Strides', distance_km: 5, duration_min: 30, client_write_id: 'cw_1790159745951_6dheo1c17ig' },
+    ],
+  });
+  assert.equal(out.running.actualSessions, 2);
+  assert.equal(out.running.actualDistanceKm, 11.1);
+  assert.equal(out.running.actualDurationMinutes, 69);
+  assert.equal(out.cycling.actualSessions, 0);
+  assert.equal(out.cycling.actualDistanceKm, null);
 });

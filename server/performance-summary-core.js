@@ -209,6 +209,52 @@ export function sportForStravaActivity(activity) {
   return null;
 }
 
+/**
+ * The sport of a portal training log. Unlike a Strava sport_type, a log's name
+ * is free text, so substrings lie: "Easy 6km + Strides" contains "ride". The
+ * category the athlete logged under decides first; the name is only read for
+ * whole words, and an endurance log that names no sport is a run, as before.
+ */
+export function sportForLogRow(row) {
+  const category = lower(row && row.session_category);
+  if (category === 'strength') return null;
+  const fromCategory = category ? sportForStravaActivity({ sport_type: category }) : null;
+  if (fromCategory) return fromCategory;
+  const name = lower(row && row.session_name);
+  if (/\bswim/.test(name)) return 'swimming';
+  if (/\b(ride|rides|riding|cycl\w*|bike|biking)\b/.test(name)) return 'cycling';
+  if (/\b(run|running|jog)/.test(name)) return 'running';
+  return category ? 'running' : null;
+}
+
+function isStravaConfirmedLog(row) {
+  return /^strava_/.test(String((row && row.client_write_id) || ''));
+}
+
+/**
+ * One endurance session per day, sport and session name. Athletes regularly
+ * confirm a run from Strava and also type it in by hand, which wrote two rows
+ * for one run. The Strava-confirmed row is kept because it was measured; then a
+ * row with a distance; then the first. Unnamed rows are never merged, and two
+ * differently named sessions on one day (a double day) stay two.
+ */
+export function dedupeEnduranceLogs(rows) {
+  const kept = [];
+  const byKey = new Map();
+  (Array.isArray(rows) ? rows : []).forEach((row) => {
+    const name = lower(row && row.session_name).replace(/\s+/g, ' ').trim();
+    const sport = sportForLogRow(row);
+    if (!name || !sport) { kept.push(row); return; }
+    const key = `${toIsoDate(row.session_date)}|${sport}|${name}`;
+    if (!byKey.has(key)) { byKey.set(key, kept.length); kept.push(row); return; }
+    const index = byKey.get(key);
+    const current = kept[index];
+    const rank = (r) => (isStravaConfirmedLog(r) ? 2 : 0) + ((finiteOrNull(r.distance_km) || 0) > 0 ? 1 : 0);
+    if (rank(row) > rank(current)) kept[index] = row;
+  });
+  return kept;
+}
+
 // ── NUMBERS ──────────────────────────────────────────────────────────────────
 
 function finiteOrNull(value) {
@@ -350,13 +396,10 @@ export function aggregateActualEndurance({
 
   const portalBySport = {};
   ENDURANCE_SPORTS.forEach((sport) => { portalBySport[sport] = { sessions: 0, km: 0, minutes: 0 }; });
-  trainingLogs.forEach((row) => {
+  dedupeEnduranceLogs(trainingLogs).forEach((row) => {
     const date = toIsoDate(row.session_date);
     if (!date || date < startDate || date > endDate) return;
-    const category = lower(row.session_category);
-    if (category === 'strength') return;
-    const sport = sportForStravaActivity({ sport_type: `${category} ${lower(row.session_name)}` })
-      || (category ? 'running' : null);
+    const sport = sportForLogRow(row);
     if (!sport || !portalBySport[sport]) return;
     const km = finiteOrNull(row.distance_km);
     const minutes = finiteOrNull(row.duration_min);
@@ -1062,4 +1105,3 @@ export function buildSummary({
   }
   return clean;
 }
-
