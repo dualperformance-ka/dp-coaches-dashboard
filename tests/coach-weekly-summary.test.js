@@ -145,3 +145,30 @@ test('inputs are validated and a week from another athlete is not found', async 
   const none = fakeSelect({ athlete_programmes: () => [] });
   await assert.rejects(loadCoachWeeklySummary({ code: 'KNEE', select: none.select }), e => e.status === 404);
 });
+
+// Regression (Sep 2026, Nathan Chung week 3): the programme week linked only the
+// runs, the lifts were scheduled from the Planning tab with no programme_week_id,
+// and session_logs stores keys as `session_<CODE>_<id>`. The review showed
+// 0/2 sessions, Strength 0/0 and a logged run as missed.
+test('the weekly review merges unlinked planned rows and matches prefixed session_log keys', async () => {
+  const run = '44444444-4444-4444-8444-444444444444';
+  const lift = '55555555-5555-4555-8555-555555555555';
+  const liftToday = '66666666-6666-4666-8666-666666666666';
+  const { select } = fakeSelect({
+    planned_sessions: params => params.programme_week_id === 'is.null'
+      ? [
+        { id: lift, title: 'Upper C (3 days / wk)', planned_date: '2026-09-24', session_type: 'Strength', status: 'Planned' },
+        { id: liftToday, title: 'Upper B (3 days / wk)', planned_date: '2026-09-26', session_type: 'Strength', status: 'Planned' },
+      ]
+      : [{ id: run, title: 'Threshold Cruise — 4 x 3 min', planned_date: '2026-09-23', session_type: 'Threshold', status: 'Planned' }],
+    session_logs: params => {
+      assert.match(params.session_key, new RegExp(`session_CHUNG_${run}`));
+      return [{ session_key: `session_CHUNG_${run}` }, { session_key: `session_CHUNG_${lift}` }];
+    },
+  });
+  const result = await loadCoachWeeklySummary({ code: 'CHUNG', programmeWeekId: W2, select, now: new Date('2026-09-26T01:00:00Z') });
+  const t = result.summary.training;
+  assert.equal(t.plannedSessions, 3);
+  assert.equal(t.completedSessions, 2);
+  assert.deepEqual(t.missedSessions, []);
+});

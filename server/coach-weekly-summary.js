@@ -256,14 +256,23 @@ export async function loadCoachWeeklySummary({ code: rawCode, programmeWeekId: r
     select: plannedColumns, order: 'planned_date.asc', limit: '200',
   });
   planned = Array.isArray(planned) ? planned : [];
-  if (!planned.length) {
-    const byDate = await select('planned_sessions', {
-      athlete_code: `eq.${code}`, publish_state: 'eq.published', programme_week_id: 'is.null',
-      and: `(planned_date.gte.${startDate},planned_date.lte.${endDate})`,
-      select: plannedColumns, order: 'planned_date.asc', limit: '200',
-    }).catch(() => []);
-    planned = Array.isArray(byDate) ? byDate : [];
-  }
+  // A week can mix both kinds of row: sessions the programming system linked to
+  // this programme week, and sessions scheduled from the Planning tab that
+  // carry no programme_week_id. The dated rows were only read when the linked
+  // set was empty, so one linked run hid every unlinked lift in the same week.
+  // Always read both and merge them, de-duplicated by id.
+  const byDate = await select('planned_sessions', {
+    athlete_code: `eq.${code}`, publish_state: 'eq.published', programme_week_id: 'is.null',
+    and: `(planned_date.gte.${startDate},planned_date.lte.${endDate})`,
+    select: plannedColumns, order: 'planned_date.asc', limit: '200',
+  }).catch(() => []);
+  const seenPlanned = new Set(planned.map(row => String(row.id)));
+  (Array.isArray(byDate) ? byDate : []).forEach(row => {
+    if (seenPlanned.has(String(row.id))) return;
+    seenPlanned.add(String(row.id));
+    planned.push(row);
+  });
+  planned.sort((a, b) => String(a.planned_date || '').localeCompare(String(b.planned_date || '')));
 
   const missingSources = [];
   const optional = (name, promise) => promise.then(value => value, error => {
@@ -275,12 +284,21 @@ export async function loadCoachWeeklySummary({ code: rawCode, programmeWeekId: r
   const structuredIds = planned.filter(row => row.prescription_mode === 'structured').map(row => row.id).filter(Boolean);
   const plannedKeys = [...new Set(planned.map(sessionKeyFor).map(key => String(key == null ? '' : key))
     .filter(key => /^[A-Za-z0-9-]+$/.test(key)))];
+  // The portal writes session_logs.session_key as `session_<CODE>_<planned id>`
+  // (public/js/09-logging.js), never the bare id. Query both spellings and
+  // normalise back to the bare id that aggregateTraining matches on.
+  const loggedKeyPrefix = `session_${code}_`;
+  const sessionLogKeys = plannedKeys.flatMap(key => [key, `${loggedKeyPrefix}${key}`]);
+  const bareSessionKey = value => {
+    const key = String(value || '');
+    return key.startsWith(loggedKeyPrefix) ? key.slice(loggedKeyPrefix.length) : key;
+  };
 
   const [loggedRows, trainingLogRows, strengthHistoryRows, bodyRows, previousBodyRows, checkInRows, uploadRows, splitRows, exerciseRows, runStepRows] = await Promise.all([
     plannedKeys.length
       ? optional('session_logs', select('session_logs', {
-        athlete_code: `eq.${code}`, session_key: `in.(${plannedKeys.join(',')})`,
-        select: 'session_key', limit: String(Math.max(plannedKeys.length, 50)),
+        athlete_code: `eq.${code}`, session_key: `in.(${sessionLogKeys.join(',')})`,
+        select: 'session_key', limit: String(Math.max(sessionLogKeys.length, 50)),
       }))
       : Promise.resolve([]),
     optional('training_session_logs', selectTolerant(select, 'training_session_logs', {
@@ -337,7 +355,7 @@ export async function loadCoachWeeklySummary({ code: rawCode, programmeWeekId: r
   const summary = buildCoachSummary({
     programmeWeek: { id: week.id, weekNumber: week.weekNumber, weekLabel: week.weekLabel, startDate: week.startDate },
     plannedRows: planned,
-    loggedKeys: new Set((loggedRows || []).map(row => String(row.session_key || '')).filter(Boolean)),
+    loggedKeys: new Set((loggedRows || []).map(row => bareSessionKey(row.session_key)).filter(Boolean)),
     trainingLogs: Array.isArray(trainingLogRows) ? trainingLogRows : null,
     uploads: Array.isArray(uploadRows) ? uploadRows : null,
     strengthHistory: Array.isArray(strengthHistoryRows) ? strengthHistoryRows : [],
