@@ -6668,6 +6668,12 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [
     if (!map[id]) map[id] = { id, weekly: null, body: [], nutrition: [], sessions: [], activities: [] };
   }
 
+  // The roster is the identity source, so initialise every roster athlete
+  // before attaching logs. A new athlete may submit discovery training before
+  // they have a check-in, body log or nutrition row; without this seed the
+  // sessions loop sees no map entry and silently drops their first data.
+  rosterByCode.forEach((_row, code) => ens(code));
+
   // Coach cards are a fixed part of the dashboard, not a side effect of a
   // recent check-in or daily log. Seed every configured coach before attaching
   // data so a coach with only planned sessions (or no recent rows) still gets a

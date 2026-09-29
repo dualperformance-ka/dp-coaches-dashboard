@@ -75,6 +75,26 @@ test('dashboard builds a card model for every coach even with no activity rows',
   assert.equal(context.result.athletes.length, 0);
 });
 
+test('an active roster athlete is built when their first data is a training session', () => {
+  const context = buildContext({
+    sid: row => String(row.AthleteID || row['Athlete Code'] || '').trim().toUpperCase() || null,
+  });
+
+  vm.runInNewContext(
+    `${raceSource}\n${buildSource}\nresult = buildAll(` +
+      `[], [{ AthleteID: 'SEAN', Session: 'Train As You Normally Would',` +
+      ` 'Session Category': 'Discovery', Date: '2026-08-05', 'Exercise Log': 'Baseline notes' }],` +
+      `[], [], [], [], [], [],` +
+      `[{ code: 'SEAN', name: 'Sean Kang', active: true }]);`,
+    context
+  );
+
+  assert.equal(context.result.athletes.length, 1);
+  assert.equal(context.result.athletes[0].id, 'SEAN');
+  assert.equal(context.result.athletes[0].displayName, 'Sean Kang');
+  assert.equal(context.result.athletes[0].sessions.length, 1);
+});
+
 test('roster aliases collapse a full-name legacy identity onto the portal code', () => {
   const aliasStart = dashboardSource.indexOf('const STATIC_ALIASES =');
   const aliasEnd = dashboardSource.indexOf('// Coaches are filtered OUT', aliasStart);
