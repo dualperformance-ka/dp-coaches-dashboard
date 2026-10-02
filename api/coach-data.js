@@ -142,17 +142,85 @@ async function selectAthleteSettings() {
   // performed). It is the fallback that lets the dashboard resolve a swap back
   // to the slot it filled while training_session_logs.programmed_exercise is
   // still arriving null from older portal builds.
-  const keys = 'programme_weeks,start_date_override,programme_restart,call_notes,ack_alert,ticked,logs,ex_picks';
+  const keys = 'programme_weeks,start_date_override,programme_restart,call_notes,ack_alert,ticked,logs,ex_picks,reschedules';
   // calls_prep_<ISO week> is one row per coaching call, written by the portal
   // Calls tab. The key carries the week so it cannot be listed exactly —
   // matched by prefix alongside the fixed keys. updated_at drives "last edited".
-  const url = `${baseUrl}/rest/v1/athlete_data?select=athlete_code,key,value,updated_at&or=(key.in.(${keys}),key.like.calls_prep*)`;
+  // call_booked_<ISO week> is written by the portal/GHL booking sync. Coaches
+  // only receive its display time and start timestamp in the browser; external
+  // calendar identifiers remain inside this protected response and are never
+  // rendered.
+  const url = `${baseUrl}/rest/v1/athlete_data?select=athlete_code,key,value,updated_at&or=(key.in.(${keys}),key.like.calls_prep*,key.like.call_booked_*)`;
   const response = await fetch(url, {
     headers: { apikey: key, Authorization: `Bearer ${key}` },
   });
   const text = await response.text();
   if (!response.ok) throw new Error(`Supabase ${response.status} for athlete settings`);
   try { return text ? JSON.parse(text) : []; } catch { throw new Error('Invalid Supabase response for athlete settings'); }
+}
+
+function settingObject(value) {
+  if (value && typeof value === 'object' && !Array.isArray(value)) return value;
+  if (typeof value !== 'string') return null;
+  try {
+    const parsed = JSON.parse(value);
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+// The portal deliberately leaves planned_sessions coach-owned and stores an
+// athlete's move as athlete_data.reschedules instead. Fold that overlay into a
+// copy of the planning rows before any calendar, compliance or reconciliation
+// calculation. The original coach date remains available for clear labelling.
+export function applyAthleteReschedules(plannedRows, athleteSettings) {
+  const byAthlete = new Map();
+  for (const row of athleteSettings || []) {
+    if (row?.key !== 'reschedules' || !row.athlete_code) continue;
+    const value = settingObject(row.value);
+    if (value) byAthlete.set(String(row.athlete_code), value);
+  }
+
+  return (plannedRows || []).map(row => {
+    const overrides = byAthlete.get(String(row?.athlete_code || ''));
+    const notionKey = String(row?.notion_page_id || '');
+    const databaseKey = String(row?.id || '');
+    const nextDate = overrides?.[notionKey] ?? overrides?.[databaseKey];
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(nextDate || ''))) return { ...row };
+
+    const parsed = new Date(`${nextDate}T00:00:00Z`);
+    if (Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== nextDate) return { ...row };
+    const coachDate = row.coach_planned_date || row.planned_date;
+    if (!coachDate || nextDate === coachDate) return { ...row };
+    return {
+      ...row,
+      coach_planned_date: coachDate,
+      planned_date: nextDate,
+      athlete_rescheduled: true,
+    };
+  });
+}
+
+function rescheduledAthleteCodesInRange(settings, start, end) {
+  const codes = new Set();
+  for (const row of settings || []) {
+    if (row?.key !== 'reschedules' || !/^[a-z0-9_-]{1,80}$/i.test(String(row.athlete_code || ''))) continue;
+    const value = settingObject(row.value);
+    if (value && Object.values(value).some(date => typeof date === 'string' && date >= start && date <= end)) {
+      codes.add(String(row.athlete_code));
+    }
+  }
+  return [...codes];
+}
+
+function mergePlanningRows(primary, supplemental) {
+  const merged = new Map();
+  for (const row of [...(primary || []), ...(supplemental || [])]) {
+    const key = `${row?.athlete_code || ''}:${row?.notion_page_id || row?.id || `${row?.planned_date || ''}:${row?.title || ''}`}`;
+    merged.set(key, row);
+  }
+  return [...merged.values()];
 }
 
 // ── Body-log pain projection ────────────────────────────────────────────────
@@ -1251,7 +1319,7 @@ async function loadTriage() {
   const reviewStart = shiftDate(today, -(REVIEW_WINDOW_DAYS - 1));
   const trainingStart = contextStart < reviewStart ? contextStart : reviewStart;
 
-  const [athletes, bodyRows, sessionRows, trainingRows, plannedRows, reviewRows, resolvedRows] = await Promise.all([
+  const [athletes, bodyRows, sessionRows, trainingRows, plannedRows, reviewRows, resolvedRows, rescheduleRows] = await Promise.all([
     selectRows('athletes', {
       select: 'code,name,active,archived_at',
       active: 'eq.true',
@@ -1269,7 +1337,7 @@ async function loadTriage() {
       order: 'session_date.desc',
     }),
     selectRows('planned_sessions', {
-      select: 'athlete_code,planned_date,title,session_type,status',
+      select: 'id,notion_page_id,athlete_code,planned_date,title,session_type,status',
       planned_date: `gte.${planStart}`,
       and: `(planned_date.lte.${planEnd})`,
       order: 'planned_date.asc',
@@ -1290,10 +1358,37 @@ async function loadTriage() {
       console.warn('[coach-data:triage] coach_signal_state unavailable:', error.message);
       return [];
     }),
+    selectRows('athlete_data', {
+      select: 'athlete_code,key,value',
+      key: 'eq.reschedules',
+    }).catch(error => {
+      console.warn('[coach-data:triage] athlete reschedules unavailable:', error.message);
+      return [];
+    }),
   ]);
 
+  // A move into this week may originate outside the date-bounded planning
+  // query. Load the affected athletes' programme rows, then filter only after
+  // applying the athlete's effective date.
+  const movedAthleteCodes = rescheduledAthleteCodesInRange(rescheduleRows, planStart, planEnd);
+  const movedRows = movedAthleteCodes.length
+    ? await selectRows('planned_sessions', {
+      select: 'id,notion_page_id,athlete_code,planned_date,title,session_type,status',
+      athlete_code: `in.(${movedAthleteCodes.join(',')})`,
+      order: 'planned_date.asc',
+      limit: 1000,
+    }).catch(error => {
+      console.warn('[coach-data:triage] moved planned sessions unavailable:', error.message);
+      return [];
+    })
+    : [];
+  const effectivePlannedRows = applyAthleteReschedules(
+    mergePlanningRows(plannedRows, movedRows),
+    rescheduleRows,
+  ).filter(row => row.planned_date >= planStart && row.planned_date <= planEnd);
+
   return buildTriageQueue({
-    athletes, bodyRows, sessionRows, trainingRows, plannedRows, reviewRows, resolvedRows, now,
+    athletes, bodyRows, sessionRows, trainingRows, plannedRows: effectivePlannedRows, reviewRows, resolvedRows, now,
   });
 }
 
@@ -1395,8 +1490,9 @@ export default async function handler(req, res) {
         return [];
       }),
     ]);
+    const effectivePlannedRows = applyAthleteReschedules(plannedRows, athleteSettings);
     const sessionState = athleteSettings.filter(
-      row => row.key === 'ticked' || row.key === 'logs' || row.key === 'ex_picks'
+      row => row.key === 'ticked' || row.key === 'logs' || row.key === 'ex_picks' || row.key === 'reschedules'
     );
     const logsRows = sessionState.filter(row => row.key === 'logs');
 
@@ -1406,7 +1502,7 @@ export default async function handler(req, res) {
     // Rebuild any session that reached the "done" blob but not the structured
     // table, so blob-only logs still surface against the correct athlete.
     const reconciled = reconcileMissingSessions({
-      logsRows, plannedRows, athletes, structuredRows: sessions,
+      logsRows, plannedRows: effectivePlannedRows, athletes, structuredRows: sessions,
     });
     const sessionsOut = sessions.map(mapSession).concat(reconciled.rows);
     const operations = await operationsPromise;
@@ -1423,7 +1519,7 @@ export default async function handler(req, res) {
         sessionsReconciled: reconciled.rows.length,
         weekly: weekly.length,
         goals: goals.length,
-        planning: plannedRows.length,
+        planning: effectivePlannedRows.length,
         nutritionPlans: nutritionPlans.length,
         athleteSettings: athleteSettings.length,
         sessionLibrary: sessionLibrary.length,
@@ -1453,7 +1549,7 @@ export default async function handler(req, res) {
       sessions: sessionsOut,
       weekly: weekly.map(mapWeekly),
       goals: goals.map(mapGoal),
-      planning: plannedRows,
+      planning: effectivePlannedRows,
       nutritionPlans,
       athleteSettings,
       sessionState,

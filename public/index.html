@@ -3381,6 +3381,8 @@ function planRowToNotionShape(r) {
     'date:Planned Date:start': r.planned_date,
     'date:Planned Date:end': null,
     'date:Planned Date:is_datetime': 0,
+    '_coachPlannedDate': r.coach_planned_date || null,
+    '_athleteRescheduled': r.athlete_rescheduled === true,
     '_createdTime': r.created_at,
   };
 }
@@ -4593,6 +4595,7 @@ function renderPlanGrid() {
       html += `<div class="plan-card is-${state.key}" style="border-left-color:${col}" onclick="openPlanSession('${r.id}')">
         <div class="plan-card-title">${esc(r.title || 'Session')}${needsReview ? '<span class="plan-card-review" title="Submitted, not yet reviewed">⚑</span>' : ''}</div>
         ${r.session_type ? `<div class="plan-card-meta" style="color:${col}">${esc(r.session_type === 'discovery' ? 'Discovery' : r.session_type)}</div>` : ''}
+        ${r.athlete_rescheduled && r.coach_planned_date ? `<div class="plan-card-meta">Athlete moved from ${esc(fmtDate(r.coach_planned_date))}</div>` : ''}
         ${meta.length ? `<div class="plan-card-meta">${meta.join(' · ')}</div>` : ''}
         ${planStateBadge(r)}
       </div>`;
@@ -8819,6 +8822,7 @@ function buildCard(a, weekOffset = 0) {
         <span class="cp-toggle" id="${cpId}-toggle">▼</span>
       </div>
       <div class="cp-body" id="${cpId}">
+        ${callBookingHtml(a.id)}
         ${athletePrepHtml(a.id)}
         ${callPrep.wins.length ? `
           <div class="cp-block">
@@ -10779,6 +10783,7 @@ function buildFPCard(a, weekOffset = 0) {
             override?.pace || '',
             intensity,
             splitExs.length ? `${splitExs.length} exercises` : '',
+            r._athleteRescheduled && r._coachPlannedDate ? `Moved from ${fmtDate(r._coachPlannedDate)}` : '',
           ].filter(Boolean);
           if (!chips.length && runDetails) chips.push(runDetails);
 
@@ -10922,6 +10927,7 @@ function buildFPCard(a, weekOffset = 0) {
       <div class="fpc-cp-head-title">Call Prep</div>
     </div>
     <div class="fpc-cp-body" id="${cpId}">
+      ${callBookingHtml(a.id)}
       ${athletePrepHtml(a.id)}
       ${callPrep.wins.length ? `<div>
         <div class="fpc-cp-section-lbl win">✓ Open With (Wins)</div>
@@ -12527,6 +12533,53 @@ const ATHLETE_PREP_QUESTIONS = [
   'Anything hurting or holding you back?',
   'One thing to decide with your coaches',
 ];
+
+// Confirmed bookings are portal-owned athlete_data rows. Pick the nearest
+// future call for each athlete; if all calls have passed, retain the latest one
+// as useful call-history context. Only the athlete-facing time reaches markup.
+const athleteBookings = {}; // athlete_code -> { time, startsAt }
+function useCallBookingRows(rows) {
+  Object.keys(athleteBookings).forEach(code => delete athleteBookings[code]);
+  const grouped = {};
+  (rows || []).filter(r => /^call_booked_\d{4}_\d{2}$/.test(String(r.key || ''))).forEach(r => {
+    let value = r.value;
+    if (typeof value === 'string') { try { value = JSON.parse(value); } catch { value = null; } }
+    if (!value || typeof value !== 'object' || !r.athlete_code) return;
+    const startsAt = String(value.startsAt || value.startTime || value.start_time || '');
+    const startMs = Date.parse(startsAt);
+    const time = String(value.time || value.displayTime || '').trim();
+    if (!time && !Number.isFinite(startMs)) return;
+    (grouped[r.athlete_code] ||= []).push({
+      time,
+      startsAt: Number.isFinite(startMs) ? new Date(startMs).toISOString() : '',
+      startMs: Number.isFinite(startMs) ? startMs : null,
+      key: r.key,
+    });
+  });
+
+  const now = Date.now();
+  Object.entries(grouped).forEach(([code, entries]) => {
+    const future = entries.filter(entry => entry.startMs !== null && entry.startMs >= now)
+      .sort((a, b) => a.startMs - b.startMs);
+    const past = entries.filter(entry => entry.startMs !== null && entry.startMs < now)
+      .sort((a, b) => b.startMs - a.startMs);
+    const timeless = entries.filter(entry => entry.startMs === null)
+      .sort((a, b) => String(b.key).localeCompare(String(a.key)));
+    athleteBookings[code] = future[0] || past[0] || timeless[0];
+  });
+}
+function callBookingHtml(athleteCode) {
+  const booking = athleteBookings[athleteCode];
+  if (!booking) return '';
+  const display = booking.time || (booking.startsAt
+    ? new Date(booking.startsAt).toLocaleString('en-AU', { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })
+    : 'Confirmed');
+  return `<div class="cp-block cp-call-booking">
+    <div class="cp-block-lbl win">Confirmed call</div>
+    <div class="cp-items"><div class="cp-item win"><strong>${esc(display)}</strong></div></div>
+  </div>`;
+}
+
 function usePrepRows(rows) {
   (rows || []).filter(r => typeof r.key === 'string' && r.key.startsWith('calls_prep_')).forEach(r => {
     const week = r.key.slice('calls_prep_'.length);
@@ -12758,6 +12811,7 @@ async function load({ bust = false } = {}) {
     useSessionStateRows(coachDataSB.sessionState);
     useSessionLibraryRows(coachDataSB.sessionLibrary, coachDataSB.workoutSplits);
     useCallNoteRows(coachDataSB.athleteSettings);
+    useCallBookingRows(coachDataSB.athleteSettings);
     usePrepRows(coachDataSB.athleteSettings);
     useAckRows(coachDataSB.athleteSettings, coachDataSB.signalState);
     useSessionReviewRows(coachDataSB.sessionReviews);

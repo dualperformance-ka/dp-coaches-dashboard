@@ -147,18 +147,68 @@ test('triage mode reads only the bounded coach snapshot sources', async () => {
     assert.equal(res.statusCode, 200);
     assert.equal(res.body.ok, true);
     assert.equal(res.body.queue[0].flag, 'gone_quiet');
-    // Seven bounded reads: roster, body, session_logs, training logs, planned
-    // sessions, plus the two coach-owned tables carrying review and resolution
-    // state. Still no unbounded snapshot table.
-    assert.equal(requested.length, 7);
+    // Eight bounded reads: roster, body, session_logs, training logs, planned
+    // sessions, the reschedule overlay, plus the two coach-owned tables carrying
+    // review and resolution state. Still no unbounded snapshot table.
+    assert.equal(requested.length, 8);
     assert.equal(requested.some(url => url.includes('/weekly_checkins?')), false);
     assert.equal(requested.some(url => url.includes('/daily_nutrition_logs?')), false);
     assert.equal(requested.some(url => url.includes('/session_logs?')), true);
     assert.equal(requested.some(url => url.includes('/coach_triage_last_activity?')), false);
     assert.equal(requested.some(url => url.includes('/coach_signal_state?')), true);
+    const reschedulesUrl = requested.find(url => url.includes('/athlete_data?'));
+    assert.ok(reschedulesUrl, 'the athlete reschedule overlay must be read');
+    assert.match(reschedulesUrl, /key=eq\.reschedules/, 'the overlay read must stay key-bounded');
     const reviewUrl = requested.find(url => url.includes('/coach_session_reviews?'));
     assert.ok(reviewUrl, 'the review queue source must be read');
     assert.match(reviewUrl, /session_date=gte\./, 'the review read must stay date-bounded');
+  } finally {
+    global.fetch = originalFetch;
+    Object.entries(originalEnv).forEach(([key, value]) => {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    });
+  }
+});
+
+test('triage fetches sessions moved into its date window before applying reschedules', async () => {
+  const originalFetch = global.fetch;
+  const originalEnv = {
+    SUPABASE_URL: process.env.SUPABASE_URL,
+    SUPABASE_SERVICE_KEY: process.env.SUPABASE_SERVICE_KEY,
+    DASHBOARD_ACCESS_KEY: process.env.DASHBOARD_ACCESS_KEY,
+  };
+  process.env.SUPABASE_URL = 'https://example.supabase.co';
+  process.env.SUPABASE_SERVICE_KEY = 'service-key';
+  process.env.DASHBOARD_ACCESS_KEY = 'dashboard-key';
+  const requested = [];
+  const today = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Australia/Adelaide', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(new Date());
+
+  global.fetch = async url => {
+    const value = String(url);
+    requested.push(value);
+    let rows = [];
+    if (value.includes('/athletes?')) rows = [{ code: 'ALICE', name: 'Alice', active: true, archived_at: null }];
+    if (value.includes('/athlete_data?')) rows = [{
+      athlete_code: 'ALICE', key: 'reschedules', value: { 'moved-session': today },
+    }];
+    if (value.includes('/planned_sessions?') && value.includes('athlete_code=in.')) rows = [{
+      id: 'moved-session', athlete_code: 'ALICE', planned_date: '2026-12-20', title: 'Long Run', status: 'Planned',
+    }];
+    return new Response(JSON.stringify(rows), { status: 200, headers: { 'Content-Type': 'application/json' } });
+  };
+
+  try {
+    const req = { method: 'GET', query: { mode: 'triage' }, headers: { 'x-dashboard-key': 'dashboard-key' } };
+    const res = responseRecorder();
+    await handler(req, res);
+
+    assert.equal(res.statusCode, 200);
+    const planningReads = requested.filter(url => url.includes('/planned_sessions?'));
+    assert.equal(planningReads.length, 2);
+    assert.match(planningReads[1], /athlete_code=in.%28ALICE%29/);
   } finally {
     global.fetch = originalFetch;
     Object.entries(originalEnv).forEach(([key, value]) => {

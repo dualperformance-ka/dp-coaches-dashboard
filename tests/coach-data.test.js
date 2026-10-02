@@ -80,6 +80,7 @@ test('protected coach-data returns every dashboard data collection', async () =>
   process.env.SUPABASE_URL = 'https://example.supabase.co';
   process.env.SUPABASE_SERVICE_KEY = 'service-key';
   process.env.DASHBOARD_ACCESS_KEY = 'dashboard-key';
+  const requested = [];
 
   const rowsFor = url => {
     if (url.includes('/daily_body_logs?')) return [];
@@ -94,6 +95,8 @@ test('protected coach-data returns every dashboard data collection', async () =>
       { athlete_code: 'ALVIN', key: 'ack_alert', value: { sig: '123' } },
       { athlete_code: 'ALVIN', key: 'ticked', value: { 'session-one': true } },
       { athlete_code: 'ALVIN', key: 'logs', value: { 'session-one': { distance: 5 } } },
+      { athlete_code: 'ALVIN', key: 'reschedules', value: { 'session-one': '2026-08-06' } },
+      { athlete_code: 'ALVIN', key: 'call_booked_2026_32', value: { time: 'Thu 6 Aug · 6:30 pm', startsAt: '2026-08-06T09:00:00.000Z' } },
     ];
     if (url.includes('/session_library?')) return [
       { id: 'library-one', name: 'Tempo', archived: false },
@@ -110,10 +113,13 @@ test('protected coach-data returns every dashboard data collection', async () =>
     throw new Error(`Unexpected Supabase request: ${url}`);
   };
 
-  global.fetch = async url => new Response(JSON.stringify(rowsFor(String(url))), {
-    status: 200,
-    headers: { 'Content-Type': 'application/json' },
-  });
+  global.fetch = async url => {
+    requested.push(String(url));
+    return new Response(JSON.stringify(rowsFor(String(url))), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  };
 
   try {
     const req = { method: 'GET', headers: { 'x-dashboard-key': 'dashboard-key', 'x-coach-name': 'Karl' } };
@@ -124,7 +130,7 @@ test('protected coach-data returns every dashboard data collection', async () =>
     assert.equal(res.body.ok, true);
     assert.equal(res.body.nutritionPlans.length, 1);
     assert.equal(res.body.nutritionPlans[0].calories, 2400);
-    assert.equal(res.body.sessionState.length, 2);
+    assert.equal(res.body.sessionState.length, 3);
     assert.equal(res.body.sessionLibrary.length, 1);
     assert.equal(res.body.workoutSplits.length, 1);
     assert.equal(res.body.applicationDecisions.length, 1);
@@ -132,6 +138,13 @@ test('protected coach-data returns every dashboard data collection', async () =>
     assert.equal(res.body.activityUploads[0].summary.distanceM, 5000);
     assert.equal(res.body.athleteSettings.some(row => row.key === 'call_notes'), true);
     assert.equal(res.body.athleteSettings.some(row => row.key === 'ack_alert'), true);
+    assert.equal(res.body.athleteSettings.some(row => row.key === 'call_booked_2026_32'), true);
+    assert.equal(res.body.planning[0].planned_date, '2026-08-06');
+    assert.equal(res.body.planning[0].coach_planned_date, '2026-08-03');
+    assert.equal(res.body.planning[0].athlete_rescheduled, true);
+    const settingsUrl = requested.find(url => url.includes('/athlete_data?'));
+    assert.match(settingsUrl, /reschedules/);
+    assert.match(settingsUrl, /key\.like\.call_booked_\*/);
   } finally {
     global.fetch = originalFetch;
     Object.entries(originalEnv).forEach(([key, value]) => {
