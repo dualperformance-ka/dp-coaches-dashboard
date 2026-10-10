@@ -669,3 +669,16 @@ test('the raw coach Strava endpoint stays blocked: the dashboard reads summaries
   assert.equal(/['"`]\/api\/strava/.test(ui), false);
   assert.equal(/localStorage\.setItem\([^)]*strava/i.test(ui), false, 'Strava data is never cached in the coach browser');
 });
+
+test('Strava activity is merged into the Training ledger, not a separate section', () => {
+  const index = readFileSync(join(root, 'public', 'index.html'), 'utf8');
+  const training = index.slice(index.indexOf('    training: ['), index.indexOf('\n', index.indexOf('    training: [')));
+  assert.ok(training.indexOf('DP_STRAVA?.placeholder') >= 0 && training.indexOf('DP_STRAVA?.placeholder') < training.indexOf('weekDetailHtml'),
+    'the week strip sits directly above the day-by-day ledger');
+  assert.match(index, /<details class="wd-strava-act submitted" data-strava-write="\$\{esc\(session\._clientWriteId \|\| ''\)\}">/,
+    'submitted Strava cards carry their activity id so the merged lane never draws the same run twice');
+  const ui = readFileSync(join(root, 'public', 'strava-activities.js'), 'utf8');
+  assert.match(ui, /\.wd-strava-col\[data-wd-strava-id=/, 'cards land in the ledger day columns');
+  assert.match(ui, /!shown\.has\(String\(item\.activity\.id\)\)/, 'activities already shown as submitted cards are skipped');
+  assert.equal(/data-sa-preset|data-sa-show|data-sa-sport|type="date"/.test(ui), false, 'no separate range or filter controls: the ledger week decides');
+});

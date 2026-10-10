@@ -1,19 +1,25 @@
-// All Activities: every Strava activity an athlete has chosen to share with
-// their coaches, classified against the programme, inside the athlete's
-// Training tab.
+// Strava activity inside the athlete's Training ledger.
+//
+// Every Strava activity the portal has synced for an athlete with Strava
+// connected, classified against the programme, merged into the existing
+// day-by-day ledger rather than listed in a section of its own:
+//   - each day's Strava column gets a compact card per activity, labelled
+//     Programmed, Unprogrammed or Review, expandable for detail and actions;
+//     runs the athlete already submitted keep their existing card and are not
+//     shown twice
+//   - one compact strip above the ledger gives the week's programmed vs actual
+//     totals, unprogrammed count, reviews and compliance
+// The week is whatever week the ledger is showing.
 //
 // Data arrives from /api/athletes?action=strava_activities, which enforces the
-// coach's athlete scope, the deployment switch and the athlete's consent before
-// it reads anything. Decisions go back through the same coach-gated route. The
-// browser never talks to Supabase or Strava, and nothing here is persisted on
-// the device: the only localStorage use is the coach's last range and filter.
+// coach's athlete scope and the athlete's Strava connection before it reads
+// anything. Decisions go back through the same coach-gated route. The browser
+// never talks to Supabase or Strava, and nothing is stored on the device.
 (function (root) {
   'use strict';
 
   const TZ = 'Australia/Adelaide';
   const cache = new Map(); // `${code}|${start}|${end}` -> entry
-  const view = new Map();  // code -> { preset, start, end, show, sport, open }
-  const PREF_KEY = 'dp_sa_view';
 
   // ── Formatting ─────────────────────────────────────────────────────────────
 
@@ -127,233 +133,164 @@
     auto: 'Matched automatically',
   };
 
-  // ── View state ─────────────────────────────────────────────────────────────
+  // ── Week from the ledger ───────────────────────────────────────────────────
 
-  function readPrefs() {
-    try { return JSON.parse(root.localStorage.getItem(PREF_KEY) || '{}') || {}; } catch { return {}; }
+  function columnsFor(code) {
+    if (!root.document) return [];
+    return [...root.document.querySelectorAll(`#fp-body .wd-strava-col[data-wd-strava-id="${CSS.escape(code)}"]`)];
   }
 
-  function writePrefs(state) {
-    try {
-      root.localStorage.setItem(PREF_KEY, JSON.stringify({ preset: state.preset, show: state.show, sport: state.sport }));
-    } catch { /* private mode */ }
-  }
-
-  function rangeFor(preset, today = todayISO()) {
-    const monday = mondayOf(today);
-    if (preset === 'last') return { start: addDays(monday, -7), end: addDays(monday, -1) };
-    if (preset === 'four') return { start: addDays(monday, -21), end: addDays(monday, 6) };
+  function ledgerRange(code) {
+    const dates = columnsFor(code).map(col => isoDate(col.dataset.wdStravaDate)).filter(Boolean).sort();
+    if (dates.length) return { start: dates[0], end: dates[dates.length - 1] };
+    const monday = mondayOf(todayISO());
     return { start: monday, end: addDays(monday, 6) };
   }
 
-  function stateFor(code) {
-    if (!view.has(code)) {
-      const prefs = readPrefs();
-      const preset = ['this', 'last', 'four'].includes(prefs.preset) ? prefs.preset : 'this';
-      view.set(code, {
-        preset,
-        ...rangeFor(preset),
-        show: ['all', 'programmed', 'unprogrammed', 'needs_review'].includes(prefs.show) ? prefs.show : 'all',
-        sport: ['all', 'running', 'cycling', 'swimming', 'strength'].includes(prefs.sport) ? prefs.sport : 'all',
-        open: '',
-      });
-    }
-    return view.get(code);
+  // Activity ids the ledger already shows as an athlete-submitted Strava card
+  // (training_session_logs.client_write_id is strava_<activity id>, or a group
+  // of linked runs), so the same run is never drawn twice in one column.
+  function submittedIds(column) {
+    const ids = new Set();
+    column.querySelectorAll('[data-strava-write]').forEach(card => {
+      (String(card.dataset.stravaWrite || '').match(/\d{5,}/g) || []).forEach(id => ids.add(id));
+    });
+    return ids;
   }
 
   // ── Rendering ──────────────────────────────────────────────────────────────
 
   function placeholder(code) {
     if (!code) return '';
-    return `<section class="fpc-section sa" data-sa-code="${esc(code)}" aria-labelledby="sa-title-${esc(code)}" aria-busy="true">
-      <div class="sa-head">
-        <div class="fpc-section-title" id="sa-title-${esc(code)}">All activities</div>
-        <span class="sa-attrib">From Strava</span>
-      </div>
-      <div class="sa-body"><p class="cp-empty" role="status">Loading activities…</p></div>
+    return `<section class="sa sa-strip" data-sa-code="${esc(code)}" aria-label="Strava activity this week" aria-busy="true">
+      <div class="sa-strip-body"><span class="sa-strip-lbl">Strava</span><span class="sa-quiet" role="status">Loading activities…</span></div>
     </section>`;
   }
 
   function notConnectedHtml(connection) {
     const status = connection && connection.status;
-    if (status === 'disabled') {
-      return `<div class="sa-gate"><strong>Strava activities are switched off</strong>
-        <p>This view is turned off for this deployment (STRAVA_COACH_SHARING=off). Programme compliance still uses the athlete’s submitted logs.</p></div>`;
-    }
-    if (status === 'unavailable') {
-      return `<div class="sa-gate"><strong>Strava connection could not be checked</strong>
-        <p>Nothing is shown until it can be read. Retry, or check the dashboard’s Supabase settings if this persists.</p></div>`;
-    }
-    return `<div class="sa-gate"><strong>Strava not connected</strong>
-      <p>Activities appear here as soon as the athlete connects Strava in the portal. Compliance still uses their submitted portal logs.</p></div>`;
+    const text = status === 'disabled'
+      ? 'Strava activities are switched off for this deployment (STRAVA_COACH_SHARING=off).'
+      : status === 'unavailable'
+        ? 'The Strava connection could not be checked, so no activities are shown.'
+        : 'Not connected. Activities appear in the ledger as soon as the athlete connects Strava in the portal.';
+    return `<div class="sa-strip-body"><span class="sa-strip-lbl">Strava</span><span class="sa-quiet">${esc(text)}</span></div>`;
   }
-
-  function chip(group, value, label, active, count) {
-    return `<button type="button" class="sa-chip${active ? ' is-active' : ''}" data-sa-${group}="${esc(value)}" aria-pressed="${active}">${esc(label)}${count != null ? ` <span>${esc(String(count))}</span>` : ''}</button>`;
-  }
-
-  function toolbarHtml(state, items) {
-    const count = key => items.filter(i => statusGroup(i) === key).length;
-    return `<div class="sa-toolbar">
-      <div class="sa-range" role="group" aria-label="Date range">
-        ${chip('preset', 'this', 'This week', state.preset === 'this')}
-        ${chip('preset', 'last', 'Last week', state.preset === 'last')}
-        ${chip('preset', 'four', 'Last 4 weeks', state.preset === 'four')}
-        <span class="sa-custom">
-          <label><span class="sr-only">From</span><input type="date" data-sa-date="start" value="${esc(state.start)}" max="${esc(state.end)}"></label>
-          <span aria-hidden="true">–</span>
-          <label><span class="sr-only">To</span><input type="date" data-sa-date="end" value="${esc(state.end)}" min="${esc(state.start)}"></label>
-        </span>
-      </div>
-      <div class="sa-filters" role="group" aria-label="Show">
-        ${chip('show', 'all', 'All activities', state.show === 'all')}
-        ${chip('show', 'programmed', 'Programmed', state.show === 'programmed', count('programmed'))}
-        ${chip('show', 'unprogrammed', 'Unprogrammed', state.show === 'unprogrammed', count('unprogrammed'))}
-        ${chip('show', 'needs_review', 'Needs review', state.show === 'needs_review', count('needs_review'))}
-      </div>
-      <div class="sa-filters" role="group" aria-label="Sport">
-        ${chip('sport', 'all', 'All sports', state.sport === 'all')}
-        ${chip('sport', 'running', 'Running', state.sport === 'running')}
-        ${chip('sport', 'cycling', 'Cycling', state.sport === 'cycling')}
-        ${chip('sport', 'swimming', 'Swimming', state.sport === 'swimming')}
-        ${chip('sport', 'strength', 'Strength', state.sport === 'strength')}
-      </div>
-    </div>`;
-  }
-
-  function statusGroup(item) {
-    if (item.status === 'needs_review') return 'needs_review';
-    if (item.status === 'unprogrammed') return 'unprogrammed';
-    return 'programmed'; // programmed, missed, awaiting_sync, upcoming
-  }
-
-  function itemSport(item) {
-    return item.activity ? item.activity.sport : item.session.sport;
-  }
-
-  function visible(items, state) {
-    return items.filter(item => (state.show === 'all' || statusGroup(item) === state.show) &&
-      (state.sport === 'all' || itemSport(item) === state.sport));
-  }
-
-  // ── Load overview (prescribed vs actual) ───────────────────────────────────
-
-  function countLine(sessions, distanceM, sport) {
-    if (!sessions) return null;
-    const [one, many] = SPORT_NOUN[sport] || ['Session', 'Sessions'];
-    const dist = fmtDistance(distanceM, sport);
-    return `${sessions} ${sessions === 1 ? one : many}${dist ? ` · ${dist}` : ''}`;
-  }
-
-  function overviewHtml(week, weeks) {
-    if (!week) return '';
-    const p = week.prescribed;
-    const a = week.actual;
-    const prescribedLines = ['running', 'cycling', 'swimming', 'strength']
-      .map(sport => countLine(p[sport].sessions, p[sport].km != null ? p[sport].km * 1000 : null, sport)).filter(Boolean);
-    const actualLines = ['running', 'cycling', 'swimming', 'strength', 'walking', 'other']
-      .map(sport => countLine(a[sport].sessions, a[sport].distanceM, sport)).filter(Boolean);
-    const extraLines = ['running', 'cycling', 'swimming', 'strength', 'walking', 'other']
-      .filter(sport => week.additional[sport] > 0)
-      .map(sport => {
-        const [one, many] = SPORT_NOUN[sport];
-        return `+${week.additional[sport]} ${week.additional[sport] === 1 ? one : many}`;
-      });
-    const list = lines => (lines.length ? `<ul>${lines.map(l => `<li>${esc(l)}</li>`).join('')}</ul>` : '<p class="sa-none">None</p>');
-
-    const prog = week.programme;
-    const decided = prog.completed + prog.missed;
-    const variance = week.variance.runningKm;
-    const trend = (weeks || []).slice(-4);
-    const effortTrend = trend.map(w => `<span title="${esc(fmtRange(w.weekStart, w.weekEnd))}">${w.overall.relativeEffort == null ? '—' : esc(fmtNum(w.overall.relativeEffort))}</span>`).join('<i aria-hidden="true">›</i>');
-    const daysTrend = trend.map(w => `<span>${esc(String(w.overall.activeDays))}</span>`).join('<i aria-hidden="true">›</i>');
-
-    return `<div class="sa-load" aria-label="Training load, ${esc(fmtRange(week.weekStart, week.weekEnd))}">
-      <div class="sa-load-head"><span class="cws-lbl">${week.state === 'current' ? 'This week' : esc(fmtRange(week.weekStart, week.weekEnd))}</span>
-        <span class="sa-load-note">Additional training is shown for context, not judged.</span></div>
-      <div class="sa-compare">
-        <div class="sa-col"><div class="sa-col-lbl">Programmed</div>${list(prescribedLines)}</div>
-        <div class="sa-col"><div class="sa-col-lbl">Actually completed</div>${list(actualLines)}</div>
-        <div class="sa-col is-extra"><div class="sa-col-lbl">Additional training</div>${list(extraLines)}</div>
-      </div>
-      <div class="cws-grid sa-metrics">
-        <div class="cws-tile"><div class="cws-lbl">Compliance</div><div class="cws-num">${decided ? esc(String(prog.completed)) : '—'}<span>${decided ? `/${esc(String(decided))}` : ''}</span></div>
-          <div class="cws-sub">${prog.compliancePercent == null ? 'No programmed sessions due yet' : `${esc(String(prog.compliancePercent))}% of due sessions`}${prog.upcoming ? ` · ${esc(String(prog.upcoming))} to come` : ''}</div></div>
-        <div class="cws-tile"><div class="cws-lbl">Running distance</div><div class="cws-num">${esc(fmtNum(a.running.distanceKm || 0, 1))}<span> km</span></div>
-          <div class="cws-sub">${variance == null ? 'No planned running distance' : `${variance > 0 ? '+' : ''}${esc(fmtNum(variance, 1))} km vs ${esc(fmtNum(p.running.km, 1))} planned${p.running.upcomingKm ? ` · ${esc(fmtNum(p.running.upcomingKm, 1))} km still to come` : ''}`}</div></div>
-        <div class="cws-tile"><div class="cws-lbl">Training time</div><div class="cws-num cws-word">${esc(fmtMinutes(week.overall.trainingMinutes) || '0 min')}</div>
-          <div class="cws-sub">${esc(String(week.overall.activities))} activities · ${esc(String(week.overall.activeDays))} active days</div></div>
-        <div class="cws-tile"><div class="cws-lbl">Unprogrammed</div><div class="cws-num">${esc(String(week.overall.unprogrammedCompleted))}</div>
-          <div class="cws-sub">${esc(String(week.overall.programmedCompleted))} programmed completed · ${esc(String(week.overall.missed))} missed</div></div>
-        <div class="cws-tile"><div class="cws-lbl">Relative Effort</div><div class="cws-num">${week.overall.relativeEffort == null ? '—' : esc(fmtNum(week.overall.relativeEffort))}</div>
-          <div class="cws-sub sa-trend" aria-label="Last four weeks">${effortTrend}</div></div>
-        <div class="cws-tile"><div class="cws-lbl">Active days</div><div class="cws-num">${esc(String(week.overall.activeDays))}<span>/7</span></div>
-          <div class="cws-sub sa-trend" aria-label="Last four weeks">${daysTrend}</div></div>
-      </div>
-    </div>`;
-  }
-
-  function totalsTableHtml(weeks, range) {
-    const shown = weeks.filter(w => w.weekEnd >= range.startDate && w.weekStart <= range.endDate);
-    if (!shown.length) return '';
-    const rows = [];
-    shown.forEach(w => {
-      ['running', 'cycling', 'swimming', 'strength'].forEach(sport => {
-        const p = w.prescribed[sport];
-        const a = w.actual[sport];
-        if (!p.sessions && !a.sessions) return;
-        rows.push(`<tr>
-          ${shown.length > 1 ? `<td class="sa-wk">${esc(fmtDay(w.weekStart, { day: 'numeric', month: 'short' }))}</td>` : ''}
-          <th scope="row">${esc(SPORT_LABEL[sport])}</th>
-          <td>${p.sessions ? `${esc(String(p.sessions))}${p.km ? ` · ${esc(fmtDistance(p.km * 1000, sport))}` : ''}` : '—'}</td>
-          <td>${a.sessions ? `${esc(String(a.sessions))}${a.distanceM ? ` · ${esc(fmtDistance(a.distanceM, sport))}` : ''}` : '0'}</td>
-          <td>${esc(fmtMinutes(a.durationMinutes) || '—')}</td>
-        </tr>`);
-      });
-    });
-    if (!rows.length) return '';
-    return `<div class="cws-row"><div class="cws-lbl">Prescribed vs actual</div><div class="cp-table-wrap"><table class="cp-table sa-table">
-      <thead><tr>${shown.length > 1 ? '<th scope="col">Week</th>' : ''}<th scope="col">Sport</th><th scope="col">Prescribed</th><th scope="col">Actual</th><th scope="col">Actual time</th></tr></thead>
-      <tbody>${rows.join('')}</tbody></table></div>
-      <p class="cws-note">Actual includes programmed and unprogrammed Strava activities, plus programmed sessions logged in the portal without Strava. Each workout is counted once.</p></div>`;
-  }
-
-  // ── Activity list ──────────────────────────────────────────────────────────
 
   function pill(status) {
     const s = STATUS[status] || STATUS.unprogrammed;
     return `<span class="sa-pill is-${esc(status)}"><span aria-hidden="true">${s.glyph}</span>${esc(s.short)}</span>`;
   }
 
-  function itemTitle(item) {
-    if (item.activity) {
-      const dist = fmtDistance(item.activity.distanceM, item.activity.sport);
-      return `${item.activity.name || item.activity.sportType || 'Activity'}${dist ? ` — ${dist}` : ''}`;
-    }
-    const s = item.session;
-    const planned = s.plannedKm ? ` — ${fmtDistance(s.plannedKm * 1000, s.sport)}` : '';
-    return `${s.title}${planned && !/\d\s*km/i.test(s.title) ? planned : ''}`;
+  // "3 Runs · 46.5km, planned 4 · 63km". Actual counts every activity, so it
+  // can exceed the plan; it is never written as a fraction of it.
+  function sportChip(sport, prescribed, actual) {
+    const p = prescribed || { sessions: 0, km: null };
+    const a = actual || { sessions: 0, distanceM: null };
+    if (!p.sessions && !a.sessions) return '';
+    const [one, many] = SPORT_NOUN[sport];
+    const noun = n => (n === 1 ? one : many);
+    const actualDist = sport !== 'strength' ? fmtDistance(a.distanceM, sport) : null;
+    const plannedDist = sport !== 'strength' && p.km ? fmtDistance(p.km * 1000, sport) : null;
+    const plan = p.sessions ? `planned ${p.sessions}${plannedDist ? ` · ${plannedDist}` : ''}` : '';
+    return `<span class="sa-chip-stat"><strong>${esc(String(a.sessions))}</strong> ${esc(noun(a.sessions))}${actualDist ? ` · ${esc(actualDist)}` : ''}${plan ? `<em>, ${esc(plan)}</em>` : ''}</span>`;
   }
 
-  function itemMeta(item) {
-    const parts = [];
-    if (item.activity) {
-      const a = item.activity;
-      if (a.startTime) parts.push(a.startTime);
-      const t = fmtDuration(a.movingTimeS);
-      if (t) parts.push(t);
-      if (a.sport === 'running' && a.paceSecPerKm) parts.push(fmtPace(a.paceSecPerKm));
-      if (a.averageHeartrate) parts.push(`${Math.round(a.averageHeartrate)} bpm`);
-      if (item.session && item.status !== 'unprogrammed') parts.push(`for “${item.session.title}”`);
-    } else {
-      const manual = item.manual;
-      if (item.status === 'programmed') parts.push('Logged in portal, no Strava activity');
-      if (manual && manual.movingTimeS) parts.push(fmtDuration(manual.movingTimeS));
-      if (manual && manual.distanceM) parts.push(fmtDistance(manual.distanceM, item.session.sport));
-      if (item.session.plannedMinutes && item.status !== 'programmed') parts.push(`${item.session.plannedMinutes} min planned`);
-      if (item.session.rescheduled) parts.push('rescheduled');
+  function stripHtml(data) {
+    if (!data.connection || data.connection.status !== 'connected') return notConnectedHtml(data.connection);
+    const weeks = data.weeks || [];
+    const week = weeks.find(w => w.weekStart === mondayOf(data.range.startDate)) || weeks[weeks.length - 1];
+    if (!week) return notConnectedHtml(null);
+    const p = week.prescribed;
+    const a = week.actual;
+    const prog = week.programme;
+    const decided = prog.completed + prog.missed;
+    const extra = week.overall.unprogrammedCompleted;
+    const reviews = week.overall.needsReview;
+    const chips = [
+      sportChip('running', p.running, a.running),
+      sportChip('cycling', p.cycling, a.cycling),
+      sportChip('swimming', p.swimming, a.swimming),
+      sportChip('strength', p.strength, a.strength),
+      a.walking.sessions ? sportChip('walking', null, a.walking) : '',
+      extra ? `<span class="sa-chip-stat is-extra"><strong>+${esc(String(extra))}</strong> unprogrammed</span>` : '',
+      reviews ? `<button type="button" class="sa-chip-stat is-review" data-sa-jump="needs_review"><strong>${esc(String(reviews))}</strong> to review</button>` : '',
+      week.overall.trainingMinutes ? `<span class="sa-chip-stat"><strong>${esc(fmtMinutes(week.overall.trainingMinutes))}</strong> training</span>` : '',
+      decided ? `<span class="sa-chip-stat"><strong>${esc(String(prog.completed))}/${esc(String(decided))}</strong> due sessions done</span>` : '',
+    ].filter(Boolean).join('');
+
+    const trend = weeks.slice(-4);
+    const trendRow = (label, pick) => `<div class="sa-trend-row"><span>${esc(label)}</span>${trend.map(w => {
+      const v = pick(w);
+      return `<span title="${esc(fmtRange(w.weekStart, w.weekEnd))}">${v == null ? '—' : esc(String(v))}</span>`;
+    }).join('<i aria-hidden="true">›</i>')}</div>`;
+    const variance = week.variance.runningKm;
+    const sync = data.sync || {};
+    const notes = [];
+    if (sync.pendingEvents) notes.push(`${sync.pendingEvents} Strava update${sync.pendingEvents === 1 ? '' : 's'} still syncing.`);
+    if (data.dataQuality && data.dataQuality.partial) notes.push(`Partial data: ${data.dataQuality.missingSources.join(', ')} could not be read.`);
+
+    return `<div class="sa-strip-body">
+        <span class="sa-strip-lbl">Strava</span>
+        <div class="sa-chips">${chips || '<span class="sa-quiet">No activities this week.</span>'}</div>
+      </div>
+      ${notes.length ? `<p class="sa-quiet sa-note" role="status">${esc(notes.join(' '))}</p>` : ''}
+      <details class="sa-more">
+        <summary>More</summary>
+        <div class="sa-more-body">
+          ${variance != null ? `<div class="sa-trend-row"><span>Running vs plan</span><span>${variance > 0 ? '+' : ''}${esc(fmtNum(variance, 1))} km${p.running.upcomingKm ? ` · ${esc(fmtNum(p.running.upcomingKm, 1))} km still to come` : ''}</span></div>` : ''}
+          ${trendRow('Relative Effort, 4 wk', w => (w.overall.relativeEffort == null ? null : fmtNum(w.overall.relativeEffort)))}
+          ${trendRow('Active days, 4 wk', w => w.overall.activeDays)}
+          ${trendRow('Training time, 4 wk', w => fmtMinutes(w.overall.trainingMinutes) || '0')}
+          <p class="sa-quiet">Unprogrammed work is shown for context and never counts against compliance. Activity data from Strava; summaries only, no routes or locations.</p>
+        </div>
+      </details>`;
+  }
+
+  function cardHtml(item, data) {
+    const a = item.activity;
+    const dist = fmtDistance(a.distanceM, a.sport);
+    const meta = [
+      a.startTime,
+      fmtDuration(a.movingTimeS),
+      a.sport === 'running' && a.paceSecPerKm ? fmtPace(a.paceSecPerKm) : null,
+      a.averageHeartrate ? `${Math.round(a.averageHeartrate)} bpm` : null,
+      item.session && item.status !== 'unprogrammed' ? `for “${item.session.title}”` : null,
+    ].filter(Boolean).map(esc).join(' · ');
+    const type = a.sportType ? String(a.sportType).replace(/([a-z])([A-Z])/g, '$1 $2') : (SPORT_LABEL[a.sport] || 'Activity');
+    return `<details class="sa-card is-${esc(item.status)}" data-sa-item="${esc(item.key)}"${item.status === 'needs_review' ? ' data-sa-review' : ''}>
+      <summary>
+        <span class="sa-card-head"><span class="sa-card-type">Strava · ${esc(type)}</span>${pill(item.status)}</span>
+        <span class="sa-card-name">${esc(a.name || type)}${dist ? ` <span>${esc(dist)}</span>` : ''}</span>
+        ${meta ? `<span class="sa-card-meta">${meta}</span>` : ''}
+      </summary>
+      ${detailHtml(item, data)}
+    </details>`;
+  }
+
+  function paintLanes(code, data) {
+    columnsFor(code).forEach(column => {
+      column.querySelectorAll('.sa-lane').forEach(lane => lane.remove());
+      if (!data || !data.connection || data.connection.status !== 'connected') return;
+      const date = column.dataset.wdStravaDate;
+      const shown = submittedIds(column);
+      const items = (data.items || []).filter(item => item.kind === 'activity' && item.activity.date === date &&
+        !shown.has(String(item.activity.id)));
+      if (!items.length) return;
+      column.insertAdjacentHTML('beforeend', `<div class="sa-lane">${items.map(item => cardHtml(item, data)).join('')}</div>`);
+    });
+  }
+
+  function paint(section, entry) {
+    const code = section.dataset.saCode;
+    section.setAttribute('aria-busy', entry.status === 'loading' ? 'true' : 'false');
+    if (entry.status === 'error') {
+      section.innerHTML = `<div class="sa-strip-body"><span class="sa-strip-lbl">Strava</span><span class="sa-quiet" role="alert">${esc(entry.error)} <button type="button" class="cp-link" data-sa-retry>Retry</button></span></div>`;
+      return;
     }
-    return parts.map(esc).join(' · ');
+    if (!entry.data) return;
+    section.innerHTML = stripHtml(entry.data);
+    paintLanes(code, entry.data);
   }
 
   function detailHtml(item, data) {
@@ -427,70 +364,6 @@
     </div>`;
   }
 
-  function listHtml(items, data, state) {
-    const shown = visible(items, state);
-    if (!items.length) return '<p class="cp-empty">No Strava activities or programmed sessions in this range.</p>';
-    if (!shown.length) return '<p class="cp-empty">Nothing matches these filters.</p>';
-    const byDay = new Map();
-    shown.forEach(item => {
-      const date = item.activity ? item.activity.date : item.session.date;
-      if (!byDay.has(date)) byDay.set(date, []);
-      byDay.get(date).push(item);
-    });
-    return `<ol class="sa-days">${[...byDay.entries()].map(([date, dayItems]) => `<li class="sa-day">
-      <div class="sa-day-head">${esc(fmtDay(date))}</div>
-      <ul class="sa-items">${dayItems.map(item => {
-        const sport = itemSport(item);
-        const open = state.open === item.key;
-        const detailId = `sa-detail-${item.key.replace(/[^A-Za-z0-9_-]/g, '_')}`;
-        return `<li class="sa-item is-${esc(item.status)}${open ? ' is-open' : ''}">
-          <button type="button" class="sa-row" data-sa-open="${esc(item.key)}" aria-expanded="${open}" aria-controls="${esc(detailId)}">
-            <span class="sa-sport is-${esc(sport)}" aria-hidden="true">${esc(SPORT_ICON[sport] || '·')}</span>
-            <span class="sa-main"><span class="sa-title">${esc(itemTitle(item))}</span><span class="sa-meta">${itemMeta(item)}</span></span>
-            ${pill(item.status)}
-            <span class="sr-only">${esc(SPORT_LABEL[sport] || '')}, ${esc((STATUS[item.status] || {}).label || '')}</span>
-          </button>
-          ${open ? detailHtml(item, data) : ''}
-        </li>`;
-      }).join('')}</ul></li>`).join('')}</ol>`;
-  }
-
-  function syncNote(data) {
-    const sync = data.sync || {};
-    const parts = [];
-    if (!sync.connected) parts.push('Strava is not connected for this athlete, so no new activities will arrive.');
-    else if (sync.pendingEvents) parts.push(`${sync.pendingEvents} Strava update${sync.pendingEvents === 1 ? '' : 's'} still syncing; recent sessions show as “Syncing” rather than missed.`);
-    if (data.dataQuality && data.dataQuality.partial) parts.push(`Partial data: ${data.dataQuality.missingSources.join(', ')} could not be read.`);
-    return parts.length ? `<p class="cp-partial" role="status">${esc(parts.join(' '))}</p>` : '';
-  }
-
-  function bodyHtml(code, data) {
-    const state = stateFor(code);
-    if (!data.connection || data.connection.status !== 'connected') return notConnectedHtml(data.connection);
-    const items = data.items || [];
-    const weeks = data.weeks || [];
-    const focusWeek = weeks.find(w => w.weekStart === mondayOf(data.range.endDate)) || weeks[weeks.length - 1];
-    return `${toolbarHtml(state, items)}
-      ${syncNote(data)}
-      ${overviewHtml(focusWeek, weeks)}
-      ${totalsTableHtml(weeks, data.range)}
-      <div class="cws-row"><div class="cws-lbl">Activities · ${esc(fmtRange(data.range.startDate, data.range.endDate))}</div>${listHtml(items, data, state)}</div>
-      <p class="sa-foot">Activity data from Strava${data.connection.connectedAt ? `, connected ${esc(fmtDay(String(data.connection.connectedAt).slice(0, 10), { day: 'numeric', month: 'short', year: 'numeric' }))}` : ''}. Summaries only: no routes or locations.</p>`;
-  }
-
-  function paint(section, entry) {
-    const body = section.querySelector('.sa-body');
-    if (!body) return;
-    section.setAttribute('aria-busy', entry.status === 'loading' ? 'true' : 'false');
-    if (entry.status === 'loading') {
-      body.innerHTML = entry.data ? bodyHtml(section.dataset.saCode, entry.data) : '<p class="cp-empty" role="status">Loading activities…</p>';
-    } else if (entry.status === 'error') {
-      body.innerHTML = `<p class="cp-partial" role="alert">${esc(entry.error)} <button type="button" class="cp-link" data-sa-retry>Retry</button></p>`;
-    } else {
-      body.innerHTML = bodyHtml(section.dataset.saCode, entry.data);
-    }
-  }
-
   // ── Loading ────────────────────────────────────────────────────────────────
 
   function liveSection(code) {
@@ -498,47 +371,38 @@
   }
 
   async function load(code, { force = false } = {}) {
-    const state = stateFor(code);
-    const key = `${code}|${state.start}|${state.end}`;
+    const range = ledgerRange(code);
+    const key = `${code}|${range.start}|${range.end}`;
     const cached = cache.get(key);
-    const section = liveSection(code);
     if (cached && !force && cached.status !== 'error') {
+      const section = liveSection(code);
       if (section) paint(section, cached);
       if (cached.status !== 'loading') return cached;
     }
-    const previous = cached && cached.data;
-    const entry = { status: 'loading', data: previous || null };
+    const entry = { status: 'loading', data: cached && cached.data ? cached.data : null };
     cache.set(key, entry);
-    if (section) paint(section, entry);
     try {
-      const params = new URLSearchParams({ action: 'strava_activities', code, start: state.start, end: state.end });
+      const params = new URLSearchParams({ action: 'strava_activities', code, start: range.start, end: range.end });
       const response = await root.fetch(`/api/athletes?${params}`, { cache: 'no-store' });
       const data = await response.json().catch(() => ({}));
       if (!response.ok || data.ok !== true) {
-        Object.assign(entry, { status: 'error', error: data.error || `Activities could not be loaded (HTTP ${response.status}).` });
+        Object.assign(entry, { status: 'error', error: data.error || `Strava activities could not be loaded (HTTP ${response.status}).` });
       } else {
         Object.assign(entry, { status: 'ready', data });
       }
     } catch {
-      Object.assign(entry, { status: 'error', error: 'Activities could not be loaded. Check the connection and retry.' });
+      Object.assign(entry, { status: 'error', error: 'Strava activities could not be loaded.' });
     }
+    // The coach may have moved to another week or athlete while this loaded.
     const live = liveSection(code);
-    const current = stateFor(code);
-    if (live && `${code}|${current.start}|${current.end}` === key) paint(live, entry);
+    const now = ledgerRange(code);
+    if (live && `${code}|${now.start}|${now.end}` === key) paint(live, entry);
     return entry;
   }
 
   function hydrate(container) {
     if (!container) return;
     container.querySelectorAll('.sa[data-sa-code]').forEach(section => load(section.dataset.saCode));
-  }
-
-  function repaint(code) {
-    const state = stateFor(code);
-    const entry = cache.get(`${code}|${state.start}|${state.end}`);
-    const section = liveSection(code);
-    if (section && entry) paint(section, entry);
-    else if (section) load(code);
   }
 
   async function decide(button, code, activityId, sessionKey, decision) {
@@ -563,31 +427,31 @@
     }
   }
 
+  function codeFor(target) {
+    const card = target.closest('.sa-card');
+    if (card) {
+      const column = card.closest('.wd-strava-col');
+      return column ? column.dataset.wdStravaId : null;
+    }
+    const section = target.closest('.sa[data-sa-code]');
+    return section ? section.dataset.saCode : null;
+  }
+
   function onClick(event) {
     const target = event.target;
     if (!target || typeof target.closest !== 'function') return;
-    const section = target.closest('.sa[data-sa-code]');
-    if (!section) return;
-    const code = section.dataset.saCode;
-    const state = stateFor(code);
+    if (!target.closest('.sa-card, .sa[data-sa-code]')) return;
+    const code = codeFor(target);
+    if (!code) return;
 
-    const preset = target.closest('[data-sa-preset]');
-    if (preset) {
-      Object.assign(state, { preset: preset.dataset.saPreset, ...rangeFor(preset.dataset.saPreset), open: '' });
-      writePrefs(state);
-      load(code);
-      return;
-    }
-    const show = target.closest('[data-sa-show]');
-    if (show) { state.show = show.dataset.saShow; writePrefs(state); repaint(code); return; }
-    const sport = target.closest('[data-sa-sport]');
-    if (sport) { state.sport = sport.dataset.saSport; writePrefs(state); repaint(code); return; }
-    const open = target.closest('[data-sa-open]');
-    if (open) {
-      state.open = state.open === open.dataset.saOpen ? '' : open.dataset.saOpen;
-      repaint(code);
-      const row = liveSection(code)?.querySelector(`[data-sa-open="${CSS.escape(open.dataset.saOpen)}"]`);
-      if (row) row.focus();
+    const jump = target.closest('[data-sa-jump]');
+    if (jump) {
+      const first = root.document.querySelector(`#fp-body .wd-strava-col[data-wd-strava-id="${CSS.escape(code)}"] .sa-card[data-sa-review]`);
+      if (first) {
+        first.open = true;
+        first.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        first.querySelector('summary')?.focus();
+      }
       return;
     }
     const decision = target.closest('[data-sa-decision]');
@@ -597,7 +461,7 @@
     }
     const link = target.closest('[data-sa-link]');
     if (link) {
-      const select = section.querySelector(`select[data-sa-link-activity="${CSS.escape(link.dataset.saLink)}"]`);
+      const select = link.closest('.sa-detail')?.querySelector(`select[data-sa-link-activity="${CSS.escape(link.dataset.saLink)}"]`);
       const sessionKey = select && select.value;
       if (!sessionKey) {
         const status = link.closest('.sa-detail')?.querySelector('.sa-status');
@@ -607,39 +471,13 @@
       decide(link, code, link.dataset.saLink, sessionKey, 'confirmed');
       return;
     }
-    if (target.closest('[data-sa-retry]')) {
-      cache.delete(`${code}|${state.start}|${state.end}`);
-      load(code, { force: true });
-    }
+    if (target.closest('[data-sa-retry]')) load(code, { force: true });
   }
 
-  function onChange(event) {
-    const input = event.target;
-    if (!input || !input.matches || !input.matches('[data-sa-date]')) return;
-    const section = input.closest('.sa[data-sa-code]');
-    if (!section) return;
-    const code = section.dataset.saCode;
-    const state = stateFor(code);
-    const value = isoDate(input.value);
-    if (!value) return;
-    const next = { ...state, [input.dataset.saDate]: value };
-    if (next.start > next.end) return;
-    const days = Math.round((dateFrom(next.end) - dateFrom(next.start)) / 86400000) + 1;
-    if (days > 92) {
-      input.setCustomValidity('Choose 92 days or fewer');
-      input.reportValidity();
-      return;
-    }
-    input.setCustomValidity('');
-    Object.assign(state, { start: next.start, end: next.end, preset: 'custom', open: '' });
-    load(code);
-  }
-
-  const api = { placeholder, hydrate, load, _cache: cache, _view: view, _bodyHtml: bodyHtml, _rangeFor: rangeFor };
+  const api = { placeholder, hydrate, load, _cache: cache, _stripHtml: stripHtml, _cardHtml: cardHtml };
   root.DP_STRAVA = api;
 
   if (root.document && typeof root.document.addEventListener === 'function') {
     root.document.addEventListener('click', onClick);
-    root.document.addEventListener('change', onChange);
   }
 })(typeof window !== 'undefined' ? window : globalThis);

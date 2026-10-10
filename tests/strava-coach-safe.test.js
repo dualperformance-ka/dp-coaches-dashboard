@@ -43,7 +43,7 @@ test('coach Strava endpoint remains blocked while safe submitted-log provenance 
   assert.match(index, /Athlete confirmed via Strava/);
   assert.match(index, /Matched and submitted by the athlete in the Dual Performance portal/);
   assert.match(index, /submittedStravaHtml/);
-  assert.match(index, /<details class="wd-strava-act submitted">/);
+  assert.match(index, /<details class="wd-strava-act submitted"[ >]/);
   assert.match(index, /Prescribed workout/);
   assert.match(index, /Athlete feedback/);
   assert.match(index, /ask the athlete to upload the original FIT\/TCX\/GPX/);

@@ -10675,7 +10675,7 @@ function buildFPCard(a, weekOffset = 0) {
               ${summary.painFlagged ? '<div class="wd-submitted-copy alert"><strong>⚠ Pain or niggle flagged</strong></div>' : ''}
               ${summary.notes ? `<div class="wd-submitted-copy">${esc(summary.notes)}</div>` : ''}
             </div>` : '';
-            return `<details class="wd-strava-act submitted">
+            return `<details class="wd-strava-act submitted" data-strava-write="${esc(session._clientWriteId || '')}">
               <summary class="wd-submitted-summary" aria-label="Open submitted activity details for ${esc(activityName)}">
                 <div class="wd-submitted-headline">
                   <div class="wd-submitted-title">
@@ -11228,10 +11228,10 @@ function buildFPCard(a, weekOffset = 0) {
     // The weekly review is the first card under the week strip: the same week
     // summary the athlete sees, built server-side from coach-safe sources. It
     // carries its own programme-week navigation.
-    // All activities follows the ledger: every Strava activity the athlete has
-    // shared, programmed or not, against what was prescribed. It renders a
-    // "not shared" card until the athlete opts in from the portal.
-    training: [weekStrip, window.DP_PARITY?.weeklySummaryPlaceholder(a.id) || '', weekDetailHtml, window.DP_STRAVA?.placeholder(a.id) || ''],
+    // Strava activity is merged into the ledger itself: a one-line week strip
+    // sits directly above it, and every activity lands in its day's Strava
+    // column labelled programmed or unprogrammed (public/strava-activities.js).
+    training: [weekStrip, window.DP_PARITY?.weeklySummaryPlaceholder(a.id) || '', window.DP_STRAVA?.placeholder(a.id) || '', weekDetailHtml],
     running:  [buildRunningPanel(a), programmeVolumeHtml, buildMileageTrend(a)],
     strength: [buildStrengthPanel(a), prsHtml, strengthBestsHtml],
     body:     [trendsHtml, bodyNutrPart, dailyNutrHtml, progressPhotosHtml],

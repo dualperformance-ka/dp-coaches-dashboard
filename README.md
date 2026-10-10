@@ -57,9 +57,10 @@ broken duplicate callback has been removed rather than consuming another slot.
 
 ## Strava cache and webhook rollout
 
-**All activities:** an athlete's Training tab shows every Strava activity the
-portal has synced for them, labelled programmed or unprogrammed against their
-plan. Connecting Strava in the portal is the only step: there is no separate
+**Strava in the Training ledger:** an athlete's day-by-day ledger shows every
+Strava activity the portal has synced for them in that day's Strava column,
+labelled programmed, unprogrammed or review, with a one-line week strip above
+it. Connecting Strava in the portal is the only step: there is no separate
 sharing toggle, and a disconnected athlete shows nothing (the portal purges
 their cache on disconnect). Coaches see summaries only, never tokens, routes or
 locations, and only for athletes they are scoped to. `STRAVA_COACH_SHARING=off`

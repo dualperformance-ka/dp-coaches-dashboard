@@ -1,9 +1,17 @@
-# All activities: shared Strava activity in the coaches dashboard
+# Strava activity in the Training ledger
 
 Every Strava activity the portal has synced for an athlete, classified against
-their programme, in the athlete's **Training** tab. Connecting Strava in the
-portal is the only step. Covers running, cycling,
-swimming, strength, walking and every other Strava sport type.
+their programme, merged into the athlete's **Training** tab ledger. Connecting
+Strava in the portal is the only step.
+
+- Each day's Strava column gets a compact card per activity, labelled
+  Programmed, Unprogrammed or Review, expandable for detail and coach actions.
+  A run the athlete already submitted keeps its existing card and is not drawn
+  twice (matched on `training_session_logs.client_write_id`).
+- A one-line strip above the ledger gives the week's actual vs planned per
+  sport, unprogrammed count, reviews, training time and due sessions done.
+  "More" opens the running variance and four-week trends.
+- The week is whatever week the ledger shows; there are no separate filters.
 
 ## Who owns what
 
