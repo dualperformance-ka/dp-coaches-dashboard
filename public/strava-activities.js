@@ -168,28 +168,24 @@
     return `<section class="fpc-section sa" data-sa-code="${esc(code)}" aria-labelledby="sa-title-${esc(code)}" aria-busy="true">
       <div class="sa-head">
         <div class="fpc-section-title" id="sa-title-${esc(code)}">All activities</div>
-        <span class="sa-attrib">Strava · shared by athlete</span>
+        <span class="sa-attrib">From Strava</span>
       </div>
       <div class="sa-body"><p class="cp-empty" role="status">Loading activities…</p></div>
     </section>`;
   }
 
-  function notSharedHtml(sharing) {
-    const status = sharing && sharing.status;
+  function notConnectedHtml(connection) {
+    const status = connection && connection.status;
     if (status === 'disabled') {
-      return `<div class="sa-gate"><strong>Strava sharing is switched off</strong>
-        <p>Coach access to shared Strava activities is turned off for this deployment (STRAVA_COACH_SHARING). Programme compliance still uses the athlete’s submitted logs.</p></div>`;
+      return `<div class="sa-gate"><strong>Strava activities are switched off</strong>
+        <p>This view is turned off for this deployment (STRAVA_COACH_SHARING=off). Programme compliance still uses the athlete’s submitted logs.</p></div>`;
     }
     if (status === 'unavailable') {
-      return `<div class="sa-gate"><strong>Sharing status unavailable</strong>
-        <p>The sharing record could not be read, so nothing is shown. If this persists, check the strava_coach_sharing migration has been applied.</p></div>`;
+      return `<div class="sa-gate"><strong>Strava connection could not be checked</strong>
+        <p>Nothing is shown until it can be read. Retry, or check the dashboard’s Supabase settings if this persists.</p></div>`;
     }
-    const revoked = status === 'revoked';
-    return `<div class="sa-gate"><strong>${revoked ? 'The athlete stopped sharing Strava activities' : 'Not shared by the athlete'}</strong>
-      <p>${revoked
-        ? 'They turned sharing off, or disconnected Strava. Nothing from their Strava account is visible to coaches until they share again.'
-        : 'Strava activities appear here only after the athlete turns on “Share Strava activities with my coaches” in the portal under Preferences.'}
-      Compliance still uses their submitted portal logs.</p></div>`;
+    return `<div class="sa-gate"><strong>Strava not connected</strong>
+      <p>Activities appear here as soon as the athlete connects Strava in the portal. Compliance still uses their submitted portal logs.</p></div>`;
   }
 
   function chip(group, value, label, active, count) {
@@ -470,7 +466,7 @@
 
   function bodyHtml(code, data) {
     const state = stateFor(code);
-    if (!data.sharing || data.sharing.status !== 'granted') return notSharedHtml(data.sharing);
+    if (!data.connection || data.connection.status !== 'connected') return notConnectedHtml(data.connection);
     const items = data.items || [];
     const weeks = data.weeks || [];
     const focusWeek = weeks.find(w => w.weekStart === mondayOf(data.range.endDate)) || weeks[weeks.length - 1];
@@ -479,7 +475,7 @@
       ${overviewHtml(focusWeek, weeks)}
       ${totalsTableHtml(weeks, data.range)}
       <div class="cws-row"><div class="cws-lbl">Activities · ${esc(fmtRange(data.range.startDate, data.range.endDate))}</div>${listHtml(items, data, state)}</div>
-      <p class="sa-foot">Activity data from Strava, shared by the athlete${data.sharing.grantedAt ? ` since ${esc(fmtDay(String(data.sharing.grantedAt).slice(0, 10), { day: 'numeric', month: 'short', year: 'numeric' }))}` : ''}. Summaries only: no routes or locations.</p>`;
+      <p class="sa-foot">Activity data from Strava${data.connection.connectedAt ? `, connected ${esc(fmtDay(String(data.connection.connectedAt).slice(0, 10), { day: 'numeric', month: 'short', year: 'numeric' }))}` : ''}. Summaries only: no routes or locations.</p>`;
   }
 
   function paint(section, entry) {

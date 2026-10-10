@@ -1,7 +1,8 @@
 # All activities: shared Strava activity in the coaches dashboard
 
-Every Strava activity an athlete has chosen to share, classified against their
-programme, in the athlete's **Training** tab. Covers running, cycling,
+Every Strava activity the portal has synced for an athlete, classified against
+their programme, in the athlete's **Training** tab. Connecting Strava in the
+portal is the only step. Covers running, cycling,
 swimming, strength, walking and every other Strava sport type.
 
 ## Who owns what
@@ -9,7 +10,7 @@ swimming, strength, walking and every other Strava sport type.
 | Concern | Owner | Notes |
 | --- | --- | --- |
 | OAuth, token refresh, webhook, cron drain, 180-day backfill, dedupe, deletes | Athlete portal (`api/strava.js`, `api/_lib/strava-*.js`) | Unchanged. Already stores every sport type in `strava_activities`, upserted on `(athlete_code, strava_activity_id)`. |
-| Consent grant and revoke | Athlete portal, Preferences | Writes `strava_coach_sharing`. Disconnect and deauthorisation revoke it. |
+| Connect and disconnect | Athlete portal | Connected = activities visible to the athlete's coaches. Disconnect and deauthorisation purge the cache. |
 | Reading, classifying, coach decisions | This dashboard | `server/coach-strava-activities.js`, `server/strava-activity-classifier.js`. Reads the cache only; never calls Strava. |
 | Matching rules | Shared | `public/js/strava-match.js` is byte-identical to the portal's copy. |
 
@@ -17,14 +18,14 @@ swimming, strength, walking and every other Strava sport type.
 target an older cache schema (`activity_id`, `activity_date`, `streams`) that
 was never applied to production. They are not used here and were left alone.
 
-## Access boundary (checked on every request)
+## Access (checked on every request)
 
 1. `requireCoach` (dashboard key), then `resolveCoachIdentity` (registered,
    enabled coach) and `assertAthleteAllowed` (coach_athletes scope).
-2. `STRAVA_COACH_SHARING=on` in the deployment. Off by default.
-3. A `granted` row in `strava_coach_sharing` at the current consent version
-   (`2026-10`). No row, revoked, an older version, or the table missing all
-   mean "not shared", and `strava_activities` is not read at all.
+2. The athlete has Strava connected (`athlete_data` key `strava_tokens`,
+   projected to `strava_athlete_id` so tokens never leave the database). Not
+   connected means `strava_activities` is not read.
+3. `STRAVA_COACH_SHARING=off` hides the view. Unset means on.
 
 Coaches receive a field allowlist per activity (`coachActivitySummary`): name,
 type, local date and start time, distance, moving and elapsed time, pace or
@@ -72,21 +73,17 @@ synced since that day (two-day grace). Otherwise it is **awaiting sync**.
 
 ## Rollout
 
-1. Apply `supabase/migrations/20261010000001_strava_coach_sharing.sql`, then run
-   `supabase/tests/strava-coach-sharing.verify.sql`.
-2. Deploy the portal release (Preferences toggle, revoke on disconnect).
-3. Deploy this dashboard. All activities shows "switched off" until step 4.
-4. When you are satisfied the use fits your Strava API agreement, set
-   `STRAVA_COACH_SHARING=on` in the dashboard's Vercel project and redeploy.
-   Set the same variable in the portal project to show athletes the toggle.
+1. Apply `supabase/migrations/20261010000001_strava_activity_reviews.sql`, then
+   run `supabase/tests/strava-activity-reviews.verify.sql`. Only coach
+   confirm/reject needs it; the view itself works without it.
+2. Deploy this dashboard. No portal change is required.
 
-Rollback: unset `STRAVA_COACH_SHARING` (instant, no data change), or run
-`supabase/rollback/20261010000001_strava_coach_sharing_down.sql`.
+Rollback: set `STRAVA_COACH_SHARING=off` (instant, no data change), or run
+`supabase/rollback/20261010000001_strava_activity_reviews_down.sql`.
 
 ## Strava terms
 
 Strava's written API agreement says a user's data may only be shown to that
 user. Strava has told at least one coaching platform that coaching
-relationships are not the target of that rule, but that is not in the written
-terms. Describe this coach-display use case in the Developer Program
-submission and get Strava's answer in writing before switching it on.
+relationships are not the target of that rule. Worth describing this
+coach-display use case in the Developer Program submission.

@@ -794,8 +794,8 @@ export function weeklySummary(code = 'KAI') {
 // real loader and classifier (server/coach-strava-activities.js) rather than a
 // hand-shaped response. KAI's current week covers every status: programmed,
 // unprogrammed ride/swim/walk, a threshold the athlete called "Easy Run" (review)
-// and today's long run still to come. ANNA has not shared, so her tab shows the
-// consent card. The rows carry a route polyline on purpose: it must never reach
+// and today's long run still to come. ANNA has not connected Strava. The rows
+// carry a route polyline on purpose: it must never reach
 // the page.
 let stravaId = 9100000000;
 function stravaRow(date, time, type, km, minutes, name, extra = {}) {
@@ -834,9 +834,10 @@ export function stravaCache(code) {
   ];
 }
 
-export function stravaSharing(code) {
+// ANNA has not connected Strava, so her tab shows the not-connected card.
+export function stravaConnection(code) {
   if (code === 'ANNA') return [];
-  return [{ status: 'granted', consent_version: '2026-10', granted_at: stamp(9), revoked_at: null, revoked_reason: null }];
+  return [{ strava_athlete_id: '424242', connected_at: stamp(30) }];
 }
 
 export { ATHLETES, PLAN };

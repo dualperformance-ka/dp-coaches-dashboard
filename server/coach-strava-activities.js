@@ -1,19 +1,23 @@
-// Coach read and review of an athlete's shared Strava activities.
+// Coach read and review of an athlete's Strava activities.
 //
-// THE BOUNDARY, in the order it is enforced on every request:
-//   1. Deployment switch. STRAVA_COACH_SHARING must be "on". Off (the default)
-//      returns status "disabled" and reads nothing from strava_activities.
-//   2. Coach identity and athlete scope. The handler resolves a registered,
+// Connecting Strava in the athlete portal is all it takes: from that moment
+// the portal syncs every activity into strava_activities, and this module shows
+// all of them to the athlete's coaches, labelled programmed or unprogrammed.
+// Disconnecting (or revoking the app on strava.com) purges the cache in the
+// portal, so a disconnected athlete shows nothing.
+//
+// Checked on every request:
+//   1. Coach identity and athlete scope. The handler resolves a registered,
 //      enabled coach and asserts they may see this athlete
 //      (server/coach-scope.js) before calling anything here.
-//   3. Athlete consent. strava_coach_sharing must hold a GRANTED row at the
-//      current consent version. No row, a revoked row, an old version, or the
-//      table not existing yet all mean "not shared", and nothing further is read.
+//   2. The athlete has Strava connected (a strava_tokens row).
+//   3. Kill switch: STRAVA_COACH_SHARING=off hides the view with no code
+//      change. Unset means on.
 //
 // What a coach receives is a SUMMARY per activity, built field by field in
 // coachActivitySummary (server/strava-activity-classifier.js). Never tokens:
-// the only value read from the token row is strava_athlete_id, projected by
-// PostgREST so the tokens never leave the database. Never streams, laps, the
+// the token row is projected to strava_athlete_id and connected_at inside
+// PostgREST, so the tokens never leave the database. Never streams, laps, the
 // route polyline or coordinates.
 //
 // This module never calls Strava. It reads the cache the athlete portal keeps
@@ -22,11 +26,6 @@
 
 import { addDaysISO, adelaideToday, isUuid, toIsoDate } from './performance-summary-core.js';
 import { classifyAthleteActivities, mondayOf } from './strava-activity-classifier.js';
-
-// Bump in BOTH repos (here and the portal's api/strava.js) if the consent
-// wording changes materially. Older grants then stop counting until the
-// athlete agrees to the new wording.
-export const STRAVA_SHARING_CONSENT_VERSION = '2026-10';
 
 export const MAX_RANGE_DAYS = 92;
 const TREND_WEEKS = 4;
@@ -40,8 +39,9 @@ function httpError(message, status, code) {
   return error;
 }
 
-export function coachSharingEnabled(env = process.env) {
-  return /^(on|true|1|yes)$/i.test(String(env.STRAVA_COACH_SHARING || '').trim());
+/** On unless the deployment explicitly turns it off. */
+export function coachStravaEnabled(env = process.env) {
+  return !/^(off|false|0|no)$/i.test(String(env.STRAVA_COACH_SHARING || '').trim());
 }
 
 export function validCode(value) {
@@ -61,46 +61,39 @@ export function resolveRange(start, end, todayISO) {
 }
 
 /**
- * Pure: is this consent row a live grant?
- * Returns { status: 'granted'|'revoked'|'not_shared'|'unavailable', ... }.
+ * Pure: the athlete's Strava connection from the projected token row.
+ * Returns { status: 'connected'|'not_connected'|'unavailable', ... }.
  */
-export function sharingState(row, { readFailed = false } = {}) {
+export function connectionState(row, { readFailed = false } = {}) {
   if (readFailed) return { status: 'unavailable' };
-  if (!row) return { status: 'not_shared' };
-  if (row.status === 'revoked') {
-    return { status: 'revoked', revokedAt: row.revoked_at || null, revokedReason: row.revoked_reason || null };
-  }
-  if (row.status === 'granted' && row.granted_at && row.consent_version === STRAVA_SHARING_CONSENT_VERSION) {
-    return { status: 'granted', grantedAt: row.granted_at, consentVersion: row.consent_version };
-  }
-  if (row.status === 'granted') return { status: 'not_shared', staleConsentVersion: row.consent_version || null };
-  return { status: 'not_shared' };
+  const id = row ? String(row.strava_athlete_id || '') : '';
+  if (!/^\d+$/.test(id)) return { status: 'not_connected' };
+  return { status: 'connected', stravaAthleteId: id, connectedAt: row.connected_at || null };
 }
 
 const enc = encodeURIComponent;
 
-async function readSharing(sb, code) {
+async function readConnection(sb, code) {
   try {
-    const rows = await sb(`strava_coach_sharing?athlete_code=eq.${enc(code)}` +
-      '&select=status,consent_version,granted_at,revoked_at,revoked_reason&limit=1');
-    return sharingState(Array.isArray(rows) ? rows[0] : null);
+    const rows = await sb(`athlete_data?athlete_code=eq.${enc(code)}&key=eq.strava_tokens` +
+      '&select=strava_athlete_id:value->>strava_athlete_id,connected_at:value->>connected_at&limit=1');
+    return connectionState(Array.isArray(rows) ? rows[0] : null);
   } catch (error) {
-    // Most likely the migration has not been applied yet. Fail closed.
-    console.warn('[coach-strava] consent read failed:', error && error.message);
-    return sharingState(null, { readFailed: true });
+    console.warn('[coach-strava] connection read failed:', error && error.message);
+    return connectionState(null, { readFailed: true });
   }
 }
 
-/** Throws unless the athlete currently shares with coaches. */
-export async function assertSharing(sb, code, env = process.env) {
-  if (!coachSharingEnabled(env)) {
-    throw httpError('Strava activity sharing is switched off for this deployment', 403, 'strava_sharing_disabled');
+/** Throws unless the view is on and the athlete has Strava connected. */
+export async function assertConnected(sb, code, env = process.env) {
+  if (!coachStravaEnabled(env)) {
+    throw httpError('Strava activities are switched off for this deployment', 403, 'strava_coach_disabled');
   }
-  const sharing = await readSharing(sb, code);
-  if (sharing.status !== 'granted') {
-    throw httpError('This athlete has not shared their Strava activities with coaches', 403, 'strava_not_shared');
+  const connection = await readConnection(sb, code);
+  if (connection.status !== 'connected') {
+    throw httpError('This athlete does not have Strava connected', 403, 'strava_not_connected');
   }
-  return sharing;
+  return connection;
 }
 
 function optional(name, promise, missing) {
@@ -125,13 +118,13 @@ export async function loadCoachStravaActivities({ code: rawCode, start, end, sb,
   const todayISO = adelaideToday(now);
   const range = resolveRange(start, end, todayISO);
 
-  if (!coachSharingEnabled(env)) {
-    return { athleteCode: code, sharing: { status: 'disabled' }, range, items: [], weeks: [], sessions: [] };
+  if (!coachStravaEnabled(env)) {
+    return { athleteCode: code, connection: { status: 'disabled' }, range, items: [], weeks: [], sessions: [] };
   }
-  const sharing = await readSharing(sb, code);
-  if (sharing.status !== 'granted') {
-    // Not one row of strava_activities is read without a live grant.
-    return { athleteCode: code, sharing, range, items: [], weeks: [], sessions: [] };
+  const connection = await readConnection(sb, code);
+  if (connection.status !== 'connected') {
+    // Nothing is read from strava_activities for an athlete without Strava.
+    return { athleteCode: code, connection, range, items: [], weeks: [], sessions: [] };
   }
 
   // Classify a window that always covers the last four weeks of the range, so
@@ -142,7 +135,7 @@ export async function loadCoachStravaActivities({ code: rawCode, start, end, sb,
   const plannedTo = addDaysISO(window.endDate, 14);
   const missing = [];
 
-  const [activities, planned, state, reviews, trainingLogs, tokenRows, splitRows, lastSyncRows] = await Promise.all([
+  const [activities, planned, state, reviews, trainingLogs, splitRows, lastSyncRows] = await Promise.all([
     sb(`strava_activities?athlete_code=eq.${enc(code)}` +
       `&and=(start_date_local.gte.${enc(`${window.startDate}T00:00:00Z`)},start_date_local.lt.${enc(`${addDaysISO(window.endDate, 1)}T00:00:00Z`)})` +
       '&select=strava_activity_id,start_date_local,sport_type,name,distance_m,moving_time_s,elapsed_time_s,suffer_score,summary,synced_at' +
@@ -158,9 +151,6 @@ export async function loadCoachStravaActivities({ code: rawCode, start, end, sb,
     optional('training_session_logs', sb(`training_session_logs?athlete_code=eq.${enc(code)}` +
       `&and=(session_date.gte.${window.startDate},session_date.lte.${window.endDate})` +
       '&select=session_name,session_category,session_date,distance_km,duration_min,client_write_id&limit=2000'), missing),
-    // Projection, not the row: the tokens themselves never leave the database.
-    optional('strava_connection', sb(`athlete_data?athlete_code=eq.${enc(code)}&key=eq.strava_tokens` +
-      '&select=strava_athlete_id:value->>strava_athlete_id&limit=1'), missing),
     optional('workout_splits', sb(`workout_splits?archived=eq.false&or=(athlete_code.is.null,athlete_code.eq.${enc(code)})&select=name&limit=200`), missing),
     optional('last_sync', sb(`strava_activities?athlete_code=eq.${enc(code)}&select=synced_at&order=synced_at.desc&limit=1`), missing),
   ]);
@@ -176,8 +166,7 @@ export async function loadCoachStravaActivities({ code: rawCode, start, end, sb,
   const structuredIds = plannedRows.filter(r => r.prescription_mode === 'structured').map(r => r.id).filter(isUuid);
   const prefix = `session_${code}_`;
 
-  const connection = Array.isArray(tokenRows) ? tokenRows[0] : null;
-  const stravaAthleteId = connection && /^\d+$/.test(String(connection.strava_athlete_id || '')) ? connection.strava_athlete_id : null;
+  const stravaAthleteId = connection.stravaAthleteId;
 
   const [loggedRows, libraryRows, exerciseRows, runStepRows, pendingRows] = await Promise.all([
     sessionKeys.length
@@ -240,7 +229,7 @@ export async function loadCoachStravaActivities({ code: rawCode, start, end, sb,
   const shownActivities = new Set(items.filter(item => item.activity).map(item => item.activity.id));
   return {
     athleteCode: code,
-    sharing,
+    connection: { status: connection.status, connectedAt: connection.connectedAt },
     sync: { connected: sync.connected, pendingEvents: sync.pendingEvents, lastSyncedAt: sync.lastSyncedAt },
     range,
     today: todayISO,
@@ -280,7 +269,7 @@ export function validReviewInput(body = {}) {
  */
 export async function saveStravaReview({ body, coach, sb, env = process.env }) {
   const input = validReviewInput(body);
-  await assertSharing(sb, input.code, env);
+  await assertConnected(sb, input.code, env);
 
   const [activityRows, sessionRows] = await Promise.all([
     sb(`strava_activities?athlete_code=eq.${enc(input.code)}&strava_activity_id=eq.${input.activityId}&select=strava_activity_id&limit=1`),

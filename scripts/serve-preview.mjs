@@ -95,7 +95,6 @@ const FIXTURES = [
     const code = String(params.get('code') || '').toUpperCase();
     const sb = async path => {
       const table = path.split('?')[0];
-      if (table === 'strava_coach_sharing') return FIXTURE.stravaSharing(code);
       if (table === 'strava_activities') {
         const rows = FIXTURE.stravaCache(code);
         return path.includes('order=synced_at') ? rows.slice(-1) : rows;
@@ -108,11 +107,11 @@ const FIXTURES = [
         return FIXTURE.PLAN.filter(row => row.athlete_code === code && row.status === 'Completed')
           .map(row => ({ session_key: `session_${code}_${row.id}` }));
       }
-      if (table === 'athlete_data' && path.includes('strava_tokens')) return [{ strava_athlete_id: '424242' }];
+      if (table === 'athlete_data' && path.includes('strava_tokens')) return FIXTURE.stravaConnection(code);
       return [];
     };
     return { ok: true, ...(await loadCoachStravaActivities({
-      code, start: params.get('start'), end: params.get('end'), sb, env: { STRAVA_COACH_SHARING: 'on' },
+      code, start: params.get('start'), end: params.get('end'), sb, env: {},
     })) };
   }],
   // Notion is still a second source in production. The preview returns it empty

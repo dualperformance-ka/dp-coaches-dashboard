@@ -18,11 +18,10 @@ import {
   sportFamily,
 } from '../server/strava-activity-classifier.js';
 import {
-  STRAVA_SHARING_CONSENT_VERSION,
   loadCoachStravaActivities,
   resolveRange,
   saveStravaReview,
-  sharingState,
+  connectionState,
 } from '../server/coach-strava-activities.js';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
@@ -427,53 +426,65 @@ function recordingSb(tables) {
   return { sb, calls };
 }
 
-const granted = [{ status: 'granted', consent_version: STRAVA_SHARING_CONSENT_VERSION, granted_at: '2026-10-01T00:00:00Z' }];
-const ON = { STRAVA_COACH_SHARING: 'on' };
+// The projected strava_tokens row: an athlete with Strava connected.
+const CONNECTED = path => (path.includes('strava_tokens') ? [{ strava_athlete_id: '555', connected_at: '2026-09-01T00:00:00Z' }] : []);
 const NOW = new Date('2026-10-10T02:00:00Z'); // Sat 10 Oct, Adelaide
 
-test('16. revoked consent prevents coach access: strava_activities is never read', async () => {
-  for (const consent of [
-    [], // never shared
-    [{ status: 'revoked', consent_version: STRAVA_SHARING_CONSENT_VERSION, revoked_at: '2026-10-09T00:00:00Z', revoked_reason: 'athlete' }],
-    [{ status: 'granted', consent_version: '2025-01', granted_at: '2025-01-01T00:00:00Z' }], // old wording
-  ]) {
-    const { sb, calls } = recordingSb({ strava_coach_sharing: consent, strava_activities: [activity('2026-10-05', 'Run', 10, 50)] });
-    const result = await loadCoachStravaActivities({ code: 'ALVIN', sb, now: NOW, env: ON });
-    assert.notEqual(result.sharing.status, 'granted');
+test('every activity of a connected athlete appears with no further step from the athlete', async () => {
+  const { sb, calls } = recordingSb({
+    athlete_data: CONNECTED,
+    strava_activities: [
+      activity('2026-10-10', 'Run', 2.6, 15, { time: '06:00' }),
+      activity('2026-10-10', 'Run', 5.7, 31, { time: '07:20' }),
+    ],
+  });
+  const result = await loadCoachStravaActivities({ code: 'THOMAS', sb, now: NOW, env: {} });
+  assert.equal(result.connection.status, 'connected');
+  assert.deepEqual(result.items.map(i => i.status), ['unprogrammed', 'unprogrammed'],
+    'a Saturday with nothing planned still shows both runs, as unprogrammed');
+  assert.equal(calls.some(c => c.path.startsWith('strava_coach_sharing')), false, 'no consent table is involved');
+});
+
+test('16. a disconnected athlete shows nothing: strava_activities is never read', async () => {
+  for (const tokens of [[], [{ strava_athlete_id: null }], [{ strava_athlete_id: 'not-a-number' }]]) {
+    const { sb, calls } = recordingSb({ athlete_data: tokens, strava_activities: [activity('2026-10-05', 'Run', 10, 50)] });
+    const result = await loadCoachStravaActivities({ code: 'ALVIN', sb, now: NOW, env: {} });
+    assert.equal(result.connection.status, 'not_connected');
     assert.deepEqual(result.items, []);
     assert.equal(calls.some(c => c.path.startsWith('strava_activities')), false);
   }
 });
 
-test('the deployment switch is off by default and reads nothing', async () => {
-  const { sb, calls } = recordingSb({ strava_coach_sharing: granted });
-  const result = await loadCoachStravaActivities({ code: 'ALVIN', sb, now: NOW, env: {} });
-  assert.equal(result.sharing.status, 'disabled');
-  assert.equal(calls.length, 0);
+test('the kill switch hides the view and reads nothing', async () => {
+  for (const value of ['off', 'false', '0', 'no']) {
+    const { sb, calls } = recordingSb({ athlete_data: CONNECTED });
+    const result = await loadCoachStravaActivities({ code: 'ALVIN', sb, now: NOW, env: { STRAVA_COACH_SHARING: value } });
+    assert.equal(result.connection.status, 'disabled');
+    assert.equal(calls.length, 0);
+  }
 });
 
-test('a missing consent table fails closed', async () => {
-  const { sb, calls } = recordingSb({ strava_coach_sharing: () => { throw new Error('relation "strava_coach_sharing" does not exist'); } });
-  const result = await loadCoachStravaActivities({ code: 'ALVIN', sb, now: NOW, env: ON });
-  assert.equal(result.sharing.status, 'unavailable');
+test('a failed connection read fails closed', async () => {
+  const { sb, calls } = recordingSb({ athlete_data: () => { throw new Error('network'); } });
+  const result = await loadCoachStravaActivities({ code: 'ALVIN', sb, now: NOW, env: {} });
+  assert.equal(result.connection.status, 'unavailable');
   assert.equal(calls.some(c => c.path.startsWith('strava_activities')), false);
 });
 
 test('14b. every read is scoped to the athlete and tokens are projected away', async () => {
   const { sb, calls } = recordingSb({
-    strava_coach_sharing: granted,
     strava_activities: path => (path.includes('synced_at&order=synced_at') ? [{ synced_at: '2026-10-10T00:00:00Z' }] : [activity('2026-10-05', 'Run', 10, 50)]),
-    athlete_data: path => (path.includes('strava_tokens') ? [{ strava_athlete_id: '555' }] : []),
+    athlete_data: CONNECTED,
   });
-  const result = await loadCoachStravaActivities({ code: 'alvin', sb, now: NOW, env: ON });
+  const result = await loadCoachStravaActivities({ code: 'alvin', sb, now: NOW, env: {} });
   assert.equal(result.athleteCode, 'ALVIN');
   assert.equal(result.items.length, 1);
-  const perAthlete = ['strava_activities', 'planned_sessions', 'athlete_data', 'strava_activity_reviews', 'training_session_logs', 'strava_coach_sharing', 'session_logs'];
+  const perAthlete = ['strava_activities', 'planned_sessions', 'athlete_data', 'strava_activity_reviews', 'training_session_logs', 'session_logs'];
   calls.filter(c => perAthlete.includes(c.path.split('?')[0])).forEach(c => {
     assert.match(c.path, /athlete_code=eq\.ALVIN/, `${c.path} is not scoped to the athlete`);
   });
   const tokenRead = calls.find(c => c.path.includes('strava_tokens'));
-  assert.match(tokenRead.path, /select=strava_athlete_id:value->>strava_athlete_id/);
+  assert.match(tokenRead.path, /select=strava_athlete_id:value->>strava_athlete_id,connected_at:value->>connected_at/);
   assert.equal(/select=\*|select=value/.test(tokenRead.path), false, 'the token row itself must never be selected');
   assert.ok(calls.some(c => c.path.startsWith('strava_webhook_events?owner_id=eq.555')));
   assert.equal(JSON.stringify(result).includes('secret_polyline'), false);
@@ -485,12 +496,11 @@ test('15. a Strava rate limit or outage cannot remove cached history: the coach 
   globalThis.fetch = async url => { outbound.push(String(url)); throw new Error('no network in this test'); };
   try {
     const { sb } = recordingSb({
-      strava_coach_sharing: granted,
       strava_activities: [activity('2026-10-05', 'Run', 10, 50)],
-      athlete_data: path => (path.includes('strava_tokens') ? [{ strava_athlete_id: '555' }] : []),
+      athlete_data: CONNECTED,
       strava_webhook_events: [{ id: 1 }, { id: 2 }], // backlog while Strava throttles the drain
     });
-    const result = await loadCoachStravaActivities({ code: 'ALVIN', sb, now: NOW, env: ON });
+    const result = await loadCoachStravaActivities({ code: 'ALVIN', sb, now: NOW, env: {} });
     assert.equal(result.items.length, 1, 'the cached activity is still shown');
     assert.equal(result.sync.pendingEvents, 2);
     assert.deepEqual(outbound, []);
@@ -506,8 +516,8 @@ test('15. a Strava rate limit or outage cannot remove cached history: the coach 
 
 test('17. history is read from the cache for any range up to 92 days, and no further', async () => {
   const old = activity('2026-07-14', 'Run', 12, 60);
-  const { sb, calls } = recordingSb({ strava_coach_sharing: granted, strava_activities: [old] });
-  const result = await loadCoachStravaActivities({ code: 'ALVIN', start: '2026-07-13', end: '2026-07-19', sb, now: NOW, env: ON });
+  const { sb, calls } = recordingSb({ athlete_data: CONNECTED, strava_activities: [old] });
+  const result = await loadCoachStravaActivities({ code: 'ALVIN', start: '2026-07-13', end: '2026-07-19', sb, now: NOW, env: {} });
   assert.equal(result.items.length, 1);
   assert.match(calls.find(c => c.path.startsWith('strava_activities?') && c.path.includes('and=')).path, /2026-06-22/,
     'the window reaches back four weeks for the trend, and no further');
@@ -515,20 +525,19 @@ test('17. history is read from the cache for any range up to 92 days, and no fur
   assert.deepEqual(resolveRange('', '', TODAY), WEEK);
 });
 
-test('consent state: only a current-version grant counts', () => {
-  assert.equal(sharingState(null).status, 'not_shared');
-  assert.equal(sharingState(granted[0]).status, 'granted');
-  assert.equal(sharingState({ ...granted[0], granted_at: null }).status, 'not_shared');
-  assert.equal(sharingState({ status: 'revoked', revoked_at: 'x' }).status, 'revoked');
-  assert.equal(sharingState(null, { readFailed: true }).status, 'unavailable');
+test('connection state: only a numeric Strava athlete id counts as connected', () => {
+  assert.equal(connectionState(null).status, 'not_connected');
+  assert.equal(connectionState({ strava_athlete_id: '' }).status, 'not_connected');
+  assert.equal(connectionState({ strava_athlete_id: '123', connected_at: 'x' }).status, 'connected');
+  assert.equal(connectionState(null, { readFailed: true }).status, 'unavailable');
 });
 
 // ── Review writes ────────────────────────────────────────────────────────────
 
-test('16b. a coach cannot record a decision without the athlete\'s consent', async () => {
-  const { sb, calls } = recordingSb({ strava_coach_sharing: [] });
+test('16b. a coach cannot record a decision for an athlete without Strava connected', async () => {
+  const { sb, calls } = recordingSb({ athlete_data: [] });
   await assert.rejects(
-    saveStravaReview({ body: { code: 'ALVIN', activityId: '123', sessionKey: uuid(1), decision: 'confirmed' }, coach: { handle: 'KARL' }, sb, env: ON }),
+    saveStravaReview({ body: { code: 'ALVIN', activityId: '123', sessionKey: uuid(1), decision: 'confirmed' }, coach: { handle: 'KARL' }, sb, env: {} }),
     error => error.status === 403,
   );
   assert.equal(calls.some(c => c.method === 'POST'), false);
@@ -536,38 +545,38 @@ test('16b. a coach cannot record a decision without the athlete\'s consent', asy
 
 test('review writes are keyed the way the portal keys sessions, and clear deletes only that pair', async () => {
   const { sb, calls } = recordingSb({
-    strava_coach_sharing: granted,
+    athlete_data: CONNECTED,
     strava_activities: [{ strava_activity_id: 123 }],
     planned_sessions: [{ id: uuid(9), notion_page_id: 'legacy-notion-id' }],
     strava_activity_reviews: (path, options) => (options.method === 'POST'
       ? [{ ...options.body[0] }]
       : null),
   });
-  const saved = await saveStravaReview({ body: { code: 'ALVIN', activityId: '123', sessionKey: uuid(9), decision: 'rejected' }, coach: { handle: 'ALEX' }, sb, env: ON });
+  const saved = await saveStravaReview({ body: { code: 'ALVIN', activityId: '123', sessionKey: uuid(9), decision: 'rejected' }, coach: { handle: 'ALEX' }, sb, env: {} });
   assert.equal(saved.review.sessionKey, 'legacy-notion-id');
   assert.equal(saved.review.decidedBy, 'ALEX');
   const write = calls.find(c => c.method === 'POST');
   assert.equal(write.body[0].athlete_code, 'ALVIN');
 
-  await saveStravaReview({ body: { code: 'ALVIN', activityId: '123', sessionKey: uuid(9), decision: 'clear' }, coach: { handle: 'ALEX' }, sb, env: ON });
+  await saveStravaReview({ body: { code: 'ALVIN', activityId: '123', sessionKey: uuid(9), decision: 'clear' }, coach: { handle: 'ALEX' }, sb, env: {} });
   const del = calls.find(c => c.method === 'DELETE');
   assert.match(del.path, /athlete_code=eq\.ALVIN&strava_activity_id=eq\.123&session_key=eq\.legacy-notion-id/);
 });
 
 test('review writes refuse another athlete\'s activity and a duplicate confirmation', async () => {
-  const notMine = recordingSb({ strava_coach_sharing: granted, strava_activities: [], planned_sessions: [{ id: uuid(9) }] });
+  const notMine = recordingSb({ athlete_data: CONNECTED, strava_activities: [], planned_sessions: [{ id: uuid(9) }] });
   await assert.rejects(
-    saveStravaReview({ body: { code: 'ALVIN', activityId: '999', sessionKey: uuid(9), decision: 'confirmed' }, coach: { handle: 'KARL' }, sb: notMine.sb, env: ON }),
+    saveStravaReview({ body: { code: 'ALVIN', activityId: '999', sessionKey: uuid(9), decision: 'confirmed' }, coach: { handle: 'KARL' }, sb: notMine.sb, env: {} }),
     error => error.status === 404,
   );
   const dup = recordingSb({
-    strava_coach_sharing: granted,
+    athlete_data: CONNECTED,
     strava_activities: [{ strava_activity_id: 1 }],
     planned_sessions: [{ id: uuid(9) }],
     strava_activity_reviews: () => { throw new Error('duplicate key value violates unique constraint "strava_activity_reviews_one_session_per_activity"'); },
   });
   await assert.rejects(
-    saveStravaReview({ body: { code: 'ALVIN', activityId: '1', sessionKey: uuid(9), decision: 'confirmed' }, coach: { handle: 'KARL' }, sb: dup.sb, env: ON }),
+    saveStravaReview({ body: { code: 'ALVIN', activityId: '1', sessionKey: uuid(9), decision: 'confirmed' }, coach: { handle: 'KARL' }, sb: dup.sb, env: {} }),
     error => error.status === 409,
   );
 });
@@ -590,7 +599,7 @@ async function withApi(routes, run) {
   process.env.SUPABASE_URL = 'https://example.supabase.co';
   process.env.SUPABASE_SERVICE_KEY = 'service-key';
   process.env.DASHBOARD_ACCESS_KEY = 'coach-key';
-  process.env.STRAVA_COACH_SHARING = 'on';
+  delete process.env.STRAVA_COACH_SHARING; // default: on
   const originalFetch = globalThis.fetch;
   const requested = [];
   globalThis.fetch = async (url, options = {}) => {
@@ -620,7 +629,7 @@ test('14c. a coach can only open the Strava activity of an athlete they are assi
   await withApi([
     ['coaches?', ALEX],
     ['coach_athletes?', [{ athlete_code: 'NATE' }]],
-    ['strava_coach_sharing?', granted],
+    ['athlete_data?', path => (path.includes('strava_tokens') ? [{ strava_athlete_id: '555' }] : [])],
     ['strava_activities?', [activity('2026-10-05', 'Run', 10, 50)]],
   ], async (handler, requested) => {
     const res = responseRecorder();
@@ -630,7 +639,7 @@ test('14c. a coach can only open the Strava activity of an athlete they are assi
     }, res);
     assert.equal(res.statusCode, 403);
     assert.equal(requested.some(r => r.href.includes('/strava_activities?')), false, 'nothing read for an unassigned athlete');
-    assert.equal(requested.some(r => r.href.includes('/strava_coach_sharing?')), false);
+    assert.equal(requested.some(r => r.href.includes('strava_tokens')), false, 'not even the connection is checked');
 
     const allowed = responseRecorder();
     await handler({
@@ -652,7 +661,7 @@ test('14d. without the dashboard key nothing is read at all', async () => {
   });
 });
 
-test('the raw coach Strava endpoint stays blocked: sharing is a separate, consented path', async () => {
+test('the raw coach Strava endpoint stays blocked: the dashboard reads summaries from the cache only', async () => {
   const source = readFileSync(join(root, 'api', 'strava.js'), 'utf8');
   assert.match(source, /strava_athlete_only/);
   const ui = readFileSync(join(root, 'public', 'strava-activities.js'), 'utf8');

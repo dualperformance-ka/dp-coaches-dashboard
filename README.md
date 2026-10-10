@@ -57,21 +57,16 @@ broken duplicate callback has been removed rather than consuming another slot.
 
 ## Strava cache and webhook rollout
 
-**Compliance boundary:** by default the coaches dashboard does not display
-Strava API data. Strava's written API terms limit display to the athlete who
-authorised the connection. The one exception is **All activities** in an
-athlete's Training tab, which shows Strava activity *summaries* only when BOTH:
-
-- the deployment sets `STRAVA_COACH_SHARING=on` (off by default), and
-- the athlete has turned on "Share Strava activities with my coaches" in the
-  portal (Preferences). Revoking, disconnecting Strava, or deauthorising the
-  app on strava.com withdraws it on the coach's next load.
-
-Confirm with Strava that coach display under athlete consent fits your API
-agreement before switching it on; see `docs/strava-all-activities.md`. The
-athlete portal still owns OAuth, sync, webhooks, backfill and disconnect; the
-dashboard only reads the portal's cache and never calls Strava. The raw
-`/api/strava` coach mode stays blocked.
+**All activities:** an athlete's Training tab shows every Strava activity the
+portal has synced for them, labelled programmed or unprogrammed against their
+plan. Connecting Strava in the portal is the only step: there is no separate
+sharing toggle, and a disconnected athlete shows nothing (the portal purges
+their cache on disconnect). Coaches see summaries only, never tokens, routes or
+locations, and only for athletes they are scoped to. `STRAVA_COACH_SHARING=off`
+hides the view without a code change. The athlete portal still owns OAuth,
+sync, webhooks, backfill and disconnect; the dashboard only reads the portal's
+cache and never calls Strava. The raw `/api/strava` coach mode stays blocked.
+See `docs/strava-all-activities.md`.
 
 1. Apply `supabase/migrations/202608170001_strava_activity_cache.sql` and
    `supabase/migrations/202608210001_strava_webhook_events.sql` before the code
