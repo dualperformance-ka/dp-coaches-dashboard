@@ -789,4 +789,54 @@ export function weeklySummary(code = 'KAI') {
   };
 }
 
+// ── strava_activities cache rows (/api/athletes?action=strava_activities) ───
+// Raw cache rows, exactly as the portal stores them, so the preview runs the
+// real loader and classifier (server/coach-strava-activities.js) rather than a
+// hand-shaped response. KAI's current week covers every status: programmed,
+// unprogrammed ride/swim/walk, a threshold the athlete called "Easy Run" (review)
+// and today's long run still to come. ANNA has not shared, so her tab shows the
+// consent card. The rows carry a route polyline on purpose: it must never reach
+// the page.
+let stravaId = 9100000000;
+function stravaRow(date, time, type, km, minutes, name, extra = {}) {
+  stravaId += 1;
+  const summary = {
+    id: stravaId, name, sport_type: type, type,
+    start_date_local: `${date}T${time}:00Z`, start_date: `${date}T${time}:00Z`,
+    distance: km ? km * 1000 : 0, moving_time: minutes * 60, elapsed_time: minutes * 60 + 120,
+    average_heartrate: extra.hr ?? null, max_heartrate: extra.hr ? extra.hr + 22 : null,
+    suffer_score: extra.effort ?? null, total_elevation_gain: extra.elev ?? 0,
+    average_watts: extra.watts ?? null, external_id: extra.device ? `${extra.device}_1.fit` : null,
+    map: { summary_polyline: 'fixture-polyline-must-not-render' }, start_latlng: [-34.92, 138.6],
+  };
+  return {
+    athlete_code: 'KAI', strava_activity_id: stravaId, start_date_local: `${date}T${time}:00+00:00`,
+    sport_type: type, name, distance_m: summary.distance, moving_time_s: summary.moving_time,
+    elapsed_time_s: summary.elapsed_time, suffer_score: summary.suffer_score, summary,
+    synced_at: new Date().toISOString(),
+  };
+}
+
+export function stravaCache(code) {
+  if (code !== 'KAI') return [];
+  stravaId = 9100000000;
+  return [
+    stravaRow(wk(-7), '06:10', 'Run', 10.3, 56, 'Morning Run', { hr: 141, effort: 38, device: 'garmin' }),
+    stravaRow(wk(-5), '06:00', 'Run', 11.4, 52, 'Track session', { hr: 162, effort: 92, device: 'garmin' }),
+    stravaRow(wk(-6), '17:20', 'Ride', 35, 80, 'Evening Ride', { hr: 128, effort: 41, watts: 168 }),
+    stravaRow(wk(0), '06:05', 'Run', 26.4, 141, 'Long Run', { hr: 148, effort: 156, elev: 210, device: 'garmin' }),
+    stravaRow(wk(1), '16:40', 'Ride', 42.1, 95, 'Afternoon Ride', { hr: 132, effort: 64, watts: 172, elev: 380, device: 'wahoo' }),
+    stravaRow(wk(2), '06:00', 'Run', 12.0, 62, 'Easy Run', { hr: 139, device: 'garmin' }),
+    stravaRow(wk(2), '18:30', 'Walk', 3.2, 38, 'Evening Walk'),
+    stravaRow(wk(3), '06:15', 'Run', 8.1, 44, 'Morning Run', { hr: 144, effort: 33, device: 'garmin' }),
+    stravaRow(wk(4), '12:10', 'WeightTraining', null, 55, 'Lunch Weights', { hr: 112, effort: 18 }),
+    stravaRow(wk(4), '19:00', 'Swim', 1.5, 35, 'Pool Swim', { hr: 128, effort: 22 }),
+  ];
+}
+
+export function stravaSharing(code) {
+  if (code === 'ANNA') return [];
+  return [{ status: 'granted', consent_version: '2026-10', granted_at: stamp(9), revoked_at: null, revoked_reason: null }];
+}
+
 export { ATHLETES, PLAN };

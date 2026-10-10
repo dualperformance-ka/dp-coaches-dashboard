@@ -6,7 +6,10 @@ import vm from 'node:vm';
 import {
   DEFAULT_RELATIVE_EFFORT_PER_KM_THRESHOLD,
   classifyPrescribedIntensity,
+  combineStravaActivities,
   matchActivityToSession,
+  matchRideActivityToSession,
+  matchSwimActivityToSession,
   stravaActivityKey,
 } from '../public/js/strava-match.js';
 
@@ -151,16 +154,27 @@ test('an unparseable session name is unknown and does not downgrade', () => {
   assert.deepEqual(result.reasons, []);
 });
 
-test('athlete HR zones personalize the intensity classification', () => {
+// The dashboard's copy of strava-match.js is the athlete portal's canonical
+// matcher, byte for byte, because the coach's All Activities view must pair
+// activities exactly as the athlete's portal did. The portal never shipped the
+// HR-zone personalisation this copy once carried (it lived only in this
+// repo's unused fork), so zones no longer change the outcome here either; the
+// portal's suffer_score rule decides. This replaces the old zones assertion.
+test('the coach view runs the portal matcher: zones do not override effort', () => {
   const tempo = { ...session, name: 'Threshold intervals' };
   const athleteZones = { heart_rate: { zones: [
     { min: 0, max: 130 }, { min: 130, max: 145 }, { min: 145, max: 160 },
     { min: 160, max: 175 }, { min: 175, max: -1 },
   ] } };
+  // 100 effort over 12 km is above the 3.0/km quality seed, so this is quality
+  // work whatever the athlete's average heart rate says.
   const result = matchActivityToSession(tempo, [run(22, 12, {
     suffer_score: 100,
     average_heartrate: 139,
   })], { athleteZones });
-  assert.equal(result.confidence, 'low');
-  assert.deepEqual(result.reasons, ['intensity_below_prescription']);
+  assert.equal(result.confidence, 'high');
+  assert.deepEqual(result.reasons, []);
+  assert.equal(typeof matchSwimActivityToSession, 'function');
+  assert.equal(typeof matchRideActivityToSession, 'function');
+  assert.equal(typeof combineStravaActivities, 'function');
 });

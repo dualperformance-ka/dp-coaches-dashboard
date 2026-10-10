@@ -39,6 +39,10 @@
     "version": "20260924-01",
     "sha": "bd2f0e126147"
   },
+  "strava-activities.css": {
+    "version": "20261010-01",
+    "sha": "ca2822983022"
+  },
   "instrument.css": {
     "version": "20260906-33",
     "sha": "aa09c3fcac14"
@@ -68,8 +72,12 @@
     "sha": "10fcce2302c6"
   },
   "coach-parity.js": {
-    "version": "20260923-01",
-    "sha": "0895a360131b"
+    "version": "20261010-01",
+    "sha": "8aa0a5085ec1"
+  },
+  "strava-activities.js": {
+    "version": "20261010-01",
+    "sha": "fbfe0d7813fd"
   },
   "weekly-sport-targets.js": {
     "version": "3",

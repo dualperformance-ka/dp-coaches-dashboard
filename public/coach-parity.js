@@ -420,7 +420,7 @@
           <td>${val(e.actualDistanceKm, ' km', 1)}${e.plannedDistanceKm != null ? ` / ${val(e.plannedDistanceKm, ' km', 1)}` : ''}</td>
           <td>${val(e.actualDurationMinutes, ' min')}</td></tr>`).join('')}
       </tbody></table></div>
-      <p class="cws-note">Strava activities are shown to the athlete only, so the athlete's own card may show a different distance. This view uses confirmed portal logs and activity files the athlete shared with you, never counted twice.</p></div>` : ''}
+      <p class="cws-note">This review uses confirmed portal logs and activity files the athlete shared with you, never counted twice, so the athlete's own card may show a different distance. Strava activities the athlete has chosen to share are under All activities below.</p></div>` : ''}
       ${missed.length ? `<div class="cws-row"><div class="cws-lbl">Missed</div><ul class="cws-list">${missed.slice(0, 10).map(m => `<li>${esc(m.title || 'Session')}${m.date ? ` · ${esc(fmtDay(m.date))}` : ''}</li>`).join('')}</ul></div>` : ''}
       ${pbs.length ? `<div class="cws-row"><div class="cws-lbl">Personal bests</div><ul class="cws-list">${pbs.slice(0, 10).map(p => `<li>${esc(p.exercise || 'Lift')} · ${esc(PB_COPY[p.type] || p.type)} ${esc(fmtNum(p.value, 1))} ${esc(p.unit || '')}${p.delta != null ? ` (+${esc(fmtNum(p.delta, 1))})` : ''}</li>`).join('')}</ul></div>` : ''}
       ${attention.length ? `<div class="cws-row"><div class="cws-lbl">Attention</div><ul class="cws-list is-attention">${attention.map(a => `<li class="is-${esc(a.severity || 'low')}">${esc(a.message || '')}</li>`).join('')}</ul></div>` : ''}

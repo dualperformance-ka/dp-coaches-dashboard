@@ -19,6 +19,7 @@ import {
   setPublishState,
   updateExercise,
 } from '../server/programming.js';
+import { loadCoachStravaActivities, saveStravaReview } from '../server/coach-strava-activities.js';
 import {
   ensureWeeklyTargetProgrammeWeek,
   listWeeklySportTargets,
@@ -964,6 +965,19 @@ export default async function handler(req, res) {
         return res.status(200).json(await listDailyMacroOverrides(req.query.code, sb, coachRow));
       }
 
+      // Every Strava activity the athlete has chosen to share, classified
+      // against their programme. Scope is asserted before anything is read;
+      // the deployment switch and the athlete's consent are checked inside,
+      // before strava_activities is touched (server/coach-strava-activities.js).
+      if (action === 'strava_activities') {
+        const coachRow = await resolveCoachIdentity(req, sb);
+        await assertAthleteAllowed(coachRow, req.query.code, sb);
+        const result = await loadCoachStravaActivities({
+          code: req.query.code, start: req.query.start, end: req.query.end, sb,
+        });
+        return res.status(200).json({ ok: true, ...result });
+      }
+
       const athletes = await loadRosterRows();
       return res.status(200).json({ ok: true, athletes, total: athletes.length, source: 'roster_supabase' });
     }
@@ -1159,6 +1173,14 @@ export default async function handler(req, res) {
     if (PROGRAMMING_ACTIONS[action]) {
       const coachRow = await resolveCoachIdentity(req, sb);
       return res.status(200).json(await PROGRAMMING_ACTIONS[action](req.body || {}, sb, coachRow));
+    }
+
+    // Coach confirms, rejects or clears one Strava activity / session pairing.
+    if (action === 'strava_review') {
+      const coachRow = await resolveCoachIdentity(req, sb);
+      await assertAthleteAllowed(coachRow, req.body?.code, sb);
+      const result = await saveStravaReview({ body: req.body || {}, coach: coachRow, sb });
+      return res.status(200).json({ ok: true, ...result });
     }
 
     if (action === 'session_materialise') {

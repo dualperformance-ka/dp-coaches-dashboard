@@ -29,6 +29,6 @@ Updated 21 Aug 2026 against the canonical local implementation.
 ## Deliberate boundaries
 
 - Tokens and raw cache tables are server-only.
-- Coaches cannot impersonate an athlete's OAuth consent or view raw Strava data; coaching uses athlete-submitted Dual Performance logs.
+- Coaches cannot impersonate an athlete's OAuth consent or view raw Strava data. With `STRAVA_COACH_SHARING=on` and the athlete's explicit, revocable consent (`strava_coach_sharing`), coaches see activity summaries in All activities; see `docs/strava-all-activities.md`. Without both, coaching uses athlete-submitted Dual Performance logs.
 - The dashboard provides coaching signals, not medical diagnosis or automatic programme changes.
-- Cached Strava history remains after disconnect for coaching record continuity; remove it separately only under the agreed data-retention process.
+- Superseded: the live portal purges the athlete's cached Strava activities on disconnect and on deauthorisation (its api/strava.js), and now also revokes coach sharing and deletes coach match decisions. This repo's server/strava-cache.js targets an older cache schema that was never applied to production and is not used by All activities.

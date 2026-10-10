@@ -5,6 +5,7 @@ import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { extname, join, normalize } from 'node:path';
 import * as FIXTURE from './preview-fixture.mjs';
+import { loadCoachStravaActivities } from '../server/coach-strava-activities.js';
 
 const root = new URL('../public/', import.meta.url).pathname;
 const fontRoot = new URL('./preview-fonts/', import.meta.url).pathname;
@@ -87,6 +88,33 @@ const FIXTURES = [
     return FIXTURE.prescription(id);
   }],
   [/^\/api\/athletes\?action=daily_macro_overrides/, () => ({ ok: true, overrides: [] })],
+  // The real loader and classifier over fixture cache rows; only the database
+  // is faked. See stravaCache() in preview-fixture.mjs.
+  [/^\/api\/athletes\?action=strava_activities/, async target => {
+    const params = new URL(target, 'http://x').searchParams;
+    const code = String(params.get('code') || '').toUpperCase();
+    const sb = async path => {
+      const table = path.split('?')[0];
+      if (table === 'strava_coach_sharing') return FIXTURE.stravaSharing(code);
+      if (table === 'strava_activities') {
+        const rows = FIXTURE.stravaCache(code);
+        return path.includes('order=synced_at') ? rows.slice(-1) : rows;
+      }
+      if (table === 'planned_sessions') {
+        return FIXTURE.PLAN.filter(row => row.athlete_code === code)
+          .map(row => ({ ...row, notion_page_id: null, estimated_minutes: null }));
+      }
+      if (table === 'session_logs') {
+        return FIXTURE.PLAN.filter(row => row.athlete_code === code && row.status === 'Completed')
+          .map(row => ({ session_key: `session_${code}_${row.id}` }));
+      }
+      if (table === 'athlete_data' && path.includes('strava_tokens')) return [{ strava_athlete_id: '424242' }];
+      return [];
+    };
+    return { ok: true, ...(await loadCoachStravaActivities({
+      code, start: params.get('start'), end: params.get('end'), sb, env: { STRAVA_COACH_SHARING: 'on' },
+    })) };
+  }],
   // Notion is still a second source in production. The preview returns it empty
   // so what renders is provably the Supabase path and not a blended legacy shape.
   [/^\/api\/data/, () => ({ results: [], has_more: false, next_cursor: null })],
@@ -102,7 +130,7 @@ createServer(async (req, res) => {
   for (const [pattern, build] of FIXTURES) {
     if (pattern.test(target)) {
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      return res.end(JSON.stringify(build(target)));
+      return res.end(JSON.stringify(await build(target)));
     }
   }
   if (url.pathname.startsWith('/api/')) {

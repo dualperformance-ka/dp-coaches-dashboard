@@ -2305,6 +2305,7 @@ body[data-theme="light"] .theme-btn.active{background:rgba(255,255,255,.22);colo
 <link rel="stylesheet" href="/weekly-sport-targets.css?v=3">
 <link rel="stylesheet" href="/daily-macro-overrides.css?v=3">
 <link rel="stylesheet" href="/coach-parity.css?v=20260924-01">
+<link rel="stylesheet" href="/strava-activities.css?v=20261010-01">
 <link rel="stylesheet" href="/instrument.css?v=20260906-33">
 <!-- Phone layer, deliberately last: see the header of dashboard-mobile-final.css.
      Loading it here is what lets every phone rule drop its !important. -->
@@ -11227,7 +11228,10 @@ function buildFPCard(a, weekOffset = 0) {
     // The weekly review is the first card under the week strip: the same week
     // summary the athlete sees, built server-side from coach-safe sources. It
     // carries its own programme-week navigation.
-    training: [weekStrip, window.DP_PARITY?.weeklySummaryPlaceholder(a.id) || '', weekDetailHtml],
+    // All activities follows the ledger: every Strava activity the athlete has
+    // shared, programmed or not, against what was prescribed. It renders a
+    // "not shared" card until the athlete opts in from the portal.
+    training: [weekStrip, window.DP_PARITY?.weeklySummaryPlaceholder(a.id) || '', weekDetailHtml, window.DP_STRAVA?.placeholder(a.id) || ''],
     running:  [buildRunningPanel(a), programmeVolumeHtml, buildMileageTrend(a)],
     strength: [buildStrengthPanel(a), prsHtml, strengthBestsHtml],
     body:     [trendsHtml, bodyNutrPart, dailyNutrHtml, progressPhotosHtml],
@@ -13092,6 +13096,7 @@ function _drawFP() {
 
   document.getElementById('fp-body').innerHTML = buildFPCard(a, _fpWeekOffset);
   window.DP_PARITY?.hydrate(document.getElementById('fp-body'));
+  window.DP_STRAVA?.hydrate(document.getElementById('fp-body'));
   document.getElementById('fp-overlay').scrollTop = 0;
   // Applies the remembered tab and runs that panel's deferred work. `silent`
   // because restoring a tab is not the coach choosing one.
@@ -13927,7 +13932,8 @@ document.getElementById('gen-btn').addEventListener('click', generateAI);
 <script src="/dp-icons.js?v=20260907-35"></script>
 <script src="/dashboard-mobilenav.js?v=20260921-01" defer></script>
 <script src="/triage.js?v=20260923-01" defer></script>
-<script src="/coach-parity.js?v=20260923-01" defer></script>
+<script src="/coach-parity.js?v=20261010-01" defer></script>
+<script src="/strava-activities.js?v=20261010-01" defer></script>
 <script src="/weekly-sport-targets.js?v=3" defer></script>
 <script src="/daily-macro-overrides.js?v=3" defer></script>
 <script src="/programming.js?v=4" defer></script>
