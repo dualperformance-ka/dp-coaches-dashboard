@@ -21,6 +21,74 @@ const iso = days => {
   return d.toISOString().slice(0, 10);
 };
 
+// ── Preview-only state ──────────────────────────────────────────────────────
+// Coach actions (review, resolve, read) are remembered in memory so a full
+// Focus Mode pass can be driven end to end: a reviewed day leaves the review
+// queue, a resolved signal leaves the triage queue, a read message stops being
+// unread. GET /__preview/scenario?name=… switches the fixture to an edge case
+// (empty, triage-fail, coach-data-fail, long-notes) and resets that state.
+const STATE = { scenario: 'default', reviewed: new Set(), resolved: new Map(), read: new Set() };
+function resetState(scenario = 'default') {
+  STATE.scenario = scenario;
+  STATE.reviewed = new Set();
+  STATE.resolved = new Map();
+  STATE.read = new Set();
+}
+
+function applyState(payload) {
+  if (STATE.scenario === 'empty') {
+    return { ...payload, queue: [], resolved: [], counts: { ...payload.counts, flagged: 0, critical: 0, high: 0, medium: 0, resolved: 0, clear: payload.counts.active, reviewPending: 0, reviewOverdue: 0 },
+      review: { ...payload.review, queue: [], counts: { pending: 0, overdue: 0, athletes: 0 } } };
+  }
+  const reviewQueue = payload.review.queue.filter(e => !STATE.reviewed.has(`${e.athleteCode}|${e.date}`));
+  const resolvedRows = [...payload.resolved];
+  const queue = payload.queue.filter(row => {
+    const key = `${row.athleteCode}|${row.flag}`;
+    if (STATE.resolved.get(key) === row.fingerprint) {
+      resolvedRows.push({ athleteCode: row.athleteCode, athleteName: row.athleteName, flag: row.flag, signal: row.signal,
+        fingerprint: row.fingerprint, resolvedBy: 'KARL', resolvedAt: new Date().toISOString() });
+      return false;
+    }
+    if (row.flag === 'awaiting_review') return reviewQueue.some(e => e.athleteCode === row.athleteCode);
+    return true;
+  });
+  return {
+    ...payload,
+    queue,
+    resolved: resolvedRows,
+    counts: { ...payload.counts, flagged: queue.length, resolved: resolvedRows.length, reviewPending: reviewQueue.length,
+      reviewOverdue: reviewQueue.filter(e => e.days >= 2).length },
+    review: { ...payload.review, queue: reviewQueue, counts: { pending: reviewQueue.length,
+      overdue: reviewQueue.filter(e => e.days >= 2).length, athletes: new Set(reviewQueue.map(e => e.athleteCode)).size } },
+  };
+}
+
+function coachDataWithState() {
+  const data = FIXTURE.coachData();
+  data.contactMessages = data.contactMessages.map(m => (STATE.read.has(m.id) ? { ...m, readAt: new Date().toISOString(), readBy: 'KARL' } : m));
+  if (STATE.scenario === 'empty') data.contactMessages = data.contactMessages.map(m => ({ ...m, readAt: m.readAt || new Date().toISOString() }));
+  if (STATE.scenario === 'long-notes') {
+    const essay = 'Felt flat for the first 3km and the calf was tight again on the downhill.\n\nSettled once I hit threshold pace, but the last rep I backed off because the calf started to grab. Iced it after and it feels okay this morning. Work has been brutal this week so sleep has been 5–6 hours most nights, and I skipped breakfast before the session which probably did not help.\n\nShould I swap tomorrow for an easy spin? Also wondering if I should move the long run to Sunday.';
+    data.sessions = data.sessions.map(row => (row['Athlete Code'] === 'KAI' && row['Session Category'] === 'Run' ? { ...row, Notes: essay } : row));
+  }
+  return data;
+}
+
+function coachAction(body) {
+  const { action, code, session_date: date, signal_type: flag, fingerprint, id } = body || {};
+  const upper = String(code || '').toUpperCase();
+  if (action === 'session_review') { STATE.reviewed.add(`${upper}|${date}`); return { ok: true, reviewedBy: 'KARL' }; }
+  if (action === 'session_unreview') { STATE.reviewed.delete(`${upper}|${date}`); return { ok: true }; }
+  if (action === 'signal_resolve') { STATE.resolved.set(`${upper}|${flag}`, fingerprint); return { ok: true }; }
+  if (action === 'signal_restore') { STATE.resolved.delete(`${upper}|${flag}`); return { ok: true }; }
+  if (action === 'message_read' || action === 'message_unread') {
+    if (action === 'message_read') STATE.read.add(String(id)); else STATE.read.delete(String(id));
+    const message = coachDataWithState().contactMessages.find(m => m.id === String(id));
+    return { ok: true, message };
+  }
+  return { ok: true };
+}
+
 const TRIAGE = () => ({
   ok: true,
   source: 'fixture',
@@ -76,10 +144,10 @@ const TRIAGE = () => ({
 // Order matters: the first pattern that matches wins, so the narrow
 // coach-data modes are listed before the bare full-payload route.
 const FIXTURES = [
-  [/^\/api\/coach-data.*mode=triage/, TRIAGE],
+  [/^\/api\/coach-data.*mode=triage/, () => applyState(TRIAGE())],
   [/^\/api\/coach-data.*mode=weekly_summary/, target => FIXTURE.weeklySummary(new URL(target, 'http://x').searchParams.get('code') || 'KAI')],
   [/^\/api\/coach-data.*mode=activity_streams/, () => ({ ok: true, id: 'up-0001', streams: [] })],
-  [/^\/api\/coach-data/, () => FIXTURE.coachData()],
+  [/^\/api\/coach-data/, () => coachDataWithState()],
   [/^\/api\/athletes\?action=acknowledgements/, () => ({ ok: true, acknowledgements: [], signals: [] })],
   [/^\/api\/athletes\?action=roster/, () => ({ ok: true, athletes: FIXTURE.roster() })],
   [/^\/api\/athletes\?action=profiles/, () => ({ ok: true, results: FIXTURE.profiles() })],
@@ -125,6 +193,27 @@ const FIXTURES = [
 createServer(async (req, res) => {
   const url = new URL(req.url, 'http://x');
   const target = url.pathname + url.search;
+
+  if (url.pathname === '/__preview/scenario') {
+    resetState(url.searchParams.get('name') || 'default');
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify({ ok: true, scenario: STATE.scenario }));
+  }
+  if (req.method === 'POST' && url.pathname === '/api/athletes') {
+    let raw = '';
+    for await (const chunk of req) raw += chunk;
+    let body = {};
+    try { body = JSON.parse(raw || '{}'); } catch {}
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify(coachAction(body)));
+  }
+  // Failure scenarios answer 500 for one source so partial-failure states
+  // can be seen without touching production.
+  if ((STATE.scenario === 'triage-fail' && /mode=triage/.test(target)) ||
+      (STATE.scenario === 'coach-data-fail' && /^\/api\/coach-data(?!.*mode=)/.test(target))) {
+    res.writeHead(500, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify({ ok: false, error: 'preview: simulated failure' }));
+  }
 
   for (const [pattern, build] of FIXTURES) {
     if (pattern.test(target)) {

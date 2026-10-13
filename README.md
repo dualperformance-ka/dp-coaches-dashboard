@@ -17,6 +17,42 @@ Private coaching workspace for squad monitoring, programming, nutrition, applica
   canonical programme week, draftable, publishable, and soft-removable. See
   `docs/weekly-sport-targets.md` for the API and rollout contract.
 
+## Today command centre and Focus Mode
+
+Today is ordered the way a coach works it: a compact header with the attention
+count, one decision queue, squad pulse, then the coach's own workload in the
+rail. No API, schema or auth change was needed; everything below is built from
+data the dashboard already loads.
+
+- **One queue, four categories.** `public/coach-queue.js` merges the server
+  triage rows, the dashboard's own client alerts, the review backlog and unread
+  portal messages into one item per athlete: Urgent (pain, explicit alerts),
+  Review (submitted sessions), Follow up (gone quiet, messages, missed
+  check-ins, low recovery) and Plan (adherence, load, strength, fuel). The
+  strongest signal leads the row; the rest are summarised on it. Overdue review
+  leads a follow-up; review still inside the turnaround window does not.
+- **One status everywhere.** Squad, the expanded row and the athlete header use
+  the same hierarchy: Urgent, Needs attention, Review due, On track, No recent
+  data. An athlete with an open signal or unreviewed session never reads On
+  track.
+- **Focus Mode** (Start review / Review next) walks the queue one item at a
+  time: why it was raised, the evidence (submitted sessions with exceptions
+  first, latest check-in, this week), the coach's action and one completion
+  verb (Resolve, Mark reviewed, Mark read). Nothing is completed without a
+  click. Opening the profile from Focus Mode resumes on the same item when the
+  profile closes.
+
+Verify it against the preview fixture:
+
+```text
+node scripts/serve-preview.mjs &
+node scripts/verify-command-centre.mjs
+```
+
+The preview remembers review, resolve and read actions in memory, and
+`/__preview/scenario?name=empty|triage-fail|coach-data-fail|long-notes`
+switches it to an edge case (`default` resets).
+
 ## Restarting an athlete's programme
 
 Open **Nutrition**, select the athlete (coaches training as athletes are included),

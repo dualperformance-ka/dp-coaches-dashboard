@@ -180,8 +180,7 @@
 .sort-select { min-height:40px; border-radius:10px; font-size:12.5px; }
 .filter-label, .filter-divider { display:none; }
 /* Status pills: snug scroll row with snap + a right-edge fade cue */
-  .filter-bar > .sf-group:first-of-type,
-  .filter-bar .sf-group:not(#dash-week-controls):not(:has(#view-cards-btn)) { display:flex;
+  .filter-bar > .sf-group:first-of-type { display:flex;
     flex-wrap: nowrap;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
@@ -944,29 +943,84 @@ header #manage-athletes-btn,
   .sync-score-num,
   .fp-idx { font-family:var(--font-data);
     font-variant-numeric: tabular-nums; }
-/* Today should feel like a mobile command screen, not a desktop hero squeezed
-     into a phone. */
+/* Today is a phone command screen: compact header, the attention count, and
+     the first priority items above the fold. Squad pulse is collapsed below
+     the queue; Focus Mode is a full screen. */
   .triage-page { min-height:calc(100dvh - var(--dp-mobile-header-row));
     padding-bottom:calc(var(--dp-mobile-nav-h) + 18px + var(--dp-safe-bottom)); }
-.triage-shell { padding:20px var(--dp-mobile-edge) 24px; }
-.triage-hero { margin-bottom:16px; }
-.triage-eyebrow { margin-bottom:6px; font-size:8px; }
-.triage-hero h1 { max-width:330px;
-    font-size:clamp(30px, 8.5vw, 36px);
-    line-height:1;
-    letter-spacing:-.04em; }
-.triage-hero p { margin-top:8px;
-    font-size:12px;
-    line-height:1.45; }
-.triage-date { margin-top:10px !important;
-    padding:6px 9px;
-    font-size:8px; }
-.triage-state { min-height:180px; border-radius:14px; }
-.triage-summary { gap:6px !important; margin-bottom:10px; }
-.triage-stat { min-height:72px; padding:11px 8px !important; }
-.triage-stat-value { font-size:21px !important; }
-.triage-stat-label { margin-top:6px; font-size:8px !important; line-height:1.25 !important; }
-.triage-row { border-radius:14px !important; }
+.today-workspace { width:calc(100% - (2 * var(--dp-mobile-edge)));
+    padding:12px 0 8px;
+    gap:12px; }
+.today-head { display:grid;
+    grid-template-columns:minmax(0, 1fr) auto;
+    align-items:center;
+    gap:6px 10px; }
+.today-head-side { display:contents; }
+.today-head-main { grid-column:1; grid-row:1; }
+.today-refresh { grid-column:2; grid-row:1; min-width:44px; padding:0 11px; }
+.today-refresh-lbl { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+.today-attention { grid-column:1 / -1; grid-row:2; font-size:15px; }
+.today-greeting { font-size:21px; }
+.today-head-meta { margin-top:2px; font-size:12px; }
+.triage-shell { padding:14px 12px; border-radius:14px; }
+.cq-head { align-items:center; margin-bottom:10px; }
+.cq-head h2 { font-size:18px; }
+.cq-sub { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+.cq-start { padding:0 14px; }
+/* One scrolling row of filters with a fade that says there is more. */
+  .cq-filters { flex-wrap:nowrap;
+    overflow-x:auto;
+    margin:0 -12px 10px;
+    padding:0 28px 2px 12px;
+    scrollbar-width:none;
+    -webkit-mask-image:linear-gradient(90deg, #000 calc(100% - 28px), transparent);
+    mask-image:linear-gradient(90deg, #000 calc(100% - 28px), transparent); }
+.cq-filters::-webkit-scrollbar { display:none; }
+.cq-filter { flex:0 0 auto; min-height:44px; }
+.cq-row { padding:10px 12px 12px 16px; }
+.cq-row-head { gap:2px 8px; }
+.triage-athlete-open { display:inline-flex; align-items:center; min-height:44px; font-size:16px; }
+.cq-summary { margin-top:0; }
+.cq-reason { font-size:14px; }
+.cq-also { display:-webkit-box; -webkit-line-clamp:1; -webkit-box-orient:vertical; overflow:hidden; }
+.triage-row-actions { margin-top:10px; }
+.triage-row-actions .triage-action,
+  .triage-row-actions .triage-resolve { flex:1 1 0; min-height:44px; }
+/* The athlete name is the open-athlete control on a phone, and Start review is
+     the focus entry; the duplicate buttons would push the next row off screen. */
+  .cq-row .cq-secondary,
+  .cq-row .cq-focus-one { display:none; }
+.today-operations { padding:4px 12px 4px 14px; border-radius:14px; }
+.today-operations:not(.is-collapsed) { padding-bottom:14px; }
+.pulse-head h2 { font-size:15px; }
+.pulse-toggle { font-size:12px; }
+.squad-vitals { grid-template-columns:repeat(2, minmax(0, 1fr)); }
+.squad-vital { min-height:60px; }
+.squad-vital-num { font-size:20px; }
+.today-cell { min-height:44px; }
+.today-rail { gap:12px; }
+.today-rail .review-panel,
+  .today-rail .cp-panel { padding:14px 12px; }
+.cq-panel-actions > button { flex:1 1 0; min-height:44px; }
+/* Focus Mode owns the whole screen on a phone. */
+  .cq-focus-panel { width:100%;
+    height:100dvh;
+    box-shadow:none; }
+.cq-focus-bar { padding:calc(6px + var(--dp-safe-top)) var(--dp-mobile-edge) 6px; }
+.cq-focus-hint { display:none; }
+.cq-focus-progress { margin-left:auto; }
+.cq-focus-body { padding:14px var(--dp-mobile-edge) 20px; }
+.cq-focus-head h2,
+  .cq-focus-done h2,
+  .cq-focus-clear h2 { font-size:21px; }
+.cq-focus-section { padding:12px; }
+.cq-signal { grid-template-columns:minmax(0, 1fr) auto; }
+.cq-signal-cat { grid-column:1 / -1; }
+.cq-focus-foot { flex-wrap:wrap; padding:10px var(--dp-mobile-edge) calc(10px + var(--dp-safe-bottom)); }
+.cq-foot-main { flex:1 1 100%; order:-1; }
+.cq-foot-main > button { flex:1 1 0; }
+.cq-skip { flex:1 1 100%; }
+.cq-day-head { flex-wrap:wrap; }
 /* Overview filter: one quiet row until the coach asks for more. */
   #filter-bar,
   body[data-theme="light"] #filter-bar { margin:8px var(--dp-mobile-edge) 0;
@@ -1415,3 +1469,86 @@ header .coach-select { max-width:78px; }
 }
 
 
+
+
+@media (max-width: 720px) {
+/* Squad on a phone: compact rows, not the desktop table as stacked metric
+     cards. Filters live behind one button; the sort stays visible. */
+  #grid.table-mode .dash-table-wrap { display:none; }
+.sq-list { display:flex;
+    flex-direction:column;
+    gap:6px;
+    margin:0;
+    padding:0;
+    list-style:none; }
+.sq-row { display:grid;
+    grid-template-columns:minmax(0, 1fr) 16px;
+    align-items:center;
+    gap:4px 8px;
+    width:100%;
+    min-height:64px;
+    padding:10px 12px 10px 14px;
+    border:0;
+    border-radius:12px;
+    color:var(--text);
+    background:var(--surface);
+    box-shadow:var(--shadow-soft);
+    text-align:left;
+    cursor:pointer; }
+.sq-row.is-urgent { box-shadow:inset 3px 0 0 var(--alert), var(--shadow-soft); }
+.sq-row.is-attention,
+  .sq-row.is-review { box-shadow:inset 3px 0 0 var(--warn), var(--shadow-soft); }
+.sq-row:focus-visible { outline:2px solid var(--brand); outline-offset:2px; }
+.sq-row-main { display:flex; align-items:center; flex-wrap:wrap; gap:4px 8px; min-width:0; }
+.sq-row-name { font-size:15px; font-weight:650; }
+.sq-row-meta { grid-column:1; display:flex; flex-wrap:wrap; gap:2px 12px; color:var(--text); font-family:var(--mono); font-size:12.5px; }
+.sq-k { color:var(--muted); font-family:var(--font-ui); font-size:11.5px; }
+.sq-chev { grid-column:2; grid-row:1 / span 2; color:var(--muted); font-size:22px; line-height:1; }
+#filter-bar,
+  body[data-theme="light"] #filter-bar { display:grid;
+    grid-template-columns:minmax(0, 1fr) auto;
+    gap:8px; }
+#filter-bar#filter-bar > * { display:none; }
+#filter-bar#filter-bar > .search-input { display:block; order:1; grid-column:1; min-height:44px; font-size:15px; }
+#filter-bar#filter-bar > .dp-mobile-filter-toggle { display:inline-flex; order:2; align-items:center; justify-content:center; grid-column:2; min-height:44px; min-width:76px; padding:0 12px; font-size:13px; font-weight:650; letter-spacing:0; text-transform:none; }
+.dp-mobile-filter-toggle.has-active { color:var(--readout-ink, #081019); background:var(--brand); border-color:var(--brand); }
+#filter-bar#filter-bar > .sort-wrap { display:flex; order:4; grid-column:1 / -1; }
+#filter-bar > .sort-wrap .sort-select { flex:1 1 auto; min-height:44px; }
+#filter-bar#filter-bar.mobile-expanded > #sq-status-group { display:grid; order:3;
+    grid-column:1 / -1;
+    grid-template-columns:repeat(2, minmax(0, 1fr));
+    gap:6px;
+    overflow:visible;
+    padding:0; }
+#filter-bar.mobile-expanded > #sq-status-group .sf { min-height:44px; font-size:13px; border-radius:10px; justify-content:space-between; width:100%; white-space:normal; text-align:left; }
+#filter-bar#filter-bar.mobile-expanded > #dash-week-controls { display:grid; order:5; grid-column:1 / -1; grid-template-columns:repeat(3, minmax(0, 1fr)); }
+#filter-bar#filter-bar.mobile-expanded > .sf-group:last-child { display:grid; order:6; grid-column:1 / -1; grid-template-columns:1fr 1fr; }
+#filter-bar.mobile-expanded .sf { min-height:44px; }
+/* Athlete workspace on a phone: identity and the three primary actions in
+     one compact block, vitals as a three-up grid, so the tabs and the first
+     panel are on the first screen. */
+  .fpa .fpa-name { font-size:22px; }
+.fpa-head-top { gap:8px 12px; }
+.fpa-head-actions { display:grid;
+    grid-template-columns:repeat(3, minmax(0, 1fr)) auto;
+    gap:6px;
+    width:100%; }
+.fpa-act { min-height:44px; padding:0 8px; justify-content:center; font-size:13px; }
+.fpa-act .dp-icon, .fpa-act svg { display:none; }
+.fpa-more-btn { padding:0 12px; }
+.fpa .fpa-vitals { grid-template-columns:repeat(3, minmax(0, 1fr)); gap:8px 10px; padding:8px 0 10px; }
+.fpa .fpa-vital-val { font-size:16px; }
+.fpa .fpa-vital-sub { display:none; }
+.fpa .fpa-next { padding:8px 10px; gap:6px 10px; }
+.fpa .fpa-next-btn { min-height:44px; flex:1 1 100%; }
+.fpa .fpa-tab { min-height:44px; }
+.fpa-subtabs { display:flex; }
+.fpa-subtab { flex:1 1 0; justify-content:center; min-height:44px; }
+#fp-overlay .fp-nav-lbl { display:none; }
+#fp-overlay .fp-hint { display:none; }
+#fp-overlay .fp-topbar .fp-back { justify-self:start; width:auto; min-height:44px; padding:0 14px; font-size:13px; }
+#fp-overlay .fp-topbar .fp-nav-btn { min-height:44px; min-width:44px; font-size:13px; }
+#fp-overlay .fp-topbar .fp-idx { font-size:12px; min-width:34px; }
+#fp-overlay .fp-topbar .fp-nav { margin-left:auto; }
+.fpa .fpa-next-txt { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; font-size:13.5px; }
+}

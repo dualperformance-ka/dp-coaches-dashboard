@@ -335,6 +335,13 @@
       if (code) state.names.set(code, a.name || a.displayName || a.profile?.Name || code);
     });
     renderRail();
+    publishMessages();
+  }
+
+  // Unread messages are Follow up work in the decision queue as well as a
+  // rail panel; hand the queue the same rows so the two never disagree.
+  function publishMessages() {
+    if (root.DP_TRIAGE && typeof root.DP_TRIAGE.setMessages === 'function') root.DP_TRIAGE.setMessages(state.messages);
   }
 
   function notifyFor(code) {
@@ -344,7 +351,8 @@
 
   async function runAction(kind, id, action) {
     const key = `${kind}:${id}`;
-    if (state.busy.has(key) || typeof root.maPost !== 'function') return;
+    if (state.busy.has(key) || typeof root.maPost !== 'function') return false;
+    let ok = false;
     state.busy.add(key);
     renderRail();
     try {
@@ -356,12 +364,19 @@
         state.requests = state.requests.map(r => (r.id === result.request.id ? result.request : r));
       }
       if (typeof root.workflowNotice === 'function') root.workflowNotice('Saved');
+      ok = true;
     } catch (error) {
       if (typeof root.workflowNotice === 'function') root.workflowNotice(`Could not update: ${error.message}`, 'error');
     } finally {
       state.busy.delete(key);
       renderRail();
+      if (kind === 'm') publishMessages();
     }
+    return ok;
+  }
+
+  function messageAction(id, action) {
+    return runAction('m', id, action);
   }
 
   // ── Weekly review (coach side) ─────────────────────────────────────────────
@@ -515,6 +530,7 @@
     notifyHealthHtml,
     notifyFor,
     setOperations,
+    messageAction,
     messagesHtml,
     requestsHtml,
     summaryHtml,

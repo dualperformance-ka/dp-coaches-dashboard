@@ -16,7 +16,7 @@
 // it for you — and if sw.js is byte-identical the browser never installs a new
 // worker, no "Update available" toast appears, and the activate purge never runs.
 // scripts/bump-sw-version.mjs does it for you: `node scripts/bump-sw-version.mjs`.
-const VERSION = 'dp-coaches-v59-strava-all-activities';
+const VERSION = 'dp-coaches-v60-command-centre';
 const SHELL_CACHE = `${VERSION}-shell`;
 const STATIC_CACHE = `${VERSION}-static`;
 const FONT_CACHE = `${VERSION}-fonts`;
@@ -25,21 +25,23 @@ const FONT_CACHE = `${VERSION}-fonts`;
 const SHELL_ASSETS = [
   '/',
   '/index.html',
-  '/app.js?v=2',
+  '/app.js?v=3',
   '/coach-auth.js',
   '/coaching-actions.js?v=3',
-  '/dashboard-redesign.js?v=20260906-17',
+  '/dashboard-redesign.js?v=20261014-01',
   '/dashboard-redesign.css?v=20260907-34',
   '/dashboard-detail-cleanup.css?v=20260906-17',
   '/dashboard-comprehensive.css?v=20260906-23',
   '/dashboard-theme-system.css?v=20260909-37',
   '/dashboard-desktop.css?v=20260906-17',
-  '/dashboard-mobile-final.css?v=20260907-34',
+  '/dashboard-mobile-final.css?v=20261014-01',
   '/dp-icons.js?v=20260907-35',
-  '/dashboard-mobilenav.js?v=20260921-01',
-  '/triage.css?v=20260906-32',
-  '/triage.js?v=20260923-01',
-  '/coach-parity.js?v=20261010-01',
+  '/dashboard-mobilenav.js?v=20261014-01',
+  '/triage.css?v=20261014-01',
+  '/triage.js?v=20261014-01',
+  '/coach-queue.js?v=20261014-01',
+  '/command-centre.css?v=20261014-01',
+  '/coach-parity.js?v=20261014-01',
   '/coach-parity.css?v=20260924-01',
   '/strava-activities.js?v=20261010-01',
   '/strava-activities.css?v=20261010-01',

@@ -163,18 +163,25 @@ note('palette:slashWhileTyping', await page.evaluate(() => {
 }));
 
 // ── Athlete workspace + seven tabs ───────────────────────────────────────────
+// Open from the Squad: the previous step leaves the coach on Pipeline, where
+// no athlete control is visible, so this step used to find nothing at all.
+await page.evaluate(() => window.switchTab('athletes'));
+await page.waitForTimeout(800);
 const opened = await page.evaluate(() => {
-  const el = [...document.querySelectorAll('a,button,[role="button"],tr,[data-athlete],.sq-row,.athlete-chip')]
+  const el = [...document.querySelectorAll('.sq-name,.sq-row,a,button,[role="button"],[data-athlete],.athlete-chip')]
     .find(e => /khang|sarah/i.test(e.textContent || '') && e.getBoundingClientRect().width > 0);
   if (!el) return null;
   el.click();
   return (el.textContent || '').trim().slice(0, 40);
 });
+await page.waitForTimeout(500);
+// On a desktop the name expands the row; the profile is its primary exit.
+await page.evaluate(() => document.querySelector('.trow-expand .texp-cta.is-primary')?.click());
 await page.waitForTimeout(1500);
 note('workspace:opened', opened);
 await page.screenshot({ path: `${OUT}/flow-workspace.png` });
 
-const TABS = ['Overview', 'Training', 'Running', 'Strength', 'Body & Fuel', 'Check-ins', 'Notes'];
+const TABS = ['Overview', 'Training', 'Performance', 'Running', 'Strength', 'Body & Fuel', 'Check-ins', 'Notes'];
 const tabResults = [];
 for (const tab of TABS) {
   const r = await page.evaluate(name => {

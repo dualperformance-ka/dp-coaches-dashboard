@@ -24,8 +24,19 @@
     { key: 'notifications', label: 'New leads', icon: 'bell'    },
     { key: 'coaches',       label: 'Coach team',icon: 'coaches' },
     { key: 'sync',          label: 'Sync health', icon: 'sync'  },
+    { key: 'manage',        label: 'Manage athletes', icon: 'squad' },
+    { key: 'theme',         label: 'Light / dark', icon: 'theme' },
     { key: 'lock',          label: 'Lock app',  icon: 'lock'    }
   ];
+  // More-sheet entries that run a command rather than open a screen.
+  var COMMANDS = {
+    lock: function () { if (window.DP_COACH_AUTH && window.DP_COACH_AUTH.logout) window.DP_COACH_AUTH.logout(); },
+    manage: function () { if (typeof window.openManageAthletes === 'function') window.openManageAthletes(); },
+    theme: function () {
+      var next = document.body.dataset.theme === 'light' ? 'dark' : 'light';
+      if (typeof window.setTheme === 'function') window.setTheme(next);
+    }
+  };
 
   // Maps a tab key to its existing top-bar badge id (for live count mirror).
   var BADGE_SRC = {
@@ -49,6 +60,7 @@
     bell:    '<path d="M18 8a6 6 0 0 0-12 0c0 7-3 8-3 8h18s-3-1-3-8Z"/><path d="M10.3 21a2 2 0 0 0 3.4 0"/>',
     send:    '<path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4 20-7Z"/>',
     lock:    '<rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/>',
+    theme:   '<circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 0 0 16Z" fill="currentColor"/>',
     more:    '<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>'
   };
 
@@ -104,8 +116,15 @@
 
     var sheet = document.createElement('div');
     sheet.className = 'dp-sheet';
-    sheet.setAttribute('role', 'menu');
+    sheet.setAttribute('role', 'dialog');
+    sheet.setAttribute('aria-label', 'More destinations');
     sheet.setAttribute('aria-hidden', 'true');
+    // Closed, the sheet sits off screen; inert keeps its buttons out of the
+    // tab order so keyboard focus cannot land on something invisible.
+    sheet.inert = true;
+    sheet.addEventListener('keydown', function (event) {
+      if (event.key === 'Escape') { event.preventDefault(); closeSheet(true); }
+    });
 
     var grip = document.createElement('div');
     grip.className = 'dp-sheet-grip';
@@ -129,10 +148,7 @@
         '<span>' + e.label + '</span>';
       cell.addEventListener('click', function () {
         closeSheet();
-        if (e.key === 'lock') {
-          if (window.DP_COACH_AUTH?.logout) window.DP_COACH_AUTH.logout();
-          return;
-        }
+        if (COMMANDS[e.key]) { COMMANDS[e.key](); return; }
         if (typeof window.switchTab === 'function') window.switchTab(e.key);
         setActive(e.key);
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -152,17 +168,27 @@
     sheet.classList.contains('open') ? closeSheet() : openSheet();
   }
   function openSheet() {
-    document.querySelector('.dp-sheet').classList.add('open');
-    document.querySelector('.dp-sheet').setAttribute('aria-hidden', 'false');
+    var sheetEl = document.querySelector('.dp-sheet');
+    sheetEl.classList.add('open');
+    sheetEl.setAttribute('aria-hidden', 'false');
+    sheetEl.inert = false;
+    var first = sheetEl.querySelector('.dp-sheet-cell');
+    if (first) setTimeout(function () { first.focus({ preventScroll: true }); }, 30);
     document.querySelector('.dp-sheet-backdrop').classList.add('open');
     var mb = document.querySelector('.dp-mnav-item[data-nav-key="more"]');
     if (mb) { mb.classList.add('active'); mb.setAttribute('aria-expanded', 'true'); }
   }
-  function closeSheet() {
+  function closeSheet(returnFocus) {
     var sheet = document.querySelector('.dp-sheet');
     if (!sheet) return;
+    var wasOpen = sheet.classList.contains('open');
     sheet.classList.remove('open');
     sheet.setAttribute('aria-hidden', 'true');
+    sheet.inert = true;
+    if (wasOpen && returnFocus === true) {
+      var more = document.querySelector('.dp-mnav-item[data-nav-key="more"]');
+      if (more) more.focus({ preventScroll: true });
+    }
     document.querySelector('.dp-sheet-backdrop').classList.remove('open');
     var mb = document.querySelector('.dp-mnav-item[data-nav-key="more"]');
     if (mb) {
@@ -229,8 +255,8 @@
      The athlete Table has 13 columns; on mobile CSS collapses each row
      into a card and shows these labels above each metric. We stamp them
      as data-label since the table markup doesn't carry them. */
-  var TABLE_LABELS = ['', 'Wk', 'Recovery', 'Weekly KM', 'Comp', 'Weight',
-    'Energy', 'Sleep', 'Stress', 'Calories', 'Run', 'Str', 'Status'];
+  var TABLE_LABELS = ['', 'Status', 'Recovery', 'Adherence', 'Last activity',
+    'Last check-in', 'Next action'];
   function stampTableLabels() {
     var rows = document.querySelectorAll('#grid.table-mode .dash-trow');
     rows.forEach(function (row) {
@@ -253,11 +279,13 @@
       toggle.className = 'dp-mobile-filter-toggle';
       toggle.type = 'button';
       toggle.setAttribute('aria-expanded', 'false');
-      toggle.textContent = 'Filters';
+      toggle.setAttribute('aria-controls', 'sq-status-group');
+      toggle.textContent = 'Filter';
       toggle.addEventListener('click', function () {
         var open = filter.classList.toggle('mobile-expanded');
         toggle.setAttribute('aria-expanded', String(open));
-        toggle.textContent = open ? 'Less' : 'Filters';
+        if (typeof window.syncFilterToggle === 'function') window.syncFilterToggle();
+        else toggle.textContent = open ? 'Done' : 'Filter';
       });
       search.insertAdjacentElement('afterend', toggle);
     }

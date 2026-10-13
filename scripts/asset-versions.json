@@ -20,8 +20,8 @@
     "sha": "25327bbe2c71"
   },
   "triage.css": {
-    "version": "20260906-32",
-    "sha": "c23f791598bc"
+    "version": "20261014-01",
+    "sha": "f9731f3c05ae"
   },
   "programming.css": {
     "version": "20260906-17",
@@ -43,17 +43,21 @@
     "version": "20261010-01",
     "sha": "62fedf27abd1"
   },
+  "command-centre.css": {
+    "version": "20261014-01",
+    "sha": "043486cb5d10"
+  },
   "instrument.css": {
     "version": "20260906-33",
     "sha": "aa09c3fcac14"
   },
   "dashboard-mobile-final.css": {
-    "version": "20260907-34",
-    "sha": "75585ea8667f"
+    "version": "20261014-01",
+    "sha": "25cf630045b9"
   },
   "dashboard-redesign.js": {
-    "version": "20260906-17",
-    "sha": "43b64a721db1"
+    "version": "20261014-01",
+    "sha": "3cde6ee4170e"
   },
   "coaching-actions.js": {
     "version": "3",
@@ -64,16 +68,20 @@
     "sha": "31a16493c689"
   },
   "dashboard-mobilenav.js": {
-    "version": "20260921-01",
-    "sha": "439392dcc995"
+    "version": "20261014-01",
+    "sha": "f0dc7c40c35c"
+  },
+  "coach-queue.js": {
+    "version": "20261014-01",
+    "sha": "55191e7f5ab9"
   },
   "triage.js": {
-    "version": "20260923-01",
-    "sha": "10fcce2302c6"
+    "version": "20261014-01",
+    "sha": "56678fece235"
   },
   "coach-parity.js": {
-    "version": "20261010-01",
-    "sha": "2d309b548361"
+    "version": "20261014-01",
+    "sha": "60bbcda72ccd"
   },
   "strava-activities.js": {
     "version": "20261010-01",
@@ -100,7 +108,7 @@
     "sha": "fdad72bfc87d"
   },
   "app.js": {
-    "version": "2",
-    "sha": "c9b8fca8356c"
+    "version": "3",
+    "sha": "e093d1b7e5c6"
   }
 }

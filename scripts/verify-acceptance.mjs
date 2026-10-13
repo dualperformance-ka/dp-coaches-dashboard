@@ -41,9 +41,11 @@ ask('Coach can review athlete submissions',
 await p.evaluate(()=>window.showFP('KAI')); await p.waitForTimeout(1300);
 const race = await p.evaluate(()=>(document.getElementById('fp-overlay').innerText.match(/\d+ WEEKS OUT|RACE WEEK/i)||[''])[0]);
 ask('Race context displays correctly', race||'none', !!race);
-// 5 seven tabs
-const tabs = await p.evaluate(()=>[...document.querySelectorAll('#fp-body .fpa-tab')].map(t=>t.textContent.trim().replace(/\d+$/,'')));
-ask('All seven workspace tabs function', tabs.join(' / '), tabs.length===7);
+// 5 six tabs; Running and Strength are the two views inside Performance
+const tabs = await p.evaluate(()=>[...document.querySelectorAll('#fp-body .fpa-tab')].map(t=>t.textContent.trim().replace(/\d+$/,'').trim()));
+const subs = await p.evaluate(()=>[...document.querySelectorAll('#fp-body .fpa-subtab')].map(t=>t.textContent.trim().replace(/\d+$/,'').trim()));
+ask('All workspace sections function', tabs.join(' / ')+' | Performance: '+subs.join(' / '),
+  tabs.join('|')==='Overview|Training|Performance|Body & Fuel|Check-ins|Notes' && subs.join('|')==='Running|Strength');
 // 6 tabs render distinct content
 const prints=new Set();
 for(const k of ['overview','training','running','strength','body','checkins','notes']){
@@ -70,8 +72,8 @@ ask('Bodyweight work invents no tonnage',(st.match(/Bodyweight Push Up[^|]{0,40}
 // 13 keyboard
 await p.evaluate(()=>document.body.focus());
 await p.keyboard.press('3'); await p.waitForTimeout(400);
-const kbTab = await p.evaluate(()=>document.querySelector('.fpa-tab.is-active')?.textContent.trim());
-ask('Workspace is usable by keyboard','pressed 3 -> '+kbTab, /running/i.test(kbTab||''));
+const kbTab = await p.evaluate(()=>document.querySelector('.fpa-tab.is-active')?.textContent.trim()+' / '+document.querySelector('.fpa-subtab.is-active')?.textContent.trim());
+ask('Workspace is usable by keyboard','pressed 3 -> '+kbTab, /performance/i.test(kbTab||''));
 await p.keyboard.press('g'); await p.keyboard.press('s'); await p.waitForTimeout(700);
 ask('Global navigation shortcuts work','g s -> '+await p.evaluate(()=>document.querySelector('.tab.active')?.textContent.trim()), true);
 await p.keyboard.press('Meta+k'); await p.waitForTimeout(400);

@@ -23,7 +23,7 @@
     setTimeout(() => el.remove(), 200);
   }
 
-  function showToast(message, actionLabel, onAction) {
+  function showToast(message, actionLabel, onAction, onDismiss) {
     dismissToast();
 
     const toast = document.createElement('div');
@@ -65,7 +65,10 @@
     close.setAttribute('aria-label', 'Dismiss');
     close.style.cssText =
       'background:none;border:none;color:var(--dim,#777);cursor:pointer;font:inherit;padding:2px 4px';
-    close.addEventListener('click', dismissToast);
+    close.addEventListener('click', () => {
+      if (typeof onDismiss === 'function') onDismiss();
+      dismissToast();
+    });
     toast.appendChild(close);
 
     document.body.appendChild(toast);
@@ -125,23 +128,32 @@
 
   let deferredPrompt = null;
 
+  // A dismissed install offer stays dismissed for two weeks on this device,
+  // whether the coach closed the toast or declined the browser prompt. It used
+  // to come back every session and sat over the bottom navigation.
+  const INSTALL_KEY = 'dp_install_dismissed_until';
+  const INSTALL_SNOOZE_MS = 14 * 24 * 60 * 60 * 1000;
+  function installSnoozed() {
+    try { return Number(localStorage.getItem(INSTALL_KEY) || 0) > Date.now(); } catch { return false; }
+  }
+  function snoozeInstall() {
+    try { localStorage.setItem(INSTALL_KEY, String(Date.now() + INSTALL_SNOOZE_MS)); } catch {}
+  }
+
   window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
     deferredPrompt = e;
 
-    // Don't nag: show once per session.
-    if (sessionStorage.getItem('dp_install_dismissed')) return;
+    if (installSnoozed()) return;
 
     showToast('Install DP Coaches', 'Install', async (btn) => {
       btn.disabled = true;
       deferredPrompt.prompt();
       const { outcome } = await deferredPrompt.userChoice;
       deferredPrompt = null;
-      if (outcome !== 'accepted') {
-        sessionStorage.setItem('dp_install_dismissed', '1');
-      }
+      if (outcome !== 'accepted') snoozeInstall();
       dismissToast();
-    });
+    }, snoozeInstall);
   });
 
   window.addEventListener('appinstalled', () => {

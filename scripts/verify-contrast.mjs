@@ -5,8 +5,10 @@ const rgb=s=>{const t=String(s);const m=(t.match(/[\d.]+/g)||[]).slice(0,3).map(
 const lum=c=>{const[r,g,bb]=rgb(c).map(v=>{v/=255;return v>0.03928?((v+0.055)/1.055)**2.4:v/12.92});return .2126*r+.7152*g+.0722*bb};
 const contrast=(f,bg)=>{const a=lum(f),d=lum(bg);return +(((Math.max(a,d)+.05)/(Math.min(a,d)+.05)).toFixed(2))};
 // Composite an rgba foreground over its background before measuring.
+// color(srgb r g b / a) foregrounds (what color-mix() resolves to) carry 0-1
+// channels; rgb() scales them, so read the channels through it, not raw.
 const flatten=(fg,bg)=>{const m=String(fg).match(/[\d.]+/g)||[];const a=m.length>3?+m[3]:1;
-  const F=m.slice(0,3).map(Number),B=rgb(bg);return `rgb(${F.map((v,i)=>Math.round(v*a+B[i]*(1-a))).join(',')})`;};
+  const F=rgb(fg),B=rgb(bg);return `rgb(${F.map((v,i)=>Math.round(v*a+B[i]*(1-a))).join(',')})`;};
 
 
 // The sample collector, installed on the page so every surface can be measured
@@ -90,7 +92,10 @@ for (const [w,h,theme] of [[1440,900,'dark'],[1440,900,'light'],[390,844,'dark']
   // densest small text in the product, and its lift ledger is where the light
   // theme was failing, so every surface a coach actually reads gets measured.
   for (const [label, setup] of [
-    ['workspace-overview', () => { window.showFP('LUCA'); }],
+    // The redesign's own surfaces: the squad list/table and Focus Mode.
+    ['squad', () => window.switchTab('athletes')],
+    ['focus', () => { window.switchTab('triage'); window.DP_TRIAGE.startFocus('queue'); }],
+    ['workspace-overview', () => { window.DP_TRIAGE?.closeFocus?.(); window.showFP('LUCA'); }],
     ['workspace-training', () => window.switchAthleteTab('training')],
     ['workspace-strength', () => window.switchAthleteTab('strength')],
     ['workspace-running',  () => window.switchAthleteTab('running')],

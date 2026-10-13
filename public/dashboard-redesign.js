@@ -18,7 +18,10 @@
       .replace(/[^a-z\s'-]/gi, "")
       .trim();
 
-    return cleaned || "Coach";
+    // Sentence case: the select holds "KARL"; a greeting should say "Karl".
+    return cleaned
+      ? cleaned.charAt(0).toUpperCase() + cleaned.slice(1).toLowerCase()
+      : "Coach";
   }
 
   function formatToday() {
@@ -26,7 +29,6 @@
       weekday: "long",
       day: "numeric",
       month: "long",
-      year: "numeric",
     }).format(new Date());
   }
 
@@ -52,33 +54,14 @@
     }
   }
 
-  function addPageIntro() {
+  // The large greeting hero that used to be injected above Today pushed the
+  // decision queue below the fold on a phone. The compact header is static
+  // markup in index.html now; this only keeps its words current.
+  function hydrateTodayHeader() {
     const content = qs("#tab-triage-content");
-    const anchor = qs(".today-workspace", content);
-
-    if (!content || !anchor || qs(".dp-page-intro")) return;
-
-    const intro = document.createElement("section");
-    intro.className = "dp-page-intro";
-    intro.innerHTML = `
-      <div>
-        <div class="dp-eyebrow">Coach today</div>
-
-        <h1 class="dp-page-title">
-          <span id="dp-intro-greeting">${timeGreeting()}</span>,
-          <span id="dp-intro-coach">${coachName()}</span>
-        </h1>
-
-        <p class="dp-page-subtitle">
-          Work the decision queue, clear the review backlog, and the squad is
-          covered for the day.
-        </p>
-      </div>
-
-      <div class="dp-intro-date">${formatToday()}</div>
-    `;
-
-    content.insertBefore(intro, anchor);
+    if (!content) return;
+    const date = qs("#today-date", content);
+    if (date) date.textContent = formatToday();
   }
 
   function improveLabels() {
@@ -94,22 +77,6 @@
       search.placeholder = "Search athletes by name…";
     }
 
-    qsa(".sf").forEach((button) => {
-      const status = button.dataset.status;
-
-      if (status === "red") {
-        replaceFirstTextNode(button, "Critical", ["alert"]);
-      }
-
-      if (status === "amber") {
-        replaceFirstTextNode(button, "Review", ["watch"]);
-      }
-
-      if (status === "green") {
-        replaceFirstTextNode(button, "On track", ["on track"]);
-      }
-    });
-
     const commandTitle = qs(".cc-title");
 
     if (
@@ -117,15 +84,6 @@
       /command centre/i.test(commandTitle.textContent)
     ) {
       commandTitle.textContent = "Priority actions";
-    }
-
-    const commandKicker = qs(".cc-kicker");
-
-    if (
-      commandKicker &&
-      commandKicker.textContent !== "What needs attention now"
-    ) {
-      commandKicker.textContent = "What needs attention now";
     }
 
     const briefTitle = qs(".sb-title");
@@ -141,11 +99,12 @@
 
     if (salutation) salutation.textContent = timeGreeting();
     if (coach) coach.textContent = coachName();
+    hydrateTodayHeader();
   }
 
   function enhance() {
     try {
-      addPageIntro();
+      hydrateTodayHeader();
       improveLabels();
       updateGreeting();
     } catch (error) {

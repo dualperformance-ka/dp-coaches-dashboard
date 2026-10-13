@@ -482,6 +482,9 @@ body[data-theme="pride"] .dash-week-nav{border:2px solid transparent;border-imag
 .workflow-toast{position:fixed;right:20px;bottom:20px;z-index:10050;max-width:min(420px,calc(100vw - 32px));padding:11px 14px;border:1px solid rgba(34,197,94,.35);border-radius:9px;background:#f0fdf4;color:#166534;font-family:var(--mono);font-size:10px;font-weight:700;line-height:1.45;box-shadow:0 14px 36px rgba(15,23,42,.18);transition:opacity .2s,transform .2s}
 .workflow-toast.is-error{border-color:rgba(220,38,38,.35);background:#fef2f2;color:#991b1b}
 .workflow-toast.is-leaving{opacity:0;transform:translateY(8px)}
+/* A status line, not a control: it must never swallow clicks, least of all
+   once it has faded out over the bottom-right corner where primary actions live. */
+.workflow-toast{pointer-events:none}
 .cc-score-num{font-size:18px;font-weight:900;line-height:1}
 .cc-score-num.red{color:#fca5a5}.cc-score-num.amber{color:#fcd34d}.cc-score-num.green{color:#86efac}
 .cc-score-lbl{font-family:var(--mono);font-size:7px;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:.1em;margin-top:3px}
@@ -1992,7 +1995,7 @@ body[data-theme="light"] .strava-command-bar{background:linear-gradient(135deg,r
   @media(max-width:760px){.wd-import-charts{grid-template-columns:1fr}.wd-strava-act.direct-upload{max-width:100%}}
 </style>
 </head>
-<body>
+<body data-tab="triage">
 <!-- Keyboard users land here first: one link past the header, nav and filters,
      straight to whatever the current screen is. Visually hidden until focused. -->
 <a class="dp-skip-link" href="#tab-triage-content">Skip to main content</a>
@@ -2063,20 +2066,13 @@ body[data-theme="light"] .strava-command-bar{background:linear-gradient(135deg,r
 <!-- ── Full-page athlete view ── -->
 <div id="fp-overlay" role="dialog" aria-modal="true" aria-hidden="true" aria-label="Athlete coaching detail">
   <div class="fp-topbar">
-    <button class="fp-back" onclick="hideFP()">← Back to Squad</button>
-    <div class="fp-nav">
-      <button class="fp-nav-btn" id="fp-prev" onclick="fpNav(-1)">← Prev</button>
+    <button class="fp-back" onclick="hideFP()" aria-label="Back to the previous screen"><span aria-hidden="true">←</span> Back</button>
+    <div class="fp-nav" role="group" aria-label="Switch athlete">
+      <button class="fp-nav-btn" id="fp-prev" onclick="fpNav(-1)" aria-label="Previous athlete"><span aria-hidden="true">←</span><span class="fp-nav-lbl"> Prev</span></button>
       <span class="fp-idx" id="fp-idx"></span>
-      <button class="fp-nav-btn" id="fp-next" onclick="fpNav(1)">Next →</button>
+      <button class="fp-nav-btn" id="fp-next" onclick="fpNav(1)" aria-label="Next athlete"><span class="fp-nav-lbl">Next </span><span aria-hidden="true">→</span></button>
     </div>
-    <div style="display:flex;align-items:center;gap:12px">
-      <span class="fp-hint">Esc to close · ← → to navigate</span>
-      <div class="theme-toggle">
-        <button class="theme-btn" data-theme="dark" onclick="setTheme('dark')" title="Dark">◑</button>
-        <button class="theme-btn" data-theme="light" onclick="setTheme('light')" title="Light">☀</button>
-        <button class="theme-btn pride-btn" data-theme="pride" onclick="setTheme('pride')" title="Pride" aria-label="Pride theme">🏳️‍🌈</button><!-- deliberate: the only emoji left in the UI, because a monochrome icon cannot carry what this one means -->
-      </div>
-    </div>
+    <span class="fp-hint">Esc to close · ← → to switch athlete · theme in More</span>
   </div>
   <div class="fp-body" id="fp-body"></div>
 </div>
@@ -2300,16 +2296,17 @@ body[data-theme="light"] .theme-btn.active{background:rgba(255,255,255,.22);colo
 </style>
 <link rel="stylesheet" href="/dashboard-theme-system.css?v=20260909-37">
 <link rel="stylesheet" href="/dashboard-desktop.css?v=20260906-17">
-<link rel="stylesheet" href="/triage.css?v=20260906-32">
+<link rel="stylesheet" href="/triage.css?v=20261014-01">
 <link rel="stylesheet" href="/programming.css?v=20260906-17">
 <link rel="stylesheet" href="/weekly-sport-targets.css?v=3">
 <link rel="stylesheet" href="/daily-macro-overrides.css?v=3">
 <link rel="stylesheet" href="/coach-parity.css?v=20260924-01">
 <link rel="stylesheet" href="/strava-activities.css?v=20261010-01">
+<link rel="stylesheet" href="/command-centre.css?v=20261014-01">
 <link rel="stylesheet" href="/instrument.css?v=20260906-33">
 <!-- Phone layer, deliberately last: see the header of dashboard-mobile-final.css.
      Loading it here is what lets every phone rule drop its !important. -->
-<link rel="stylesheet" href="/dashboard-mobile-final.css?v=20260907-34">
+<link rel="stylesheet" href="/dashboard-mobile-final.css?v=20261014-01">
 <div class="ma-backdrop" id="ma-backdrop" role="dialog" aria-modal="true" aria-label="Manage athletes" onclick="if(event.target===this)closeManageAthletes()">
   <div class="ma-card">
     <div class="ma-head">
@@ -2588,7 +2585,7 @@ function refreshRosterDrivenUI() {
   <div class="tab-bar-spacer"></div>
   <button type="button" class="tab tab-search" id="tab-search-btn" onclick="openCommandPalette()"
           aria-label="Search athletes" title="Search athletes and jump anywhere (⌘K)">
-    <span aria-hidden="true">⌕</span> Search <kbd class="tab-kbd">⌘K</kbd>
+    <span aria-hidden="true">⌕</span> <span class="tab-search-lbl">Search</span> <kbd class="tab-kbd">⌘K</kbd>
   </button>
   <button type="button" class="tab tab-settings" id="settings-btn" aria-haspopup="true" aria-expanded="false"
           onclick="toggleSettingsMenu(event)">⚙ Settings <span class="tab-badge" id="tab-sync-count">—</span></button>
@@ -2618,84 +2615,113 @@ function refreshRosterDrivenUI() {
   </button>
 </div>
 
-<!-- Filter bar (athletes only) -->
+<!-- Filter bar (athletes only). Status filters follow the one status
+     hierarchy (coach-queue.js): the highest active state decides. -->
 <div class="filter-bar" id="filter-bar" style="display:none">
-  <input type="text" class="search-input" id="search-input" placeholder="Search athlete…" oninput="applyFilters()">
+  <input type="search" class="search-input" id="search-input" placeholder="Search athletes by name…" aria-label="Search athletes" oninput="applyFilters()">
   <div class="filter-divider"></div>
-  <span class="filter-label">Status:</span>
-  <div class="sf-group">
-    <button class="sf active" data-status="all" onclick="setStatusFilter(this,'all')">All <span class="sf-count"></span></button>
-    <button class="sf sf-red" data-status="red" onclick="setStatusFilter(this,'red')">⚠ Alert <span class="sf-count"></span></button>
-    <button class="sf sf-amber" data-status="amber" onclick="setStatusFilter(this,'amber')">Watch <span class="sf-count"></span></button>
-    <button class="sf sf-green" data-status="green" onclick="setStatusFilter(this,'green')">On Track <span class="sf-count"></span></button>
-    <button class="sf" data-status="nodata" onclick="setStatusFilter(this,'nodata')">No Data <span class="sf-count"></span></button>
+  <span class="filter-label" id="sq-status-label">Status</span>
+  <div class="sf-group" id="sq-status-group" role="group" aria-labelledby="sq-status-label">
+    <button type="button" class="sf active" data-status="all" aria-pressed="true" onclick="setStatusFilter(this,'all')">All <span class="sf-count"></span></button>
+    <button type="button" class="sf sf-red" data-status="urgent" aria-pressed="false" onclick="setStatusFilter(this,'urgent')">Urgent <span class="sf-count"></span></button>
+    <button type="button" class="sf sf-amber" data-status="attention" aria-pressed="false" onclick="setStatusFilter(this,'attention')">Needs attention <span class="sf-count"></span></button>
+    <button type="button" class="sf sf-amber" data-status="review" aria-pressed="false" onclick="setStatusFilter(this,'review')">Review due <span class="sf-count"></span></button>
+    <button type="button" class="sf sf-green" data-status="ontrack" aria-pressed="false" onclick="setStatusFilter(this,'ontrack')">On track <span class="sf-count"></span></button>
+    <button type="button" class="sf" data-status="nodata" aria-pressed="false" onclick="setStatusFilter(this,'nodata')">No recent data <span class="sf-count"></span></button>
   </div>
   <div class="filter-divider"></div>
+  <label class="sort-wrap" for="sort-select"><span class="sort-lbl">Sort</span>
   <select class="sort-select" id="sort-select" onchange="_tableSort=null;applyFilters()">
-    <option value="recent" selected>Sort: Recently Active</option>
-    <option value="alert">Sort: Needs Attention</option>
-    <option value="name">Sort: Name A–Z</option>
-    <option value="week">Sort: Program Week</option>
-    <option value="compliance">Sort: Compliance</option>
-    <option value="checkin">Sort: Last Check-in</option>
-  </select>
+    <option value="alert" selected>Needs attention</option>
+    <option value="recent">Recently active</option>
+    <option value="name">Name</option>
+    <option value="week">Programme week</option>
+    <option value="compliance">Adherence</option>
+    <option value="checkin">Last check-in</option>
+  </select></label>
   <div class="filter-divider"></div>
-  <div class="sf-group" id="dash-week-controls">
-    <button class="sf" id="dwc-prev" onclick="dashboardWeekNav(-1)">← Prev Week</button>
-    <button class="sf" id="dwc-next" onclick="dashboardWeekNav(1)">Next Week →</button>
-    <button class="sf" id="dwc-reset" onclick="dashboardWeekReset()" disabled>Current</button>
+  <div class="sf-group" id="dash-week-controls" role="group" aria-label="Week">
+    <button type="button" class="sf" id="dwc-prev" onclick="dashboardWeekNav(-1)">← Prev week</button>
+    <button type="button" class="sf" id="dwc-next" onclick="dashboardWeekNav(1)">Next week →</button>
+    <button type="button" class="sf" id="dwc-reset" onclick="dashboardWeekReset()" disabled>Current</button>
   </div>
   <div class="filter-divider"></div>
-  <div class="sf-group">
-    <button class="sf" id="view-cards-btn" onclick="setDashboardView('cards')">Cards</button>
-    <button class="sf active" id="view-table-btn" onclick="setDashboardView('table')">Table</button>
+  <div class="sf-group" role="group" aria-label="Layout">
+    <button type="button" class="sf" id="view-cards-btn" onclick="setDashboardView('cards')">Cards</button>
+    <button type="button" class="sf active" id="view-table-btn" onclick="setDashboardView('table')">Table</button>
   </div>
 </div>
 
 <!-- TODAY TRIAGE TAB -->
+<!-- A coaching command centre, in the order a coach works it: who needs me,
+     why, what to do, done, next. The queue comes first in the DOM as well as on
+     screen, so keyboard and screen-reader order match what a sighted coach
+     sees. Squad pulse (reporting) follows the queue; the coach's own workload
+     sits in the rail. -->
 <main id="tab-triage-content" class="triage-page">
   <div class="today-workspace">
-    <!-- Squad vitals. Every tile is a filter into the queue or the roster, not
-         a headline number — the priority and overdue lists that used to sit
-         here duplicated the decision queue below with different rules. -->
-    <section class="today-operations" aria-label="Squad status">
-      <div id="today-dashboard-loading" class="today-dashboard-state" role="status" aria-label="Loading squad status">
-        <div class="dp-skel-row"><span class="dp-skel dp-skel-line w40"></span><span class="dp-skel dp-skel-line w15"></span></div>
-        <div class="dp-skel-tiles">
-          <span class="dp-skel dp-skel-tile"></span><span class="dp-skel dp-skel-tile"></span>
-          <span class="dp-skel dp-skel-tile"></span><span class="dp-skel dp-skel-tile"></span>
-          <span class="dp-skel dp-skel-tile"></span><span class="dp-skel dp-skel-tile"></span>
-        </div>
+    <div class="today-head">
+      <div class="today-head-main">
+        <h1 class="today-greeting"><span id="dp-intro-greeting">Good morning</span>, <span id="dp-intro-coach">Coach</span></h1>
+        <p class="today-head-meta"><span id="today-date"></span><span class="today-head-sep" aria-hidden="true">·</span><span id="today-updated">Loading…</span></p>
       </div>
-      <div id="today-dashboard-error" class="today-dashboard-state is-error" role="alert" hidden></div>
-      <div id="command-center"></div>
-    </section>
+      <div class="today-head-side">
+        <p class="today-attention" id="today-attention" aria-live="polite"><span class="today-count-skel" aria-hidden="true"></span><span class="dp-visually-hidden">Loading the queue</span></p>
+        <button type="button" class="today-refresh" id="today-refresh" aria-label="Refresh Today"><span aria-hidden="true">↻</span><span class="today-refresh-lbl">Refresh</span></button>
+      </div>
+    </div>
 
-    <!-- The one decision queue: server-ranked signals merged with the
-         client-computed alerts, one row per athlete, one resolve verb. -->
+    <!-- The one coaching queue: server signals, client alerts, the review
+         backlog and unread messages merged per athlete (coach-queue.js). -->
     <section class="triage-shell" aria-labelledby="triage-title">
-      <div class="triage-hero">
-        <div>
-          <div class="triage-eyebrow">Decision queue · Today</div>
-          <h1 id="triage-title">Who needs me today</h1>
-          <p>One row per athlete. Resolving a row keeps it out until the situation moves.</p>
+      <div class="cq-head">
+        <div class="cq-head-copy">
+          <h2 id="triage-title">Decision queue</h2>
+          <p class="cq-sub">One row per athlete. Resolving a row keeps it out until the situation moves.</p>
         </div>
-        <div class="triage-date" id="triage-date" aria-label="Dashboard date"></div>
+        <button type="button" class="cq-start" data-focus-start="queue" disabled>Start review</button>
       </div>
+      <div class="cq-filters" id="triage-filters" role="group" aria-label="Filter the queue"></div>
+      <div id="triage-status" class="dp-visually-hidden" role="status" aria-live="polite"></div>
 
-      <div id="triage-loading" class="triage-state" role="status">
-        <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
-        <span>Ranking today’s signals…</span>
+      <div id="triage-loading" class="triage-state cq-skeleton" role="status" aria-label="Loading the decision queue">
+        <div class="cq-skel-row"><span class="dp-skel dp-skel-line w25"></span><span class="dp-skel dp-skel-line w40"></span><span class="dp-skel dp-skel-line w15"></span></div>
+        <div class="cq-skel-row"><span class="dp-skel dp-skel-line w20"></span><span class="dp-skel dp-skel-line w40"></span><span class="dp-skel dp-skel-line w15"></span></div>
+        <div class="cq-skel-row"><span class="dp-skel dp-skel-line w28"></span><span class="dp-skel dp-skel-line w40"></span><span class="dp-skel dp-skel-line w15"></span></div>
       </div>
       <div id="triage-error" class="triage-state triage-state-error" role="alert" hidden>
-        <span id="triage-error-message">Triage data is unavailable.</span>
+        <span id="triage-error-message">The decision queue is unavailable.</span>
         <button type="button" class="triage-retry" data-triage-retry>Retry</button>
       </div>
-      <div id="triage-content" hidden aria-live="polite">
-        <div class="triage-summary" id="triage-summary"></div>
+      <div id="triage-content" hidden>
+        <div class="cq-stale" id="triage-stale" role="alert" hidden></div>
         <ol class="triage-queue" id="triage-queue" aria-label="Athletes needing attention"></ol>
-        <div class="triage-clear" id="triage-clear"></div>
-        <div class="triage-resolved" id="triage-resolved"></div>
+        <div class="triage-clear cq-empty" id="triage-clear" hidden></div>
+        <div class="triage-resolved" id="triage-resolved" hidden></div>
+      </div>
+    </section>
+
+    <!-- Squad pulse: reporting, not ranking. Every metric opens a filtered
+         list. Collapsed by default on a phone so it never sits above work. -->
+    <section class="today-operations" aria-labelledby="squad-pulse-title">
+      <div class="pulse-head">
+        <h2 id="squad-pulse-title">Squad pulse</h2>
+        <button type="button" class="pulse-toggle" id="pulse-toggle" aria-expanded="true" aria-controls="pulse-body">
+          <span class="pulse-summary" id="pulse-summary">Loading squad…</span>
+          <span class="pulse-chevron" aria-hidden="true"></span>
+          <span class="dp-visually-hidden pulse-toggle-lbl">Show or hide squad pulse</span>
+        </button>
+      </div>
+      <div class="pulse-body" id="pulse-body">
+        <div id="today-dashboard-loading" class="today-dashboard-state" role="status" aria-label="Loading squad pulse">
+          <div class="dp-skel-tiles">
+            <span class="dp-skel dp-skel-tile"></span><span class="dp-skel dp-skel-tile"></span>
+            <span class="dp-skel dp-skel-tile"></span><span class="dp-skel dp-skel-tile"></span>
+            <span class="dp-skel dp-skel-tile"></span><span class="dp-skel dp-skel-tile"></span>
+          </div>
+        </div>
+        <div id="today-dashboard-error" class="today-dashboard-state is-error" role="alert" hidden></div>
+        <div id="command-center"></div>
       </div>
     </section>
 
@@ -7269,7 +7295,12 @@ let _dataHealth = null;
 let _syncAudit = [];
 let _fullDashboardLoaded = false;
 let _fullDashboardLoading = false;
-let _statusFilter = localStorage.getItem('dp_dash_status') || 'all';
+// Saved filters from the red/amber/green model map onto the status hierarchy.
+let _statusFilter = (() => {
+  const saved = localStorage.getItem('dp_dash_status') || 'all';
+  const legacy = { red: 'urgent', amber: 'attention', green: 'ontrack' };
+  return legacy[saved] || saved;
+})();
 let _tableSort = null;          // { key, dir } — set by clicking a table header; overrides dropdown sort in table view
 let _expandedRows = new Set();  // safeIds of expanded table rows (survives re-renders)
 let _visibleAthletes = [];      // current filtered+sorted list — drives FP prev/next nav order
@@ -7395,6 +7426,137 @@ async function toggleDayReview(code, date) {
   }
 }
 
+// Triage marks days reviewed through the same API; keep the profile's own
+// "Reviewed" chips in step without a reload.
+function noteSessionReviewed(code, date) {
+  const key = `${nid(code)}|${date}`;
+  if (!_sessionReviews.has(key)) {
+    _sessionReviews.set(key, { athlete_code: code, session_date: date, reviewed_by: window.DP_COACH_AUTH?.coach?.() || null, reviewed_at: new Date().toISOString() });
+  }
+}
+window.noteSessionReviewed = noteSessionReviewed;
+
+// ── Focus Mode evidence ──────────────────────────────────────────────────────
+// What a coach needs to decide on one queue item, built from data the
+// dashboard has already loaded for this coach. Nothing new is fetched and
+// nothing new reaches the browser: these are the same session, body and
+// check-in rows the athlete profile renders. Returns null until the full
+// roster load has finished, so Focus Mode can say it is loading.
+function focusEvidence(code, options = {}) {
+  if (!_fullDashboardLoaded) return null;
+  const a = _allAthletes.find(x => nid(x.id) === nid(code));
+  if (!a) return { days: [], recent: '', checkin: '', snapshot: '<p class="cq-muted">This athlete is not in your loaded roster.</p>' };
+
+  const bodyFor = iso => (a.body || []).find(b => String(b['date:Date:start'] || b.Date || '').slice(0, 10) === iso) || null;
+  const dayHtml = iso => {
+    const logs = (a.sessions || []).filter(sess => sess._d === iso);
+    const uploads = (a.activities || []).filter(act => String(act._d || '').slice(0, 10) === iso);
+    const exceptions = sessionExceptionsHtml(a, logs);
+    return exceptions + _peekLoggedHtml({ athlete: a, logs, uploads, date: iso, matchedByName: true }) + _peekBodyHtml(bodyFor(iso));
+  };
+  const days = (options.dates || []).map(date => ({ date, html: dayHtml(date) }));
+
+  // Recent work for non-review items: the last three logged days, newest first.
+  const recentDates = [...new Set((a.sessions || []).map(sess => sess._d).filter(Boolean))].sort().reverse().slice(0, 3);
+  const recent = recentDates.length
+    ? `<section class="cq-focus-section"><h3>Recent training</h3>${recentDates.map(iso => {
+        const logs = (a.sessions || []).filter(sess => sess._d === iso);
+        const names = logs.map(sess => sess.Session || sess._cat || 'Session').filter(Boolean);
+        return `<details class="cq-recent"><summary><span class="cq-recent-date">${esc(fmtDate(iso))}</span> ${esc([...new Set(names)].join(', '))}${isDayReviewed(a.id, iso) ? ' <span class="cq-reviewed">Reviewed</span>' : ''}</summary>${dayHtml(iso)}</details>`;
+      }).join('')}</section>`
+    : `<section class="cq-focus-section"><h3>Recent training</h3><p class="cq-muted">Nothing logged yet.</p></section>`;
+
+  // Latest weekly check-in, the athlete's own words kept separate from numbers.
+  const w = a.weekly;
+  let checkin = '';
+  if (w) {
+    const facts = [
+      ['Recovery', a.recoveryScore !== null && a.recoveryScore !== undefined ? `${a.recoveryScore}/10` : null],
+      ['Run feel', w['Run Feel /10'] ? `${w['Run Feel /10']}/10` : null],
+      ['Sleep', w['Sleep hrs'] ? `${w['Sleep hrs']} h` : null],
+      ['Stress', w.Stress ? `${w.Stress}/10` : null],
+      ['Motivation', w.Motivation ? `${w.Motivation}/10` : null],
+    ].filter(([, v]) => v);
+    const words = [
+      ['Run niggles', w['Run Niggles']], ['Lift niggles', w['Lifts Niggles']],
+      ['Wins', w['Runs Wins']], ['Upcoming', w['Upcoming Impact']],
+    ].filter(([, v]) => isBad(v));
+    checkin = `<section class="cq-focus-section"><h3>Latest check-in <span class="cq-muted">· week ending ${esc(fmtDate(w['Week Ending']))}${a.hasCurrentCheckin ? '' : a.isStale ? ' · overdue' : ''}</span></h3>
+      ${facts.length ? `<dl class="cq-facts">${facts.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl>` : ''}
+      ${words.map(([k, v]) => `<div class="wd-sess-reflect"><span class="wd-reflect-lbl">Athlete · ${esc(k)}</span><span class="wd-reflect-txt">${esc(String(v).trim())}</span></div>`).join('')}
+    </section>`;
+  } else {
+    checkin = `<section class="cq-focus-section"><h3>Latest check-in</h3><p class="cq-muted">No weekly check-in submitted yet.</p></section>`;
+  }
+
+  const lastDays = a.lastActivity ? daysAgo(a.lastActivity) : null;
+  const snapshot = `<section class="cq-focus-section"><h3>This week</h3><dl class="cq-facts">
+    <div><dt>Adherence</dt><dd>${a.compliance === null || a.compliance === undefined ? '—' : `${a.compliance}%`}</dd></div>
+    <div><dt>Run volume</dt><dd>${a.currRunKm ? `${Number(a.currRunKm).toFixed(1).replace(/\.0$/, '')} km` : '—'}</dd></div>
+    <div><dt>Strength</dt><dd>${(a.currStrS || []).length} done</dd></div>
+    <div><dt>Last activity</dt><dd>${lastDays === null ? 'None' : lastDays <= 0 ? 'Today' : lastDays === 1 ? 'Yesterday' : `${lastDays} days ago`}</dd></div>
+  </dl></section>`;
+
+  const week = typeof a.weekNum === 'number' ? (a.weekNum === 0 ? 'Discovery week' : `Week ${a.weekNum} of ${getProgWeeks(a.id)}`) : '';
+  return { days, recent, checkin, snapshot, week };
+}
+window.DP_FOCUS_EVIDENCE = focusEvidence;
+
+// Exceptions first: a completed session leads with what a coach would act
+// on (PBs, pain, high effort, swaps, missed targets). The full log follows.
+function sessionExceptionsHtml(a, logs, options = {}) {
+  if (!logs.length) return '';
+  const notes = [];
+  const iso = logs[0]._d;
+  const prior = detectPRs((a.sessions || []).filter(p => p._isStr && p._d < iso)).allTime || {};
+  const today = detectPRs(logs.filter(p => p._isStr)).allTime || {};
+  Object.entries(today).forEach(([key, best]) => {
+    const before = prior[key];
+    if (best?.e1rm && (!before || best.e1rm > before.e1rm)) notes.push({ tone: 'ok', text: `PB: ${best.exercise} ${best.weight}kg × ${best.reps}` });
+  });
+  logs.forEach(sess => {
+    const rpe = Number(sess.RPE);
+    if (rpe >= 9 || (rpe >= 7 && /easy|recovery/i.test(String(sess.Session || '')))) notes.push({ tone: 'warn', text: `${sess.Session || 'Session'} at RPE ${rpe}` });
+    if (Array.isArray(sess._swaps) && sess._swaps.length) notes.push({ tone: 'neutral', text: `${sess._swaps.length} exercise swap${sess._swaps.length === 1 ? '' : 's'}` });
+    if (/pain|injur|tweak|sore/i.test(String(sess.Notes || ''))) notes.push({ tone: 'alert', text: 'Pain mentioned in the athlete note' });
+  });
+  const body = (a.body || []).find(b => String(b['date:Date:start'] || b.Date || '').slice(0, 10) === iso);
+  const pain = window.DP_PARITY?.bodyPain?.(body);
+  if (pain && pain.score !== null && pain.score !== undefined && Number(pain.score) > 0) notes.push({ tone: 'alert', text: `Pain ${pain.score}/10${pain.location ? ` · ${pain.location}` : ''}` });
+  if (!notes.length) return options.quiet ? '' : '<p class="cq-exceptions is-clear">No exceptions: no PBs, pain, high effort or swaps flagged.</p>';
+  return `<ul class="cq-exceptions" aria-label="Exceptions">${notes.map(n => `<li class="is-${n.tone}">${esc(n.text)}</li>`).join('')}</ul>`;
+}
+
+// Progressive disclosure for long free text. Notes longer than a few lines are
+// clamped with a "Read full note" control; paragraph breaks are preserved.
+const NOTE_SELECTOR = '.wd-reflect-txt, .wd-sess-notes, .cp-athlete-note, .fpc-testim, .fpc-impact, .coach-notes-txt, .sp-facts dd';
+function clampLongNotes(root) {
+  if (!root) return;
+  root.querySelectorAll(NOTE_SELECTOR).forEach((el, i) => {
+    if (el.dataset.clampReady) return;
+    el.dataset.clampReady = '1';
+    const text = el.textContent || '';
+    if (text.length < 240 && (text.match(/\n/g) || []).length < 3) return;
+    const id = el.id || `dp-note-${Date.now().toString(36)}-${i}`;
+    el.id = id;
+    el.classList.add('dp-note-clamp');
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'dp-note-more';
+    button.setAttribute('aria-expanded', 'false');
+    button.setAttribute('aria-controls', id);
+    button.textContent = 'Read full note';
+    button.addEventListener('click', event => {
+      event.stopPropagation();
+      const open = el.classList.toggle('is-open');
+      button.setAttribute('aria-expanded', String(open));
+      button.textContent = open ? 'Show less' : 'Read full note';
+    });
+    el.insertAdjacentElement('afterend', button);
+  });
+}
+window.clampLongNotes = clampLongNotes;
+
 // ── Client contribution to the decision queue ────────────────────────────────
 // buildActionList sees things the light triage endpoint cannot: niggle text,
 // stress and motivation scores, sleep trend, nutrition against target, weight
@@ -7409,6 +7571,9 @@ function publishClientSignals(ath) {
       const all = [...critical, ...watch];
       if (!all.length || a.acked) return null;
       return {
+        // Each line keeps its own severity so the queue can file it under
+        // Urgent, Follow up or Plan (coach-queue.js classifyClientLine).
+        lines: [...critical.map(text => ({ text, critical: true })), ...watch.map(text => ({ text, critical: false }))],
         athleteCode: a.id,
         athleteName: athleteLabel(a),
         flag: 'client_alert',
@@ -7543,12 +7708,13 @@ function openAthleteFromTriage(code, options = {}) {
   open();
 }
 
-// ── Squad status ─────────────────────────────────────────────────────────────
-// Six squad-level vitals and a one-line-per-athlete strip of today's work.
-// The priority list and "Coach Next Actions" panel that used to live here were
-// removed: they answered "who needs me today" with a third rule set, alongside
-// the server triage queue and the coach_actions panel. That question now has
-// exactly one answer, in the decision queue below.
+// ── Squad pulse ──────────────────────────────────────────────────────────────
+// Reporting, not ranking: six squad-level numbers and one line per athlete of
+// today's work. It sits below the decision queue so a coach never scrolls past
+// statistics to reach actionable work. Every number opens a filtered list.
+// "Need attention" is the queue's own count, so the two can never disagree.
+let _pulseNumbers = null;
+
 function renderCommandCenter(ath, apps = [], health = null) {
   const el = document.getElementById('command-center');
   if (!el) return;
@@ -7556,10 +7722,6 @@ function renderCommandCenter(ath, apps = [], health = null) {
   const dueCheckins = ath.filter(a => a.checkinDue);
   const checkedIn = dueCheckins.filter(a => a.hasRecent).length;
   const coverage = dueCheckins.length ? Math.round((checkedIn / dueCheckins.length) * 100) : 100;
-
-  const kmDone = ath.reduce((sum, a) => sum + (a.currRunKm || 0), 0);
-  const kmTarget = ath.reduce((sum, a) => sum + (parseFloat(a.target?.['Weekly KM Target']) || 0), 0);
-  const kmPct = kmTarget > 0 ? Math.round(kmDone / kmTarget * 100) : null;
 
   const compList = ath.filter(a => a.compliance !== null).map(a => a.compliance);
   const avgComp = compList.length ? Math.round(compList.reduce((x, y) => x + y, 0) / compList.length) : null;
@@ -7573,35 +7735,101 @@ function renderCommandCenter(ath, apps = [], health = null) {
   const prs7 = ath.reduce((sum, a) =>
     !a.prs?.recent ? sum : sum + a.prs.recent.filter(pr => new Date(pr.date) >= c7).length, 0);
 
-  const tone = (v, good, mid) => v === null || v === undefined ? '' : v >= good ? 'green' : v >= mid ? '' : 'red';
+  const attention = window.DP_TRIAGE?.model?.().counts?.all;
+  _pulseNumbers = { active: ath.length, coverage, avgComp, racing: racingSoon.length, prs7 };
+
+  // Tone words, not colour alone: each tile also carries its label.
+  const tone = (v, good, mid) => v === null || v === undefined ? '' : v >= good ? 'is-ok' : v >= mid ? 'is-warn' : 'is-alert';
 
   const vitals = [
-    { kind: 'roster',    num: ath.length,                              lbl: 'Athletes',      cls: '' },
-    { kind: 'checkins',  num: `${coverage}%`,                          lbl: 'Checked in',    cls: tone(coverage, 85, 60) },
-    { kind: 'km',        num: kmDone.toFixed(0),                       lbl: kmTarget ? `of ${kmTarget.toFixed(0)} km` : 'Squad km', cls: kmPct === null ? 'run' : tone(kmPct, 90, 70) },
-    { kind: 'comp',      num: avgComp === null ? '—' : `${avgComp}%`,  lbl: 'Avg adherence', cls: tone(avgComp, 80, 60) },
-    { kind: 'races',     num: racingSoon.length,                       lbl: 'Racing ≤4wk',   cls: racingSoon.length ? 'amber' : '' },
-    { kind: 'prs',       num: prs7,                                    lbl: 'PBs 7d',        cls: prs7 ? 'str' : '' },
+    { kind: 'roster',    num: ath.length,                              lbl: 'Active athletes',  cls: '' },
+    { kind: 'attention', num: attention === undefined ? '—' : attention, lbl: 'Need attention', cls: attention ? 'is-warn' : '', id: 'pulse-attention-num' },
+    { kind: 'checkins',  num: `${coverage}%`,                          lbl: 'Check-ins in',     cls: tone(coverage, 85, 60) },
+    { kind: 'comp',      num: avgComp === null ? '—' : `${avgComp}%`,  lbl: 'Weekly adherence', cls: tone(avgComp, 80, 60) },
+    { kind: 'races',     num: racingSoon.length,                       lbl: 'Racing ≤ 4 wks',   cls: '' },
+    { kind: 'prs',       num: prs7,                                    lbl: 'PBs · 7 days',     cls: '' },
   ];
 
-  el.innerHTML = `<section class="squad-status">
-    <div class="squad-status-head">
-      <div>
-        <div class="cc-kicker">Squad</div>
-        <div class="cc-title">This week at a glance</div>
-      </div>
-      ${health?.loadedAt ? `<div class="squad-status-stamp">Updated ${health.loadedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>` : ''}
-    </div>
+  // Zeros from a failed load are not real numbers; say so where they appear.
+  const partial = health?.portalSupabase && health.portalSupabase.ok === false;
+  el.innerHTML = `<div class="squad-status">
+    ${partial ? `<p class="pulse-warning" role="alert">These numbers are incomplete: athlete data could not load${health.portalSupabase.error ? ` (${esc(health.portalSupabase.error)})` : ''}. <button type="button" class="cq-link" onclick="refreshDashboard()">Retry</button></p>` : ''}
     <div class="squad-vitals">
-      ${vitals.map(v => `<button type="button" class="squad-vital" onclick="ccScoreDetail('${v.kind}')" title="Show athletes">
-        <div class="squad-vital-num ${v.cls}">${esc(String(v.num))}</div>
-        <div class="squad-vital-lbl">${esc(v.lbl)}</div>
+      ${vitals.map(v => `<button type="button" class="squad-vital" onclick="pulseOpen('${v.kind}')" aria-label="${esc(v.lbl)}: ${esc(String(v.num))}. Show athletes">
+        <span class="squad-vital-num ${v.cls}"${v.id ? ` id="${v.id}"` : ''}>${esc(String(v.num))}</span>
+        <span class="squad-vital-lbl">${esc(v.lbl)}</span>
       </button>`).join('')}
     </div>
     <div class="cc-detail" id="cc-detail" style="display:none"></div>
     ${buildTodayStrip(ath)}
-  </section>`;
+  </div>`;
+  updatePulseSummary();
 }
+
+function updatePulseSummary() {
+  const target = document.getElementById('pulse-summary');
+  if (!target || !_pulseNumbers) return;
+  const attention = window.DP_TRIAGE?.model?.().counts?.all;
+  const n = _pulseNumbers;
+  target.textContent = [
+    `${n.active} active`,
+    attention !== undefined ? `${attention} need attention` : null,
+    `${n.coverage}% checked in`,
+    n.avgComp === null ? null : `${n.avgComp}% adherence`,
+  ].filter(Boolean).join(' · ');
+  const num = document.getElementById('pulse-attention-num');
+  if (num && attention !== undefined) {
+    num.textContent = String(attention);
+    num.classList.toggle('is-warn', attention > 0);
+    num.closest('.squad-vital')?.setAttribute('aria-label', `Need attention: ${attention}. Show the queue`);
+  }
+}
+window.addEventListener('dp:queue-updated', updatePulseSummary);
+
+// "Need attention" is the queue; every other number opens its athlete list.
+function pulseOpen(kind) {
+  if (kind === 'attention') {
+    window.DP_TRIAGE?.setFilter('all');
+    const title = document.getElementById('triage-title');
+    title?.scrollIntoView({ block: 'start', behavior: _reducedMotion() ? 'auto' : 'smooth' });
+    document.querySelector('.cq-filter[data-queue-filter="all"]')?.focus({ preventScroll: true });
+    return;
+  }
+  ccScoreDetail(kind);
+}
+
+function _reducedMotion() {
+  return window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+}
+
+// Expanded on a desktop, collapsed on a phone, and the coach's own choice is
+// remembered per form factor.
+function initPulseToggle() {
+  const toggle = document.getElementById('pulse-toggle');
+  const body = document.getElementById('pulse-body');
+  if (!toggle || !body || toggle.dataset.ready) return;
+  toggle.dataset.ready = '1';
+  const phone = () => window.matchMedia('(max-width: 720px)').matches;
+  const key = () => phone() ? 'dp_pulse_open_phone' : 'dp_pulse_open_desktop';
+  const apply = open => {
+    toggle.setAttribute('aria-expanded', String(open));
+    body.hidden = !open;
+    toggle.closest('.today-operations')?.classList.toggle('is-collapsed', !open);
+  };
+  const initial = () => {
+    let saved = null;
+    try { saved = localStorage.getItem(key()); } catch {}
+    return saved === null ? !phone() : saved === '1';
+  };
+  apply(initial());
+  toggle.addEventListener('click', () => {
+    const open = toggle.getAttribute('aria-expanded') !== 'true';
+    apply(open);
+    try { localStorage.setItem(key(), open ? '1' : '0'); } catch {}
+  });
+  window.matchMedia('(max-width: 720px)').addEventListener?.('change', () => apply(initial()));
+}
+document.addEventListener('DOMContentLoaded', initPulseToggle);
 
 // One line per athlete: what is on today and whether it has come back yet.
 // Lets a coach see the squad's day without opening anything.
@@ -7723,12 +7951,18 @@ function ccScoreDetail(kind) {
     const ov = document.createElement('div');
     ov.className = 'po-overlay';
     ov.id = 'cc-detail-overlay';
+    ov.setAttribute('role', 'dialog');
+    ov.setAttribute('aria-modal', 'true');
+    ov.setAttribute('aria-labelledby', 'cc-detail-overlay-title');
+    _ccReturnFocus = document.activeElement;
     ov.addEventListener('click', e => { if (e.target === ov) ccCloseDetail(); });
+    ov.addEventListener('keydown', e => { if (e.key === 'Escape') { e.preventDefault(); ccCloseDetail(); } });
     ov.innerHTML = `<div class="po-modal">
-      <div class="po-modal-head"><div class="po-modal-title">${title}</div><button class="po-close" onclick="ccCloseDetail()">✕</button></div>
+      <div class="po-modal-head"><h2 class="po-modal-title" id="cc-detail-overlay-title">${title}</h2><button type="button" class="po-close" onclick="ccCloseDetail()" aria-label="Close">✕</button></div>
       <div class="po-modal-body" style="padding:6px 16px 14px">${html}</div>
     </div>`;
     document.body.appendChild(ov);
+    ov.querySelector('.po-close')?.focus();
     return;
   }
 
@@ -7741,8 +7975,14 @@ function ccScoreDetail(kind) {
   el.style.display = 'block';
 }
 
+let _ccReturnFocus = null;
 function ccCloseDetail() {
-  document.getElementById('cc-detail-overlay')?.remove();
+  const overlay = document.getElementById('cc-detail-overlay');
+  if (overlay) {
+    overlay.remove();
+    if (_ccReturnFocus?.isConnected) _ccReturnFocus.focus({ preventScroll: true });
+    _ccReturnFocus = null;
+  }
   const el = document.getElementById('cc-detail');
   if (el) el.style.display = 'none';
   _ccDetailKind = null;
@@ -7789,16 +8029,17 @@ function buildTableExpandPanel(a) {
   const safeIdH = a.id.replace(/\W+/g, '-').toLowerCase();
   const fps = a.flags.map(f => `<span class="tflag ${f.t}">${esc(f.l)}</span>`).join('');
 
-  // ── Why they are here ──
-  const critical = a.actions?.critical || [];
-  const watch = a.actions?.watch || [];
-  const reasons = [...critical, ...watch].slice(0, 3);
-  const signalHtml = reasons.length
-    ? `<div class="texp-signal ${critical.length ? 'is-critical' : 'is-watch'}${a.acked ? ' is-acked' : ''}">
-        <div class="texp-signal-head">${critical.length ? 'Action required' : 'Watch'}${a.acked ? ' · resolved' : ''}</div>
-        <ul class="texp-signal-list">${reasons.map(r => `<li>${esc(r)}</li>`).join('')}</ul>
-      </div>`
-    : `<div class="texp-signal is-clear"><div class="texp-signal-head">Nothing flagged</div></div>`;
+  // ── Current alerts: the same signals the queue holds for this athlete ──
+  const st = athleteStatusFor(a);
+  const queueSignals = st.item?.signals || [];
+  const fallback = a.acked ? [] : [...(a.actions?.critical || []), ...(a.actions?.watch || [])];
+  const alertRows = queueSignals.length
+    ? queueSignals.map(sig => `<li class="is-${esc(sig.category)}"><strong>${esc(sig.status)}</strong>${sig.text && sig.text !== sig.status ? ` · ${esc(sig.text)}` : ''}</li>`)
+    : fallback.map(line => `<li>${esc(line)}</li>`);
+  const signalHtml = `<section class="texp-block texp-alerts" aria-label="Current alerts">
+      <h3 class="texp-block-title">Current alerts</h3>
+      ${alertRows.length ? `<ul class="texp-signal-list">${alertRows.join('')}</ul>` : `<p class="texp-quiet">${a.acked ? 'Alerts resolved. They return if anything changes.' : 'Nothing open.'}</p>`}
+    </section>`;
 
   // ── The week, one cell per day ──
   const days = [];
@@ -7846,17 +8087,56 @@ function buildTableExpandPanel(a) {
     ctx.weekLabel,
   ].filter(Boolean).join(' · ');
 
+  // Secondary numbers that used to be table columns.
+  const fact = (k, v) => `<div><dt>${esc(k)}</dt><dd>${v === null || v === undefined || v === '' ? '—' : esc(String(v))}</dd></div>`;
+  const sleepVal = parseFloat(a.weekly?.['Sleep hrs']);
+  const stressVal = parseInt(a.weekly?.Stress);
+  const wt = a.bAvg?.wt !== undefined ? `${a.bAvg.wt} kg${a.trends?.weight ? ({ up: ' ↑', dn: ' ↓' }[trendDelta(a.trends.weight, false).dir] || '') : ''}` : null;
+  const wellness = `<section class="texp-block" aria-label="Recent wellness">
+      <h3 class="texp-block-title">Recent wellness</h3>
+      <dl class="texp-facts">
+        ${fact('Recovery', a.recoveryScore === null ? null : `${a.recoveryScore}/10`)}
+        ${fact('Energy', a.bAvg?.energy === null ? null : a.bAvg?.energy)}
+        ${fact('Sleep', isNaN(sleepVal) ? null : `${sleepVal} h`)}
+        ${fact('Stress', isNaN(stressVal) ? null : `${stressVal}/10`)}
+        ${fact('Weight', wt)}
+        ${fact('Calories', a.nAvg?.cal === null || a.nAvg?.cal === undefined ? null : Number(a.nAvg.cal).toLocaleString())}
+      </dl>
+      <p class="texp-quiet">Last check-in: ${esc(_lastCheckinText(a))}${a.weekly?.['Week Ending'] ? ` · week ending ${esc(fmtDate(a.weekly['Week Ending']))}` : ''}</p>
+    </section>`;
+  const numbers = `<dl class="texp-facts is-inline">
+      ${fact('Run km', kmTarget ? `${km} / ${kmTarget}` : km)}
+      ${fact('Runs', (a.currRunS || []).length)}
+      ${fact('Strength', (a.currStrS || []).length)}
+      ${fact('Last activity', _lastActivityText(a))}
+    </dl>`;
+
+  const next = st.item?.primaryAction;
   return `<div class="texp-preview">
-    <div class="texp-header" onclick="toggleTableRow('${safeIdH}')" title="Click to collapse">
-      <div class="texp-name">${esc(athleteLabel(a))}${fps}</div>
-      <div class="texp-actions">
-        <button type="button" class="texp-cta is-primary" onclick="event.stopPropagation();openAthleteFromTriage('${esc(a.id)}',{tab:'overview'})">Open athlete profile <span aria-hidden="true">→</span></button>
-        <button type="button" class="texp-cta" onclick="event.stopPropagation();fpPlanWeek('${esc(a.id)}')">Adjust week in Programming</button>
-      </div>
+    <div class="texp-header">
+      <div class="texp-name">${esc(athleteLabel(a))}${statusChipHtml(st)}${fps}</div>
+      <button type="button" class="texp-collapse" onclick="toggleTableRow('${safeIdH}')" aria-label="Collapse ${esc(athleteLabel(a))}">Collapse</button>
     </div>
-    ${signalHtml}
-    <div class="texp-week-strip" aria-label="This week">${strip}</div>
-    ${summary ? `<div class="texp-week-summary-line">${esc(summary)}</div>` : ''}
+    <div class="texp-grid">
+      ${signalHtml}
+      <section class="texp-block texp-week" aria-label="This week's sessions">
+        <h3 class="texp-block-title">This week’s sessions</h3>
+        <div class="texp-week-strip">${strip}</div>
+        ${summary ? `<div class="texp-week-summary-line">${esc(summary)}</div>` : ''}
+        ${numbers}
+      </section>
+      ${wellness}
+      <section class="texp-block texp-coach" aria-label="Coach actions">
+        <h3 class="texp-block-title">Coach actions</h3>
+        <div class="texp-actions">
+          <button type="button" class="texp-cta is-primary" onclick="event.stopPropagation();openAthleteFromTriage('${esc(a.id)}',{tab:'overview'})">Open athlete profile <span aria-hidden="true">→</span></button>
+          ${next ? `<button type="button" class="texp-cta" onclick="event.stopPropagation();runAthleteNextAction('${esc(a.id)}')">${esc(next.label)}</button>` : ''}
+          <button type="button" class="texp-cta" onclick="event.stopPropagation();fpPlanWeek('${esc(a.id)}')">Adjust week in Programming</button>
+          <button type="button" class="texp-cta" onclick="event.stopPropagation();fpNotify('${esc(a.id)}')">Message</button>
+          <button type="button" class="texp-cta" onclick="event.stopPropagation();DP_ACTIONS.open('${esc(a.id)}')">Add coaching action</button>
+        </div>
+      </section>
+    </div>
   </div>`;
 }
 
@@ -8033,6 +8313,7 @@ function renderSessionPeek() {
     ${_peekBodyHtml(ctx.body)}
     <section class="sp-section"><h3>Planned</h3>${_peekPlannedHtml(ctx.row)}</section>
     ${_peekFeedbackHtml(ctx, code, sessionId)}`;
+  clampLongNotes(document.getElementById('sp-body'));
 }
 
 function openSessionPeek(code, sessionId) {
@@ -8149,13 +8430,15 @@ function toggleTableRow(safeId) {
     return;
   }
 
+  const toggle = document.querySelector(`[data-texp-toggle="${CSS.escape(safeId)}"]`);
   const open = exp.style.display !== 'none';
   if (open) {
     exp.style.display = 'none';
     _expandedRows.delete(safeId);
+    toggle?.setAttribute('aria-expanded', 'false');
     return;
   }
-  // Find athlete and render two-panel layout
+  // Find athlete and render the structured preview
   const a = _allAthletes.find(x => x.id.replace(/\W+/g, '-').toLowerCase() === safeId);
   if (a) {
     const cell = exp.querySelector('td');
@@ -8163,19 +8446,35 @@ function toggleTableRow(safeId) {
   }
   exp.style.display = 'table-row';
   _expandedRows.add(safeId);
+  toggle?.setAttribute('aria-expanded', 'true');
 }
 
+// Runs a queue item's primary action from anywhere outside Today.
+function runAthleteNextAction(code) {
+  const status = athleteStatusFor(_allAthletes.find(a => a.id === code) || { id: code });
+  const action = status.item?.primaryAction;
+  if (action && window.DP_TRIAGE?.runAction) return window.DP_TRIAGE.runAction(action.type, code, action.date || undefined);
+  return openAthleteFromTriage(code, { tab: 'overview' });
+}
+
+function _lastActivityText(a) {
+  const d = a.lastActivity ? daysAgo(a.lastActivity) : null;
+  return d === null ? 'None' : d <= 0 ? 'Today' : d === 1 ? 'Yesterday' : `${d}d ago`;
+}
+function _lastCheckinText(a) {
+  return a.hasCurrentCheckin ? 'This week' : a.hasLastWeekCheckin ? 'Last week' : a.weekly ? 'Overdue' : 'None';
+}
+
+// The default row carries only what decides the coach's next move. Weight,
+// calories and run/strength counts moved into the expanded row.
 function buildTableRow(a) {
-  const hR = a.flags.some(f => f.t === 'red');
-  const hY = !hR && a.flags.some(f => f.t === 'yellow');
-  const rowCls = hR ? 'trow-red' : hY ? 'trow-amber' : '';
+  const st = athleteStatusFor(a);
   const fps = a.flags.map(f => `<span class="tflag ${f.t}">${esc(f.l)}</span>`).join('');
   const stravaConfirmedCount = (a.currRunS || []).filter(session => session._stravaConfirmed === true).length;
   const stravaConfirmedBadge = stravaConfirmedCount
     ? `<span class="fp strava-linked-badge" title="${stravaConfirmedCount} athlete-confirmed Strava session${stravaConfirmedCount === 1 ? '' : 's'} this week">${DP_ICON('dot')} Strava · ${stravaConfirmedCount}</span>`
     : '';
 
-  // Previous weekly check-in (for week-on-week deltas)
   const prevW = a.weekly
     ? (a.weeklies || []).find(x => (x['Week Ending'] || '') < (a.weekly['Week Ending'] || ''))
     : null;
@@ -8189,116 +8488,45 @@ function buildTableRow(a) {
     const prevRec = prevW ? calcRecoveryScore(prevW) : null;
     if (prevRec !== null && prevRec !== undefined) {
       const d = +(a.recoveryScore - prevRec).toFixed(1);
-      if (d > 0) recDelta = `<span class="ttrend-up">↑${d}</span>`;
-      else if (d < 0) recDelta = `<span class="ttrend-dn">↓${Math.abs(d)}</span>`;
+      if (d > 0) recDelta = `<span class="ttrend-up" aria-label="up ${d}">↑${d}</span>`;
+      else if (d < 0) recDelta = `<span class="ttrend-dn" aria-label="down ${Math.abs(d)}">↓${Math.abs(d)}</span>`;
     }
     recovHtml = `<div class="tcell"><span class="tcell-num ${rc}">${a.recoveryScore}${recDelta}</span><div class="tcell-bar ${rc}" style="width:${pct}%"></div></div>`;
   }
 
-  // Weekly KM from what the athlete submitted through the portal.
-  const km = a.currRunKm || 0;
-  const kmTarget = parseFloat(a.target?.['Weekly KM Target']) || 0;
-  let kmHtml = '<span class="tdim">—</span>';
-  let kmTdAttr = '';
-  if (km > 0 || kmTarget > 0) {
-    const pct = kmTarget > 0 ? Math.min(100, Math.round(km / kmTarget * 100)) : 100;
-    const numStr = typeof km === 'number' && !Number.isInteger(km) ? km.toFixed(1) : String(km);
-    const subPart = kmTarget > 0 ? `/ ${kmTarget}` : '';
-    kmHtml = `<div class="tcell"><span class="tcell-num run pbar-val">${numStr}<span class="tcell-sub"> ${subPart}</span></span><div class="tcell-bar pbar-fill run" style="width:${pct}%"></div></div>`;
-    kmTdAttr = `data-km-bar="${esc(a.id)}" data-km-target="${kmTarget}"`;
-  }
-
-  // Weight — number + trend arrow
-  let wtHtml = '<span class="tdim">—</span>';
-  if (a.bAvg.wt !== undefined) {
-    const wt = a.trends?.weight ? trendDelta(a.trends.weight, false) : { dir: 'flat' };
-    const arrow = wt.dir === 'up' ? '<span class="ttrend-up">↑</span>' : wt.dir === 'dn' ? '<span class="ttrend-dn">↓</span>' : '';
-    wtHtml = `<span class="tcell-num">${esc(a.bAvg.wt)}${arrow}</span>`;
-  }
-
-  // Energy — coloured number
-  let enHtml = '<span class="tdim">—</span>';
-  if (a.bAvg.energy !== null) {
-    const ec = a.bAvg.energy >= 7 ? 'good' : a.bAvg.energy >= 5 ? 'mid' : 'bad';
-    enHtml = `<span class="tcell-num ${ec}">${a.bAvg.energy}</span>`;
-  }
-
-  // Sleep — from weekly check-in, with week-on-week delta
-  let sleepHtml = '<span class="tdim">—</span>';
-  const sleepVal = parseFloat(a.weekly?.['Sleep hrs']);
-  if (!isNaN(sleepVal)) {
-    const sc = sleepVal >= 7.5 ? 'good' : sleepVal >= 6 ? 'mid' : 'bad';
-    let slpDelta = '';
-    const prevSlp = prevW ? parseFloat(prevW['Sleep hrs']) : NaN;
-    if (!isNaN(prevSlp)) {
-      const d = +(sleepVal - prevSlp).toFixed(1);
-      if (d > 0) slpDelta = `<span class="ttrend-up">↑${d}</span>`;
-      else if (d < 0) slpDelta = `<span class="ttrend-dn">↓${Math.abs(d)}</span>`;
-    }
-    sleepHtml = `<span class="tcell-num ${sc}">${sleepVal}${slpDelta}</span>`;
-  }
-
-  // Compliance — % of due sessions completed this week
   let compHtml = '<span class="tdim">—</span>';
   if (a.compliance !== null && a.compliance !== undefined) {
     const cc = a.compliance >= 80 ? 'good' : a.compliance >= 60 ? 'mid' : 'bad';
     compHtml = `<div class="tcell"><span class="tcell-num ${cc}">${a.compliance}%</span><div class="tcell-bar ${cc}" style="width:${a.compliance}%"></div></div>`;
   }
 
-  // Stress — from weekly check-in (inverted: high = bad)
-  let stressHtml = '<span class="tdim">—</span>';
-  const stressVal = parseInt(a.weekly?.['Stress']);
-  if (!isNaN(stressVal)) {
-    const stc = stressVal <= 4 ? 'good' : stressVal <= 6 ? 'mid' : 'bad';
-    stressHtml = `<span class="tcell-num ${stc}">${stressVal}</span>`;
-  }
+  const lastDays = a.lastActivity ? daysAgo(a.lastActivity) : null;
+  const lastTone = lastDays === null ? 'bad' : lastDays <= 2 ? '' : lastDays <= 4 ? 'mid' : 'bad';
+  const checkin = _lastCheckinText(a);
+  const checkinTone = a.hasCurrentCheckin ? '' : a.isStale ? 'bad' : 'mid';
 
-  // Calories — plain number
-  let calHtml = '<span class="tdim">—</span>';
-  if (a.nAvg.cal !== null) {
-    calHtml = `<span class="tcell-num">${Number(a.nAvg.cal).toLocaleString()}</span>`;
-  }
+  const action = st.item?.primaryAction;
+  const nextHtml = action
+    ? `<button type="button" class="sq-next" onclick="event.stopPropagation();runAthleteNextAction('${esc(a.id)}')">${esc(action.label)}</button>`
+    : `<button type="button" class="sq-next is-quiet" onclick="event.stopPropagation();openAthleteFromTriage('${esc(a.id)}',{tab:'overview'})">Open profile</button>`;
 
-  // Sessions — split run / strength
-  const runHtml = `<span class="tcell-num run">${a.currRunS.length}</span>`;
-  const strHtml = `<span class="tcell-num" style="color:var(--str)">${a.currStrS.length}</span>`;
-
-  // Status — truncated text, full action list in tooltip
-  const fullActions = [...(a.actions?.critical || []), ...(a.actions?.watch || [])].join(' • ');
-  let statusHtml = '<span class="tstatus ok">On track</span>';
-  if (!a.weekly && !a.body?.length) statusHtml = '<span class="tstatus dim">No data</span>';
-  else if (hR && a.actions?.critical?.length) statusHtml = `<span class="tstatus red" title="${esc(fullActions)}">${esc(a.actions.critical[0].slice(0,32))}</span>`;
-  else if (hY && a.actions?.watch?.length) statusHtml = `<span class="tstatus amber" title="${esc(fullActions)}">${esc(a.actions.watch[0].slice(0,32))}</span>`;
-
-  if (a.acked) statusHtml += ' <span class="tack" title="Alert acknowledged — returns automatically if anything changes">✓ ack</span>';
-
-  // Collapsed row subtitle: show the athlete's current week only. The check-in
-  // freshness ('Last week' etc.) is dropped here — mashed against a week label
-  // like 'Discovery' it read as one confusing phrase ('Discovery · Last week').
-  const checkinStr = a.hasCurrentCheckin ? 'Checked in' : a.isStale ? 'No check-in' : a.weekly ? 'Last week' : 'No data';
-  const metaStr = a.weekNum !== null ? fmtWk(a.weekNum) : checkinStr;
+  const metaStr = a.weekNum !== null ? fmtWk(a.weekNum) : 'No programme week';
   const safeId = a.id.replace(/\W+/g, '-').toLowerCase();
+  const name = athleteLabel(a);
 
-  return `<tr class="dash-trow ${rowCls}" role="button" tabindex="0"
-    aria-label="Open ${esc(a.id)} athlete details"
-    onclick="toggleTableRow('${safeId}')"
-    onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleTableRow('${safeId}')}">
-    <td><div class="tname">${esc(a.id)}${fps}${stravaConfirmedBadge}</div><div class="tmeta">${metaStr}</div></td>
-    <td>${a.weekNum !== null ? `<span class="twkbadge">${a.weekNum === 0 ? 'D' : a.weekNum}</span>` : '<span class="tdim">—</span>'}</td>
+  // The row is clickable for a mouse; the name is the real, focusable control
+  // with aria-expanded, so the row does not nest buttons inside a button.
+  return `<tr class="dash-trow sq-trow is-${esc(st.key)}" onclick="if(!event.target.closest('button'))toggleTableRow('${safeId}')">
+    <td><div class="tname"><button type="button" class="sq-name" data-texp-toggle="${safeId}" aria-expanded="${_expandedRows.has(safeId)}" aria-controls="texp-${safeId}" onclick="toggleTableRow('${safeId}')">${esc(name)}</button>${fps}${stravaConfirmedBadge}</div><div class="tmeta">${esc(metaStr)}</div></td>
+    <td>${statusChipHtml(st)}${st.reason && st.key !== 'ontrack' ? `<div class="sq-reason" title="${esc(st.reason)}">${esc(st.reason)}</div>` : ''}${a.acked && st.key === 'ontrack' ? '<div class="sq-reason">Alert resolved</div>' : ''}</td>
     <td>${recovHtml}</td>
-    <td ${kmTdAttr}>${kmHtml}</td>
     <td>${compHtml}</td>
-    <td>${wtHtml}</td>
-    <td>${enHtml}</td>
-    <td>${sleepHtml}</td>
-    <td>${stressHtml}</td>
-    <td>${calHtml}</td>
-    <td>${runHtml}</td>
-    <td>${strHtml}</td>
-    <td>${statusHtml}</td>
+    <td><span class="tcell-text ${lastTone}">${esc(_lastActivityText(a))}</span></td>
+    <td><span class="tcell-text ${checkinTone}">${esc(checkin)}</span></td>
+    <td>${nextHtml}</td>
   </tr>
   <tr class="trow-expand" id="texp-${safeId}" style="display:none">
-    <td colspan="13" style="padding:0"></td>
+    <td colspan="7" style="padding:0"></td>
   </tr>`;
 }
 
@@ -8315,7 +8543,10 @@ const TABLE_SORT_GETTERS = {
   calories:   a => a.nAvg?.cal ?? -1,
   run:        a => a.currRunS.length,
   str:        a => a.currStrS.length,
-  status:     a => a.actions?.severity === 'red' ? 0 : a.actions?.severity === 'amber' ? 1 : _isNoData(a) ? 3 : 2,
+  last:       a => a.lastActivityMs || 0,
+  checkin:    a => String(a.weekly?.['Week Ending'] || ''),
+  status:     a => athleteStatusFor(a).rank || 9,
+  next:       a => athleteStatusFor(a).rank || 9,
 };
 
 function setTableSort(key) {
@@ -8323,38 +8554,40 @@ function setTableSort(key) {
     _tableSort.dir = -_tableSort.dir;
   } else {
     // Names/status default ascending; metrics default descending (worst-case: see who's highest first)
-    _tableSort = { key, dir: (key === 'name' || key === 'status') ? 1 : -1 };
+    _tableSort = { key, dir: (key === 'name' || key === 'status' || key === 'next') ? 1 : -1 };
   }
   applyFilters();
 }
 
 const TABLE_COLS = [
-  ['name', 'Athlete'], ['wk', 'Wk'], ['recovery', 'Recovery'], ['km', 'Weekly KM'],
-  ['compliance', 'Comp'], ['weight', 'Weight'], ['energy', 'Energy'], ['sleep', 'Sleep'],
-  ['stress', 'Stress'], ['calories', 'Calories'], ['run', 'Run'], ['str', 'Str'], ['status', 'Status'],
+  ['name', 'Athlete'], ['status', 'Status'], ['recovery', 'Recovery'], ['compliance', 'Adherence'],
+  ['last', 'Last activity'], ['checkin', 'Last check-in'], ['next', 'Next action'],
 ];
 
 function renderTableView(ath) {
   const sorted = ath;
   const grid = document.getElementById('grid');
   grid.classList.add('table-mode');
+  // Sortable headers are buttons with aria-sort on the header cell, so the
+  // sort is reachable and announced from the keyboard.
   const ths = TABLE_COLS.map(([k, label]) => {
     const isSorted = _tableSort?.key === k;
     const ind = isSorted ? (_tableSort.dir > 0 ? '▲' : '▼') : '↕';
-    return `<th class="${isSorted ? 'th-sorted' : ''}" onclick="setTableSort('${k}')" title="Sort by ${label}">${label}<span class="th-sort">${ind}</span></th>`;
+    const aria = isSorted ? (_tableSort.dir > 0 ? 'ascending' : 'descending') : 'none';
+    return `<th scope="col" class="${isSorted ? 'th-sorted' : ''}" aria-sort="${aria}"><button type="button" class="th-btn" onclick="setTableSort('${k}')">${label}<span class="th-sort" aria-hidden="true">${ind}</span></button></th>`;
   }).join('');
   grid.innerHTML = `<div class="dash-table-wrap">
-    <table class="dash-table">
+    <table class="dash-table sq-table">
+      <caption class="dp-visually-hidden">Squad, ${sorted.length} athlete${sorted.length === 1 ? '' : 's'}. Select a name to expand details.</caption>
       <colgroup>
-        <col style="width:200px"><col style="width:46px"><col style="width:112px">
-        <col style="width:112px"><col style="width:86px"><col style="width:80px">
-        <col style="width:66px"><col style="width:66px"><col style="width:62px">
-        <col style="width:90px"><col style="width:48px"><col style="width:48px"><col style="width:auto">
+        <col style="width:22%"><col style="width:24%"><col style="width:10%">
+        <col style="width:10%"><col style="width:10%"><col style="width:10%"><col style="width:14%">
       </colgroup>
       <thead><tr>${ths}</tr></thead>
       <tbody>${sorted.map(a => buildTableRow(a)).join('')}</tbody>
     </table>
-  </div>`;
+  </div>
+  ${buildSquadList(sorted)}`;
 
   // Re-open any rows that were expanded before this re-render
   _expandedRows.forEach(safeId => {
@@ -8366,6 +8599,30 @@ function renderTableView(ath) {
     if (cell) cell.innerHTML = buildTableExpandPanel(a);
     exp.style.display = 'table-row';
   });
+}
+
+// Phone squad: one compact row per athlete — name, status, recovery,
+// adherence, last activity — that opens the athlete workspace. Rendered beside
+// the table and swapped in by CSS at phone width, so both are always current.
+function buildSquadList(ath) {
+  if (!ath.length) return '';
+  return `<ul class="sq-list" aria-label="Squad">${ath.map(a => {
+    const st = athleteStatusFor(a);
+    const rec = a.recoveryScore === null || a.recoveryScore === undefined ? '—' : a.recoveryScore;
+    const comp = a.compliance === null || a.compliance === undefined ? '—' : `${a.compliance}%`;
+    return `<li><button type="button" class="sq-row is-${esc(st.key)}" onclick="showFP('${esc(a.id)}')">
+      <span class="sq-row-main">
+        <span class="sq-row-name">${esc(athleteLabel(a))}</span>
+        ${statusChipHtml(st, { compact: true })}
+      </span>
+      <span class="sq-row-meta">
+        <span><span class="sq-k">Recovery</span> ${esc(String(rec))}</span>
+        <span><span class="sq-k">Adherence</span> ${esc(comp)}</span>
+        <span><span class="sq-k">Last</span> ${esc(_lastActivityText(a))}</span>
+      </span>
+      <span class="sq-chev" aria-hidden="true">›</span>
+    </button></li>`;
+  }).join('')}</ul>`;
 }
 
 function renderGrid(ath) {
@@ -10055,15 +10312,26 @@ function closeExerciseHistory() {
 // document. Every section still exists; each now lives in exactly one tab, so a
 // coach reaches any of them in one click instead of a scroll hunt.
 const FPA_TABS = [
-  { key: 'overview',  label: 'Overview'    },
-  { key: 'training',  label: 'Training'    },
-  { key: 'running',   label: 'Running'     },
-  { key: 'strength',  label: 'Strength'    },
-  { key: 'body',      label: 'Body & Fuel' },
-  { key: 'checkins',  label: 'Check-ins'   },
-  { key: 'notes',     label: 'Notes'       },
+  { key: 'overview',    label: 'Overview'    },
+  { key: 'training',    label: 'Training'    },
+  // Running and Strength are one destination with two views: both answer
+  // "how is the athlete performing", and seven tabs did not fit a phone.
+  { key: 'performance', label: 'Performance', panels: ['running', 'strength'] },
+  { key: 'body',        label: 'Body & Fuel' },
+  { key: 'checkins',    label: 'Check-ins'   },
+  { key: 'notes',       label: 'Notes'       },
 ];
-const FPA_TAB_KEYS = new Set(FPA_TABS.map(t => t.key));
+const FPA_SUBTABS = [
+  { key: 'running',  label: 'Running'  },
+  { key: 'strength', label: 'Strength' },
+];
+// Every panel that can be shown, plus the Performance group key.
+const FPA_PANEL_KEYS = ['overview', 'training', 'running', 'strength', 'body', 'checkins', 'notes'];
+const FPA_TAB_KEYS = new Set([...FPA_PANEL_KEYS, 'performance']);
+
+let _fpaPerfSub = (() => {
+  try { return localStorage.getItem('dp_fpa_perf') === 'strength' ? 'strength' : 'running'; } catch { return 'running'; }
+})();
 
 let _fpaTab = (() => {
   try {
@@ -10072,18 +10340,44 @@ let _fpaTab = (() => {
   } catch { return 'overview'; }
 })();
 
+// The panel a tab key resolves to, and the tab a panel belongs to.
+function fpaPanelFor(key) {
+  if (key === 'performance') return _fpaPerfSub;
+  return FPA_PANEL_KEYS.includes(key) ? key : 'overview';
+}
+function fpaTabFor(panel) {
+  return panel === 'running' || panel === 'strength' ? 'performance' : panel;
+}
+
 // The tab persists across athletes on purpose: a coach working through the squad
 // on strength should stay on Strength when they press Next.
 function switchAthleteTab(key, options = {}) {
   if (!FPA_TAB_KEYS.has(key)) key = 'overview';
+  key = fpaPanelFor(key);
+  if (key === 'running' || key === 'strength') {
+    _fpaPerfSub = key;
+    if (!options.silent) { try { localStorage.setItem('dp_fpa_perf', key); } catch {} }
+  }
   _fpaTab = key;
   if (!options.silent) { try { localStorage.setItem('dp_fpa_tab', key); } catch {} }
+  const top = fpaTabFor(key);
 
+  document.querySelectorAll('#fp-body [data-fpa-top]').forEach(panel => {
+    panel.hidden = panel.dataset.fpaTop !== top;
+  });
   document.querySelectorAll('#fp-body [data-fpa-panel]').forEach(panel => {
+    // Sub-panels inside Performance follow the sub-tab; top panels follow the tab.
+    if (panel.dataset.fpaTop) return;
     panel.hidden = panel.dataset.fpaPanel !== key;
   });
   document.querySelectorAll('#fp-body [data-fpa-tab]').forEach(button => {
-    const active = button.dataset.fpaTab === key;
+    const active = button.dataset.fpaTab === top;
+    button.classList.toggle('is-active', active);
+    button.setAttribute('aria-selected', String(active));
+    button.tabIndex = active ? 0 : -1;
+  });
+  document.querySelectorAll('#fp-body [data-fpa-sub]').forEach(button => {
+    const active = button.dataset.fpaSub === key;
     button.classList.toggle('is-active', active);
     button.setAttribute('aria-selected', String(active));
     button.tabIndex = active ? 0 : -1;
@@ -10096,6 +10390,8 @@ function switchAthleteTab(key, options = {}) {
     if (key === 'training' || key === 'body') hydrateActivityStreams(panel);
     if (key === 'training') hydratePrescribedComparisons(panel);
   }
+  // Keep the active tab in view on a narrow strip.
+  document.querySelector(`#fp-body [data-fpa-tab="${top}"]`)?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
   if (!options.keepScroll) {
     const overlay = document.getElementById('fp-overlay');
     if (overlay) overlay.scrollTop = 0;
@@ -10118,19 +10414,61 @@ function fpaTabKeydown(event, key) {
   document.querySelector(`#fp-body [data-fpa-tab="${next}"]`)?.focus();
 }
 
+function fpaSubKeydown(event, key) {
+  if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return;
+  event.preventDefault();
+  event.stopPropagation();
+  const next = key === 'running' ? 'strength' : 'running';
+  switchAthleteTab(next, { keepScroll: true });
+  document.querySelector(`#fp-body [data-fpa-sub="${next}"]`)?.focus();
+}
+
 function buildAthleteTabBar(counts = {}) {
-  return `<div class="fpa-tabs" role="tablist" aria-label="Athlete sections">
+  const activeTop = fpaTabFor(fpaPanelFor(_fpaTab));
+  return `<div class="fpa-tabs-wrap"><div class="fpa-tabs" role="tablist" aria-label="Athlete sections">
     ${FPA_TABS.map(t => {
-      const active = t.key === _fpaTab;
-      const badge = counts[t.key];
-      return `<button type="button" class="fpa-tab${active ? ' is-active' : ''}" role="tab"
+      const active = t.key === activeTop;
+      const badge = t.panels ? t.panels.reduce((n, k) => n + (Number(counts[k]) || 0), 0) : counts[t.key];
+      return `<button type="button" class="fpa-tab${active ? ' is-active' : ''}" role="tab" id="fpa-tab-${t.key}"
+        aria-controls="fpa-panel-${t.key}"
         data-fpa-tab="${t.key}" aria-selected="${active}" tabindex="${active ? 0 : -1}"
         onclick="switchAthleteTab('${t.key}')" onkeydown="fpaTabKeydown(event,'${t.key}')">
         ${esc(t.label)}${badge ? `<span class="fpa-tab-badge">${esc(String(badge))}</span>` : ''}
       </button>`;
     }).join('')}
+  </div></div>`;
+}
+
+function buildPerformanceSubTabs(counts = {}) {
+  const current = fpaPanelFor(_fpaTab) === 'strength' ? 'strength' : _fpaPerfSub;
+  return `<div class="fpa-subtabs" role="tablist" aria-label="Performance views">
+    ${FPA_SUBTABS.map(t => {
+      const active = t.key === current;
+      return `<button type="button" class="fpa-subtab${active ? ' is-active' : ''}" role="tab" id="fpa-subtab-${t.key}"
+        aria-controls="fpa-panel-${t.key}" data-fpa-sub="${t.key}" aria-selected="${active}" tabindex="${active ? 0 : -1}"
+        onclick="switchAthleteTab('${t.key}')" onkeydown="fpaSubKeydown(event,'${t.key}')">${esc(t.label)}${counts[t.key] ? `<span class="fpa-tab-badge">${esc(String(counts[t.key]))}</span>` : ''}</button>`;
+    }).join('')}
   </div>`;
 }
+
+// A visible cue that the tab strip scrolls, so a cut-off tab never reads as
+// the end of the list.
+function updateTabScrollCue(root = document) {
+  root.querySelectorAll('.fpa-tabs').forEach(strip => {
+    const wrap = strip.parentElement;
+    const update = () => {
+      const max = strip.scrollWidth - strip.clientWidth;
+      wrap.classList.toggle('can-scroll-left', strip.scrollLeft > 4);
+      wrap.classList.toggle('can-scroll-right', max - strip.scrollLeft > 4);
+    };
+    if (!strip.dataset.cue) {
+      strip.dataset.cue = '1';
+      strip.addEventListener('scroll', update, { passive: true });
+    }
+    update();
+  });
+}
+window.addEventListener('resize', () => updateTabScrollCue(document.getElementById('fp-body') || document));
 
 // ── Athlete workspace: sticky header ─────────────────────────────────────────
 // Answers "what is the state of this athlete" without scrolling. Every value is
@@ -10192,7 +10530,7 @@ function buildAthleteHeader(a, ctx) {
   const tone = (v, good, mid) => v === null || v === undefined ? '' : v >= good ? 'good' : v >= mid ? 'mid' : 'bad';
   const lastLogDays = a.lastActivity ? daysAgo(a.lastActivity) : null;
   const lastLogText = lastLogDays === null ? '—'
-    : lastLogDays === 0 ? 'Today'
+    : lastLogDays <= 0 ? 'Today'
     : lastLogDays === 1 ? 'Yesterday'
     : `${lastLogDays}d ago`;
 
@@ -10222,48 +10560,65 @@ function buildAthleteHeader(a, ctx) {
       plannedStr ? `${doneStr}<span class="fpa-vital-unit"> / ${plannedStr}</span>` : `${doneStr}<span class="fpa-vital-unit"> done</span>`,
       plannedStr ? 'sessions this week' : 'none prescribed',
       plannedStr ? tone(Math.round(doneStr / plannedStr * 100), 90, 60) : ''),
-    vital('Wellness',
+    vital('Recovery',
       a.recoveryScore === null ? '—' : `${a.recoveryScore}${recDelta}`,
       a.recoveryScore === null ? 'no recent check-in' : 'recovery /10',
       tone(a.recoveryScore, 7.5, 5)),
-    vital('Check-in', esc(checkinText),
+    vital('Last check-in', esc(checkinText),
       a.checkinStreak > 0 ? `${a.checkinStreak} week streak` : 'no streak',
       a.hasCurrentCheckin ? 'good' : a.isStale ? 'bad' : 'mid', '', true),
-    vital('Last log', esc(lastLogText),
+    vital('Last activity', esc(lastLogText),
       a.lastActivity ? fmtDate(a.lastActivity) : 'nothing logged',
       lastLogDays === null ? 'bad' : lastLogDays <= 2 ? 'good' : lastLogDays <= 4 ? 'mid' : 'bad', '', true),
   ].join('');
 
-  // ── Next action ──
-  const nextAction = (a.actions?.critical || [])[0] || (a.actions?.watch || [])[0] || null;
-  const nextTone = (a.actions?.critical || []).length ? 'is-critical' : 'is-watch';
-  const nextHtml = nextAction && !a.acked
+  // ── Status and next action: the queue's view of this athlete ──
+  const st = athleteStatusFor(a);
+  const item = st.item;
+  const legacyNext = a.acked ? null : ((a.actions?.critical || [])[0] || (a.actions?.watch || [])[0] || null);
+  const nextText = item ? `${item.status}: ${item.category === 'review' ? item.summary : item.reason}` : legacyNext;
+  const nextTone = st.key === 'urgent' ? 'is-critical' : 'is-watch';
+  const nextLabel = item?.primaryAction?.label || 'Adjust week';
+  const nextHtml = nextText
     ? `<div class="fpa-next ${nextTone}">
         <span class="fpa-next-lbl">Next action</span>
-        <span class="fpa-next-txt">${esc(nextAction)}</span>
-        <button class="fpa-next-btn" type="button" onclick="fpPlanWeek('${esc(a.id)}')">Adjust week</button>
+        <span class="fpa-next-txt">${esc(nextText)}</span>
+        <button class="fpa-next-btn" type="button" onclick="fpRunNext('${esc(a.id)}')">${esc(nextLabel)}</button>
       </div>`
     : '';
+  const reviewDays = item?.reviewDays?.length || 0;
 
   // A <div>, not a <header>: seven stylesheets style bare `header` as the dark
   // app chrome, which painted this block dark-on-dark in light theme.
   return `<div class="fpa-head" role="group" aria-label="Athlete summary">
     <div class="fpa-head-top">
       <div class="fpa-identity">
-        <div class="fpa-name">${esc(a.displayName || a.id)}</div>
+        <h2 class="fpa-name">${esc(a.displayName || a.id)}</h2>
+        ${statusChipHtml(st)}
         ${flags ? `<div class="fpa-flags">${flags}</div>` : ''}
       </div>
       <div class="fpa-context">
-        ${raceHtml}
         <div class="fpa-week">
           <span class="fpa-week-main">${esc(wkText)}</span>${peakChip}
         </div>
+        ${raceHtml}
       </div>
-      <div class="fpa-head-actions">
-        <button class="fpc-act-btn" onclick="copyDM('${esc(a.id)}')">${DP_ICON('message')} DM</button>
-        <button class="fpc-act-btn" onclick="DP_ACTIONS.open('${esc(a.id)}')">＋ Action</button>
-        <button class="fpc-act-btn" onclick="fpPlanWeek('${esc(a.id)}')">⚏ Plan Week</button>
-        <button class="fpc-act-btn" onclick="fpNotify('${esc(a.id)}')">${DP_ICON('bell')} Notify</button>
+      <div class="fpa-head-actions" role="group" aria-label="Athlete actions">
+        <button type="button" class="fpa-act is-primary" onclick="fpNotify('${esc(a.id)}')">${DP_ICON('message')} Message</button>
+        <button type="button" class="fpa-act" onclick="fpReview('${esc(a.id)}')">${DP_ICON('clipboard')} Review${reviewDays ? ` <span class="fpa-act-count">${reviewDays}</span>` : ''}</button>
+        <button type="button" class="fpa-act" onclick="fpPlanWeek('${esc(a.id)}')">${DP_ICON('calendar')} Adjust plan</button>
+        <div class="fpa-more">
+          <button type="button" class="fpa-act fpa-more-btn" id="fpa-more-btn" aria-haspopup="menu" aria-expanded="false" aria-controls="fpa-more-menu" onclick="toggleFpaMore(event)">More<span class="dp-visually-hidden"> actions for ${esc(a.displayName || a.id)}</span></button>
+          <div class="fpa-more-menu" id="fpa-more-menu" role="menu" hidden onkeydown="fpaMoreKeydown(event)">
+            <button type="button" role="menuitem" onclick="closeFpaMore();copyDM('${esc(a.id)}')">Copy DM text</button>
+            <button type="button" role="menuitem" onclick="closeFpaMore();DP_ACTIONS.open('${esc(a.id)}')">Add coaching action</button>
+            <button type="button" role="menuitem" onclick="closeFpaMore();window.DP_TRIAGE?.itemFor('${esc(a.id)}') ? (hideFP(), window.DP_TRIAGE.startFocus('${esc(a.id)}')) : workflowNotice('Nothing open for this athlete in the queue')">Focus review this athlete</button>
+            <div class="fpa-more-sep" role="separator"></div>
+            <button type="button" role="menuitem" onclick="closeFpaMore();setTheme('dark')">Dark theme</button>
+            <button type="button" role="menuitem" onclick="closeFpaMore();setTheme('light')">Light theme</button>
+            <button type="button" role="menuitem" onclick="closeFpaMore();setTheme('pride')">Pride theme</button>
+          </div>
+        </div>
       </div>
     </div>
     <div class="fpa-vitals" aria-label="Current week summary">
@@ -10273,6 +10628,70 @@ function buildAthleteHeader(a, ctx) {
     ${nextHtml}
   </div>`;
 }
+
+// ── Athlete header actions ───────────────────────────────────────────────────
+// Review lands on the oldest unreviewed day in Training; the next-action
+// button runs the queue's primary action without leaving the athlete if it
+// can, and only closes the workspace for actions that live elsewhere.
+function fpReview(id) {
+  const item = window.DP_TRIAGE?.itemFor?.(id);
+  const date = item?.reviewDays?.[0]?.date;
+  switchAthleteTab('training');
+  if (!date) {
+    if (!item?.reviewDays?.length) workflowNotice('No sessions waiting for review');
+    return;
+  }
+  requestAnimationFrame(() => {
+    const row = document.querySelector(`#fp-body [data-wd-date="${CSS.escape(date)}"]`);
+    if (!row) return;
+    row.scrollIntoView({ block: 'center', behavior: _reducedMotion() ? 'auto' : 'smooth' });
+    row.classList.add('is-focused');
+    setTimeout(() => row.classList.remove('is-focused'), 2400);
+  });
+}
+
+function fpRunNext(id) {
+  const action = window.DP_TRIAGE?.itemFor?.(id)?.primaryAction;
+  if (!action) return fpPlanWeek(id);
+  if (action.type === 'open_review') return fpReview(id);
+  if (action.type === 'open_athlete') return switchAthleteTab('overview');
+  if (action.type === 'open_strength') return switchAthleteTab('strength');
+  if (action.type === 'review') return fpPlanWeek(id);
+  hideFP();
+  return window.DP_TRIAGE?.runAction?.(action.type, id, action.date || undefined);
+}
+
+function toggleFpaMore(event) {
+  event?.stopPropagation();
+  const menu = document.getElementById('fpa-more-menu');
+  const button = document.getElementById('fpa-more-btn');
+  if (!menu || !button) return;
+  const open = menu.hidden;
+  menu.hidden = !open;
+  button.setAttribute('aria-expanded', String(open));
+  if (open) menu.querySelector('[role="menuitem"]')?.focus();
+}
+
+function closeFpaMore(returnFocus = false) {
+  const menu = document.getElementById('fpa-more-menu');
+  if (!menu || menu.hidden) return;
+  menu.hidden = true;
+  const button = document.getElementById('fpa-more-btn');
+  button?.setAttribute('aria-expanded', 'false');
+  if (returnFocus) button?.focus();
+}
+
+function fpaMoreKeydown(event) {
+  const items = [...document.querySelectorAll('#fpa-more-menu [role="menuitem"]')];
+  const i = items.indexOf(document.activeElement);
+  if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); closeFpaMore(true); return; }
+  if (event.key === 'ArrowDown') { event.preventDefault(); items[(i + 1) % items.length]?.focus(); }
+  if (event.key === 'ArrowUp') { event.preventDefault(); items[(i - 1 + items.length) % items.length]?.focus(); }
+  if (event.key === 'Tab') closeFpaMore();
+}
+document.addEventListener('click', event => {
+  if (!event.target.closest?.('.fpa-more')) closeFpaMore();
+});
 
 // Week navigation for the panels that are week-scoped (Overview and Training).
 // It deliberately sits inside those panels rather than in the sticky header, so
@@ -10742,10 +11161,17 @@ function buildFPCard(a, weekOffset = 0) {
           // portal) — enables portal-order rows + "Not done" flags for skipped exercises
           const plannedExs = isStr ? (splitForTitle(rawName, a.id)?.exercises || null) : null;
           const logHtml = renderExerciseLog(exLog, isRun, priorBests, plannedExs, s._swaps);
+          // Exceptions first: a lift session leads with PBs, pain, high effort
+          // and swaps; the set-by-set log is one click away.
+          const exceptions = isStr ? sessionExceptionsHtml(a, [s], { quiet: true }) : '';
+          const setCount = isStr ? String(exLog).split('\n').filter(line => line.trim()).length : 0;
+          const logBlock = isStr && exLog
+            ? `${exceptions}<details class="wd-log-details"><summary>Full log${setCount ? ` · ${setCount} line${setCount === 1 ? '' : 's'}` : ''}</summary>${logHtml}</details>`
+            : logHtml;
           return `<div class="wd-session ${cls}">
             <div class="wd-sess-cat">${catLabel}${stravaSource}</div>
             ${rawName ? `<div class="wd-sess-name">${esc(rawName)}</div>` : ''}
-            ${logHtml}
+            ${logBlock}
             ${notes ? `<div class="wd-sess-reflect"><span class="wd-reflect-lbl">Athlete note</span><span class="wd-reflect-txt">${esc(notes)}</span></div>` : ''}
           </div>`;
         }).join('');
@@ -11253,17 +11679,29 @@ function buildFPCard(a, weekOffset = 0) {
     notes:    'No coach notes yet. Notes you add here stay on the coaching side and are not shown to the athlete.',
   };
 
-  const panelHtml = FPA_TABS.map(t => {
-    const content = (panels[t.key] || []).filter(Boolean).join('');
-    return `<div class="fpa-panel" data-fpa-panel="${t.key}" role="tabpanel" ${t.key === _fpaTab ? '' : 'hidden'}>
-      ${content || emptyPanel(emptyCopy[t.key] || 'Nothing here yet.')}
-    </div>`;
-  }).join('');
-
   const tabCounts = {
     checkins: (a.weeklies || []).length || '',
     strength: (a.prs?.recent || []).length || '',
   };
+  const currentPanel = fpaPanelFor(_fpaTab);
+  const panelBody = key => {
+    const content = (panels[key] || []).filter(Boolean).join('');
+    return content || emptyPanel(emptyCopy[key] || 'Nothing here yet.');
+  };
+
+  const panelHtml = FPA_TABS.map(t => {
+    const visible = t.key === fpaTabFor(currentPanel);
+    if (t.panels) {
+      // One tabpanel for the group; the two views inside are their own tabpanels.
+      return `<div class="fpa-panel fpa-group" data-fpa-top="${t.key}" id="fpa-panel-${t.key}" role="tabpanel" aria-labelledby="fpa-tab-${t.key}" ${visible ? '' : 'hidden'}>
+        ${buildPerformanceSubTabs(tabCounts)}
+        ${t.panels.map(key => `<div class="fpa-subpanel" data-fpa-panel="${key}" id="fpa-panel-${key}" role="tabpanel" aria-labelledby="fpa-subtab-${key}" ${key === (currentPanel === 'strength' ? 'strength' : currentPanel === 'running' ? 'running' : _fpaPerfSub) ? '' : 'hidden'}>${panelBody(key)}</div>`).join('')}
+      </div>`;
+    }
+    return `<div class="fpa-panel" data-fpa-panel="${t.key}" data-fpa-top="${t.key}" id="fpa-panel-${t.key}" role="tabpanel" aria-labelledby="fpa-tab-${t.key}" ${visible ? '' : 'hidden'}>
+      ${panelBody(t.key)}
+    </div>`;
+  }).join('');
 
   // Header and tabs share one sticky wrapper so the offset does not depend on
   // the header's height, which changes with flags and the next-action row.
@@ -11580,26 +12018,79 @@ function buildCoachCard(a) {
 function setStatusFilter(btn, status) {
   _statusFilter = status;
   localStorage.setItem('dp_dash_status', status);
-  document.querySelectorAll('.sf[data-status]').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
   applyFilters();
 }
 
+// ── Athlete status ───────────────────────────────────────────────────────────
+// One hierarchy everywhere (coach-queue.js STATUS): Urgent, Needs attention,
+// Review due, On track, No recent data. The highest active state wins, so an
+// athlete with an open queue signal or an unreviewed session can never read
+// "On track". The queue item is the source of truth; the athlete's own
+// unacknowledged alert lines cover the moment before the queue has loaded.
+function athleteStatusFor(a) {
+  const Q = window.DP_QUEUE;
+  const item = window.DP_TRIAGE?.itemFor?.(a.id) || null;
+  const lines = a.acked ? [] : [
+    ...(a.actions?.critical || []).map(text => ({ text, critical: true })),
+    ...(a.actions?.watch || []).map(text => ({ text, critical: false })),
+  ];
+  const quiet = !a.hasRecent && (a.lastActivity ? daysAgo(a.lastActivity) > 14 : true);
+  const noData = _isNoData(a) || quiet;
+  const status = Q
+    ? Q.athleteStatus({ item, lines, noData })
+    : { key: lines.some(l => l.critical) ? 'urgent' : lines.length ? 'attention' : noData ? 'nodata' : 'ontrack', rank: 0, label: '' };
+  const reason = item ? (item.category === 'review' ? item.summary : item.reason)
+    : lines[0]?.text || (status.key === 'nodata' ? 'Nothing logged recently' : '');
+  return { ...status, reason, item };
+}
+
+const STATUS_ICON = { urgent: 'siren', attention: 'bell', review: 'clipboard', ontrack: 'dot', nodata: 'dot' };
+function statusChipHtml(st, options = {}) {
+  const label = st.label || window.DP_QUEUE?.STATUS?.[st.key]?.label || st.key;
+  return `<span class="sq-status is-${esc(st.key)}${options.compact ? ' is-compact' : ''}">${DP_ICON(STATUS_ICON[st.key] || 'dot')}<span>${esc(label)}</span></span>`;
+}
+
+// Re-rank and re-label the Squad when the queue changes (a resolve, a review,
+// the triage load finishing after the roster).
+let _queueSignature = '';
+window.addEventListener('dp:queue-updated', () => {
+  if (!_fullDashboardLoaded) return;
+  // Re-render even while hidden: Squad may have been drawn before the queue
+  // finished loading, and must not show stale statuses when the coach opens it.
+  // Only when a status could have changed, not on every spinner tick.
+  const items = window.DP_TRIAGE?.model?.().items || [];
+  const signature = items.map(i => `${i.code}:${i.signals.map(sig => sig.category + sig.id).join(',')}:${i.primaryAction?.label}`).join('|');
+  if (signature === _queueSignature) return;
+  _queueSignature = signature;
+  applyFilters();
+});
+
 function updateFilterChips() {
-  const counts = {
-    all:    _allAthletes.length,
-    red:    _allAthletes.filter(a => a.actions?.severity === 'red').length,
-    amber:  _allAthletes.filter(a => a.actions?.severity === 'amber').length,
-    green:  _allAthletes.filter(a => !a.actions?.severity && !_isNoData(a)).length,
-    nodata: _allAthletes.filter(_isNoData).length,
-  };
+  const statuses = _allAthletes.map(a => athleteStatusFor(a).key);
+  const counts = { all: _allAthletes.length };
+  ['urgent', 'attention', 'review', 'ontrack', 'nodata'].forEach(k => { counts[k] = statuses.filter(x => x === k).length; });
   document.querySelectorAll('.sf[data-status]').forEach(btn => {
     const k = btn.dataset.status;
     const c = btn.querySelector('.sf-count');
-    if (c) c.textContent = counts[k] !== undefined ? `(${counts[k]})` : '';
-    btn.classList.toggle('active', _statusFilter === k);
+    if (c) c.textContent = counts[k] !== undefined ? String(counts[k]) : '';
+    const active = _statusFilter === k;
+    btn.classList.toggle('active', active);
+    btn.setAttribute('aria-pressed', String(active));
   });
+  syncFilterToggle();
 }
+
+// The phone filter button says when a filter is hiding athletes.
+function syncFilterToggle() {
+  const toggle = document.getElementById('dp-mobile-filter-toggle');
+  if (!toggle) return;
+  const open = document.getElementById('filter-bar')?.classList.contains('mobile-expanded');
+  const active = _statusFilter && _statusFilter !== 'all';
+  toggle.textContent = open ? 'Done' : active ? 'Filter · 1' : 'Filter';
+  toggle.setAttribute('aria-expanded', String(!!open));
+  toggle.classList.toggle('has-active', !!active);
+}
+window.syncFilterToggle = syncFilterToggle;
 
 function applyFilters() {
   const query = (document.getElementById('search-input')?.value || '').toLowerCase().trim();
@@ -11608,17 +12099,10 @@ function applyFilters() {
   updateFilterChips();
 
   let visible = _allAthletes;
+  const statusOf = new Map(_allAthletes.map(a => [a.id, athleteStatusFor(a)]));
 
-  // Status filter — uses action severity (the unified red/amber model)
-  // "On Track" excludes athletes with no data at all; they get their own filter
-  if (_statusFilter === 'red') {
-    visible = visible.filter(a => a.actions?.severity === 'red');
-  } else if (_statusFilter === 'amber') {
-    visible = visible.filter(a => a.actions?.severity === 'amber');
-  } else if (_statusFilter === 'green') {
-    visible = visible.filter(a => !a.actions?.severity && !_isNoData(a));
-  } else if (_statusFilter === 'nodata') {
-    visible = visible.filter(_isNoData);
+  if (_statusFilter && _statusFilter !== 'all') {
+    visible = visible.filter(a => statusOf.get(a.id)?.key === _statusFilter);
   }
 
   // Search
@@ -11642,7 +12126,11 @@ function applyFilters() {
       return db.localeCompare(da);
     });
   } else {
-    visible = [...visible].sort((a, b) => b.alertScore - a.alertScore);
+    // Needs attention: the status hierarchy first, then the old alert score.
+    visible = [...visible].sort((a, b) =>
+      (statusOf.get(a.id)?.rank || 9) - (statusOf.get(b.id)?.rank || 9) ||
+      (b.alertScore || 0) - (a.alertScore || 0) ||
+      String(athleteLabel(a)).localeCompare(String(athleteLabel(b))));
   }
 
   // Header-click sort overrides the dropdown while active (table view only)
@@ -12080,6 +12568,8 @@ function switchTab(tab) {
   });
 
   closeSettingsMenu();
+  // Screens can style chrome per destination (Today carries its own refresh).
+  if (document.body?.dataset) document.body.dataset.tab = primary;
   document.getElementById('filter-bar').style.display = tab === 'athletes' ? '' : 'none';
   document.getElementById('gen-btn').style.display    = tab === 'athletes' && _allAthletes.length ? 'block' : 'none';
 
@@ -12799,6 +13289,8 @@ async function load({ bust = false } = {}) {
   document.getElementById('content').style.display = 'none';
   document.getElementById('err').style.display = 'none';
   document.getElementById('refresh-btn').disabled = true;
+  const todayRefresh = document.getElementById('today-refresh');
+  if (todayRefresh) { todayRefresh.disabled = true; todayRefresh.setAttribute('aria-busy', 'true'); }
 
   try {
     const [weeklyNotion, sessionsNotion, bodyNotion, nutritionNotion, athleteDb, applications, coachDataSB, roster] = await Promise.all([
@@ -12868,6 +13360,7 @@ async function load({ bust = false } = {}) {
     render({ athletes, coaches, applications, dataHealth, syncAudit });
     window.DP_PARITY?.setOperations(coachDataSB, athletes);
     _fullDashboardLoaded = true;
+    try { window.dispatchEvent(new CustomEvent('dp:dashboard-loaded')); } catch {}
     renderNotifications(applications, _decisions);
     renderApplications(applications, _decisions);
     updatePlanningBadge();
@@ -12913,6 +13406,8 @@ async function load({ bust = false } = {}) {
   } finally {
     _fullDashboardLoading = false;
     document.getElementById('refresh-btn').disabled = false;
+    const todayRefreshDone = document.getElementById('today-refresh');
+    if (todayRefreshDone) { todayRefreshDone.disabled = false; todayRefreshDone.removeAttribute('aria-busy'); }
   }
 }
 
@@ -13097,10 +13592,13 @@ function _drawFP() {
   document.getElementById('fp-body').innerHTML = buildFPCard(a, _fpWeekOffset);
   window.DP_PARITY?.hydrate(document.getElementById('fp-body'));
   window.DP_STRAVA?.hydrate(document.getElementById('fp-body'));
+  clampLongNotes(document.getElementById('fp-body'));
   document.getElementById('fp-overlay').scrollTop = 0;
   // Applies the remembered tab and runs that panel's deferred work. `silent`
   // because restoring a tab is not the coach choosing one.
   switchAthleteTab(_fpaTab, { silent: true });
+  // After layout: the overlay may still be display:none on the first draw.
+  requestAnimationFrame(() => updateTabScrollCue(document.getElementById('fp-body')));
   requestAnimationFrame(() => {
     const panel = document.querySelector('#fp-body [data-fpa-panel="running"]');
     if (panel && !panel.hidden) _positionCurrentProgrammeWeek(panel);
@@ -13875,8 +14373,7 @@ function copyDM(athleteId) {
   const msg = lines.join('\n\n');
   navigator.clipboard.writeText(msg).then(() => {
     // Brief visual feedback on the button
-    const btn = document.querySelector(`button[onclick="copyDM('${athleteId}')"]`);
-    if (btn) { btn.textContent = '✓ Copied'; setTimeout(() => { btn.innerHTML = DP_ICON('message') + ' DM'; }, 2000); }
+    workflowNotice(`DM text for ${athleteId} copied`);
   }).catch(() => {
     prompt('Copy this DM:', msg);
   });
@@ -13893,10 +14390,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   await load();
   startSharedResolutionSync();
 });
-document.getElementById('refresh-btn').addEventListener('click', () => {
+function refreshDashboard() {
   window.loadTriage?.();
   load({ bust: true });
-});
+}
+document.getElementById('refresh-btn').addEventListener('click', refreshDashboard);
+document.getElementById('today-refresh')?.addEventListener('click', refreshDashboard);
 document.getElementById('gen-btn').addEventListener('click', generateAI);
 
 // Coach selector — persists across sessions, shows "Coach: KARL" once chosen
@@ -13927,12 +14426,13 @@ document.getElementById('gen-btn').addEventListener('click', generateAI);
   });
 })();
 </script>
-<script src="/dashboard-redesign.js?v=20260906-17" defer></script>
+<script src="/dashboard-redesign.js?v=20261014-01" defer></script>
 <script src="/coaching-actions.js?v=3" defer></script>
 <script src="/dp-icons.js?v=20260907-35"></script>
-<script src="/dashboard-mobilenav.js?v=20260921-01" defer></script>
-<script src="/triage.js?v=20260923-01" defer></script>
-<script src="/coach-parity.js?v=20261010-01" defer></script>
+<script src="/dashboard-mobilenav.js?v=20261014-01" defer></script>
+<script type="module" src="/coach-queue.js?v=20261014-01"></script>
+<script src="/triage.js?v=20261014-01" defer></script>
+<script src="/coach-parity.js?v=20261014-01" defer></script>
 <script src="/strava-activities.js?v=20261010-01" defer></script>
 <script src="/weekly-sport-targets.js?v=3" defer></script>
 <script src="/daily-macro-overrides.js?v=3" defer></script>
@@ -13941,6 +14441,6 @@ document.getElementById('gen-btn').addEventListener('click', generateAI);
      publishes itself on window for the classic-script render code. -->
 <script type="module" src="/run-analysis.js?v=20260906-17"></script>
 <script type="module" src="/strength-analysis.js?v=20260923-01"></script>
-<script src="/app.js?v=2" defer></script>
+<script src="/app.js?v=3" defer></script>
 </body>
 </html>

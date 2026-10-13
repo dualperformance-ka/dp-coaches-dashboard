@@ -1,0 +1,386 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   COMMAND CENTRE — Squad and athlete workspace layer of the workflow
+   redesign. Today's own styles live in triage.css; phone-only rules live in
+   dashboard-mobile-final.css, which must stay the last stylesheet.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Status chip: one hierarchy, a word and an icon, never colour alone ── */
+.sq-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px 3px 7px;
+  border-radius: 999px;
+  color: var(--text);
+  background: color-mix(in srgb, var(--dim) 16%, transparent);
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+.sq-status .dp-icon, .sq-status svg { width: 12px; height: 12px; flex: 0 0 auto; }
+.sq-status.is-urgent { color: color-mix(in srgb, var(--alert) 76%, var(--text)); background: color-mix(in srgb, var(--alert) 13%, transparent); }
+.sq-status.is-attention,
+.sq-status.is-review { color: color-mix(in srgb, var(--warn) 76%, var(--text)); background: color-mix(in srgb, var(--warn) 13%, transparent); }
+.sq-status.is-ontrack { color: color-mix(in srgb, var(--ok) 76%, var(--text)); background: color-mix(in srgb, var(--ok) 12%, transparent); }
+.sq-status.is-nodata { color: var(--muted); }
+.sq-status.is-compact { padding: 2px 8px 2px 6px; font-size: 11.5px; }
+
+/* ── Squad table: seven decision columns ── */
+.sq-table { table-layout: fixed; width: 100%; }
+.sq-table th { padding: 0; }
+.th-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 0;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.th-btn:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; border-radius: 6px; }
+.sq-trow > td { vertical-align: middle; }
+.sq-trow { cursor: pointer; }
+.sq-trow.is-urgent > td:first-child { box-shadow: inset 3px 0 0 var(--alert); }
+.sq-trow.is-attention > td:first-child,
+.sq-trow.is-review > td:first-child { box-shadow: inset 3px 0 0 var(--warn); }
+.sq-name {
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  color: var(--text);
+  background: transparent;
+  font: inherit;
+  font-family: var(--font-ui, var(--sans));
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: 0;
+  text-transform: none;
+  text-align: left;
+  cursor: pointer;
+}
+.sq-name:hover { text-decoration: underline; text-underline-offset: 3px; }
+.sq-name:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.sq-reason {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: 1.35;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.tcell-text { color: var(--text); font-size: 13px; }
+.tcell-text.mid { color: var(--warn); }
+.tcell-text.bad { color: var(--alert); }
+.sq-next {
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--brand-border);
+  border-radius: 8px;
+  color: var(--brand-text);
+  background: var(--brand-bg);
+  font-size: 12.5px;
+  font-weight: 650;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.sq-next.is-quiet { color: var(--muted); border-color: var(--border-mid); background: transparent; }
+.sq-next:hover { filter: brightness(1.08); }
+.sq-next:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+
+/* The phone list is swapped in by dashboard-mobile-final.css. */
+.sq-list { display: none; }
+
+/* ── Expanded squad row ── */
+.texp-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.texp-header .texp-name { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.texp-collapse {
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--border-mid);
+  border-radius: 8px;
+  color: var(--muted);
+  background: transparent;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.texp-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+  gap: 12px;
+}
+.texp-block { padding: 12px 14px; border-radius: 10px; background: var(--surface2); min-width: 0; }
+.texp-week { grid-row: span 2; grid-column: 2; }
+.texp-coach { grid-column: 1 / -1; }
+.texp-block-title {
+  margin: 0 0 8px;
+  color: var(--text);
+  font-family: var(--font-ui, var(--sans));
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.texp-quiet { margin: 6px 0 0; color: var(--muted); font-size: 12.5px; }
+.texp-alerts .texp-signal-list { margin: 0; padding-left: 16px; color: var(--muted); font-size: 13px; line-height: 1.5; }
+.texp-alerts li strong { color: var(--text); }
+.texp-alerts li.is-urgent strong { color: color-mix(in srgb, var(--alert) 76%, var(--text)); }
+.texp-alerts li.is-review strong,
+.texp-alerts li.is-followup strong { color: color-mix(in srgb, var(--warn) 76%, var(--text)); }
+.texp-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px 12px; margin: 0; }
+.texp-facts.is-inline { grid-template-columns: repeat(4, minmax(0, 1fr)); margin-top: 10px; }
+.texp-facts dt { color: var(--muted); font-size: 12px; }
+.texp-facts dd { margin: 2px 0 0; color: var(--text); font-family: var(--mono); font-size: 14px; font-weight: 600; }
+.texp-coach .texp-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* ── Squad filter bar ── */
+.sort-wrap { display: inline-flex; align-items: center; gap: 6px; }
+.sort-lbl { color: var(--muted); font-size: 12px; font-weight: 600; }
+.filter-bar .sf[aria-pressed="true"] { font-weight: 700; }
+.filter-bar .filter-label { text-transform: none; letter-spacing: 0; font-size: 12px; }
+.sq-table th,
+.sq-table td { text-align: left; }
+.sq-table td { padding: 12px; }
+.sq-status { text-transform: none; letter-spacing: 0; font-family: var(--font-ui, var(--sans)); }
+.texp-preview .texp-name {
+  color: var(--text);
+  font-family: var(--font-ui, var(--sans));
+  font-size: 17px;
+  font-weight: 650;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.dash-table.sq-table th:not(:first-child),
+.dash-table.sq-table td:not(:first-child) { text-align: left; }
+.sq-table .tcell { align-items: flex-start; margin-left: 0; }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   ATHLETE WORKSPACE — compact header, three primary actions, overflow menu,
+   one tab strip with a visible scroll cue, Performance sub-views.
+   ══════════════════════════════════════════════════════════════════════════ */
+.fpa .fpa-name {
+  margin: 0;
+  font-size: 28px;
+  letter-spacing: .01em;
+  text-transform: none;
+}
+.fpa .fpa-week-main { font-family: var(--font-ui, var(--sans)); font-size: 13px; letter-spacing: 0; text-transform: none; color: var(--text); font-weight: 600; }
+.fpa .fpa-race { font-size: 13px; }
+.fpa .fpa-race.is-empty { font-style: normal; color: var(--muted); }
+.fpa-head-actions { align-items: center; gap: 8px; }
+.fpa-act {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--border-mid);
+  border-radius: 10px;
+  color: var(--text);
+  background: transparent;
+  font-size: 13.5px;
+  font-weight: 650;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.fpa-act:hover { border-color: var(--brand-border); color: var(--brand-text); }
+.fpa-act:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.fpa-act.is-primary { color: var(--readout-ink, #081019); background: var(--brand); border-color: var(--brand); }
+.fpa-act.is-primary:hover { color: var(--readout-ink, #081019); filter: brightness(1.06); }
+.fpa-act .dp-icon, .fpa-act svg { width: 15px; height: 15px; }
+.fpa-act-count {
+  min-width: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  color: color-mix(in srgb, var(--warn) 76%, var(--text));
+  background: color-mix(in srgb, var(--warn) 12%, transparent);
+  font-family: var(--mono);
+  font-size: 12px;
+  text-align: center;
+}
+.fpa-more { position: relative; }
+.fpa-more-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  min-width: 220px;
+  padding: 6px;
+  border: 1px solid var(--border-mid);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, .35);
+}
+.fpa-more-menu[hidden] { display: none; }
+.fpa-more-menu [role="menuitem"] {
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 8px;
+  color: var(--text);
+  background: transparent;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+.fpa-more-menu [role="menuitem"]:hover,
+.fpa-more-menu [role="menuitem"]:focus-visible { background: var(--surface2); outline: none; box-shadow: inset 0 0 0 2px var(--brand-border); }
+.fpa-more-sep { height: 1px; margin: 4px 6px; background: var(--border); }
+
+.fpa .fpa-vital-lbl,
+.fpa .fpa-vitals-lbl { font-family: var(--font-ui, var(--sans)); font-size: 12px; font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--muted); }
+.fpa .fpa-vital-sub { font-family: var(--font-ui, var(--sans)); font-size: 12px; color: var(--muted); }
+.fpa .fpa-next { border: 0; border-radius: 10px; padding: 10px 14px; }
+.fpa .fpa-next-lbl { font-family: var(--font-ui, var(--sans)); font-size: 12px; letter-spacing: 0; text-transform: none; }
+.fpa .fpa-next-txt { font-size: 14px; }
+.fpa .fpa-next-btn {
+  min-height: 40px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 10px;
+  color: var(--readout-ink, #081019);
+  background: var(--brand);
+  font-family: var(--font-ui, var(--sans));
+  font-size: 13.5px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* Tab strip: a fade at whichever edge has more tabs behind it. */
+.fpa-tabs-wrap { position: relative; }
+.fpa-tabs-wrap::before,
+.fpa-tabs-wrap::after {
+  content: '';
+  position: absolute;
+  top: 1px;
+  bottom: 1px;
+  width: 48px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .15s ease;
+  z-index: 3;
+}
+.fpa-tabs-wrap::before { left: 0; background: linear-gradient(90deg, var(--bg), transparent); }
+.fpa-tabs-wrap::after { right: 0; background: linear-gradient(270deg, var(--bg), transparent); }
+.fpa-tabs-wrap.can-scroll-left::before,
+.fpa-tabs-wrap.can-scroll-right::after { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { .fpa-tabs-wrap::before, .fpa-tabs-wrap::after { transition: none; } }
+
+.fpa-subtabs { display: inline-flex; gap: 4px; margin-bottom: 16px; padding: 4px; border-radius: 12px; background: var(--surface2); }
+.fpa-subtab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 9px;
+  color: var(--muted);
+  background: transparent;
+  font-size: 13.5px;
+  font-weight: 650;
+  cursor: pointer;
+}
+.fpa-subtab.is-active { color: var(--text); background: var(--surface); box-shadow: var(--shadow-soft); }
+.fpa-subtab:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.fpa-subpanel[hidden] { display: none !important; }
+
+/* Running panel chart tokens follow the sub-panel now that it is nested. */
+.fpa-subpanel[data-fpa-panel="running"] {
+  --wh-bg: var(--bg); --wh-text: var(--text); --wh-dim: var(--dim); --wh-mid: var(--muted);
+  --wh-border: var(--border-mid); --wh-surface: var(--surface); --wh-bar: var(--surface2);
+  --wh-run: var(--run); --wh-str: var(--str);
+}
+
+/* Athlete notes read as quotes in the athlete's voice; metrics stay numbers. */
+.wd-sess-reflect,
+.cp-athlete-note {
+  padding: 8px 10px;
+  border-left: 3px solid var(--brand-border);
+  border-radius: 0 8px 8px 0;
+  background: color-mix(in srgb, var(--brand) 5%, transparent);
+}
+.wd-reflect-lbl { font-style: normal; }
+.wd-reflect-txt, .wd-sess-notes { font-style: normal; color: var(--text); white-space: pre-line; }
+
+.fp-topbar .fp-back { min-height: 44px; }
+.fp-topbar .fp-nav-btn { min-height: 44px; min-width: 44px; }
+
+/* Workspace section titles: sentence case, and no chevron or pointer — the
+   collapse behaviour behind them was removed with the move to tabs, so they
+   looked interactive and did nothing. */
+.fpa .fpc-section-title {
+  font-family: var(--font-ui, var(--sans));
+  font-size: 16px;
+  font-weight: 650;
+  letter-spacing: 0;
+  text-transform: none;
+  cursor: default;
+  user-select: text;
+}
+.fpa .fpc-section-title::after { display: none; }
+.fpa .fpc-section { border-color: transparent; }
+
+/* Exceptions-first session log: the full set list sits behind a disclosure. */
+.wd-log-details { margin-top: 6px; }
+.wd-log-details > summary {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  color: var(--brand-text);
+  font-size: 12.5px;
+  font-weight: 650;
+  cursor: pointer;
+}
+.wd-log-details > summary:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; border-radius: 4px; }
+.wd-session .cq-exceptions { margin: 6px 0 0; }
+.dash-table.sq-table th .th-sort { color: inherit; font-size: 11px; opacity: .85; }
+/* The filter bar stays logo-black in both themes, so its labels do too. */
+.filter-bar .sort-lbl,
+body[data-theme="light"] .filter-bar .sort-lbl { color: rgba(238, 244, 248, .72); }
+/* Header row of the squad table stays dark in both themes. */
+.dash-table.sq-table th .th-sort { color: rgba(238, 244, 248, .78); opacity: 1; }
+/* A count inside the active tab reads as an outline on the brand fill: a tint
+   of the ink lightened the fill under white text to 4.3:1 in light theme. */
+.fpa .fpa-tab.is-active .fpa-tab-badge,
+.fpa .fpa-subtab .fpa-tab-badge { background: transparent; box-shadow: inset 0 0 0 1px currentColor; color: inherit; }
+
+/* Tablet: the top bar keeps every destination on screen — search collapses to
+   its icon (the button keeps its accessible name) instead of pushing Settings
+   off the edge. */
+@media (min-width: 721px) and (max-width: 980px) {
+  .tab-search .tab-search-lbl,
+  .tab-search .tab-kbd { display: none; }
+  .tab-bar .tab { padding-inline: 12px; }
+}
+@media (min-width: 721px) and (max-width: 980px) {
+  /* The header ran its controls over the wordmark at tablet width. */
+  header .logo-wordmark-text,
+  header .logo-role,
+  header .updated { display: none; }
+  header .h-right { gap: 6px; }
+}
+/* Tablet: the squad table scrolls inside its own box rather than truncating
+   column headings and the next-action button. */
+@media (max-width: 1100px) {
+  .dash-table-wrap:has(> .sq-table) { overflow-x: auto; }
+  .sq-table { min-width: 880px; }
+}

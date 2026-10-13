@@ -116,9 +116,11 @@ test('the dashboard wires every parity surface in', () => {
 
 test('Today rows show the structured pain score and location', () => {
   const triage = readFileSync(new URL('../public/triage.js', import.meta.url), 'utf8');
-  assert.match(triage, /function painDetail\(row\)/);
+  // Rows are per-athlete queue items now (coach-queue.js); the pain evidence
+  // still renders on the row and in Focus Mode.
+  assert.match(triage, /function painDetail\(item\)/);
   assert.match(triage, /pain\.location/);
-  assert.match(triage, /\$\{painDetail\(row\)\}/);
+  assert.match(triage, /painDetail\(item\) \+/);
 });
 
 test('typed raw_sets win over the blob and the text parser for the same exercise-day', () => {

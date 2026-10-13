@@ -152,18 +152,27 @@ test('adding from the board targets the athlete whose row was clicked', () => {
   assert.deepEqual(calls, [['athlete', 'JAMES'], ['open', null, '2026-09-10']]);
 });
 
-test('the expanded squad row is a preview, not a second athlete profile', () => {
+test('the expanded squad row is a structured preview, not a second athlete profile', () => {
   const panel = functionSource('buildTableExpandPanel');
-  // Three things only: why they are flagged, the week, and the ways out.
-  assert.match(panel, /texp-signal/);
+  // Four labelled blocks: current alerts, the week, recent wellness, and the
+  // coach's ways out. Secondary metrics that left the table live here.
+  for (const block of ['Current alerts', 'This week’s sessions', 'Recent wellness', 'Coach actions']) {
+    assert.ok(panel.includes(`texp-block-title">${block}<`), `${block} block`);
+  }
   assert.match(panel, /texp-week-strip/);
   assert.match(panel, /openAthleteFromTriage\(/);
   assert.match(panel, /fpPlanWeek\(/);
+  // Weight, calories and run/strength counts moved out of the default row.
+  for (const metric of ["fact('Weight'", "fact('Calories'", "fact('Runs'", "fact('Strength'"]) {
+    assert.ok(panel.includes(metric), `${metric} lives in the expansion`);
+  }
+  // Alerts are the queue's own signals, so the row and Today never disagree.
+  assert.match(panel, /athleteStatusFor\(a\)/);
   // The mini-profile it used to render belongs to the workspace.
   for (const gone of ['texp-daily-row', 'texp-ci-header', 'texp-bar-row', 'texp-action-ribbon', 'texp-week-btn']) {
     assert.doesNotMatch(panel, new RegExp(gone), `${gone} should have moved to the athlete workspace`);
   }
-  assert.ok(panel.split('\n').length < 90, 'the preview must stay short');
+  assert.ok(panel.split('\n').length < 130, 'the preview must stay short');
 });
 
 // ── Programme week rollover ───────────────────────────────────────────────────
