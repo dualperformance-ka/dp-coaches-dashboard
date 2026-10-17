@@ -16,7 +16,7 @@
 // it for you — and if sw.js is byte-identical the browser never installs a new
 // worker, no "Update available" toast appears, and the activate purge never runs.
 // scripts/bump-sw-version.mjs does it for you: `node scripts/bump-sw-version.mjs`.
-const VERSION = 'dp-coaches-v60-command-centre';
+const VERSION = 'dp-coaches-v61-weekly-targets';
 const SHELL_CACHE = `${VERSION}-shell`;
 const STATIC_CACHE = `${VERSION}-static`;
 const FONT_CACHE = `${VERSION}-fonts`;
@@ -41,7 +41,7 @@ const SHELL_ASSETS = [
   '/triage.js?v=20261014-01',
   '/coach-queue.js?v=20261014-01',
   '/command-centre.css?v=20261014-01',
-  '/coach-parity.js?v=20261014-01',
+  '/coach-parity.js?v=20261017-01',
   '/coach-parity.css?v=20260924-01',
   '/strava-activities.js?v=20261010-01',
   '/strava-activities.css?v=20261010-01',

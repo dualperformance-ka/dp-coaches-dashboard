@@ -20,11 +20,14 @@ import {
   addDaysISO,
   adelaideToday,
   aggregatePlannedEndurance,
+  applyWeeklyTargets,
   buildEndurance,
   buildSummary,
   classifySession,
+  coachTargetsFromRows,
   dedupeEnduranceLogs,
   isUuid,
+  manualRunKmForWeek,
   programmeWeekLabel,
   round,
   sessionKeyFor,
@@ -151,6 +154,7 @@ export function buildCoachSummary(input) {
   const {
     programmeWeek, plannedRows = [], trainingLogs = null, uploads = null,
     gymKeys = BASE_GYM_KEYS, structured = new Map(), missingSources = [], warnings = [],
+    coachTargets = [], manualRunKm = null,
   } = input;
   const summary = buildSummary({
     ...input,
@@ -159,8 +163,10 @@ export function buildCoachSummary(input) {
   });
   const { startDate, endDate } = weekRangeFromStart(programmeWeek.startDate);
   const classify = row => classifySession(row, { gymKeys, structured });
+  // Planned follows the same authority as the athlete's Week tab and review:
+  // the published weekly target first, then the sessions.
   summary.endurance = buildEndurance(
-    aggregatePlannedEndurance({ plannedRows, classify, library: null }),
+    applyWeeklyTargets(aggregatePlannedEndurance({ plannedRows, classify, library: null }), { coachTargets, manualRunKm }),
     aggregateCoachEndurance({ trainingLogs, uploads, startDate, endDate }),
   );
   Object.values(summary.endurance.bySport || summary.endurance || {}).forEach(entry => {
@@ -292,7 +298,7 @@ export async function loadCoachWeeklySummary({ code: rawCode, programmeWeekId: r
     return key.startsWith(loggedKeyPrefix) ? key.slice(loggedKeyPrefix.length) : key;
   };
 
-  const [loggedRows, trainingLogRows, strengthHistoryRows, bodyRows, previousBodyRows, checkInRows, uploadRows, splitRows, exerciseRows, runStepRows] = await Promise.all([
+  const [loggedRows, trainingLogRows, strengthHistoryRows, bodyRows, previousBodyRows, checkInRows, uploadRows, splitRows, exerciseRows, runStepRows, targetRows, nutritionRows] = await Promise.all([
     plannedKeys.length
       ? optional('session_logs', select('session_logs', {
         athlete_code: `eq.${code}`, session_key: `in.(${sessionLogKeys.join(',')})`,
@@ -337,6 +343,17 @@ export async function loadCoachWeeklySummary({ code: rawCode, programmeWeekId: r
         planned_session_id: `in.(${structuredIds.join(',')})`, select: 'planned_session_id', limit: '2000',
       }))
       : Promise.resolve([]),
+    // Published targets only: the athlete never sees a draft, so the coach's
+    // review of the athlete's week must not count one either.
+    optional('weekly_sport_targets', select('weekly_sport_targets', {
+      athlete_code: `eq.${code}`, programme_week_id: `eq.${week.id}`, publish_state: 'eq.published', removed_at: 'is.null',
+      select: 'sport,distance_target_metres,session_target,duration_target_minutes,publish_state,removed_at', limit: '10',
+    })),
+    Number.isInteger(week.weekNumber)
+      ? optional('nutrition_plans', select('nutrition_plans', {
+        athlete_code: `eq.${code}`, select: 'week_label,weekly_km_target', limit: '100',
+      }))
+      : Promise.resolve([]),
   ]);
 
   const structured = new Map();
@@ -362,6 +379,8 @@ export async function loadCoachWeeklySummary({ code: rawCode, programmeWeekId: r
     checkInRows: Array.isArray(checkInRows) ? checkInRows : [],
     gymKeys,
     structured,
+    coachTargets: coachTargetsFromRows(targetRows),
+    manualRunKm: manualRunKmForWeek(nutritionRows, week.weekNumber),
     todayISO,
     generatedAt: now.toISOString(),
     missingSources,

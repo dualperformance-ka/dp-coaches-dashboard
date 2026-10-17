@@ -3,7 +3,8 @@
  *
  * THIS FILE IS A VERBATIM COPY of the pure half (everything above the
  * "── DATABASE ──" divider) of dp-athlete-portal/api/_lib/performance-summary.js
- * at portal commit 7d4f3cc, with only the Supabase import removed. The two repos
+ * as of the portal change "Weekly review planned matches the coach's weekly
+ * targets", with only the Supabase import removed. The two repos
  * deploy separately, so the rules are copied rather than imported; the parity
  * test (tests/coach-weekly-summary.test.js) pins the hash of the copied block so
  * a portal change that is not mirrored here fails the build instead of letting
@@ -109,6 +110,13 @@ const NOTE_TYPES = new Set(['note', 'notes', 'general', 'discovery', 'custom']);
 
 function lower(value) {
   return String(value == null ? '' : value).toLowerCase();
+}
+
+// "Weekly KM Total: 65km" rows are a coach's weekly running figure, not a
+// session: nothing can ever complete them. The Week tab reads them as a floor
+// under the planned running total (js/05-handbook.js) and so does this.
+export function isWeeklyTotalRow(row) {
+  return String(row && row.session_type || '') === 'Weekly KM Total' || /km total/i.test(String(row && row.title || ''));
 }
 
 export function isRestSession(row) {
@@ -293,7 +301,7 @@ export function aggregateTraining({ plannedRows = [], loggedKeys = new Set(), to
   let completed = 0;
 
   plannedRows.forEach((row) => {
-    if (isRestSession(row)) return;
+    if (isRestSession(row) || isWeeklyTotalRow(row)) return;
     const type = classify(row);
     planned += 1;
     byType[type].planned += 1;
@@ -338,9 +346,15 @@ export function aggregateTraining({ plannedRows = [], loggedKeys = new Set(), to
 export function aggregatePlannedEndurance({ plannedRows = [], classify, library = null }) {
   const planned = {};
   ENDURANCE_SPORTS.forEach((sport) => { planned[sport] = { km: 0, sources: new Set() }; });
+  let declaredRunKm = 0;
 
   plannedRows.forEach((row) => {
     if (isRestSession(row)) return;
+    if (isWeeklyTotalRow(row)) {
+      const match = String(row.title || '').match(/(\d+(?:\.\d+)?)\s*km/i);
+      if (match) declaredRunKm = Math.max(declaredRunKm, parseFloat(match[1]));
+      return;
+    }
     const type = classify(row);
     if (!planned[type]) return;
     const { km, source } = plannedKmFromRow(row, library);
@@ -354,10 +368,71 @@ export function aggregatePlannedEndurance({ plannedRows = [], classify, library 
     const entry = planned[sport];
     // Nothing parsed is not "0 km planned" — it is "no planned distance we can
     // stand behind", which is null.
-    const km = entry.km > 0 ? round(entry.km, 1) : null;
+    let km = entry.km > 0 ? round(entry.km, 1) : null;
     let quality = 'none';
     if (km != null) quality = entry.sources.has('title') && entry.sources.size === 1 ? 'title' : 'typed';
-    out[sport] = { plannedDistanceKm: km, plannedDistanceSource: quality };
+    // A declared weekly running total is a floor under the session sum, the
+    // same max() the Week tab takes.
+    if (sport === 'running' && declaredRunKm > 0 && (km == null || declaredRunKm > km)) {
+      km = round(declaredRunKm, 1);
+      quality = 'declared';
+    }
+    out[sport] = {
+      plannedDistanceKm: km,
+      plannedDistanceMetres: km == null ? null : Math.round(km * 1000),
+      plannedDistanceSource: quality,
+    };
+  });
+  return out;
+}
+
+/**
+ * The weekly plan has one authority per sport, in the order the Week tab uses
+ * (js/05-handbook.js loadProgrammeVolume): a published coach target for this
+ * programme week, then — running only — the coach's weekly km figure on the
+ * nutrition plan, then the planned sessions themselves. A coach target row is
+ * authoritative even at zero. Targets arrive already scoped to the athlete
+ * and the week by the caller, as { sport, distanceTargetMetres, sessionTarget,
+ * durationTargetMinutes }.
+ */
+// Number(null) is 0, so an absent field must be caught before it becomes a
+// prescribed zero.
+function presentNumber(value) {
+  if (value === null || value === undefined || String(value).trim() === '') return null;
+  return finiteOrNull(value);
+}
+
+export function applyWeeklyTargets(plannedBySport, { coachTargets = [], manualRunKm = null } = {}) {
+  const out = {};
+  ENDURANCE_SPORTS.forEach((sport) => {
+    const base = { ...(plannedBySport && plannedBySport[sport]) };
+    const target = (Array.isArray(coachTargets) ? coachTargets : [])
+      .find((row) => row && String(row.sport || '').toLowerCase() === sport && presentNumber(row.distanceTargetMetres) != null);
+    if (target) {
+      const metres = Math.max(0, Math.round(Number(target.distanceTargetMetres)));
+      out[sport] = {
+        ...base,
+        plannedDistanceKm: round(metres / 1000, sport === 'swimming' ? 2 : 1),
+        plannedDistanceMetres: metres,
+        plannedDistanceSource: 'coach',
+        sessionTarget: presentNumber(target.sessionTarget),
+        durationTargetMinutes: presentNumber(target.durationTargetMinutes),
+      };
+      return;
+    }
+    const manual = sport === 'running' ? presentNumber(manualRunKm) : null;
+    if (manual != null && manual >= 0) {
+      out[sport] = {
+        ...base,
+        plannedDistanceKm: round(manual, 1),
+        plannedDistanceMetres: Math.round(manual * 1000),
+        plannedDistanceSource: 'manual',
+        sessionTarget: null,
+        durationTargetMinutes: null,
+      };
+      return;
+    }
+    out[sport] = { ...base, sessionTarget: null, durationTargetMinutes: null };
   });
   return out;
 }
@@ -368,6 +443,31 @@ export function aggregatePlannedEndurance({ plannedRows = [], classify, library 
  * are the fallback. The two are never added together — a run logged in both
  * places is one run.
  */
+// Database rows -> the target shape applyWeeklyTargets reads. Only published,
+// unremoved rows are prescriptions; a draft is the coach still deciding.
+export function coachTargetsFromRows(rows) {
+  return (Array.isArray(rows) ? rows : [])
+    .filter((row) => row && row.publish_state === 'published' && !row.removed_at)
+    .map((row) => ({
+      sport: String(row.sport || '').toLowerCase(),
+      distanceTargetMetres: presentNumber(row.distance_target_metres),
+      sessionTarget: presentNumber(row.session_target),
+      durationTargetMinutes: presentNumber(row.duration_target_minutes),
+    }));
+}
+
+// The nutrition plan's weekly running km for one programme week. Matched on the
+// number in its "Week N" label, exactly as the Week tab matches it.
+export function manualRunKmForWeek(rows, weekNumber) {
+  const wanted = Number(weekNumber);
+  if (!Number.isInteger(wanted)) return null;
+  const row = (Array.isArray(rows) ? rows : []).find((entry) => {
+    const match = String(entry && entry.week_label || '').match(/\d+/);
+    return match && Number(match[0]) === wanted && presentNumber(entry.weekly_km_target) != null;
+  });
+  return row ? presentNumber(row.weekly_km_target) : null;
+}
+
 export function aggregateActualEndurance({
   stravaRows = null,
   trainingLogs = [],
@@ -414,6 +514,7 @@ export function aggregateActualEndurance({
       out[sport] = {
         actualSessions: strava.sessions,
         actualDistanceKm: strava.metres > 0 ? round(strava.metres / 1000, 1) : null,
+        actualDistanceMetres: strava.metres > 0 ? Math.round(strava.metres) : null,
         actualDurationMinutes: strava.seconds > 0 ? Math.round(strava.seconds / 60) : null,
         actualSource: 'strava',
       };
@@ -424,6 +525,7 @@ export function aggregateActualEndurance({
       out[sport] = {
         actualSessions: portal.sessions,
         actualDistanceKm: portal.km > 0 ? round(portal.km, 1) : null,
+        actualDistanceMetres: portal.km > 0 ? Math.round(portal.km * 1000) : null,
         actualDurationMinutes: portal.minutes > 0 ? Math.round(portal.minutes) : null,
         actualSource: 'portal_logs',
       };
@@ -436,6 +538,7 @@ export function aggregateActualEndurance({
     out[sport] = {
       actualSessions: 0,
       actualDistanceKm: null,
+      actualDistanceMetres: null,
       actualDurationMinutes: null,
       actualSource: stravaRows ? 'strava' : 'unavailable',
     };
@@ -1019,6 +1122,8 @@ export function buildSummary({
   library = null,
   gymKeys = BASE_GYM_KEYS,
   structured = new Map(),
+  coachTargets = [],
+  manualRunKm = null,
   todayISO,
   generatedAt,
   missingSources = [],
@@ -1031,7 +1136,7 @@ export function buildSummary({
 
   const training = aggregateTraining({ plannedRows, loggedKeys, todayISO, classify });
   const endurance = buildEndurance(
-    aggregatePlannedEndurance({ plannedRows, classify, library }),
+    applyWeeklyTargets(aggregatePlannedEndurance({ plannedRows, classify, library }), { coachTargets, manualRunKm }),
     aggregateActualEndurance({ stravaRows, trainingLogs, startDate, endDate }),
   );
   const strength = aggregateStrength({

@@ -392,6 +392,19 @@
     return n === null ? '<span class="cws-na" title="Not available">—</span>' : `${esc(n)}${suffix}`;
   }
 
+  // The same authority and units as the athlete's Week tab and review: a
+  // published coach target (or the nutrition plan's weekly km) reads as a
+  // target, a sum of session distances as planned, and swimming in metres.
+  function endurancePlanCell(sport, e) {
+    const swim = sport === 'swimming';
+    const metres = (m, km) => (m != null ? m : (km != null ? Math.round(km * 1000) : null));
+    const actual = swim ? val(metres(e.actualDistanceMetres, e.actualDistanceKm), ' m') : val(e.actualDistanceKm, ' km', 1);
+    if (e.plannedDistanceKm == null) return actual;
+    const planned = swim ? val(metres(e.plannedDistanceMetres, e.plannedDistanceKm), ' m') : val(e.plannedDistanceKm, ' km', 1);
+    const label = e.plannedDistanceSource === 'coach' || e.plannedDistanceSource === 'manual' ? 'target' : 'planned';
+    return `${actual} / ${planned} ${label}`;
+  }
+
   function summaryHtml(payload) {
     const s = payload.summary || {};
     const nav = payload.navigation || {};
@@ -429,10 +442,10 @@
         <div class="cws-tile"><div class="cws-lbl">Check-in</div><div class="cws-num cws-word">${ci.submitted === true ? 'Submitted' : ci.submitted === false ? 'Not submitted' : '—'}</div></div>
       </div>
       ${byType.length ? `<div class="cws-row"><div class="cws-lbl">Completion by type</div><div class="cws-chips">${byType.map(([type, v]) => `<span class="cws-chip">${esc(TYPE_COPY[type] || labelFor(type))} ${val(v.completed)}/${val(v.planned)}</span>`).join('')}</div></div>` : ''}
-      ${sports.length ? `<div class="cws-row"><div class="cws-lbl">Endurance</div><div class="cp-table-wrap"><table class="cp-table cws-table"><thead><tr><th scope="col">Sport</th><th scope="col">Sessions</th><th scope="col">Distance / planned</th><th scope="col">Time</th></tr></thead><tbody>
+      ${sports.length ? `<div class="cws-row"><div class="cws-lbl">Endurance</div><div class="cp-table-wrap"><table class="cp-table cws-table"><thead><tr><th scope="col">Sport</th><th scope="col">Sessions</th><th scope="col">Distance / plan</th><th scope="col">Time</th></tr></thead><tbody>
         ${sports.map(([sport, e]) => `<tr><th scope="row">${esc(SPORT_COPY[sport] || sport)}<span class="cws-source">Source: ${esc(e.actualSourceLabel || e.actualSource || 'unknown')}</span></th>
-          <td>${val(e.actualSessions)}</td>
-          <td>${val(e.actualDistanceKm, ' km', 1)}${e.plannedDistanceKm != null ? ` / ${val(e.plannedDistanceKm, ' km', 1)}` : ''}</td>
+          <td>${val(e.actualSessions)}${e.sessionTarget != null ? ` of ${val(e.sessionTarget)} target` : ''}</td>
+          <td>${endurancePlanCell(sport, e)}</td>
           <td>${val(e.actualDurationMinutes, ' min')}</td></tr>`).join('')}
       </tbody></table></div>
       <p class="cws-note">This review uses confirmed portal logs and activity files the athlete shared with you, never counted twice, so the athlete's own card may show a different distance. Every Strava activity, programmed or not, appears in the day-by-day ledger below.</p></div>` : ''}

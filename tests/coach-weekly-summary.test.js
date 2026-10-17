@@ -13,7 +13,7 @@ import {
 // api/_lib/performance-summary.js (everything above its DATABASE divider). The
 // portal pins the same hash in tests/coach-summary-mirror.test.js, so a rule
 // change on either side fails until both copies match again.
-export const SHARED_RULES_SHA256 = 'ef01b219c9d6be434294505379ff7513d9f7d42a0d61fbdca757a41700900b18';
+export const SHARED_RULES_SHA256 = 'ab9738132831fb692f4b2abba79cb404014324e8e4f8fdab327fa3e5955836f4';
 
 test('the shared metric rules match the portal copy byte for byte', () => {
   const source = readFileSync(new URL('../server/performance-summary-core.js', import.meta.url), 'utf8');
@@ -95,6 +95,8 @@ function fakeSelect(overrides = {}) {
       case 'weekly_checkins': return [];
       case 'athlete_activity_uploads': return [];
       case 'workout_splits': return [{ name: 'Lower A' }];
+      case 'weekly_sport_targets': return [];
+      case 'nutrition_plans': return [];
       default: throw new Error(`unexpected table ${table}`);
     }
   };
@@ -191,4 +193,56 @@ test('coach endurance classifies by category and counts a run logged twice once'
   assert.equal(out.running.actualDurationMinutes, 69);
   assert.equal(out.cycling.actualSessions, 0);
   assert.equal(out.cycling.actualDistanceKm, null);
+});
+
+// The coach card's "planned" must be the athlete's: the published weekly
+// target the athlete sees on the Week tab, not a sum of the session rows.
+test('planned distance follows the published coach target, exactly as the athlete sees it', async () => {
+  const seen = [];
+  const { select } = fakeSelect({
+    weekly_sport_targets: (params) => {
+      seen.push(params);
+      return [
+        { sport: 'running', distance_target_metres: 23200, session_target: 3, duration_target_minutes: 123, publish_state: 'published', removed_at: null },
+        { sport: 'swimming', distance_target_metres: 4050, session_target: 3, duration_target_minutes: null, publish_state: 'published', removed_at: null },
+        { sport: 'cycling', distance_target_metres: 99000, session_target: 4, duration_target_minutes: null, publish_state: 'draft', removed_at: null },
+      ];
+    },
+  });
+  const { summary } = await loadCoachWeeklySummary({ code: 'KNEE', programmeWeekId: W1, select, now: new Date('2026-09-23T00:30:00Z') });
+  // Sessions in the fixture sum to 10 km; the published target is 23.2 km.
+  assert.equal(summary.endurance.running.plannedDistanceKm, 23.2);
+  assert.equal(summary.endurance.running.plannedDistanceSource, 'coach');
+  assert.equal(summary.endurance.running.sessionTarget, 3);
+  assert.equal(summary.endurance.swimming.plannedDistanceMetres, 4050);
+  assert.equal(summary.endurance.cycling.plannedDistanceKm, null, 'a draft target is not a prescription');
+  assert.equal(seen[0].publish_state, 'eq.published');
+  assert.equal(seen[0].removed_at, 'is.null');
+  assert.equal(seen[0].programme_week_id, `eq.${W1}`);
+  assert.equal(summary.dataQuality.partial, false);
+});
+
+test('without a coach target the nutrition plan\u2019s weekly km, then the sessions, decide running', async () => {
+  const { select } = fakeSelect({ nutrition_plans: () => [{ week_label: 'Week 1', weekly_km_target: 30 }] });
+  const { summary } = await loadCoachWeeklySummary({ code: 'KNEE', programmeWeekId: W1, select, now: new Date('2026-09-23T00:30:00Z') });
+  assert.equal(summary.endurance.running.plannedDistanceKm, 30);
+  assert.equal(summary.endurance.running.plannedDistanceSource, 'manual');
+  const { select: plain } = fakeSelect();
+  const { summary: sessionsOnly } = await loadCoachWeeklySummary({ code: 'KNEE', programmeWeekId: W1, select: plain, now: new Date('2026-09-23T00:30:00Z') });
+  assert.equal(sessionsOnly.endurance.running.plannedDistanceKm, 10);
+  assert.equal(sessionsOnly.endurance.running.plannedDistanceSource, 'typed');
+});
+
+test('a failed target read degrades to the sessions and is reported, never invented', async () => {
+  const { select } = fakeSelect({ weekly_sport_targets: () => { throw new Error('boom'); } });
+  const { summary } = await loadCoachWeeklySummary({ code: 'KNEE', programmeWeekId: W1, select, now: new Date('2026-09-23T00:30:00Z') });
+  assert.equal(summary.endurance.running.plannedDistanceKm, 10);
+  assert.ok(summary.dataQuality.missingSources.includes('weekly_sport_targets'));
+});
+
+test('the coach card labels a coach target as a target and keeps swimming in metres', () => {
+  const source = readFileSync(new URL('../public/coach-parity.js', import.meta.url), 'utf8');
+  assert.match(source, /e\.plannedDistanceSource === 'coach' \|\| e\.plannedDistanceSource === 'manual' \? 'target' : 'planned'/);
+  assert.match(source, /const swim = sport === 'swimming';/);
+  assert.match(source, /of \$\{val\(e\.sessionTarget\)\} target/);
 });
