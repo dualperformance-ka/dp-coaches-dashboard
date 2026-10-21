@@ -53,6 +53,35 @@ The preview remembers review, resolve and read actions in memory, and
 `/__preview/scenario?name=empty|triage-fail|coach-data-fail|long-notes`
 switches it to an edge case (`default` resets).
 
+## Supabase timeouts and background polling
+
+Every Supabase call from `/api/actions`, `/api/athletes`, `/api/coach-data`
+and `api/_lib/supabase-rest.js` goes through `api/_lib/supabase-fetch.js`:
+
+- 8 s per call (11 s for the full roster load), inside a per-request budget
+  (10 s actions, 11 s athletes, 10 s / 11.5 s coach-data) that is well under
+  each function's `maxDuration`. No automatic retries.
+- An outage answers `503` with `Retry-After: 30` and a stable `code`
+  (`upstream_timeout` or `upstream_unavailable`). An expected PostgREST 4xx
+  keeps the route's existing handling.
+- One structured log line per failed or slow call (`"event":"supabase_request"`)
+  and one per request (`"event":"route_complete"`), plus a `Server-Timing`
+  header. They carry no keys, URLs, query strings or row data.
+
+The two browser loops (coaching actions, shared acknowledgements) use
+`public/background-poller.js`: visible and online tabs only, one request in
+flight, 60 s when healthy, exponential backoff with jitter up to 5 minutes
+after failures, one coalesced refresh on focus/visibility/online. Completed
+coaching actions are fetched only when the Completed tab is open.
+
+Background, the database maintenance runbook and monitoring thresholds:
+`docs/vercel-supabase-timeout-recovery.md`. Browser check:
+
+```text
+node scripts/serve-preview.mjs &
+node scripts/verify-polling.mjs
+```
+
 ## Restarting an athlete's programme
 
 Open **Nutrition**, select the athlete (coaches training as athletes are included),

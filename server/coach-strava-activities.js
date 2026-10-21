@@ -26,6 +26,7 @@
 
 import { addDaysISO, adelaideToday, isUuid, toIsoDate } from './performance-summary-core.js';
 import { classifyAthleteActivities, mondayOf } from './strava-activity-classifier.js';
+import { isUpstreamUnavailable } from '../api/_lib/supabase-fetch.js';
 
 export const MAX_RANGE_DAYS = 92;
 const TREND_WEEKS = 4;
@@ -79,6 +80,9 @@ async function readConnection(sb, code) {
       '&select=strava_athlete_id:value->>strava_athlete_id,connected_at:value->>connected_at&limit=1');
     return connectionState(Array.isArray(rows) ? rows[0] : null);
   } catch (error) {
+    // An outage is not "not connected": telling a coach the athlete has no
+    // Strava while the database is down sends them chasing the wrong problem.
+    if (isUpstreamUnavailable(error)) throw error;
     console.warn('[coach-strava] connection read failed:', error && error.message);
     return connectionState(null, { readFailed: true });
   }

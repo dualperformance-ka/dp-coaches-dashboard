@@ -110,12 +110,22 @@ test('protected coach-data returns every dashboard data collection', async () =>
       athlete_code: 'ALVIN', activity_date: '2026-08-20', activity_name: 'Tempo',
       source_format: 'fit', summary: { distanceM: 5000 }, laps: [], splits: [], streams: [],
     }];
-    throw new Error(`Unexpected Supabase request: ${url}`);
+    // Anything else stands for a table this environment has not migrated yet.
+    // PostgREST answers that with a 404, which optional sources tolerate. (A
+    // rejected fetch would now be a network outage, and the load answers 503.)
+    return null;
   };
 
   global.fetch = async url => {
     requested.push(String(url));
-    return new Response(JSON.stringify(rowsFor(String(url))), {
+    const rows = rowsFor(String(url));
+    if (rows === null) {
+      return new Response(JSON.stringify({ code: 'PGRST205', message: 'Could not find the table in the schema cache' }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    return new Response(JSON.stringify(rows), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     });

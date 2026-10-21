@@ -229,10 +229,14 @@ test('coach-data returns the operational queues in success and error shapes', as
     assert.equal(res.body.operationsCounts.messagesUnread, 1);
   });
 
+  // Supabase answering 5xx everywhere is an outage: a controlled 503 with
+  // Retry-After and a stable code, still in the full empty response shape.
   await withEnv(async () => json({ message: 'down' }, 500), async () => {
     const res = recorder();
     await coachDataHandler({ method: 'GET', headers: { 'x-dashboard-key': 'dashboard-key' }, query: {} }, res);
-    assert.equal(res.statusCode, 502);
+    assert.equal(res.statusCode, 503);
+    assert.equal(res.headers['Retry-After'], '30');
+    assert.equal(res.body.code, 'upstream_unavailable');
     for (const key of ['contactMessages', 'dataRequests', 'notifyStatus']) assert.deepEqual(res.body[key], []);
     assert.equal(res.body.dataQuality.partial, true);
     assert.equal(res.body.operationsCounts.messagesUnread, 0);

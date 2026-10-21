@@ -1,9 +1,22 @@
 import { allowedCoachNames, coachError, requireCoach, setCoachCors } from '../server/coach-auth.js';
+import { isUpstreamUnavailable, supabaseFetch, withSupabaseRoute } from './_lib/supabase-fetch.js';
 
-const SUPABASE_URL = String(process.env.SUPABASE_URL || '').replace(/\/+$/, '');
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
 const PRIORITIES = new Set(['urgent', 'high', 'normal', 'low']);
 const STATUSES = new Set(['open', 'in_progress', 'waiting', 'done', 'cancelled']);
+// What the board shows outside the Completed tab. Cancelled actions are not
+// rendered anywhere, so they are never polled.
+export const ACTIVE_STATUSES = ['open', 'in_progress', 'waiting'];
+// Exactly the columns public/coaching-actions.js renders or edits. source and
+// source_key are server bookkeeping the board never reads.
+export const ACTION_COLUMNS = 'id,athlete_code,title,category,priority,status,owner,due_at,notes,outcome,created_by,updated_by,completed_by,created_at,updated_at,completed_at';
+const ACTION_ORDER = 'order=due_at.asc.nullslast,created_at.desc';
+const ACTION_LIMIT = 500;
+
+// /api/actions has maxDuration 15s in vercel.json. All Supabase work for one
+// request must finish (or be abandoned) inside 10s so the function always
+// answers before Vercel kills it.
+export const ACTIONS_BUDGET_MS = 10000;
+export const ACTIONS_TIMEOUT_MS = 8000;
 
 function text(value, max = 500) {
   return String(value || '').trim().slice(0, max);
@@ -40,23 +53,29 @@ function supplied(value) {
   return value !== undefined && value !== null && String(value).trim() !== '';
 }
 
-async function sb(path, { method = 'GET', body, prefer } = {}) {
-  if (!SUPABASE_URL || !SUPABASE_KEY) throw new Error('Supabase is not configured');
-  const response = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-    method,
-    headers: {
-      apikey: SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
-      'Content-Type': 'application/json',
-      ...(prefer ? { Prefer: prefer } : {}),
-    },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
-  const raw = await response.text();
-  let data = null;
-  try { data = raw ? JSON.parse(raw) : null; } catch { /* handled below */ }
-  if (!response.ok) throw new Error(data?.message || data?.error || `Action store returned ${response.status}`);
-  return data;
+async function sb(path, { method = 'GET', body, prefer, count } = {}) {
+  return supabaseFetch(path, { method, body, prefer, count });
+}
+
+// GET query for the board. `status` is:
+//   active (default for the board's background refresh) - open, in progress, waiting
+//   done   - the Completed tab, loaded only when a coach opens it
+//   all    - the previous contract, kept for any older client still polling it
+//   <one status> - a single status
+export function actionQuery({ status = '', athlete = '' } = {}) {
+  const filters = [`select=${ACTION_COLUMNS}`, ACTION_ORDER, `limit=${ACTION_LIMIT}`];
+  if (status === 'active') filters.push(`status=in.(${ACTIVE_STATUSES.join(',')})`);
+  else if (status && status !== 'all') filters.push(`status=eq.${encodeURIComponent(status)}`);
+  if (athlete) filters.push(`athlete_code=eq.${encodeURIComponent(athlete)}`);
+  return `coach_actions?${filters.join('&')}`;
+}
+
+// The Completed tab's label needs a number, not the rows. HEAD + count=exact on
+// the (status, due_at, created_at) index returns no body at all.
+export function completedCountQuery({ athlete = '' } = {}) {
+  const filters = ['select=id', 'status=eq.done'];
+  if (athlete) filters.push(`athlete_code=eq.${encodeURIComponent(athlete)}`);
+  return `coach_actions?${filters.join('&')}`;
 }
 
 export function createPayload(input, coach, now = new Date()) {
@@ -110,7 +129,7 @@ export function updatePayload(input, coach, now = new Date()) {
   return out;
 }
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   setCoachCors(req, res);
   if (req.method === 'OPTIONS') return res.status(200).end();
 
@@ -124,10 +143,21 @@ export default async function handler(req, res) {
     if (req.method === 'GET') {
       const status = text(req.query.status, 40).toLowerCase();
       const athlete = text(req.query.athlete, 24).toUpperCase();
-      const filters = ['select=*', 'order=due_at.asc.nullslast,created_at.desc', 'limit=500'];
-      if (status && status !== 'all') filters.push(`status=eq.${encodeURIComponent(status)}`);
-      if (athlete) filters.push(`athlete_code=eq.${encodeURIComponent(athlete)}`);
-      const actions = await sb(`coach_actions?${filters.join('&')}`);
+      if (status && status !== 'all' && status !== 'active' && !STATUSES.has(status)) {
+        return res.status(400).json({ ok: false, error: `Invalid value: ${status}` });
+      }
+      if (status === 'active') {
+        const [actions, completed] = await Promise.all([
+          sb(actionQuery({ status, athlete })),
+          sb(completedCountQuery({ athlete }), { method: 'HEAD', count: true }),
+        ]);
+        return res.status(200).json({
+          ok: true,
+          actions: Array.isArray(actions) ? actions : [],
+          completedCount: Number.isFinite(completed?.count) ? completed.count : null,
+        });
+      }
+      const actions = await sb(actionQuery({ status, athlete }));
       return res.status(200).json({ ok: true, actions: Array.isArray(actions) ? actions : [] });
     }
 
@@ -154,7 +184,17 @@ export default async function handler(req, res) {
 
     return res.status(405).json({ ok: false, error: 'Method not allowed' });
   } catch (error) {
-    if ((Number(error?.status) || 500) >= 500) console.error('[actions]', error);
+    // Upstream failures are already logged as structured supabase_request
+    // lines; logging the error object again would add nothing but noise.
+    if ((Number(error?.status) || 500) >= 500 && !isUpstreamUnavailable(error)) console.error('[actions]', error);
     return coachError(res, error);
   }
 }
+
+export default withSupabaseRoute('/api/actions', {
+  budgetMs: ACTIONS_BUDGET_MS,
+  timeoutMs: ACTIONS_TIMEOUT_MS,
+  mode: req => (req.method === 'GET'
+    ? (String(req.query?.mode || '') === 'session' ? 'session' : `list_${String(req.query?.status || 'all')}`)
+    : String(req.method || '').toLowerCase()),
+}, handler);

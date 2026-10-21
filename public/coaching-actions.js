@@ -1,7 +1,12 @@
 (function () {
   'use strict';
 
+  // Open, in-progress and waiting actions: what the board polls.
   let actions = [];
+  // Completed actions are history. They are fetched only while the Completed
+  // tab is open; until then only their count is polled.
+  let completed = null;
+  let completedCount = null;
   let athletes = [];
   let health = null;
   let filter = 'open';
@@ -10,6 +15,8 @@
   const pendingIds = new Set();
   let lastError = '';
   let refreshPromise = null;
+  let rendered = false;
+  let poller = null;
 
   const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const today = () => new Date().toISOString().slice(0, 10);
@@ -17,6 +24,8 @@
 
   async function request(url, init) {
     const response = await fetch(url, init);
+    // 503 + Retry-After is the server saying the database is down; `error` is
+    // already a readable sentence and `code` the stable machine value.
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(payload.error || `Request failed (${response.status})`);
     return payload;
@@ -26,7 +35,7 @@
     const coach = currentCoach().toLowerCase();
     if (filter === 'mine') return actions.filter(a => !['done', 'cancelled'].includes(a.status) && String(a.owner || '').toLowerCase() === coach);
     if (filter === 'overdue') return actions.filter(a => !['done', 'cancelled'].includes(a.status) && a.due_at && a.due_at < today());
-    if (filter === 'done') return actions.filter(a => a.status === 'done');
+    if (filter === 'done') return (completed || []).filter(a => a.status === 'done');
     return actions.filter(a => !['done', 'cancelled'].includes(a.status));
   }
 
@@ -51,8 +60,9 @@
     const open = actions.filter(a => !['done', 'cancelled'].includes(a.status));
     const overdue = open.filter(a => a.due_at && a.due_at < today());
     const mine = open.filter(a => String(a.owner || '').toLowerCase() === currentCoach().toLowerCase());
-    const completed = actions.filter(a => a.status === 'done');
+    const completedTotal = completed ? completed.length : completedCount;
     const rows = visibleActions();
+    const completedLoading = filter === 'done' && completed === null;
     const conflicts = health?.portalSupabase?.integrity?.weeklyConflicts || [];
 
     root.innerHTML = `
@@ -68,11 +78,11 @@
         ${conflicts.length ? `<div class="coach-data-warning" role="status"><strong>Data review:</strong> ${conflicts.length} cross-athlete duplicate check-in${conflicts.length === 1 ? '' : 's'} suppressed. Review this on the Sync tab.</div>` : ''}
         ${lastError ? `<div class="coach-action-load-error" role="alert">${esc(lastError)}</div>` : ''}
         <div class="coach-action-filters" role="tablist" aria-label="Action filters">
-          ${[['open', `Open ${open.length}`], ['mine', `Mine ${mine.length}`], ['overdue', `Overdue ${overdue.length}`], ['done', `Completed ${completed.length}`]].map(([key, label]) => `<button type="button" role="tab" aria-selected="${filter === key}" class="${filter === key ? 'active' : ''}" onclick="DP_ACTIONS.filter('${key}')">${label}</button>`).join('')}
+          ${[['open', `Open ${open.length}`], ['mine', `Mine ${mine.length}`], ['overdue', `Overdue ${overdue.length}`], ['done', `Completed${completedTotal === null || completedTotal === undefined ? '' : ` ${completedTotal}`}`]].map(([key, label]) => `<button type="button" role="tab" aria-selected="${filter === key}" class="${filter === key ? 'active' : ''}" onclick="DP_ACTIONS.filter('${key}')">${label}</button>`).join('')}
         </div>
         ${filter === 'done' ? `<div class="coach-action-history-note">Completed actions are kept here for both coaches, including who completed them and when.</div>` : ''}
         <div class="coach-action-list">
-          ${rows.length ? rows.map(action => `
+          ${completedLoading ? `<div class="coach-action-empty">Loading completed actions…</div>` : rows.length ? rows.map(action => `
             <article class="coach-action-row priority-${esc(action.priority)} ${action.due_at && action.due_at < today() && action.status !== 'done' ? 'is-overdue' : ''}">
               <button type="button" class="coach-action-main" onclick="DP_ACTIONS.open('', '', '', '${esc(action.id)}')">
                 <span class="coach-action-athlete">${esc(action.athlete_code)}</span>
@@ -123,7 +133,7 @@
     ensureModal();
     restoreFocus = document.activeElement;
     editingId = id || null;
-    const action = editingId ? actions.find(item => item.id === editingId) : null;
+    const action = editingId ? findAction(editingId) : null;
     populateAthletes(action?.athlete_code || athlete || athletes[0]?.id || '');
     document.getElementById('coach-action-dialog-title').textContent = action ? 'Edit action' : 'New action';
     document.getElementById('ca-owner').value = action?.owner || currentCoach();
@@ -166,7 +176,10 @@
       outcome: document.getElementById('ca-outcome').value,
     };
     try {
-      await request('/api/actions', { method: editingId ? 'PATCH' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      const saved = await request('/api/actions', { method: editingId ? 'PATCH' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      // Show the saved row now; a poll already in flight may predate the save.
+      placeAction(saved.action);
+      render();
       close();
       await refresh();
     } catch (e) {
@@ -174,9 +187,30 @@
     } finally { button.disabled = false; }
   }
 
+  function findAction(id) {
+    return actions.find(item => item.id === id) || (completed || []).find(item => item.id === id) || null;
+  }
+
+  // Moves an updated action between the active list and the Completed history
+  // without waiting for the next poll.
+  function placeAction(updated) {
+    if (!updated) return;
+    const wasCompleted = (completed || []).some(item => item.id === updated.id);
+    const isCompleted = updated.status === 'done';
+    actions = actions.filter(item => item.id !== updated.id);
+    if (completed) completed = completed.filter(item => item.id !== updated.id);
+    if (isCompleted) {
+      if (completed) completed = [updated, ...completed];
+      if (!wasCompleted && Number.isFinite(completedCount)) completedCount += 1;
+    } else {
+      if (updated.status !== 'cancelled') actions = [...actions, updated];
+      if (wasCompleted && Number.isFinite(completedCount)) completedCount = Math.max(0, completedCount - 1);
+    }
+  }
+
   async function setStatus(id, status) {
     if (pendingIds.has(id)) return;
-    const action = actions.find(item => item.id === id);
+    const action = findAction(id);
     if (!action) return;
     pendingIds.add(id);
     lastError = '';
@@ -187,7 +221,7 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id, status, outcome: action.outcome || '' }),
       });
-      actions = actions.map(item => item.id === id ? payload.action : item);
+      placeAction(payload.action);
       window.DP_WORKFLOW_NOTICE?.(
         status === 'done'
           ? `${action.athlete_code} completed by ${payload.action.completed_by || currentCoach()} · moved to Completed`
@@ -202,22 +236,70 @@
     }
   }
 
-  async function refresh() {
+  function isTextField(el) {
+    if (!el) return false;
+    const tag = el.tagName;
+    return tag === 'TEXTAREA' || tag === 'SELECT' || el.isContentEditable ||
+      (tag === 'INPUT' && !['button', 'submit', 'checkbox', 'radio'].includes(el.type));
+  }
+
+  // A background refresh never repaints under a coach who is typing in the
+  // board; it waits for them to leave the field.
+  let renderDeferred = false;
+  function renderWhenIdle() {
+    const root = document.getElementById('coaching-actions');
+    const active = document.activeElement;
+    if (root && active && root.contains(active) && isTextField(active)) {
+      if (!renderDeferred) {
+        renderDeferred = true;
+        root.addEventListener('focusout', () => { renderDeferred = false; setTimeout(renderWhenIdle, 0); }, { once: true });
+      }
+      return;
+    }
+    render();
+    rendered = true;
+  }
+
+  // One load at a time per tab: a poll, a save and a context change share the
+  // same request. Throws on failure so the poller can back off.
+  function load(signal) {
     if (refreshPromise) return refreshPromise;
     refreshPromise = (async () => {
       try {
-        const payload = await request('/api/actions?status=all', { cache: 'no-store' });
-        actions = payload.actions || [];
+        const init = { cache: 'no-store', signal };
+        const payload = await request('/api/actions?status=active', init);
+        const nextActions = Array.isArray(payload.actions) ? payload.actions : [];
+        const nextCount = Number.isFinite(payload.completedCount) ? payload.completedCount : completedCount;
+        let nextCompleted = completed;
+        if (filter === 'done') {
+          const history = await request('/api/actions?status=done', init);
+          nextCompleted = Array.isArray(history.actions) ? history.actions : [];
+        }
+        const changed = JSON.stringify([nextActions, nextCount, nextCompleted]) !==
+          JSON.stringify([actions, completedCount, completed]);
+        actions = nextActions;
+        completedCount = nextCount;
+        completed = nextCompleted;
+        const recovered = Boolean(lastError);
         lastError = '';
-        render();
-      } catch (e) {
-        const root = document.getElementById('coaching-actions');
-        if (root && !actions.length) root.innerHTML = `<div class="coach-action-load-error">Coaching actions unavailable: ${esc(e.message)}</div>`;
+        if (changed || recovered || !rendered) renderWhenIdle();
       } finally {
         refreshPromise = null;
       }
     })();
     return refreshPromise;
+  }
+
+  // Foreground refresh (start-up, after a save, after the roster reloads).
+  // A failure keeps whatever is on screen; only a board that never loaded
+  // shows the error in its place.
+  async function refresh() {
+    try {
+      await load();
+    } catch (e) {
+      const root = document.getElementById('coaching-actions');
+      if (root && !rendered) root.innerHTML = `<div class="coach-action-load-error">Coaching actions unavailable: ${esc(e.message)}</div>`;
+    }
   }
 
   function setContext(nextAthletes, nextHealth) {
@@ -226,14 +308,25 @@
     refresh();
   }
 
-  function setFilter(next) { filter = next; render(); }
+  function setFilter(next) {
+    filter = next;
+    render();
+    // History is on demand: the first open of Completed fetches it.
+    if (next === 'done' && completed === null) refresh();
+  }
 
   window.DP_ACTIONS = { open, close, filter: setFilter, setStatus, refresh, setContext };
   document.addEventListener('DOMContentLoaded', async () => {
     await window.DP_COACH_AUTH?.ready;
     await refresh();
-    setInterval(refresh, 12000);
-    document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
-    window.addEventListener('focus', refresh);
+    // Visible, online tabs only; one request at a time; 60s when healthy,
+    // backing off to 5 minutes while the API is failing. See background-poller.js.
+    if (window.DPPoller) {
+      poller = window.DPPoller.createPoller({
+        name: 'coaching-actions',
+        run: ({ signal }) => load(signal),
+        onError: (error, { failures }) => console.warn('[coaching actions] background refresh failed', { failures, message: error?.message }),
+      }).start();
+    }
   });
 })();

@@ -49,12 +49,20 @@ test('shared controls wait for the server and periodically reconcile both coach 
   assert.match(dashboard, /action: 'signal_restore', code: id, signal_type: 'client_alert'/);
   assert.match(dashboard, /fingerprint: signature/);
   assert.doesNotMatch(dashboard, /setting_upsert', code: id, key: 'ack_alert'/);
-  assert.match(dashboard, /setInterval\(refreshSharedAcknowledgements, 12000\)/);
+  // Shared resolution sync runs through the bounded background poller (60s
+  // when healthy, visible + online tabs only), not a fixed 12-second interval.
+  assert.doesNotMatch(dashboard, /setInterval\(refreshSharedAcknowledgements/);
+  assert.match(dashboard, /window\.DPPoller\.createPoller\(\{\s*name: 'shared-acknowledgements'/);
+  assert.match(dashboard, /run: \(\{ signal \}\) => refreshSharedAcknowledgements\(\{ signal \}\)/);
   // Acknowledgements made before the migration are still honoured on read.
   assert.match(dashboard, /function useAckRows\(rows, signalRows\)/);
   assert.match(dashboard, /r\.key === 'ack_alert'/);
   assert.match(actions, /completed by \$\{payload\.action\.completed_by/);
-  assert.match(actions, /`Completed \$\{completed\.length\}`/);
+  // The Completed tab still shows its count, from the polled completedCount
+  // until the history itself is opened.
+  assert.match(actions, /const completedTotal = completed \? completed\.length : completedCount;/);
+  assert.match(actions, /`Completed\$\{/);
   assert.match(actions, /moved to Completed/);
-  assert.match(actions, /setInterval\(refresh, 12000\)/);
+  assert.doesNotMatch(actions, /setInterval\(/);
+  assert.match(actions, /window\.DPPoller\.createPoller\(\{\s*name: 'coaching-actions'/);
 });

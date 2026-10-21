@@ -4,6 +4,14 @@
 import { coachError, requireCoach, setCoachCors } from '../server/coach-auth.js';
 import { emptyOperations, loadOperations } from '../server/coach-operations.js';
 import { loadCoachWeeklySummary } from '../server/coach-weekly-summary.js';
+import {
+  HEAVY_TIMEOUT_MS,
+  isOptionalSourceMiss,
+  isUpstreamUnavailable,
+  sendUpstreamUnavailable,
+  supabaseFetch,
+  withSupabaseRoute,
+} from './_lib/supabase-fetch.js';
 
 const TABLES = {
   body: 'daily_body_logs',
@@ -45,99 +53,86 @@ const REVIEW_WINDOW_DAYS = 14;
 
 const ELAPSED_DAY_WORDS = ['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven'];
 
-function cleanBaseUrl(value) {
-  return String(value || '').replace(/\/+$/, '');
+// Request budgets. /api/coach-data has maxDuration 30s in vercel.json, but an
+// outage must be answered with a controlled 503 well before that, not by
+// Vercel killing the function. The full roster load is the heaviest read the
+// dashboard makes, so it gets the longer per-call deadline.
+export const FULL_LOAD_BUDGET_MS = 11500;
+export const FULL_LOAD_TIMEOUT_MS = HEAVY_TIMEOUT_MS;
+export const LIGHT_BUDGET_MS = 10000;
+export const LIGHT_TIMEOUT_MS = 8000;
+
+// Primary key per table, for keyset pagination. Anything not listed uses `id`.
+const PRIMARY_KEYS = { athletes: 'code', athlete_goals: 'athlete_code' };
+
+// Postgres `ORDER BY column DESC` puts NULLs first; the primary key breaks ties
+// so the order is total and identical on every load.
+export function compareDescending(column, key) {
+  return (left, right) => {
+    const a = left?.[column];
+    const b = right?.[column];
+    const aNull = a === null || a === undefined;
+    const bNull = b === null || b === undefined;
+    if (aNull !== bNull) return aNull ? -1 : 1;
+    if (!aNull && a !== b) return a < b ? 1 : -1;
+    const ak = String(left?.[key] ?? '');
+    const bk = String(right?.[key] ?? '');
+    return ak < bk ? 1 : ak > bk ? -1 : 0;
+  };
 }
 
-async function selectAll(table, orderColumn) {
-  const baseUrl = cleanBaseUrl(process.env.SUPABASE_URL);
-  const key = process.env.SUPABASE_SERVICE_KEY;
-
-  if (!baseUrl || !key) {
-    throw new Error('SUPABASE_URL or SUPABASE_SERVICE_KEY is not configured');
-  }
-
+// Whole-table read for the full roster load. Two changes from the version that
+// timed out in October:
+//   * no `Prefer: count=exact`. The count was never read, and an exact count
+//     is a second full scan on every page.
+//   * keyset pagination on the primary key instead of Range offsets. Offset
+//     pages over a non-unique sort column (log_date, session_date) could skip
+//     or repeat rows at a page boundary, and get slower the deeper they go.
+//     The cursor is the complete sort key (the primary key), and the caller's
+//     newest-first order is applied once all pages are in.
+export async function selectAll(table, orderColumn) {
+  const key = PRIMARY_KEYS[table] || 'id';
   const rows = [];
+  let after = null;
 
   for (let page = 0; page < MAX_PAGES; page += 1) {
-    const from = page * PAGE_SIZE;
-    const to = from + PAGE_SIZE - 1;
-    const order = orderColumn ? `&order=${encodeURIComponent(orderColumn)}.desc` : '';
-    const url = `${baseUrl}/rest/v1/${table}?select=*${order}`;
-
-    const response = await fetch(url, {
-      headers: {
-        apikey: key,
-        Authorization: `Bearer ${key}`,
-        Range: `${from}-${to}`,
-        Prefer: 'count=exact',
-      },
-    });
-
-    const body = await response.text();
-    let data;
-
-    try {
-      data = body ? JSON.parse(body) : [];
-    } catch {
-      throw new Error(`Invalid Supabase response for ${table}`);
-    }
-
-    if (!response.ok) {
-      throw new Error(
-        data?.message ||
-        data?.error ||
-        `Supabase returned ${response.status} for ${table}`
-      );
-    }
-
+    const query = new URLSearchParams({ select: '*', order: `${key}.asc`, limit: String(PAGE_SIZE) });
+    if (after !== null) query.set(key, `gt.${after}`);
+    const data = await supabaseFetch(`${table}?${query}`, { operation: `GET ${table}` });
     const pageRows = Array.isArray(data) ? data : [];
     rows.push(...pageRows);
-
     if (pageRows.length < PAGE_SIZE) break;
+    const last = pageRows[pageRows.length - 1]?.[key];
+    if (last === null || last === undefined) break;
+    after = last;
   }
 
-  return rows;
+  return orderColumn ? rows.sort(compareDescending(orderColumn, key)) : rows;
 }
 
 async function selectRows(table, params = {}) {
-  const baseUrl = cleanBaseUrl(process.env.SUPABASE_URL);
-  const key = process.env.SUPABASE_SERVICE_KEY;
-  if (!baseUrl || !key) {
-    throw new Error('SUPABASE_URL or SUPABASE_SERVICE_KEY is not configured');
-  }
-
   const query = new URLSearchParams();
   for (const [name, value] of Object.entries(params)) {
     if (value !== undefined && value !== null && value !== '') {
       query.set(name, String(value));
     }
   }
-
-  const response = await fetch(`${baseUrl}/rest/v1/${table}?${query}`, {
-    headers: {
-      apikey: key,
-      Authorization: `Bearer ${key}`,
-      Accept: 'application/json',
-    },
-  });
-  const body = await response.text();
-  let data;
-  try { data = body ? JSON.parse(body) : []; }
-  catch { throw new Error(`Invalid Supabase response for ${table}`); }
-  if (!response.ok) {
-    throw new Error(data?.message || data?.error || `Supabase returned ${response.status} for ${table}`);
-  }
+  const data = await supabaseFetch(`${table}?${query}`, { operation: `GET ${table}` });
   return Array.isArray(data) ? data : [];
 }
 
-async function selectAthleteSettings() {
-  const baseUrl = cleanBaseUrl(process.env.SUPABASE_URL);
-  const key = process.env.SUPABASE_SERVICE_KEY;
-  if (!baseUrl || !key) {
-    throw new Error('SUPABASE_URL or SUPABASE_SERVICE_KEY is not configured');
-  }
+// A source that may legitimately be missing (a table whose migration has not
+// been applied) degrades to `fallback`. An outage does not: an empty list then
+// would tell the coach "nothing here" when the truth is "we could not look".
+function optionalSource(label, fallback = []) {
+  return error => {
+    if (!isOptionalSourceMiss(error)) throw error;
+    if (label) console.warn(`[coach-data] ${label} unavailable:`, error.message);
+    return fallback;
+  };
+}
 
+async function selectAthleteSettings() {
   // ex_picks is the athlete's current exercise substitution map (programmed →
   // performed). It is the fallback that lets the dashboard resolve a swap back
   // to the slot it filled while training_session_logs.programmed_exercise is
@@ -150,13 +145,9 @@ async function selectAthleteSettings() {
   // only receive its display time and start timestamp in the browser; external
   // calendar identifiers remain inside this protected response and are never
   // rendered.
-  const url = `${baseUrl}/rest/v1/athlete_data?select=athlete_code,key,value,updated_at&or=(key.in.(${keys}),key.like.calls_prep*,key.like.call_booked_*)`;
-  const response = await fetch(url, {
-    headers: { apikey: key, Authorization: `Bearer ${key}` },
-  });
-  const text = await response.text();
-  if (!response.ok) throw new Error(`Supabase ${response.status} for athlete settings`);
-  try { return text ? JSON.parse(text) : []; } catch { throw new Error('Invalid Supabase response for athlete settings'); }
+  const path = `athlete_data?select=athlete_code,key,value,updated_at&or=(key.in.(${keys}),key.like.calls_prep*,key.like.call_booked_*)`;
+  const data = await supabaseFetch(path, { operation: 'GET athlete_data' });
+  return Array.isArray(data) ? data : [];
 }
 
 function settingObject(value) {
@@ -1341,30 +1332,21 @@ async function loadTriage() {
       planned_date: `gte.${planStart}`,
       and: `(planned_date.lte.${planEnd})`,
       order: 'planned_date.asc',
-    }).catch(() => []),
+    }).catch(optionalSource(null)),
     // Both tables arrive with 20260906000001_coach_review_and_signal_state. Until
     // that migration is applied the endpoint still answers: the review queue is
     // simply everything submitted, and no signal is suppressed.
     selectRows('coach_session_reviews', {
       select: 'athlete_code,session_date,reviewed_by,reviewed_at',
       session_date: `gte.${reviewStart}`,
-    }).catch(error => {
-      console.warn('[coach-data:triage] coach_session_reviews unavailable:', error.message);
-      return [];
-    }),
+    }).catch(optionalSource('triage coach_session_reviews')),
     selectRows('coach_signal_state', {
       select: 'athlete_code,signal_type,fingerprint,resolved_by,resolved_at',
-    }).catch(error => {
-      console.warn('[coach-data:triage] coach_signal_state unavailable:', error.message);
-      return [];
-    }),
+    }).catch(optionalSource('triage coach_signal_state')),
     selectRows('athlete_data', {
       select: 'athlete_code,key,value',
       key: 'eq.reschedules',
-    }).catch(error => {
-      console.warn('[coach-data:triage] athlete reschedules unavailable:', error.message);
-      return [];
-    }),
+    }).catch(optionalSource('triage athlete reschedules')),
   ]);
 
   // A move into this week may originate outside the date-bounded planning
@@ -1377,10 +1359,7 @@ async function loadTriage() {
       athlete_code: `in.(${movedAthleteCodes.join(',')})`,
       order: 'planned_date.asc',
       limit: 1000,
-    }).catch(error => {
-      console.warn('[coach-data:triage] moved planned sessions unavailable:', error.message);
-      return [];
-    })
+    }).catch(optionalSource('triage moved planned sessions'))
     : [];
   const effectivePlannedRows = applyAthleteReschedules(
     mergePlanningRows(plannedRows, movedRows),
@@ -1392,7 +1371,7 @@ async function loadTriage() {
   });
 }
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   setCoachCors(req, res, 'GET, OPTIONS');
 
   if (req.method === 'OPTIONS') return res.status(200).end();
@@ -1420,6 +1399,7 @@ export default async function handler(req, res) {
         return res.status(200).json({ ok: true, ...result });
       } catch (error) {
         if (Number(error?.status) >= 400 && Number(error?.status) < 500) return coachError(res, error);
+        if (sendUpstreamUnavailable(res, error)) return undefined;
         console.error('[coach-data:weekly_summary]', error);
         return res.status(502).json({ ok: false, error: 'The weekly review could not be loaded' });
       }
@@ -1459,22 +1439,16 @@ export default async function handler(req, res) {
       selectAll(TABLES.goals, 'updated_at'),
       selectAll(TABLES.plans, 'athlete_code'),
       selectAthleteSettings(),
-      selectAll('session_library', 'name').catch(() => []),
-      selectAll('workout_splits', 'name').catch(() => []),
-      selectAll('application_decisions', 'decided_at').catch(() => []),
-      selectAll('planned_sessions', 'planned_date').catch(() => []),
-      selectAll('athletes').catch(() => []),
+      selectAll('session_library', 'name').catch(optionalSource(null)),
+      selectAll('workout_splits', 'name').catch(optionalSource(null)),
+      selectAll('application_decisions', 'decided_at').catch(optionalSource(null)),
+      selectAll('planned_sessions', 'planned_date').catch(optionalSource(null)),
+      selectAll('athletes').catch(optionalSource(null)),
       // Coach-owned review and resolution state. Both tolerate the migration not
       // being applied yet: an empty set means nothing is reviewed and nothing is
       // suppressed, which is exactly the pre-Phase-2 behaviour.
-      selectAll('coach_session_reviews', 'session_date').catch(error => {
-        console.warn('[coach-data] coach_session_reviews unavailable:', error.message);
-        return [];
-      }),
-      selectAll('coach_signal_state', 'athlete_code').catch(error => {
-        console.warn('[coach-data] coach_signal_state unavailable:', error.message);
-        return [];
-      }),
+      selectAll('coach_session_reviews', 'session_date').catch(optionalSource('coach_session_reviews')),
+      selectAll('coach_signal_state', 'athlete_code').catch(optionalSource('coach_signal_state')),
       selectRows(TABLES.activityUploads, {
         // `streams` is up to 2400 sample objects per activity — 200-290KB each.
         // Selecting it for up to 500 activities on every dashboard load could
@@ -1485,10 +1459,7 @@ export default async function handler(req, res) {
         activity_date: `gte.${activityCutoff}`,
         order: 'activity_date.desc,start_time.desc',
         limit: 500,
-      }).catch(error => {
-        console.warn('[coach-data] athlete activity uploads unavailable:', error.message);
-        return [];
-      }),
+      }).catch(optionalSource('athlete activity uploads')),
     ]);
     const effectivePlannedRows = applyAthleteReschedules(plannedRows, athleteSettings);
     const sessionState = athleteSettings.filter(
@@ -1564,34 +1535,55 @@ export default async function handler(req, res) {
       notifyStatus: operations.notifyStatus,
     });
   } catch (error) {
+    // Same shape on every failure, so a client that reads collection keys
+    // without checking `ok` never sees undefined.
+    const empty = emptyCoachDataResponse();
+    // An outage answers 503 + Retry-After with a stable code. It is already
+    // logged as structured supabase_request lines.
+    if (sendUpstreamUnavailable(res, error, empty)) return undefined;
     console.error('[coach-data]', error);
-
-    return res.status(502).json({
-      ok: false,
-      source: 'portal_supabase',
-      generatedAt: new Date().toISOString(),
-      error: error.message,
-      counts: { body: 0, nutrition: 0, sessions: 0, weekly: 0, goals: 0, planning: 0, nutritionPlans: 0, athleteSettings: 0, sessionLibrary: 0, workoutSplits: 0, applicationDecisions: 0, activityUploads: 0, sessionReviews: 0, signalState: 0, contactMessages: 0, dataRequests: 0, notifyStatus: 0 },
-      operationsCounts: emptyOperations().operationsCounts,
-      dataQuality: { partial: true, missingSources: ['contact_messages', 'data_requests', 'notify_status'] },
-      contactMessages: [],
-      dataRequests: [],
-      notifyStatus: [],
-      body: [],
-      nutrition: [],
-      sessions: [],
-      weekly: [],
-      goals: [],
-      planning: [],
-      nutritionPlans: [],
-      athleteSettings: [],
-      sessionState: [],
-      sessionLibrary: [],
-      workoutSplits: [],
-      applicationDecisions: [],
-      sessionReviews: [],
-      signalState: [],
-      activityUploads: [],
-    });
+    return res.status(502).json({ ...empty, error: error.message });
   }
 }
+
+function emptyCoachDataResponse() {
+  return {
+    ok: false,
+    source: 'portal_supabase',
+    generatedAt: new Date().toISOString(),
+    counts: { body: 0, nutrition: 0, sessions: 0, weekly: 0, goals: 0, planning: 0, nutritionPlans: 0, athleteSettings: 0, sessionLibrary: 0, workoutSplits: 0, applicationDecisions: 0, activityUploads: 0, sessionReviews: 0, signalState: 0, contactMessages: 0, dataRequests: 0, notifyStatus: 0 },
+    operationsCounts: emptyOperations().operationsCounts,
+    dataQuality: { partial: true, missingSources: ['contact_messages', 'data_requests', 'notify_status'] },
+    contactMessages: [],
+    dataRequests: [],
+    notifyStatus: [],
+    body: [],
+    nutrition: [],
+    sessions: [],
+    weekly: [],
+    goals: [],
+    planning: [],
+    nutritionPlans: [],
+    athleteSettings: [],
+    sessionState: [],
+    sessionLibrary: [],
+    workoutSplits: [],
+    applicationDecisions: [],
+    sessionReviews: [],
+    signalState: [],
+    activityUploads: [],
+  };
+}
+
+function coachDataMode(req) {
+  return String(req.query?.mode || '').trim().toLowerCase() || 'full';
+}
+
+export default withSupabaseRoute('/api/coach-data', {
+  budgetMs: LIGHT_BUDGET_MS,
+  timeoutMs: LIGHT_TIMEOUT_MS,
+  mode: coachDataMode,
+  select: req => (coachDataMode(req) === 'full'
+    ? { budgetMs: FULL_LOAD_BUDGET_MS, timeoutMs: FULL_LOAD_TIMEOUT_MS }
+    : null),
+}, handler);

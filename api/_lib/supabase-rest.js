@@ -1,9 +1,8 @@
-function env() {
-  const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_KEY;
-  if (!url || !key) throw new Error('Supabase service credentials not configured');
-  return { url: url.replace(/\/+$/, ''), key };
-}
+// Shared by the portal-facing routes (auth, bookings, ingest, reminders, my-logs,
+// strava cache). Every call goes through the bounded helper, so a Supabase
+// outage fails within the deadline instead of holding the function open, and
+// the error is classified (see supabase-fetch.js) rather than a bare Error.
+import { supabaseFetch } from './supabase-fetch.js';
 
 function qs(params) {
   return Object.entries(params || {})
@@ -13,26 +12,14 @@ function qs(params) {
 }
 
 export async function supabaseRequest(path, options = {}) {
-  const { url, key } = env();
-  const response = await fetch(`${url}/rest/v1/${path}`, {
+  return supabaseFetch(path, {
     method: options.method || 'GET',
-    headers: {
-      apikey: key,
-      Authorization: `Bearer ${key}`,
-      'Content-Type': 'application/json',
-      Prefer: options.prefer || 'return=representation',
-      ...(options.headers || {}),
-    },
-    body: options.body === undefined ? undefined : JSON.stringify(options.body),
+    body: options.body,
+    prefer: options.prefer || 'return=representation',
+    headers: options.headers,
+    timeoutMs: options.timeoutMs,
+    signal: options.signal,
   });
-
-  const text = await response.text();
-  const data = text ? JSON.parse(text) : null;
-  if (!response.ok) {
-    const message = data?.message || data?.error || `Supabase ${response.status}`;
-    throw new Error(message);
-  }
-  return data;
 }
 
 export function tablePath(table, query) {

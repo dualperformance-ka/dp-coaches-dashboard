@@ -3,9 +3,14 @@
 //   The client includes its device timezone, so reminders arrive at 5am local.
 // GET  ?code=X            : return which reminders are due today for one athlete.
 // GET  (scheduled)        : authorised with REMINDERS_CRON_SECRET or CRON_SECRET.
-//   Triggered every minute by Supabase pg_cron (job: send-athlete-reminders) and
-//   once daily by Vercel cron as a backstop. Each run only sends to athletes whose
-//   LOCAL time matches: 5am for morning reminders, 5am–11:30pm for coach updates.
+//   The live scheduler is Supabase pg_cron job send-athlete-reminders, every
+//   FIVE minutes, calling the athlete portal's copy of this endpoint
+//   (https://portal.dualperformance.au/api/reminders). Nothing schedules this
+//   repository's copy: vercel.json has no cron. The job definition is version-
+//   controlled in supabase/migrations/20261022000001_cron_reminders_and_run_history_retention.sql.
+//   Each run only sends to athletes whose LOCAL time matches: the 5am hour for
+//   morning reminders (once per local day), 5am–11:30pm for coach updates
+//   (debounced two minutes), so a five-minute cadence loses nothing.
 import webpush from 'web-push';
 import { select, upsert, patch, supabaseRequest, tablePath } from './_lib/supabase-rest.js';
 import { getRequestAthlete } from './_lib/auth.js';

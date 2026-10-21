@@ -1984,6 +1984,7 @@ body[data-theme="light"] .strava-command-bar{background:linear-gradient(135deg,r
 <link rel="stylesheet" href="/dashboard-detail-cleanup.css?v=20260906-17">
 <link rel="stylesheet" href="/dashboard-comprehensive.css?v=20260906-23">
 <script src="/coach-auth.js"></script>
+<script src="/background-poller.js?v=20261022-01"></script>
 <style>
   .wd-strava-act.direct-upload{border-left-color:#0ea5e9;background:linear-gradient(135deg,rgba(14,165,233,.06),rgba(255,255,255,.02))}
   .wd-import-charts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px}
@@ -13253,28 +13254,33 @@ async function unackAlert(id) {
   }
 }
 
-async function refreshSharedAcknowledgements() {
+// One shared-resolution sync per tab. Throws on failure so the poller backs
+// off; a failed sync leaves the current acknowledgements and screen untouched.
+async function refreshSharedAcknowledgements({ signal } = {}) {
   if (_ackSyncBusy || !_fullDashboardLoaded) return;
   _ackSyncBusy = true;
   try {
-    const response = await fetch(`${ROSTER_API}?action=acknowledgements`, { cache: 'no-store' });
+    const response = await fetch(`${ROSTER_API}?action=acknowledgements`, { cache: 'no-store', signal });
     const payload = await response.json().catch(() => ({}));
-    if (!response.ok || payload.ok === false) throw new Error(payload.error || `HTTP ${response.status}`);
+    if (!response.ok || payload.ok === false) throw new Error(payload.code || payload.error || `HTTP ${response.status}`);
+    // _ackRefresh() already defers while a coach is typing, and only runs
+    // when the acknowledgements actually changed.
     if (applyAckState(payload.acknowledgements || [], payload.signals || [])) _ackRefresh();
-  } catch (error) {
-    console.warn('[shared acknowledgements]', error);
   } finally {
     _ackSyncBusy = false;
   }
 }
 
+// Visible, online tabs only; one request at a time; 60s when healthy, backing
+// off to 5 minutes while the API is failing; one coalesced refresh when the tab
+// returns. The rules live in /background-poller.js.
 function startSharedResolutionSync() {
-  if (_ackSyncTimer) return;
-  _ackSyncTimer = setInterval(refreshSharedAcknowledgements, 12000);
-  document.addEventListener('visibilitychange', () => {
-    if (!document.hidden) refreshSharedAcknowledgements();
-  });
-  window.addEventListener('focus', refreshSharedAcknowledgements);
+  if (_ackSyncTimer || !window.DPPoller) return;
+  _ackSyncTimer = window.DPPoller.createPoller({
+    name: 'shared-acknowledgements',
+    run: ({ signal }) => refreshSharedAcknowledgements({ signal }),
+    onError: (error, { failures }) => console.warn('[shared acknowledgements] sync failed', { failures, message: error?.message }),
+  }).start();
 }
 
 // ── Main load ─────────────────────────────────────────────────────────────────
@@ -14427,7 +14433,7 @@ document.getElementById('gen-btn').addEventListener('click', generateAI);
 })();
 </script>
 <script src="/dashboard-redesign.js?v=20261014-01" defer></script>
-<script src="/coaching-actions.js?v=3" defer></script>
+<script src="/coaching-actions.js?v=20261022-01" defer></script>
 <script src="/dp-icons.js?v=20260907-35"></script>
 <script src="/dashboard-mobilenav.js?v=20261014-01" defer></script>
 <script type="module" src="/coach-queue.js?v=20261014-01"></script>

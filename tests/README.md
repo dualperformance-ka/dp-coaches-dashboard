@@ -34,3 +34,21 @@ athlete portal repo, where they should pass, and delete them from here. Do not
 returns the whole programme"* is skipped for the same reason: it asserts against
 the athlete portal's `api/write.js`. The file's other three subtests read
 `public/js/` modules that do live here and still run.
+
+## Timeout and polling tests
+
+`supabase-timeouts.test.js` includes one test that runs at the **real** route
+budgets against a Supabase stub that never answers, so it takes about 11
+seconds. That is deliberate: it is the proof that each route answers 503
+before its Vercel `maxDuration`, and shortening the budgets for the test would
+prove nothing about production.
+
+`background-poller.test.js` runs `public/background-poller.js` in a VM with a
+virtual clock, so hours of polling take milliseconds.
+
+`cron-configuration.test.js` has one test that is skipped unless
+`CRON_TEST_DATABASE_URL` points at an **empty, throwaway local** Postgres. It
+loads `supabase/tests/cron-configuration.fixture.sql` (stand-ins for pg_cron,
+pg_net and Vault), applies the cron migration twice, runs the verify script,
+executes the retention command and runs the rollback twice. It refuses
+Supabase URLs.

@@ -1,5 +1,20 @@
 # Migrations to run
 
+## 20261022000001_cron_reminders_and_run_history_retention.sql — NEEDS APPROVAL
+
+Version-controls the pg_cron jobs behind the October 2026 timeout incident:
+`send-athlete-reminders` every five minutes (byte-identical to the live job,
+so a no-op there) and a new `purge-cron-run-history` that deletes
+`cron.job_run_details` rows older than 30 days, 10,000 per hourly run. The
+second part deletes production rows, so apply it only with approval. Run
+Part A of `docs/vercel-supabase-timeout-recovery.md` first and
+`supabase/tests/cron-configuration.verify.sql` after.
+
+Idempotent; running it twice is safe. Rollback:
+`supabase/rollback/20261022000001_cron_reminders_and_run_history_retention_down.sql`.
+
+---
+
 ## 20260904000002_scope_client_write_id_to_athlete.sql — RUN THIS
 
 Apply it in the same deploy as the `api/ingest.js` change that namespaces

@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import { sendUpstreamUnavailable } from '../api/_lib/supabase-fetch.js';
 
 function configuredKey() {
   return String(process.env.DASHBOARD_ACCESS_KEY || process.env.ADMIN_KEY || '').trim();
@@ -61,6 +62,9 @@ export function setCoachCors(req, res, methods = 'GET, POST, PATCH, OPTIONS') {
 }
 
 export function coachError(res, error) {
+  // Supabase timed out or is down: a controlled 503 with Retry-After and a
+  // stable code, so the browser backs off instead of retrying into the outage.
+  if (sendUpstreamUnavailable(res, error)) return res;
   const status = Number(error?.status) || 500;
   const publicMessage = status >= 500
     ? 'The dashboard service could not complete that request'

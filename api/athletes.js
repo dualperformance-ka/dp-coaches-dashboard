@@ -1,4 +1,5 @@
 import { coachError, requireCoach, setCoachCors } from '../server/coach-auth.js';
+import { isUpstreamUnavailable, supabaseFetch, withSupabaseRoute } from './_lib/supabase-fetch.js';
 import {
   assertAthleteAllowed,
   loadSession,
@@ -39,8 +40,6 @@ import {
   saveDailyMacroOverrideRange,
 } from '../server/daily-macro-overrides.js';
 
-const SUPABASE_URL = String(process.env.SUPABASE_URL || '').replace(/\/+$/, '');
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
 const ADMIN_KEY = String(process.env.ADMIN_KEY || '').trim();
 const ATHLETE_PORTAL_URL = 'https://portal.dualperformance.au';
 
@@ -65,39 +64,21 @@ const HISTORY_TABLES = [
   'session_logs',
 ];
 
-function ensureConfig() {
-  if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
-    throw new Error('SUPABASE_URL or SUPABASE_SERVICE_KEY is not configured');
-  }
-}
-
 function athletePortalLink(code) {
   return `${ATHLETE_PORTAL_URL}/?code=${encodeURIComponent(String(code || '').trim().toUpperCase())}`;
 }
 
+// Every Supabase call this route (and the server/ modules it hands `sb` to)
+// makes goes through the bounded helper: an 8s per-call deadline inside the
+// route's 11s budget, no retries, classified failures, no secrets in logs.
 async function sb(path, { method = 'GET', body, prefer } = {}) {
-  ensureConfig();
-
-  const response = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-    method,
-    headers: {
-      apikey: SUPABASE_SERVICE_KEY,
-      Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
-      'Content-Type': 'application/json',
-      ...(prefer ? { Prefer: prefer } : {}),
-    },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
-
-  const text = await response.text();
-  const data = text ? JSON.parse(text) : null;
-
-  if (!response.ok) {
-    throw new Error(data?.message || data?.error || `Supabase returned ${response.status}`);
-  }
-
-  return data;
+  return supabaseFetch(path, { method, body, prefer });
 }
+
+// /api/athletes has maxDuration 30s, but these are interactive coach requests:
+// an outage answers 503 within ~11s rather than holding a connection for 30.
+export const ATHLETES_BUDGET_MS = 11000;
+export const ATHLETES_TIMEOUT_MS = 8000;
 
 function normaliseCode(value) {
   return String(value || '').trim().toUpperCase();
@@ -598,13 +579,16 @@ export function buildAlertAcknowledgement(signature, coach, now = new Date()) {
 
 export async function listAlertAcknowledgements(request = sb) {
   const rows = await request(
-    'athlete_data?key=eq.ack_alert&select=athlete_code,key,value,updated_at&order=updated_at.desc'
+    // Polled every minute by every open dashboard tab: only the columns
+    // useAckRows() reads.
+    'athlete_data?key=eq.ack_alert&select=athlete_code,key,value&order=updated_at.desc'
   );
   return Array.isArray(rows) ? rows : [];
 }
 
 // Live resolution state, polled alongside the legacy acknowledgements so one
-// coach clearing a row is reflected on the other coach's screen within seconds.
+// coach clearing a row is reflected on the other coach's screen within about a
+// minute (the dashboard's healthy polling interval).
 export async function listSignalState(request = sb) {
   try {
     const rows = await request(
@@ -612,6 +596,9 @@ export async function listSignalState(request = sb) {
     );
     return Array.isArray(rows) ? rows : [];
   } catch (error) {
+    // An outage is not "nothing is resolved": returning [] here would make
+    // every resolved row reappear on both coaches' screens until the next poll.
+    if (isUpstreamUnavailable(error)) throw error;
     // Pre-migration: no table, so nothing is resolved.
     console.warn('[athletes] coach_signal_state unavailable:', error.message);
     return [];
@@ -905,7 +892,7 @@ async function deleteAthlete(code) {
   return { ok: true, deleted: normaliseCode(code) };
 }
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   setCoachCors(req, res, 'GET, POST, OPTIONS');
 
   if (req.method === 'OPTIONS') return res.status(200).end();
@@ -1199,3 +1186,11 @@ export default async function handler(req, res) {
     return coachError(res, error);
   }
 }
+
+export default withSupabaseRoute('/api/athletes', {
+  budgetMs: ATHLETES_BUDGET_MS,
+  timeoutMs: ATHLETES_TIMEOUT_MS,
+  mode: req => (req.method === 'GET'
+    ? String(req.query?.action || 'roster')
+    : String(req.body?.action || req.method || '')),
+}, handler);
