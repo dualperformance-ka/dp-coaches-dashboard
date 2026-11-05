@@ -12,6 +12,9 @@
 // to that session alone, and flipped to 'structured'. Past sessions are never
 // touched, and no bulk backfill ever runs.
 
+import { randomUUID } from 'node:crypto';
+// Shared with the browser builder; sets globalThis.DPRunWorkout.
+import '../public/run-workout.js';
 import {
   assertAthleteAllowed,
   loadSession,
@@ -24,6 +27,8 @@ function httpError(message, status) {
   error.status = status;
   return error;
 }
+
+const RULES = globalThis.DPRunWorkout;
 
 const num = (value) => {
   if (value === null || value === undefined || value === '') return null;
@@ -161,19 +166,79 @@ export async function readPrescription(sessionId, sb) {
   const session = await loadSession(sessionId, sb);
   const id = encodeURIComponent(session.id);
 
-  const [exercises, steps, split] = await Promise.all([
+  const [exercises, steps, split, detail, receipts] = await Promise.all([
     sb(`session_exercises?planned_session_id=eq.${id}&select=*&order=position.asc&limit=200`),
     sb(`run_steps?planned_session_id=eq.${id}&select=*&order=step_order.asc&limit=200`),
     session.prescription_mode === 'structured' ? Promise.resolve(null) : findMatchingSplit(session, sb),
+    // The text prescription the session already carries. Shown beside the
+    // structured builder for reference; never parsed into steps.
+    sb(`planned_sessions?id=eq.${id}&select=run_details,distance_km,target_pace,warm_up,intervals,working_pace,rest,cool_down,notes,updated_at&limit=1`)
+      .catch(() => null),
+    readGarminReceipts(session.id, sb),
   ]);
 
+  const legacy = Array.isArray(detail) ? detail[0] || null : null;
+  const runSteps = Array.isArray(steps) ? steps : [];
+
   return {
-    session,
+    session: legacy ? { ...session, updated_at: legacy.updated_at } : session,
     exercises: Array.isArray(exercises) ? exercises : [],
-    runSteps: Array.isArray(steps) ? steps : [],
+    runSteps,
     // For a legacy session, show what it currently resolves to so the coach can
     // see what they are about to take control of.
     legacySplit: split ? { id: split.id, name: split.name, exercises: split.exercises || [] } : null,
+    legacyRun: legacy ? legacyRunText(legacy) : null,
+    garmin: garminDeliveryStatus(receipts, session, legacy, runSteps),
+  };
+}
+
+const LEGACY_RUN_FIELDS = [
+  ['run_details', 'Details'], ['distance_km', 'Distance (km)'], ['target_pace', 'Target pace'],
+  ['warm_up', 'Warm up'], ['intervals', 'Intervals / sets'], ['working_pace', 'Working pace'],
+  ['rest', 'Rest between sets'], ['cool_down', 'Cool down'],
+];
+
+export function legacyRunText(row) {
+  return LEGACY_RUN_FIELDS
+    .filter(([key]) => row[key] !== null && row[key] !== undefined && String(row[key]).trim() !== '')
+    .map(([key, label]) => ({ key, label, value: String(row[key]) }));
+}
+
+// DP's own delivery receipts, written by the portal when the ATHLETE taps
+// Send to Garmin. Read-only here and limited to state and dates: no Garmin
+// measurements, no ids, no tokens. A missing table or failed read just means
+// "no receipt", never a broken builder.
+async function readGarminReceipts(sessionId, sb) {
+  try {
+    const rows = await sb(
+      `garmin_workout_deliveries?planned_session_id=eq.${encodeURIComponent(sessionId)}&select=state,scheduled_date,sent_at,updated_at&limit=5`
+    );
+    return Array.isArray(rows) ? rows : [];
+  } catch {
+    return [];
+  }
+}
+
+export function garminDeliveryStatus(receipts, session, detail, runSteps) {
+  const rows = Array.isArray(receipts) ? receipts : [];
+  if (!rows.length) return { delivery: 'none' };
+  const latest = rows.slice().sort((a, b) => (Date.parse(b.updated_at) || 0) - (Date.parse(a.updated_at) || 0))[0];
+  if (latest.state === 'creating' || latest.state === 'scheduling') {
+    return { delivery: 'uncertain', updatedAt: latest.updated_at || null };
+  }
+  if (latest.state !== 'sent' || !latest.sent_at) return { delivery: 'not_sent', updatedAt: latest.updated_at || null };
+  // Compared as instants: PostgREST returns "+00:00", the portal writes "Z".
+  const time = (value) => { const ms = Date.parse(value); return Number.isFinite(ms) ? ms : 0; };
+  const changedAt = Math.max(0, time(detail && detail.updated_at),
+    ...(runSteps || []).flatMap((row) => [time(row.updated_at), time(row.created_at)]));
+  return {
+    delivery: 'sent',
+    sentAt: latest.sent_at,
+    scheduledDate: latest.scheduled_date || null,
+    // The coach changed the session or its steps after the athlete last sent
+    // it. Garmin is not updated automatically; the athlete must send again.
+    changedSince: changedAt > time(latest.sent_at),
+    plannedDateDiffers: Boolean(latest.scheduled_date && session.planned_date && latest.scheduled_date !== session.planned_date),
   };
 }
 
@@ -418,93 +483,135 @@ export async function reorderExercises(body, sb, coach) {
   return { ok: true, touched: [session.id], appliedScope: 'session', note: '' };
 }
 
-// Run steps are saved whole. A structured run is a small ordered tree and
-// diffing it field by field would be more code and more risk than replacing it.
-export async function saveRunSteps(body, sb, coach) {
+// ── Structured runs (Garmin-compatible) ─────────────────────────────────────
+//
+// A structured run is a small ordered tree, saved whole. The rules live in
+// public/run-workout.js so the builder and this server share one copy, and
+// they mirror the athlete portal's Garmin converter (garmin-workouts.js),
+// which is what actually turns these rows into a watch workout.
+//
+// The write is ONE database call: replace_run_steps() deletes the old rows,
+// inserts the new tree and (optionally) publishes, inside a single
+// transaction. The previous version deleted every step and then inserted them
+// one request at a time, so for a published session the portal could read an
+// empty or half-built workout, and a failure part-way left it that way.
+//
+// Nothing is saved that the portal converter would refuse. The client
+// validates first; this is the backstop, and a crafted request gets the same
+// plain-language answer.
+
+function runValidationError(report) {
+  const [first, ...rest] = report.errors;
+  const error = httpError(
+    `${first.message}${rest.length ? ` (and ${rest.length} more issue${rest.length === 1 ? '' : 's'})` : ''}`,
+    422
+  );
+  error.issues = report.errors.map((issue) => issue.message);
+  return error;
+}
+
+// Builder steps → run_steps rows with server-assigned ids. Client references
+// never reach the database: a forged id cannot collide with another
+// session's row, and parents are remapped to the ids generated here.
+export function buildRunStepRows(steps, sessionId, uuid = randomUUID) {
+  const ids = new Map(steps.map((step) => [step.id, uuid()]));
+  const rows = [];
+  const walk = (parentRef) => {
+    RULES.childrenOf(steps, parentRef).forEach((step, index) => {
+      rows.push(RULES.toRow(step, sessionId, ids.get(step.id), parentRef ? ids.get(parentRef) : null, index));
+      if (step.step_type === 'repeat') walk(step.id);
+    });
+  };
+  walk(null);
+  return rows;
+}
+
+export async function saveRunSteps(body, sb, coach, { uuid = randomUUID } = {}) {
   const session = await loadSession(body.session_id, sb);
   await assertAthleteAllowed(coach, session.athlete_code, sb);
   if (session.locked_at) throw httpError('That session is completed and cannot be edited', 409);
 
-  const steps = Array.isArray(body.steps) ? body.steps.slice(0, 100) : [];
-  const id = encodeURIComponent(session.id);
+  const input = Array.isArray(body.steps) ? body.steps : [];
+  // Refuse rather than truncate. The old code sliced to 100 and saved the
+  // rest of the workout silently missing.
+  if (input.length > RULES.LIMITS.rows) {
+    throw httpError(`A run workout can hold at most ${RULES.LIMITS.rows} steps; this one has ${input.length}.`, 422);
+  }
 
-  await sb(`run_steps?planned_session_id=eq.${id}`, { method: 'DELETE', prefer: 'return=minimal' });
+  const steps = input.map(RULES.fromInput);
+  const report = RULES.validate(session, steps);
+  if (!report.valid) throw runValidationError(report);
 
-  // Parents first so children can reference the ids the database assigns.
-  const parents = steps.filter((step) => !step.parentRef);
-  const parentIdByRef = new Map();
+  const rows = buildRunStepRows(steps, session.id, uuid);
+  if (rows.length !== steps.length) {
+    // Only possible for a tree validate() already rejected; never write a
+    // partial workout because of it.
+    throw httpError('Some steps are not connected to the workout. Reload and try again.', 422);
+  }
 
-  for (let index = 0; index < parents.length; index += 1) {
-    const step = parents[index];
-    const row = toRunStepRow(step, index, session.id, null);
-    const created = await sb('run_steps', {
+  const publish = body.publish === true ? 'published' : null;
+  try {
+    await sb('rpc/replace_run_steps', {
       method: 'POST',
-      body: [row],
-      prefer: 'return=representation',
+      body: { p_session_id: session.id, p_steps: rows, p_publish_state: publish },
     });
-    const createdId = Array.isArray(created) && created[0] ? created[0].id : null;
-    if (step.ref && createdId) parentIdByRef.set(step.ref, createdId);
+  } catch (error) {
+    // PGRST202: the function is not in PostgREST's schema yet, i.e. the
+    // migration has not been applied. Fail closed with the fix, rather than
+    // falling back to the old delete-then-insert path this replaces. Nothing
+    // was written: the call never started.
+    if (error && (error.upstreamCode === 'PGRST202' || /replace_run_steps/.test(String(error.message || '')))) {
+      throw httpError('Run steps can’t be saved until the database update replace_run_steps (migration 20261105000001) is applied. Nothing was changed.', 409);
+    }
+    throw error;
   }
 
-  const children = steps.filter((step) => step.parentRef);
-  for (let index = 0; index < children.length; index += 1) {
-    const step = children[index];
-    const parentId = parentIdByRef.get(step.parentRef);
-    if (!parentId) continue;
-    await sb('run_steps', {
-      method: 'POST',
-      body: [toRunStepRow(step, index, session.id, parentId)],
-      prefer: 'return=minimal',
-    });
-  }
-
-  if (steps.length && session.prescription_mode !== 'structured') {
-    await sb(`planned_sessions?id=eq.${id}`, {
-      method: 'PATCH',
-      body: { prescription_mode: 'structured' },
-      prefer: 'return=minimal',
-    });
-  }
-
+  const publishState = publish || session.publish_state;
   await logProgrammeChange(sb, {
     athleteCode: session.athlete_code,
     changedBy: coach.handle,
     entityType: 'run_steps',
     entityId: session.id,
-    action: 'saved',
+    action: publish && session.publish_state !== 'published' ? 'published' : 'saved',
     scope: 'session',
-    newValue: { steps: steps.length },
-    summary: `Rebuilt the run structure for ${session.title} (${steps.length} steps)`,
+    newValue: { steps: rows.length, garmin_steps: report.expandedSteps, publish_state: publishState },
+    summary: `${publish && session.publish_state !== 'published' ? 'Saved and published' : 'Saved'} the run structure for ${session.title} (${rows.length} step${rows.length === 1 ? '' : 's'})`,
   });
 
-  return { ok: true, touched: [session.id], appliedScope: 'session', note: '' };
+  return {
+    ok: true,
+    touched: [session.id],
+    appliedScope: 'session',
+    note: '',
+    publish_state: publishState,
+    prescription_mode: rows.length ? 'structured' : session.prescription_mode,
+    runSteps: rows,
+    validation: {
+      garminReady: report.garminReady,
+      blockers: report.blockers,
+      expandedSteps: report.expandedSteps,
+    },
+  };
 }
 
-function toRunStepRow(step, order, sessionId, parentId) {
-  const type = ['warmup', 'run', 'recovery', 'interval', 'rest', 'cooldown', 'repeat'].includes(step.type)
-    ? step.type
-    : 'run';
-  return {
-    planned_session_id: sessionId,
-    parent_step_id: parentId,
-    step_order: order,
-    step_type: type,
-    // The database check constraint enforces this pairing too; keeping it here
-    // means the coach gets a clear 400 rather than a raw constraint violation.
-    repeat_count: type === 'repeat' ? Math.max(1, int(step.repeat) || 1) : null,
-    distance_km: num(step.distanceKm),
-    duration_sec: int(step.durationSec),
-    intensity_type: ['pace', 'pace_range', 'hr', 'hr_zone', 'rpe', 'effort', 'text'].includes(step.intensityType)
-      ? step.intensityType
-      : null,
-    pace_min: text(step.paceMin, 20),
-    pace_max: text(step.paceMax, 20),
-    hr_zone: text(step.hrZone, 20),
-    rpe: num(step.rpe),
-    effort: text(step.effort, 60),
-    instructions: text(step.instructions, 1000),
-    coach_notes: text(step.coachNotes, 1000),
-  };
+const RUN_STEP_COLUMNS = 'id,planned_session_id,parent_step_id,step_order,step_type,repeat_count,distance_km,duration_sec,intensity_type,pace_min,pace_max,hr_zone,rpe,effort,instructions,coach_notes,created_at,updated_at';
+
+// Publishing exposes a structured run to the portal, and from there to the
+// athlete's Send to Garmin button. Refuse to publish one the converter would
+// reject, so "published" never means "broken on the watch".
+async function assertRunPublishable(session, sb) {
+  if (session.prescription_mode !== 'structured') return;
+  const rows = await sb(
+    `run_steps?planned_session_id=eq.${encodeURIComponent(session.id)}&select=${RUN_STEP_COLUMNS}&order=step_order.asc&limit=200`
+  );
+  const steps = (Array.isArray(rows) ? rows : []).map(RULES.fromRow);
+  if (!steps.length) return;
+  const report = RULES.validate(session, steps);
+  if (!report.valid) {
+    const error = runValidationError(report);
+    error.message = `“${session.title}” can’t be published yet. ${error.message}`;
+    throw error;
+  }
 }
 
 // The picker browses by category rather than requiring a coach to type, so this
@@ -650,6 +757,7 @@ export async function setPublishState(body, sb, coach) {
   for (const id of ids) {
     const session = await loadSession(id, sb);
     await assertAthleteAllowed(coach, session.athlete_code, sb);
+    if (state === 'published') await assertRunPublishable(session, sb);
     sessions.push(session);
   }
 

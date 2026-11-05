@@ -219,11 +219,41 @@
     state.exercises = data.exercises || [];
     state.runSteps = data.runSteps || [];
     state.legacySplit = data.legacySplit || null;
+    if (isRunSession(state.session) && window.DPRunBuilder) {
+      window.DPRunBuilder.load(data, runContext());
+    } else if (window.DPRunBuilder) {
+      window.DPRunBuilder.reset();
+    }
     state.skipSync = true;   // the body still shows the previous session
     render();
   }
 
+  // What the run builder needs from this drawer. Kept to callbacks so the
+  // builder never reaches into this file's state.
+  function runContext() {
+    return {
+      apiPost: apiPost,
+      toast: toast,
+      onSaved: function (result) {
+        if (!state.session) return;
+        if (result && result.publish_state) state.session.publish_state = result.publish_state;
+        if (result && result.prescription_mode) state.session.prescription_mode = result.prescription_mode;
+        if (result && Array.isArray(result.runSteps)) state.runSteps = result.runSteps;
+        var foot = el('rx-foot');
+        if (foot && !state.preview) { foot.innerHTML = renderFooter(); bindFooter(); }
+        el('rx-sub').textContent = subtitle(state.session);
+      },
+    };
+  }
+
+  function runBuilderActive() {
+    return !!(window.DPRunBuilder && state.session && isRunSession(state.session));
+  }
+
   function close() {
+    if (runBuilderActive() && window.DPRunBuilder.isDirty() &&
+        !window.confirm('This run has unsaved changes. Close and lose them?')) return;
+    if (window.DPRunBuilder) window.DPRunBuilder.reset();
     var overlay = el('rx-overlay');
     if (overlay) overlay.classList.add('hidden');
     state.sessionId = null;
@@ -245,6 +275,9 @@
   function isRunSession(session) {
     var type = String((session && session.session_type) || '').toLowerCase();
     if (state.runSteps.length) return true;
+    // A running type opens the run builder even before any steps exist, so a
+    // text-only run can be converted rather than offered a strength split.
+    if (window.DPRunWorkout && window.DPRunWorkout.sessionSendsToGarmin(session)) return true;
     if (state.exercises.length) return false;
     return !/strength/.test(type) && !/upper|lower|glute|push|pull/i.test(String(session && session.title) || '');
   }
@@ -256,22 +289,8 @@
     if (state.skipSync) { state.skipSync = false; return; }
     var body = document.getElementById('rx-body');
     if (!body) return;
-    Array.prototype.forEach.call(body.querySelectorAll('.rx-step'), function (row) {
-      var id = row.getAttribute('data-step');
-      var step = state.runSteps.find(function (item) { return item.id === id; });
-      if (!step) return;
-      Array.prototype.forEach.call(row.querySelectorAll('[data-step-field]'), function (input) {
-        var field = input.getAttribute('data-step-field');
-        var raw = input.value;
-        if (field === 'duration_min') {
-          step.duration_sec = raw === '' ? null : Math.round(Number(raw) * 60);
-        } else if (field === 'distance_km' || field === 'repeat_count') {
-          step[field] = raw === '' ? null : Number(raw);
-        } else {
-          step[field] = raw;
-        }
-      });
-    });
+    // Run steps are not read back here: the run builder updates its own
+    // model on every input, so nothing typed is lost when this re-renders.
     Array.prototype.forEach.call(body.querySelectorAll('.rx-ex'), function (row) {
       var id = row.getAttribute('data-id');
       var ex = state.exercises.find(function (item) { return item.id === id; });
@@ -287,26 +306,42 @@
     if (!session) return;
     syncFromDom();
 
+    var run = runBuilderActive();
     el('rx-title').textContent = session.title || 'Session';
-    el('rx-sub').textContent = [
-      session.athlete_code,
-      session.planned_date,
-      session.week_label,
-      session.prescription_mode === 'structured' ? 'Structured' : 'Shared split',
-    ].filter(Boolean).join(' · ');
+    el('rx-sub').textContent = subtitle(session);
 
     // §31/§54: in preview the coach chrome disappears entirely, so what is on
-    // screen is only what the athlete would see.
-    el('rx-scopebar').style.display = state.preview ? 'none' : '';
+    // screen is only what the athlete would see. Run steps are always saved
+    // for this session alone, so the edit-scope bar would only mislead there.
+    el('rx-scopebar').style.display = state.preview || run ? 'none' : '';
     el('rx-coach-pill').style.display = state.preview ? 'none' : '';
 
     el('rx-body').innerHTML = state.preview
       ? renderAthletePreview()
-      : (isRunSession(session) ? renderRunBuilder() : renderStrengthBuilder());
+      : (run ? window.DPRunBuilder.html() : renderStrengthBuilder());
 
     el('rx-foot').innerHTML = state.preview ? '' : renderFooter();
 
-    if (!state.preview) bindBuilder();
+    if (!state.preview) {
+      bindBuilder();
+      if (run) {
+        window.DPRunBuilder.bind(el('rx-body'));
+        window.DPRunBuilder.refresh(el('rx-body'));
+      }
+    }
+  }
+
+  function subtitle(session) {
+    var run = runBuilderActive();
+    return [
+      session.athlete_code,
+      session.planned_date,
+      session.week_label,
+      session.session_type,
+      session.prescription_mode === 'structured'
+        ? (run ? 'Structured run' : 'Structured')
+        : (run ? 'Text prescription' : 'Shared split'),
+    ].filter(Boolean).join(' · ');
   }
 
   function renderFooter() {
@@ -319,7 +354,7 @@
         '</span>' +
       '</div>' +
       '<div class="rx-foot-right">' +
-        (state.exercises.length
+        (state.exercises.length && !runBuilderActive()
           ? '<button type="button" class="rx-btn" id="rx-saveas-btn">Save as split</button>'
           : '') +
         '<button type="button" class="rx-btn" id="rx-publish-btn">' +
@@ -435,19 +470,7 @@
       (session.estimated_minutes ? '<div class="rxp-meta">Estimated ' + esc(session.estimated_minutes) + ' min</div>' : '') +
       '</div>';
 
-    if (state.runSteps.length) {
-      var parents = state.runSteps.filter(function (s) { return !s.parent_step_id; });
-      return head + '<div class="rxp-steps">' + parents.map(function (step) {
-        var children = state.runSteps.filter(function (c) { return c.parent_step_id === step.id; });
-        return '<div class="rxp-step">' + '<div class="rxp-step-type">' + esc(stepLabel(step)) + '</div>' +
-          (children.length
-            ? '<div class="rxp-children">' + children.map(function (c) {
-                return '<div class="rxp-child">' + esc(stepLabel(c)) + '</div>';
-              }).join('') + '</div>'
-            : '') +
-        '</div>';
-      }).join('') + '</div>';
-    }
+    if (runBuilderActive()) return head + window.DPRunBuilder.athletePreviewHtml();
 
     if (!state.exercises.length) {
       return head + '<div class="rxp-empty">The athlete would see no exercises for this session.</div>';
@@ -473,64 +496,12 @@
     }).join('') + '</div>';
   }
 
-  function stepLabel(step) {
-    if (step.step_type === 'repeat') return 'Repeat × ' + step.repeat_count;
-    var amount = step.distance_km != null
-      ? step.distance_km + ' km'
-      : (step.duration_sec != null ? Math.round(step.duration_sec / 60) + ' min' : '');
-    var pace = step.pace_min && step.pace_max
-      ? step.pace_min + '–' + step.pace_max + '/km'
-      : (step.pace_min || step.effort || (step.rpe != null ? 'RPE ' + step.rpe : '') || '');
-    return [titleCase(step.step_type), amount, pace].filter(Boolean).join(' · ');
-  }
-
   function titleCase(value) {
     var text = String(value || '').replace(/_/g, ' ');
     return text.charAt(0).toUpperCase() + text.slice(1);
   }
 
-  // ── Run builder (§23–25) ───────────────────────────────────────────────────
-
-  function renderRunBuilder() {
-    var steps = state.runSteps.length ? state.runSteps : [];
-    var parents = steps.filter(function (s) { return !s.parent_step_id; });
-
-    var rows = parents.map(function (step) {
-      var children = steps.filter(function (c) { return c.parent_step_id === step.id; });
-      return renderStepRow(step, false) +
-        (step.step_type === 'repeat'
-          ? '<div class="rx-step-children" data-parent="' + esc(step.id) + '">' +
-              children.map(function (child) { return renderStepRow(child, true); }).join('') +
-              '<button type="button" class="rx-btn rx-btn-tiny" data-act="add-child" data-parent="' + esc(step.id) + '">+ Step inside repeat</button>' +
-            '</div>'
-          : '');
-    }).join('');
-
-    return '<div class="rx-steps" id="rx-steps">' + (rows || '<div class="rx-empty">No structured steps yet.</div>') + '</div>' +
-      '<div class="rx-step-add">' +
-        '<button type="button" class="rx-btn" data-act="add-step" data-type="warmup">+ Warm-up</button>' +
-        '<button type="button" class="rx-btn" data-act="add-step" data-type="run">+ Run</button>' +
-        '<button type="button" class="rx-btn" data-act="add-step" data-type="interval">+ Interval</button>' +
-        '<button type="button" class="rx-btn" data-act="add-step" data-type="recovery">+ Recovery</button>' +
-        '<button type="button" class="rx-btn" data-act="add-step" data-type="repeat">+ Repeat block</button>' +
-        '<button type="button" class="rx-btn" data-act="add-step" data-type="cooldown">+ Cool-down</button>' +
-      '</div>' +
-      '<button type="button" class="rx-btn rx-btn-primary rx-add" id="rx-steps-save">Save run structure</button>';
-  }
-
-  function renderStepRow(step, isChild) {
-    return '<div class="rx-step' + (isChild ? ' is-child' : '') + '" data-step="' + esc(step.id) + '">' +
-      '<span class="rx-step-type">' + esc(titleCase(step.step_type)) + '</span>' +
-      (step.step_type === 'repeat'
-        ? '<label class="rx-f"><span>Times</span><input class="rx-input rx-num" type="number" min="1" data-step-field="repeat_count" value="' + esc(step.repeat_count || 1) + '"></label>'
-        : '<label class="rx-f"><span>km</span><input class="rx-input rx-num" type="number" step="any" data-step-field="distance_km" value="' + (step.distance_km == null ? '' : esc(step.distance_km)) + '"></label>' +
-          '<label class="rx-f"><span>min</span><input class="rx-input rx-num" type="number" step="any" data-step-field="duration_min" value="' + (step.duration_sec == null ? '' : esc(Math.round(step.duration_sec / 60))) + '"></label>' +
-          '<label class="rx-f"><span>Pace from</span><input class="rx-input rx-num" type="text" data-step-field="pace_min" value="' + esc(step.pace_min || '') + '" placeholder="4:10"></label>' +
-          '<label class="rx-f"><span>to</span><input class="rx-input rx-num" type="text" data-step-field="pace_max" value="' + esc(step.pace_max || '') + '" placeholder="4:20"></label>' +
-          '<label class="rx-f"><span>Effort</span><input class="rx-input" type="text" data-step-field="effort" value="' + esc(step.effort || '') + '" placeholder="easy"></label>') +
-      '<button type="button" class="rx-icon rx-icon-danger" data-act="remove-step" title="Remove step" aria-label="Remove step">×</button>' +
-    '</div>';
-  }
+  // The run builder (§23–25) lives in run-builder.js.
 
   // ── Wiring ─────────────────────────────────────────────────────────────────
 
@@ -541,14 +512,7 @@
     var add = el('rx-add-btn');
     if (add) add.addEventListener('click', function () { openPicker('add', null); });
 
-    var publish = el('rx-publish-btn');
-    if (publish) publish.addEventListener('click', togglePublish);
-
-    var saveAs = el('rx-saveas-btn');
-    if (saveAs) saveAs.addEventListener('click', openSaveAs);
-
-    var save = el('rx-steps-save');
-    if (save) save.addEventListener('click', saveSteps);
+    bindFooter();
 
     Array.prototype.forEach.call(document.querySelectorAll('#rx-body .rx-ex'), function (row) {
       var id = row.getAttribute('data-id');
@@ -574,21 +538,18 @@
         button.addEventListener('click', function () { exerciseAction(id, button.getAttribute('data-act')); });
       });
     });
+  }
 
-    Array.prototype.forEach.call(document.querySelectorAll('#rx-body [data-act="add-step"]'), function (button) {
-      button.addEventListener('click', function () { addStep(button.getAttribute('data-type'), null); });
-    });
-    Array.prototype.forEach.call(document.querySelectorAll('#rx-body [data-act="add-child"]'), function (button) {
-      button.addEventListener('click', function () { addStep('interval', button.getAttribute('data-parent')); });
-    });
-    Array.prototype.forEach.call(document.querySelectorAll('#rx-body [data-act="remove-step"]'), function (button) {
-      button.addEventListener('click', function () {
-        var row = button.closest('.rx-step');
-        var id = row && row.getAttribute('data-step');
-        state.runSteps = state.runSteps.filter(function (s) { return s.id !== id && s.parent_step_id !== id; });
-        render();
+  function bindFooter() {
+    var publish = el('rx-publish-btn');
+    if (publish) {
+      publish.addEventListener('click', function () {
+        if (runBuilderActive()) return window.DPRunBuilder.togglePublish();
+        return togglePublish();
       });
-    });
+    }
+    var saveAs = el('rx-saveas-btn');
+    if (saveAs) saveAs.addEventListener('click', openSaveAs);
   }
 
   async function adoptSession() {
@@ -728,60 +689,6 @@
       render();
     } catch (error) {
       toast(error.message || 'Could not change publish state', 'bad');
-    } finally { busy(false); }
-  }
-
-  // ── Run steps ──────────────────────────────────────────────────────────────
-
-  function addStep(type, parentId) {
-    var tempId = 'tmp-' + Math.random().toString(36).slice(2, 10);
-    state.runSteps.push({
-      id: tempId,
-      parent_step_id: parentId,
-      step_order: state.runSteps.length,
-      step_type: type,
-      repeat_count: type === 'repeat' ? 5 : null,
-      distance_km: null, duration_sec: null,
-      pace_min: '', pace_max: '', effort: '', rpe: null,
-    });
-    render();
-  }
-
-  function collectSteps() {
-    var out = [];
-    Array.prototype.forEach.call(document.querySelectorAll('#rx-body .rx-step'), function (row) {
-      var id = row.getAttribute('data-step');
-      var source = state.runSteps.find(function (s) { return s.id === id; });
-      if (!source) return;
-      var read = function (name) {
-        var input = row.querySelector('[data-step-field="' + name + '"]');
-        return input ? input.value : '';
-      };
-      var minutes = read('duration_min');
-      out.push({
-        ref: id,
-        parentRef: source.parent_step_id || null,
-        type: source.step_type,
-        repeat: read('repeat_count'),
-        distanceKm: read('distance_km'),
-        durationSec: minutes === '' ? null : Math.round(Number(minutes) * 60),
-        intensityType: read('pace_min') ? 'pace_range' : (read('effort') ? 'effort' : null),
-        paceMin: read('pace_min'),
-        paceMax: read('pace_max'),
-        effort: read('effort'),
-      });
-    });
-    return out;
-  }
-
-  async function saveSteps() {
-    busy(true);
-    try {
-      await apiPost({ action: 'runsteps_save', session_id: state.sessionId, steps: collectSteps() });
-      toast('Run structure saved', 'ok');
-      await load();
-    } catch (error) {
-      toast(error.message || 'Could not save the run structure', 'bad');
     } finally { busy(false); }
   }
 
