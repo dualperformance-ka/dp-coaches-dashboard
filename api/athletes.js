@@ -448,7 +448,18 @@ export async function insertPlannedSessions(input, request = sb, copyFrom = null
     return { ok: true, rows: createdRows };
   }
 
-  const copied = await copyPrescription(copyFrom, createdRows[0].id, request);
+  let copied;
+  try {
+    copied = await copyPrescription(copyFrom, createdRows[0].id, request);
+  } catch (error) {
+    // This request created the row a moment ago. Remove it (exercises cascade)
+    // so a failed copy never leaves an empty duplicate on the athlete's plan.
+    await request(`planned_sessions?id=eq.${encodeURIComponent(createdRows[0].id)}`, {
+      method: 'DELETE',
+      prefer: 'return=minimal',
+    }).catch(() => {});
+    throw error;
+  }
 
   // prescription_mode decides which editor the coach gets and whether run
   // analysis looks for structured steps. Carrying the source's mode is what

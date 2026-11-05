@@ -251,3 +251,24 @@ test('fromInput drops anything that is not a builder field', () => {
   assert.equal(step.athlete_code, undefined);
   assert.equal(step.coach_notes, 'ok');
 });
+
+// ── Audit additions (Nov 2026) ──────────────────────────────────────────────
+
+test('distances are whole metres, the unit Garmin ends a distance step on', () => {
+  const step = (km) => R.fromInput({ id: 'd', step_type: 'run', step_order: 0, end: 'distance', distance_km: km, target: 'none' });
+  for (const km of [1, 0.4, 1.609, 21.0975 - 0.0005, 0.001]) assert.equal(R.validate(RUN, [step(km)]).valid, true, String(km));
+  const bad = R.validate(RUN, [step(0.4005)]);
+  assert.equal(bad.valid, false);
+  assert.match(messages(bad), /whole metres/);
+  // Stored rounded to the metre, so km × 1000 is the metre count the portal sends.
+  assert.equal(R.toRow(step(1.609), 's', 'x', null, 0).distance_km, 1.609);
+});
+
+test('a single pace is valid but the coach is told the watch band is zero-width', () => {
+  const single = R.fromInput({ id: 'p', step_type: 'interval', step_order: 0, end: 'distance', distance_km: 1, target: 'pace', pace_fast: '4:30' });
+  const report = R.validate(RUN, [single]);
+  assert.equal(report.valid, true);
+  assert.ok(report.notes.some((n) => /zero-width/.test(n.message) && /4:30–4:40/.test(n.message)));
+  const range = R.validate(RUN, reference());
+  assert.ok(!range.notes.some((n) => /zero-width/.test(n.message)), 'a real range carries no warning');
+});

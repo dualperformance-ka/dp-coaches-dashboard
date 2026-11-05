@@ -1,0 +1,53 @@
+{
+  "description": "Acceptance fixture: 10 min warm-up, 6 x (1 km at 4:30-4:45/km + 90 sec recovery), 10 min cool-down. No athlete data. Session fields are the ones the portal reads.",
+  "session": {
+    "title": "6 x 1 km",
+    "session_type": "Speed",
+    "prescription_mode": "structured",
+    "publish_state": "published"
+  },
+  "builderSteps": [
+    { "id": "new-w", "step_type": "warmup",   "step_order": 0, "end": "time", "durationText": "10:00", "target": "none" },
+    { "id": "new-r", "step_type": "repeat",   "step_order": 1, "repeat_count": 6 },
+    { "id": "new-i", "parent_step_id": "new-r", "step_type": "interval", "step_order": 0, "end": "distance", "distance_km": 1, "target": "pace", "pace_fast": "4:30", "pace_slow": "4:45" },
+    { "id": "new-j", "parent_step_id": "new-r", "step_type": "recovery", "step_order": 1, "end": "time", "durationText": "90s", "target": "none" },
+    { "id": "new-c", "step_type": "cooldown", "step_order": 2, "end": "time", "durationText": "10:00", "target": "none" }
+  ],
+  "expectedRunStepRows": [
+    { "ref": "W", "parent": null, "step_order": 0, "step_type": "warmup",   "repeat_count": null, "distance_km": null, "duration_sec": 600, "intensity_type": null,         "pace_min": null,   "pace_max": null,   "hr_zone": null, "rpe": null, "effort": null, "instructions": null, "coach_notes": null },
+    { "ref": "R", "parent": null, "step_order": 1, "step_type": "repeat",   "repeat_count": 6,    "distance_km": null, "duration_sec": null, "intensity_type": null,       "pace_min": null,   "pace_max": null,   "hr_zone": null, "rpe": null, "effort": null, "instructions": null, "coach_notes": null },
+    { "ref": "I", "parent": "R",  "step_order": 0, "step_type": "interval", "repeat_count": null, "distance_km": 1,    "duration_sec": null, "intensity_type": "pace_range", "pace_min": "4:30", "pace_max": "4:45", "hr_zone": null, "rpe": null, "effort": null, "instructions": null, "coach_notes": null },
+    { "ref": "J", "parent": "R",  "step_order": 1, "step_type": "recovery", "repeat_count": null, "distance_km": null, "duration_sec": 90,  "intensity_type": null,         "pace_min": null,   "pace_max": null,   "hr_zone": null, "rpe": null, "effort": null, "instructions": null, "coach_notes": null },
+    { "ref": "C", "parent": null, "step_order": 2, "step_type": "cooldown", "repeat_count": null, "distance_km": null, "duration_sec": 600, "intensity_type": null,         "pace_min": null,   "pace_max": null,   "hr_zone": null, "rpe": null, "effort": null, "instructions": null, "coach_notes": null }
+  ],
+  "expectedGarminWorkout": {
+    "workoutName": "6 x 1 km",
+    "description": "Running session programmed by Dual Performance.",
+    "sport": "RUNNING",
+    "workoutProvider": "Dual Performance",
+    "workoutSourceId": "Dual Performance",
+    "segments": [
+      {
+        "segmentOrder": 1,
+        "sport": "RUNNING",
+        "steps": [
+          { "type": "WorkoutStep", "stepOrder": 1, "intensity": "WARMUP", "description": "", "durationType": "TIME", "durationValue": 600, "targetType": "OPEN" },
+          {
+            "type": "WorkoutRepeatStep", "stepOrder": 2, "repeatType": "REPEAT_UNTIL_STEPS_CMPLT", "repeatValue": 6,
+            "steps": [
+              { "type": "WorkoutStep", "stepOrder": 3, "intensity": "INTERVAL", "description": "", "durationType": "DISTANCE", "durationValue": 1000, "targetType": "PACE", "targetValueLow": 3.508771929824561, "targetValueHigh": 3.7037037037037037 },
+              { "type": "WorkoutStep", "stepOrder": 4, "intensity": "RECOVERY", "description": "", "durationType": "TIME", "durationValue": 90, "targetType": "OPEN" }
+            ]
+          },
+          { "type": "WorkoutStep", "stepOrder": 5, "intensity": "COOLDOWN", "description": "", "durationType": "TIME", "durationValue": 600, "targetType": "OPEN" }
+        ]
+      }
+    ]
+  },
+  "expectedCounts": { "rows": 5, "expandedGarminSteps": 14, "distanceKm": 6, "durationSec": 1740 },
+  "notes": [
+    "Pace targets are metres per second: low 1000/285 (4:45/km, slow) and high 1000/270 (4:30/km, fast).",
+    "Expanded steps: warm-up 1 + 6 x 2 + cool-down 1 = 14 (limit 100).",
+    "Totals: 6 km of distance steps plus 1740 s (600 + 6 x 90 + 600) of timed steps."
+  ]
+}

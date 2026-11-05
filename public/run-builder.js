@@ -139,6 +139,25 @@
     list.forEach(function (s, i) { s.step_order = i; });
   }
 
+  // Copy a step, or a repeat block with everything inside it, and place the
+  // copy straight after the original. Fresh ids throughout; the server
+  // assigns real ones on save, so nothing here can collide with a saved row.
+  function duplicate(id) {
+    var source = find(id);
+    if (!source) return null;
+    var list = siblings(source);
+    var copies = [];
+    (function clone(step, parentId) {
+      var copy = Object.assign({}, step, { id: newId(), parent_step_id: parentId });
+      copies.push(copy);
+      R.childrenOf(state.steps, step.id).forEach(function (child) { clone(child, copy.id); });
+    })(source, source.parent_step_id || null);
+    state.steps = state.steps.concat(copies);
+    list.splice(list.indexOf(source) + 1, 0, copies[0]);
+    list.forEach(function (s, i) { s.step_order = i; });
+    return copies[0];
+  }
+
   function remove(id) {
     var doomed = {};
     (function mark(target) {
@@ -252,6 +271,7 @@
     return '<div class="rb-tools">' +
       '<button type="button" class="rx-icon" data-act="up" title="Move up" aria-label="Move step ' + esc(number) + ' up">↑</button>' +
       '<button type="button" class="rx-icon" data-act="down" title="Move down" aria-label="Move step ' + esc(number) + ' down">↓</button>' +
+      '<button type="button" class="rx-icon" data-act="duplicate" title="Duplicate" aria-label="Duplicate step ' + esc(number) + '">⧉</button>' +
       '<button type="button" class="rx-icon rx-icon-danger" data-act="remove" title="Remove" aria-label="Remove step ' + esc(number) + '">×</button>' +
     '</div>';
   }
@@ -382,9 +402,14 @@
       delivery = 'Athlete sent this to Garmin Connect' + (g.sentAt ? ' on ' + fmtDate(g.sentAt) : '') +
         (g.scheduledDate ? ' for ' + fmtDay(g.scheduledDate) : '') + '. That confirms Garmin Connect, not the watch.';
       if (g.changedSince || dirty) delivery += ' <strong>Changes since then are not on Garmin</strong> — the athlete needs to send it again from the portal.';
-      if (g.plannedDateDiffers) delivery += ' The Garmin calendar date differs from the planned date.';
+      if (g.plannedDateDiffers) delivery += ' <strong>The Garmin calendar date (' + esc(fmtDay(g.scheduledDate)) + ') no longer matches this run’s date</strong> — the athlete needs to send it again.';
     } else if (g.delivery === 'uncertain') {
       delivery = '<strong>Last Garmin delivery is uncertain.</strong> The athlete should check Garmin Connect before sending again.';
+    }
+    // The athlete's own move in the portal. Garmin follows it, so it is
+    // context for the coach, not a problem to fix.
+    if (g.athleteMovedTo) {
+      delivery += (delivery ? ' ' : '') + 'The athlete moved this run to ' + esc(fmtDay(g.athleteMovedTo)) + ' in the portal; Send to Garmin uses that date.';
     }
 
     return '<div class="rb-status-card is-' + tone + '">' +
@@ -545,6 +570,7 @@
         var id = card && card.getAttribute('data-step');
         if (!id) return;
         if (act === 'up' || act === 'down') { move(id, act === 'up' ? -1 : 1); rerender(scope, null, id); }
+        if (act === 'duplicate') { var copy = duplicate(id); rerender(scope, null, copy && copy.id); }
         if (act === 'remove') {
           var step = find(id);
           var kids = step && step.step_type === 'repeat' ? R.childrenOf(state.steps, id).length : 0;

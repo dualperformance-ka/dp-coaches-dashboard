@@ -32,7 +32,9 @@
   var TARGETS = ['none', 'pace', 'hr', 'rpe', 'effort'];
 
   // Session types the portal will turn into a Garmin running workout. Must
-  // match GARMIN_RUN_SESSION_TYPES in the portal's garmin-workouts.js. Mixed
+  // match GARMIN_RUN_SESSION_TYPES in the portal's garmin-workouts.js;
+  // tests/run-workout-contract.test.js compares the two against a vendored
+  // copy of the converter (tests/fixtures/portal-garmin-workouts.mjs). Mixed
   // sessions (Brick, Run + Strength) and admin rows (Optional, Weekly KM
   // Total) are deliberately absent: they are not one running workout.
   var GARMIN_RUN_SESSION_TYPES = [
@@ -228,7 +230,7 @@
       row.instructions = null;
       return row;
     }
-    if (step.end === 'distance') row.distance_km = Number(step.distance_km);
+    if (step.end === 'distance') row.distance_km = Math.round(Number(step.distance_km) * 1000) / 1000;
     if (step.end === 'time') row.duration_sec = Number(step.duration_sec);
     if (step.target === 'pace') {
       var a = parsePace(step.pace_fast);
@@ -362,6 +364,9 @@
         if (isBlank(step.distance_km) || Number.isNaN(Number(step.distance_km))) err(step, 'needs a distance in km, or choose “Lap button” to end it manually.');
         else if (!(km > 0)) err(step, 'distance must be more than 0 km.');
         else if (km > LIMITS.maxDistanceKm) err(step, 'distance looks wrong (' + km + ' km). Enter kilometres, e.g. 0.4 for 400 m.');
+        // Garmin measures a distance step in metres. 0.4005 km is not a
+        // distance a watch can end on; ask rather than round it silently.
+        else if (Math.abs(km * 1000 - Math.round(km * 1000)) > 1e-6) err(step, 'distance must be whole metres. Use up to three decimals, e.g. 0.4 for 400 m or 1.609 for a mile.');
         else distanceKm += km * times;
       } else if (step.end === 'time') {
         var sec = Number(step.duration_sec);
@@ -387,6 +392,10 @@
         else if (Number.isNaN(slow)) err(step, 'pace “' + text(step.pace_slow) + '” isn’t minutes:seconds per km, e.g. 4:45.');
         else if ([fast, slow].some(function (v) { return v < LIMITS.paceMinSec || v > LIMITS.paceMaxSec; })) {
           err(step, 'pace must be between 1:30 and 30:00 per km.');
+        } else if (fast === slow) {
+          // The converter sends low = high, a zero-width band: the watch alerts
+          // on any drift. Valid, but rarely what a coach means.
+          notes.push({ stepId: step.id, message: stepName(step, numbers) + ': a single pace (' + formatPace(fast) + ' /km) gives the watch a zero-width target, so it alerts at any drift. Add a slower pace, e.g. ' + formatPace(fast) + '–' + formatPace(fast + 10) + ', for a usable band.' });
         }
       } else if (step.target === 'hr') {
         if (!hrZone(step.hr_zone)) err(step, 'needs a heart-rate zone from 1 to 5.');

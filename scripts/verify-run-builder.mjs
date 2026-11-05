@@ -24,6 +24,7 @@ const db = {
   sessions: new Map(),
   steps: [],
   receipts: [],
+  moves: null,     // athlete_data.reschedules: the athlete's own moves in the portal
   rpcCalls: 0,
   directStepWrites: 0,
 };
@@ -64,6 +65,7 @@ async function sb(path, opts = {}) {
     return { steps: rows.length };
   }
   if (path.startsWith('garmin_workout_deliveries?')) return db.receipts.filter((r) => r.planned_session_id === idFrom(path.replace('planned_session_id', 'id')));
+  if (path.startsWith('athlete_data?')) return db.moves ? [{ value: db.moves }] : [];
   if (path.startsWith('session_exercises?') || path.startsWith('workout_splits?') || path.startsWith('coach_athletes')) return [];
   if (path === 'programme_change_log') return null;
   throw new Error('unexpected ' + method + ' ' + path);
@@ -72,6 +74,7 @@ async function sb(path, opts = {}) {
 const LEGACY = addSession({ id: randomUUID(), athlete_code: 'THOMAS', title: 'Intervals 6×1km', planned_date: '2026-11-12', session_type: 'Speed',
   warm_up: '10 min easy', intervals: '6 × 1 km', working_pace: '4:30–4:45 /km', rest: '90s jog', cool_down: '10 min easy', publish_state: 'published' });
 const DRAFT = addSession({ id: randomUUID(), athlete_code: 'THOMAS', title: 'Easy 12km', planned_date: '2026-11-13', session_type: 'Easy Effort' });
+const DUP = addSession({ id: randomUUID(), athlete_code: 'THOMAS', title: '6 x 1 km', planned_date: '2026-11-15', session_type: 'Speed' });
 const BRICK = addSession({ id: randomUUID(), athlete_code: 'THOMAS', title: 'Brick', planned_date: '2026-11-14', session_type: 'Brick' });
 
 // ── Browser ─────────────────────────────────────────────────────────────────
@@ -249,6 +252,59 @@ const text = (page, sel) => page.$eval(sel, (n) => n.textContent).catch(() => ''
   await page.screenshot({ path: OUT + '/5-sent-receipt-desktop.png' });
 }
 
+// ── Duplicate steps and repeat blocks; athlete's own move ───────────────────
+{
+  const { page, errors } = await newPage({ width: 1280, height: 900 });
+  await openSession(page, DUP.id);
+  if (await page.$('[data-act-global="convert"]')) await page.click('[data-act-global="convert"]');
+  await page.click('[data-quick="intervals"]');
+  await page.fill('.rb-step.is-interval [data-k="pace_fast"]', '4:30');
+  await page.fill('.rb-step.is-interval [data-k="pace_slow"]', '4:45');
+  check(/14 \/ 100/.test(await text(page, '.rb-meter')), 'fixture built: 14 Garmin steps');
+
+  // Duplicate the recovery inside the repeat: a third step lands straight after it.
+  await page.click('.rb-repeat .rb-step.is-recovery [data-act="duplicate"]');
+  const inside = await page.$$eval('.rb-repeat > .rb-children > .rb-step', (n) => n.map((e) => [...e.classList].find((c) => c.startsWith('is-') && c !== 'is-child')));
+  check(JSON.stringify(inside) === '["is-interval","is-recovery","is-recovery"]', 'duplicate step lands after the original, inside the repeat', JSON.stringify(inside));
+  check(/20 \/ 100/.test(await text(page, '.rb-meter')), 'duplicated step counts 6 more Garmin steps', await text(page, '.rb-meter'));
+  const copies = await page.$$('.rb-repeat > .rb-children > .rb-step.is-recovery [data-act="remove"]');
+  await copies[copies.length - 1].click();
+  check((await page.$$eval('.rb-repeat > .rb-children > .rb-step', (n) => n.length)) === 2, 'remove takes the copy away again');
+
+  // Duplicate the whole repeat block: children copied with it, placed after it.
+  await page.click('.rb-repeat > .rb-step-head [data-act="duplicate"]');
+  const top = await page.$$eval('#rb-steps > [data-step]', (n) => n.map((e) => e.classList.contains('rb-repeat') ? 'repeat' : [...e.classList].find((c) => c.startsWith('is-'))));
+  check(JSON.stringify(top) === '["is-warmup","repeat","repeat","is-cooldown"]', 'duplicate repeat block lands after the original', JSON.stringify(top));
+  const kids = await page.$$eval('.rb-repeat', (n) => n.map((r) => r.querySelectorAll(':scope > .rb-children > .rb-step').length));
+  check(JSON.stringify(kids) === '[2,2]', 'the copy carries its interval and recovery', JSON.stringify(kids));
+  check(/26 \/ 100/.test(await text(page, '.rb-meter')), 'two blocks: 26 Garmin steps', await text(page, '.rb-meter'));
+  await page.screenshot({ path: OUT + '/10-duplicate-desktop.png' });
+
+  await page.click('[data-act-global="save"]');
+  await page.waitForFunction(() => /All changes saved/.test(document.querySelector('#rb-savebar')?.textContent || ''), null, { timeout: 8000 })
+    .catch(async () => { console.log('SAVEBAR: ' + await text(page, '#rb-savebar') + ' | STATUS: ' + await text(page, '#rb-status')); });
+  const stored = db.steps.filter((r) => r.planned_session_id === DUP.id);
+  const repeats = stored.filter((r) => r.step_type === 'repeat');
+  check(stored.length === 8 && repeats.length === 2 && new Set(stored.map((r) => r.id)).size === 8, 'duplicate saved with its own ids', `${stored.length} rows`);
+  check(repeats.every((rep) => stored.filter((r) => r.parent_step_id === rep.id).length === 2), 'each saved repeat owns its own two steps');
+
+  // The athlete moved this run to Sunday in the portal and sent it from there.
+  db.moves = { [DUP.id]: '2026-11-16' };
+  db.receipts.push({ planned_session_id: DUP.id, state: 'sent', scheduled_date: '2026-11-16', sent_at: new Date(Date.now() + 60000).toISOString(), updated_at: new Date(Date.now() + 60000).toISOString() });
+  await page.click('#rx-close-btn');
+  await openSession(page, DUP.id);
+  let st = await text(page, '#rb-status');
+  check(/moved this run to/.test(st) && !/no longer matches/.test(st), 'athlete’s own move is context, not a date warning', st.slice(0, 200));
+  // Coach changes the planned date after the send → Garmin date is stale.
+  db.moves = null; DUP.planned_date = '2026-11-17';
+  await page.click('#rx-close-btn');
+  await openSession(page, DUP.id);
+  st = await text(page, '#rb-status');
+  check(/no longer matches/.test(st) && /send it again/.test(st), 'coach date change after a send asks for a re-send', st.slice(0, 220));
+  await page.screenshot({ path: OUT + '/11-date-changed-desktop.png' });
+  check(errors.length === 0, 'duplicate + date flow: zero console errors', errors.join(' | '));
+}
+
 // ── Mobile ──────────────────────────────────────────────────────────────────
 {
   const { page, errors } = await newPage({ width: 390, height: 844 });
@@ -263,6 +319,12 @@ const text = (page, sel) => page.$eval(sel, (n) => n.textContent).catch(() => ''
   await page.screenshot({ path: OUT + '/7-builder-mobile-repeat.png' });
   await page.$eval('#rb-preview', (n) => n.scrollIntoView());
   await page.screenshot({ path: OUT + '/8-builder-mobile-preview.png' });
+  await page.click('.rb-repeat .rb-step.is-interval [data-act="duplicate"]');
+  check((await page.$$eval('.rb-repeat > .rb-children > .rb-step', (n) => n.length)) === 3, 'mobile: duplicate works by tap');
+  const mobileOverflow = await page.evaluate(() => { const p = document.querySelector('.rx-body'); return p.scrollWidth - p.clientWidth; });
+  check(mobileOverflow <= 1, 'mobile: four step tools still fit without horizontal scroll', String(mobileOverflow));
+  await page.$eval('.rb-repeat', (n) => n.scrollIntoView());
+  await page.screenshot({ path: OUT + '/7b-duplicate-mobile.png' });
   const small = await page.$$eval('.rb button, .rb select, .rb input', (n) => n.filter((e) => e.offsetParent && e.getBoundingClientRect().height < 30).map((e) => e.outerHTML.slice(0, 60)));
   check(small.length === 0, 'mobile: controls at least 30px tall', small.slice(0, 3).join(' | '));
 

@@ -166,19 +166,24 @@ export async function readPrescription(sessionId, sb) {
   const session = await loadSession(sessionId, sb);
   const id = encodeURIComponent(session.id);
 
-  const [exercises, steps, split, detail, receipts] = await Promise.all([
+  const [exercises, steps, split, detail, receipts, moves] = await Promise.all([
     sb(`session_exercises?planned_session_id=eq.${id}&select=*&order=position.asc&limit=200`),
     sb(`run_steps?planned_session_id=eq.${id}&select=*&order=step_order.asc&limit=200`),
     session.prescription_mode === 'structured' ? Promise.resolve(null) : findMatchingSplit(session, sb),
     // The text prescription the session already carries. Shown beside the
     // structured builder for reference; never parsed into steps.
-    sb(`planned_sessions?id=eq.${id}&select=run_details,distance_km,target_pace,warm_up,intervals,working_pace,rest,cool_down,notes,updated_at&limit=1`)
+    sb(`planned_sessions?id=eq.${id}&select=run_details,distance_km,target_pace,warm_up,intervals,working_pace,rest,cool_down,notes,updated_at,notion_page_id&limit=1`)
       .catch(() => null),
     readGarminReceipts(session.id, sb),
+    readAthleteReschedules(session.athlete_code, sb),
   ]);
 
   const legacy = Array.isArray(detail) ? detail[0] || null : null;
   const runSteps = Array.isArray(steps) ? steps : [];
+  // The portal schedules Garmin on the athlete's own move when there is one
+  // (athlete_data.reschedules, keyed by notion_page_id or id), exactly as
+  // loadWorkoutPrescription() in garmin-workout-service.js does.
+  const movedTo = athleteMove(moves, legacy && legacy.notion_page_id, session.id);
 
   return {
     session: legacy ? { ...session, updated_at: legacy.updated_at } : session,
@@ -188,8 +193,25 @@ export async function readPrescription(sessionId, sb) {
     // see what they are about to take control of.
     legacySplit: split ? { id: split.id, name: split.name, exercises: split.exercises || [] } : null,
     legacyRun: legacy ? legacyRunText(legacy) : null,
-    garmin: garminDeliveryStatus(receipts, session, legacy, runSteps),
+    garmin: garminDeliveryStatus(receipts, session, legacy, runSteps, movedTo),
   };
+}
+
+async function readAthleteReschedules(code, sb) {
+  try {
+    const rows = await sb(
+      `athlete_data?athlete_code=eq.${encodeURIComponent(String(code || ''))}&key=eq.reschedules&select=value&limit=1`
+    );
+    const value = Array.isArray(rows) && rows[0] ? rows[0].value : null;
+    return value && typeof value === 'object' ? value : {};
+  } catch {
+    return {};
+  }
+}
+
+export function athleteMove(moves, notionPageId, sessionId) {
+  const value = moves && moves[notionPageId || sessionId];
+  return /^\d{4}-\d{2}-\d{2}$/.test(String(value || '')) ? String(value) : null;
 }
 
 const LEGACY_RUN_FIELDS = [
@@ -219,14 +241,17 @@ async function readGarminReceipts(sessionId, sb) {
   }
 }
 
-export function garminDeliveryStatus(receipts, session, detail, runSteps) {
+export function garminDeliveryStatus(receipts, session, detail, runSteps, movedTo = null) {
   const rows = Array.isArray(receipts) ? receipts : [];
-  if (!rows.length) return { delivery: 'none' };
+  // The date Send to Garmin would use today: the athlete's move, else the plan.
+  const effectiveDate = movedTo || session.planned_date || null;
+  const athleteMovedTo = movedTo && movedTo !== session.planned_date ? movedTo : null;
+  if (!rows.length) return { delivery: 'none', ...(athleteMovedTo ? { athleteMovedTo } : {}) };
   const latest = rows.slice().sort((a, b) => (Date.parse(b.updated_at) || 0) - (Date.parse(a.updated_at) || 0))[0];
   if (latest.state === 'creating' || latest.state === 'scheduling') {
-    return { delivery: 'uncertain', updatedAt: latest.updated_at || null };
+    return { delivery: 'uncertain', updatedAt: latest.updated_at || null, ...(athleteMovedTo ? { athleteMovedTo } : {}) };
   }
-  if (latest.state !== 'sent' || !latest.sent_at) return { delivery: 'not_sent', updatedAt: latest.updated_at || null };
+  if (latest.state !== 'sent' || !latest.sent_at) return { delivery: 'not_sent', updatedAt: latest.updated_at || null, ...(athleteMovedTo ? { athleteMovedTo } : {}) };
   // Compared as instants: PostgREST returns "+00:00", the portal writes "Z".
   const time = (value) => { const ms = Date.parse(value); return Number.isFinite(ms) ? ms : 0; };
   const changedAt = Math.max(0, time(detail && detail.updated_at),
@@ -238,7 +263,10 @@ export function garminDeliveryStatus(receipts, session, detail, runSteps) {
     // The coach changed the session or its steps after the athlete last sent
     // it. Garmin is not updated automatically; the athlete must send again.
     changedSince: changedAt > time(latest.sent_at),
-    plannedDateDiffers: Boolean(latest.scheduled_date && session.planned_date && latest.scheduled_date !== session.planned_date),
+    // Compared with the date the portal would send now, so an athlete's own
+    // move that is already on Garmin does not read as a problem.
+    plannedDateDiffers: Boolean(latest.scheduled_date && effectiveDate && latest.scheduled_date !== effectiveDate),
+    ...(athleteMovedTo ? { athleteMovedTo } : {}),
   };
 }
 
@@ -529,7 +557,12 @@ export function buildRunStepRows(steps, sessionId, uuid = randomUUID) {
 export async function saveRunSteps(body, sb, coach, { uuid = randomUUID } = {}) {
   const session = await loadSession(body.session_id, sb);
   await assertAthleteAllowed(coach, session.athlete_code, sb);
-  if (session.locked_at) throw httpError('That session is completed and cannot be edited', 409);
+  // Same two guards as every other programming write (resolveScope): sessions
+  // completed before locking existed still carry a status with a null
+  // locked_at, and replace_run_steps() only checks locked_at.
+  if (session.locked_at || (session.status && session.status !== 'Planned')) {
+    throw httpError(`That session is marked ${session.status || 'completed'} and cannot be edited`, 409);
+  }
 
   const input = Array.isArray(body.steps) ? body.steps : [];
   // Refuse rather than truncate. The old code sliced to 100 and saved the
@@ -560,7 +593,7 @@ export async function saveRunSteps(body, sb, coach, { uuid = randomUUID } = {}) 
     // migration has not been applied. Fail closed with the fix, rather than
     // falling back to the old delete-then-insert path this replaces. Nothing
     // was written: the call never started.
-    if (error && (error.upstreamCode === 'PGRST202' || /replace_run_steps/.test(String(error.message || '')))) {
+    if (error && (error.upstreamCode === 'PGRST202' || /Could not find the function[\s\S]*replace_run_steps/.test(String(error.message || '')))) {
       throw httpError('Run steps can’t be saved until the database update replace_run_steps (migration 20261105000001) is applied. Nothing was changed.', 409);
     }
     throw error;
@@ -802,6 +835,33 @@ export async function programmeHistory(code, sb) {
 // Runs server-side and after the parent insert so a copy cannot half-succeed in
 // the browser. Failure here is reported rather than swallowed: a duplicate that
 // silently loses its prescription is the bug this exists to fix.
+// Source run_steps → rows for replace_run_steps() on the copy. Values travel
+// exactly as saved (including coach_notes, which stays coach-only on the
+// copy too); every id is new and every parent is remapped at any depth. A row
+// whose parent is not in the source set is refused, never dropped quietly.
+const RUN_STEP_COPY_FIELDS = [
+  'step_order', 'step_type', 'repeat_count', 'distance_km', 'duration_sec',
+  'intensity_type', 'pace_min', 'pace_max', 'hr_zone', 'rpe', 'effort',
+  'instructions', 'coach_notes',
+];
+
+export function remapRunStepCopy(stepRows, targetSessionId, uuid = randomUUID) {
+  const ids = new Map(stepRows.map((row) => [String(row.id), uuid()]));
+  const orphaned = stepRows.filter((row) => row.parent_step_id && !ids.has(String(row.parent_step_id)));
+  if (orphaned.length) {
+    throw httpError(
+      `Couldn’t copy the run steps: ${orphaned.length} of ${stepRows.length} had no parent to attach to. Nothing was copied.`,
+      422
+    );
+  }
+  return stepRows.map((row) => {
+    const out = { id: ids.get(String(row.id)), planned_session_id: targetSessionId,
+      parent_step_id: row.parent_step_id ? ids.get(String(row.parent_step_id)) : null };
+    for (const key of RUN_STEP_COPY_FIELDS) out[key] = row[key] === undefined ? null : row[key];
+    return out;
+  });
+}
+
 export async function copyPrescription(sourceSessionId, targetSessionId, sb) {
   const source = encodeURIComponent(String(sourceSessionId));
   const [exercises, steps] = await Promise.all([
@@ -813,6 +873,8 @@ export async function copyPrescription(sourceSessionId, targetSessionId, sb) {
   const stepRows = Array.isArray(steps) ? steps : [];
   let copiedExercises = 0;
   let copiedSteps = 0;
+  // Check the run tree before writing anything, so a bad source copies nothing.
+  if (stepRows.length) remapRunStepCopy(stepRows, targetSessionId);
 
   if (exerciseRows.length) {
     const rows = exerciseRows.map((row) => {
@@ -824,48 +886,23 @@ export async function copyPrescription(sourceSessionId, targetSessionId, sb) {
   }
 
   if (stepRows.length) {
-    // run_steps is a tree: a repeat block owns its children through
-    // parent_step_id. The copies need the ids the database assigns to the new
-    // parents, so parents are inserted first and their old id is mapped to the
-    // new one before the children go in.
-    const parents = stepRows.filter((row) => !row.parent_step_id);
-    const children = stepRows.filter((row) => row.parent_step_id);
-    const newIdByOldId = new Map();
-
-    for (const row of parents) {
-      const { id, planned_session_id, parent_step_id, created_at, updated_at, ...rest } = row;
-      const created = await sb('run_steps', {
+    // One call, the same atomic path the builder saves through. Rows were
+    // copied one request at a time before, parents first and then every other
+    // row; a repeat nested inside a repeat therefore had no new parent id and
+    // the copy failed with half the steps written.
+    const rows = remapRunStepCopy(stepRows, targetSessionId);
+    try {
+      await sb('rpc/replace_run_steps', {
         method: 'POST',
-        body: [{ ...rest, planned_session_id: targetSessionId, parent_step_id: null }],
-        prefer: 'return=representation',
+        body: { p_session_id: targetSessionId, p_steps: rows, p_publish_state: null },
       });
-      const createdId = Array.isArray(created) && created[0] ? created[0].id : null;
-      if (createdId) newIdByOldId.set(id, createdId);
-      copiedSteps += 1;
+    } catch (error) {
+      if (error && (error.upstreamCode === 'PGRST202' || /Could not find the function[\s\S]*replace_run_steps/.test(String(error.message || '')))) {
+        throw httpError('Run steps can’t be copied until the database update replace_run_steps (migration 20261105000001) is applied.', 409);
+      }
+      throw error;
     }
-
-    const orphaned = [];
-    for (const row of children) {
-      const { id, planned_session_id, parent_step_id, created_at, updated_at, ...rest } = row;
-      const newParent = newIdByOldId.get(parent_step_id);
-      // A child whose parent did not copy would become a detached step that the
-      // repeat expansion never reaches. Dropping it silently would understate the
-      // prescription, so it is counted and reported instead.
-      if (!newParent) { orphaned.push(id); continue; }
-      await sb('run_steps', {
-        method: 'POST',
-        body: [{ ...rest, planned_session_id: targetSessionId, parent_step_id: newParent }],
-        prefer: 'return=minimal',
-      });
-      copiedSteps += 1;
-    }
-
-    if (orphaned.length) {
-      throw httpError(
-        `Copied ${copiedSteps} of ${stepRows.length} run steps: ${orphaned.length} had no parent to attach to`,
-        500
-      );
-    }
+    copiedSteps = rows.length;
   }
 
   return { copiedExercises, copiedSteps };

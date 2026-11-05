@@ -36,7 +36,7 @@ function session(overrides = {}) {
   };
 }
 
-function fakeSb({ sessionRow = session(), runSteps = [], allowed = null, receipts = [], detail = null } = {}) {
+function fakeSb({ sessionRow = session(), runSteps = [], allowed = null, receipts = [], detail = null, moves = null } = {}) {
   const calls = [];
   const sb = async (path, options = {}) => {
     calls.push({ path, method: options.method || 'GET', body: options.body });
@@ -48,6 +48,7 @@ function fakeSb({ sessionRow = session(), runSteps = [], allowed = null, receipt
     if (path.startsWith('session_exercises?')) return [];
     if (path.startsWith('workout_splits?')) return [];
     if (path.startsWith('garmin_workout_deliveries?')) return receipts;
+    if (path.startsWith('athlete_data?')) return moves ? [{ value: moves }] : [];
     if (path === 'rpc/replace_run_steps') return { steps: options.body.p_steps.length };
     if (path === 'programme_change_log') return null;
     throw new Error('unexpected call ' + path);
@@ -237,5 +238,44 @@ test('a failed receipt read never breaks the builder', async () => {
     return original(path, options);
   };
   const data = await readPrescription(session().id, failing);
+  assert.deepEqual(data.garmin, { delivery: 'none' });
+});
+
+// ── Audit additions (Nov 2026) ──────────────────────────────────────────────
+
+test('a session completed before locking existed is refused like every other programming write', async () => {
+  // locked_at is null on sessions completed before the lock trigger; the
+  // database function only checks locked_at, so the server must check status.
+  const done = fakeSb({ sessionRow: session({ status: 'Completed', locked_at: null }) });
+  await assert.rejects(saveRunSteps({ session_id: session().id, steps: REFERENCE }, done, COACH, { uuid }),
+    (error) => error.status === 409 && /Completed/.test(error.message));
+  assert.equal(done.calls.filter((c) => c.method !== 'GET').length, 0);
+
+  const untyped = fakeSb({ sessionRow: session({ status: null }) });
+  await saveRunSteps({ session_id: session().id, steps: REFERENCE }, untyped, COACH, { uuid });
+  assert.equal(untyped.calls.filter((c) => c.path === 'rpc/replace_run_steps').length, 1, 'no status is still editable');
+});
+
+test('the Garmin date check follows the athlete’s own move, as Send to Garmin does', async () => {
+  const sent = (date) => [{ state: 'sent', scheduled_date: date, sent_at: '2026-11-04T09:00:00.000Z', updated_at: '2026-11-04T09:00:00.000Z' }];
+  const detail = { notion_page_id: 'abcdefabcdefabcdefabcdefabcdef12', updated_at: '2026-11-04T08:00:00+00:00' };
+
+  // Athlete moved the run to the 14th and sent it: Garmin matches, no warning.
+  let data = await readPrescription(session().id, fakeSb({ detail, receipts: sent('2026-11-14'), moves: { [detail.notion_page_id]: '2026-11-14' } }));
+  assert.equal(data.garmin.plannedDateDiffers, false);
+  assert.equal(data.garmin.athleteMovedTo, '2026-11-14');
+
+  // Sent for the planned 12th, then the athlete moved it: Garmin is stale.
+  data = await readPrescription(session().id, fakeSb({ detail, receipts: sent('2026-11-12'), moves: { [detail.notion_page_id]: '2026-11-14' } }));
+  assert.equal(data.garmin.plannedDateDiffers, true);
+
+  // Sessions without a Notion id are keyed by their own id.
+  data = await readPrescription(session().id, fakeSb({ detail: { updated_at: detail.updated_at }, receipts: sent('2026-11-12'), moves: { [session().id]: '2026-11-15' } }));
+  assert.equal(data.garmin.athleteMovedTo, '2026-11-15');
+  assert.equal(data.garmin.plannedDateDiffers, true);
+
+  // A move is shown even before anything is sent, and a garbage value is ignored.
+  assert.equal(garminDeliveryStatus([], session(), null, [], '2026-11-14').athleteMovedTo, '2026-11-14');
+  data = await readPrescription(session().id, fakeSb({ detail, moves: { [detail.notion_page_id]: 'soon' } }));
   assert.deepEqual(data.garmin, { delivery: 'none' });
 });

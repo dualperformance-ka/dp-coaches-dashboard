@@ -17,7 +17,7 @@ import test from 'node:test';
 import { copyPrescription } from '../server/programming.js';
 import { insertPlannedSessions } from '../api/athletes.js';
 
-function fakeSb({ exercises = [], steps = [] } = {}) {
+function fakeSb({ exercises = [], steps = [], failRpc = null } = {}) {
   const calls = [];
   let nextId = 0;
   const sb = async (path, options = {}) => {
@@ -31,6 +31,11 @@ function fakeSb({ exercises = [], steps = [] } = {}) {
       return [{ id: `new-step-${nextId}` }];
     }
     if (options.method === 'POST' && path === 'session_exercises') return [];
+    if (options.method === 'POST' && path === 'rpc/replace_run_steps') {
+      if (failRpc) throw failRpc;
+      return { steps: options.body.p_steps.length };
+    }
+    if (options.method === 'DELETE') return [];
     if (options.method === 'PATCH') return [];
     if (path.startsWith('session_exercises?')) return exercises;
     if (path.startsWith('run_steps?')) return steps;
@@ -76,29 +81,64 @@ test('copying a strength prescription reassigns every exercise to the new sessio
   assert.equal(insert.body[0].target_load, 110);
 });
 
-test('copying a structured run remaps repeat children onto the new parent id', async () => {
+test('copying a structured run writes the whole tree in one atomic call with remapped parents', async () => {
   const sb = fakeSb({ steps: STEPS });
   const result = await copyPrescription('src', 'new-session', sb);
 
   assert.equal(result.copiedSteps, 4);
-  const inserts = sb.calls.filter(c => c.path === 'run_steps' && c.method === 'POST');
-  assert.equal(inserts.length, 4);
+  // Never row by row: one replace_run_steps() call, so a failure part-way
+  // cannot leave the copy holding half a workout.
+  assert.equal(sb.calls.filter(c => c.path === 'run_steps' && c.method === 'POST').length, 0);
+  const rpc = sb.calls.filter(c => c.path === 'rpc/replace_run_steps');
+  assert.equal(rpc.length, 1);
+  assert.equal(rpc[0].body.p_session_id, 'new-session');
+  assert.equal(rpc[0].body.p_publish_state, null, 'copying never publishes');
 
-  const written = inserts.map(c => c.body[0]);
-  const parents = written.filter(r => r.parent_step_id === null);
+  const written = rpc[0].body.p_steps;
+  const byId = new Map(written.map(r => [r.id, r]));
+  const repeat = written.find(r => r.step_type === 'repeat');
   const children = written.filter(r => r.parent_step_id !== null);
-  assert.equal(parents.length, 2);
   assert.equal(children.length, 2);
-
-  // The whole point: children must attach to the id the database assigned to the
-  // copied repeat block, never to the source's id.
-  for (const child of children) {
-    assert.match(child.parent_step_id, /^new-step-/);
-    assert.notEqual(child.parent_step_id, 'st-rp');
-    assert.equal(child.planned_session_id, 'new-session');
+  for (const row of written) {
+    assert.ok(!STEPS.some(src => src.id === row.id), 'source ids must not be reused');
+    assert.equal(row.planned_session_id, 'new-session');
   }
-  assert.equal(written.find(r => r.step_type === 'repeat').repeat_count, 5);
+  for (const child of children) assert.equal(child.parent_step_id, repeat.id);
+  assert.equal(repeat.repeat_count, 5);
   assert.equal(written.find(r => r.step_type === 'interval').pace_min, '4:00');
+  assert.equal(byId.size, 4);
+});
+
+test('a repeat nested inside a repeat copies with every level remapped', async () => {
+  // Old copy: parents first, then children whose parent was a TOP-LEVEL row.
+  // The grandchildren below pointed at the nested repeat, found no new id and
+  // the copy threw after writing half the steps.
+  const nested = [
+    { id: 'n-wu', parent_step_id: null, step_order: 0, step_type: 'warmup', duration_sec: 600 },
+    { id: 'n-outer', parent_step_id: null, step_order: 1, step_type: 'repeat', repeat_count: 3 },
+    { id: 'n-inner', parent_step_id: 'n-outer', step_order: 0, step_type: 'repeat', repeat_count: 4 },
+    { id: 'n-rep', parent_step_id: 'n-inner', step_order: 0, step_type: 'interval', distance_km: 0.2 },
+    { id: 'n-jog', parent_step_id: 'n-inner', step_order: 1, step_type: 'recovery', duration_sec: 60 },
+    { id: 'n-set', parent_step_id: 'n-outer', step_order: 1, step_type: 'rest', duration_sec: 180 },
+  ];
+  const sb = fakeSb({ steps: nested });
+  const result = await copyPrescription('src', 'new-session', sb);
+  assert.equal(result.copiedSteps, 6);
+  const written = sb.calls.find(c => c.path === 'rpc/replace_run_steps').body.p_steps;
+  const id = (type, count) => written.find(r => r.step_type === type && (count == null || r.repeat_count === count)).id;
+  assert.equal(written.find(r => r.repeat_count === 4).parent_step_id, id('repeat', 3));
+  assert.equal(written.find(r => r.step_type === 'interval').parent_step_id, id('repeat', 4));
+  assert.equal(written.find(r => r.step_type === 'recovery').parent_step_id, id('repeat', 4));
+  assert.equal(written.find(r => r.step_type === 'rest').parent_step_id, id('repeat', 3));
+});
+
+test('a failed run-step copy removes the new session instead of leaving an empty duplicate', async () => {
+  const sb = fakeSb({ steps: STEPS, failRpc: Object.assign(new Error('boom'), { status: 503 }) });
+  await assert.rejects(() => insertPlannedSessions(
+    { athlete_code: 'KAI', planned_date: '2026-09-12', title: 'Threshold 5x1km' }, sb, 'src'), /boom/);
+  const del = sb.calls.find(c => c.method === 'DELETE');
+  assert.ok(del, 'the half-made duplicate must be removed');
+  assert.equal(del.path, 'planned_sessions?id=eq.new-session');
 });
 
 test('a run step whose parent did not copy is reported, never dropped quietly', async () => {
@@ -123,8 +163,9 @@ test('plan_insert with copy_from carries the prescription and sets the mode', as
 
   assert.equal(out.ok, true);
   assert.equal(out.copied.copiedSteps, 4);
-  const stepWrites = sb.calls.filter(c => c.path === 'run_steps' && c.method === 'POST');
-  assert.equal(stepWrites.length, 4, 'the duplicate must arrive with its run steps');
+  const stepWrites = sb.calls.filter(c => c.path === 'rpc/replace_run_steps');
+  assert.equal(stepWrites.length, 1, 'the duplicate must arrive with its run steps');
+  assert.equal(stepWrites[0].body.p_steps.length, 4);
 
   // A copy that keeps the legacy mode would not open the structured editor and
   // run analysis would not look for steps.
