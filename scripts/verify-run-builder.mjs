@@ -1,6 +1,7 @@
 // End-to-end check of the structured run builder in the REAL dashboard shell,
 // with the programming API answered by the REAL server/programming.js
-// functions over an in-memory database that emulates replace_run_steps()
+// functions over an in-memory database that emulates save_run_session()
+// (steps + athlete-card text in one call; before Nov 2026, replace_run_steps())
 // (supabase/tests/replace-run-steps.verify.sql proves the real function).
 // Screenshots and console errors at phone (390×844) and desktop (1280×900).
 //
@@ -51,10 +52,11 @@ async function sb(path, opts = {}) {
     const sid = decodeURIComponent((/planned_session_id=eq\.([^&]+)/.exec(path) || [])[1]);
     return db.steps.filter((r) => r.planned_session_id === sid).sort((a, b) => a.step_order - b.step_order);
   }
-  if (path === 'rpc/replace_run_steps') {
+  if (path === 'rpc/save_run_session' || path === 'rpc/replace_run_steps') {
     db.rpcCalls++;
-    const { p_session_id: sid, p_steps: rows, p_publish_state: pub } = opts.body;
+    const { p_session_id: sid, p_steps: rows, p_publish_state: pub, p_fields: fields } = opts.body;
     const s = db.sessions.get(sid);
+    if (fields) for (const [k, v] of Object.entries(fields)) if (k !== 'status') s[k] = v;
     if (s.locked_at) throw Object.assign(new Error('locked'), { status: 409 });
     for (const r of rows) if (r.parent_step_id && !rows.some((p) => p.id === r.parent_step_id && p.step_type === 'repeat')) throw new Error('bad parent');
     const now = new Date().toISOString();
@@ -161,11 +163,12 @@ const text = (page, sel) => page.$eval(sel, (n) => n.textContent).catch(() => ''
   page.__dialogs = [];
   await page.click('[data-act-global="save"]');
   await page.waitForFunction(() => /All changes saved/.test(document.querySelector('#rb-savebar')?.textContent || ''));
-  check(page.__dialogs.some((m) => /Publish the structured version/.test(m)), 'conversion confirm shown', page.__dialogs.join(' | '));
+  check(page.__dialogs.some((m) => /Publish the structured version/.test(m) && /replaced with text written from the steps/.test(m)), 'conversion confirm says the card text is replaced', page.__dialogs.join(' | '));
   check(db.rpcCalls === 1 && db.directStepWrites === 0, 'one transactional call, no direct run_steps writes');
   check(db.steps.filter((r) => r.planned_session_id === LEGACY.id).length === 5, 'five rows stored');
   check(LEGACY.prescription_mode === 'structured' && LEGACY.publish_state === 'published', 'session now structured + published');
-  check(LEGACY.warm_up === '10 min easy' && LEGACY.intervals === '6 × 1 km', 'text prescription left unchanged');
+  check(LEGACY.intervals === '6 × 1 km' && LEGACY.working_pace === '4:30–4:45 /km' && LEGACY.rest !== '90s jog' && /10 min/.test(LEGACY.warm_up || ''),
+    'drawer save writes the athlete-card text from the steps (portal card and Garmin match)', JSON.stringify([LEGACY.warm_up, LEGACY.intervals, LEGACY.working_pace, LEGACY.rest, LEGACY.cool_down]));
 
   // Reload from the server and edit.
   await page.click('#rx-close-btn');

@@ -2,7 +2,8 @@
 //
 // The save used to DELETE every run_steps row and then POST the new rows one
 // request at a time, so the portal could read a published session with no
-// steps or half a workout. It now makes ONE call, rpc/replace_run_steps, which
+// steps or half a workout. It now makes ONE call, rpc/save_run_session (steps
+// + athlete-card text, Nov 2026; before that rpc/replace_run_steps), which
 // swaps the tree in a single transaction. These tests pin that, plus the
 // validation backstop and the publish gate.
 
@@ -36,20 +37,20 @@ function session(overrides = {}) {
   };
 }
 
-function fakeSb({ sessionRow = session(), runSteps = [], allowed = null, receipts = [], detail = null, moves = null } = {}) {
+function fakeSb({ sessionRow = session(), runSteps = [], allowed = null, receipts = [], detail = null, moves = null, failRpc = null, failPatch = null } = {}) {
   const calls = [];
   const sb = async (path, options = {}) => {
     calls.push({ path, method: options.method || 'GET', body: options.body });
     if (path.startsWith('planned_sessions?id=eq.') && path.includes('select=id,athlete_code')) return [sessionRow];
     if (path.startsWith('planned_sessions?id=eq.') && path.includes('select=run_details')) return detail ? [detail] : [];
-    if (path.startsWith('planned_sessions?id=eq.') && options.method === 'PATCH') return [];
+    if (path.startsWith('planned_sessions?id=eq.') && options.method === 'PATCH') { if (failPatch) throw failPatch; return []; }
     if (path.startsWith('coach_athletes')) return allowed ? allowed.map((code) => ({ athlete_code: code })) : [];
     if (path.startsWith('run_steps?')) return runSteps;
     if (path.startsWith('session_exercises?')) return [];
     if (path.startsWith('workout_splits?')) return [];
     if (path.startsWith('garmin_workout_deliveries?')) return receipts;
     if (path.startsWith('athlete_data?')) return moves ? [{ value: moves }] : [];
-    if (path === 'rpc/replace_run_steps') return { steps: options.body.p_steps.length };
+    if (path === 'rpc/save_run_session') { if (failRpc) throw failRpc; return { id: options.body.p_session_id }; }
     if (path === 'programme_change_log') return null;
     throw new Error('unexpected call ' + path);
   };
@@ -69,40 +70,36 @@ const REFERENCE = [
 let counter = 0;
 const uuid = () => `00000000-0000-4000-8000-${String(++counter).padStart(12, '0')}`;
 
-test('a save is exactly one transactional call: no DELETE and no per-row inserts', async () => {
-  const sb = fakeSb();
+test('a save is one transactional call that writes the steps AND the athlete-card text', async () => {
+  const sb = fakeSb({ sessionRow: session({ publish_state: 'published' }) });
   const result = await saveRunSteps({ session_id: session().id, steps: REFERENCE }, sb, COACH, { uuid });
 
   const writes = sb.calls.filter((c) => c.method !== 'GET' && c.path !== 'programme_change_log');
-  assert.deepEqual(writes.map((c) => c.path), ['rpc/replace_run_steps']);
+  assert.deepEqual(writes.map((c) => c.path), ['rpc/save_run_session']);
   assert.equal(sb.calls.filter((c) => c.path.startsWith('run_steps')).length, 0, 'never touches run_steps directly');
 
-  const { p_session_id: sessionId, p_steps: rows, p_publish_state: publish } = writes[0].body;
+  const { p_session_id: sessionId, p_steps: rows, p_fields: fields, p_athlete_code: code } = writes[0].body;
   assert.equal(sessionId, session().id);
-  assert.equal(publish, null, 'a plain save does not change publish state');
+  assert.equal(code, null, 'an edit never names an athlete');
   assert.equal(rows.length, 5);
+  // Saved from the drawer, the portal card gets the same text as from Plan Session.
+  assert.deepEqual(fields, { warm_up: '10 min · Easy', intervals: '6 × 1 km', working_pace: '4:30–4:45 /km', target_pace: '4:30–4:45 /km', rest: '1 min 30 s', cool_down: '10 min' });
+  assert.ok(!('publish_state' in fields), 'a plain save does not change publish state');
   assert.equal(result.runSteps.length, 5);
   assert.equal(result.prescription_mode, 'structured');
 });
 
 test('before the migration is applied, a save fails closed with the fix and never falls back', async () => {
-  const base = fakeSb();
-  const sb = async (path, options = {}) => {
-    if (path === 'rpc/replace_run_steps') {
-      base.calls.push({ path, method: 'POST' });
-      throw Object.assign(new Error('Could not find the function public.replace_run_steps'), { upstreamCode: 'PGRST202' });
-    }
-    return base(path, options);
-  };
+  const sb = fakeSb({ failRpc: Object.assign(new Error('Could not find the function public.save_run_session'), { upstreamCode: 'PGRST202' }) });
   await assert.rejects(saveRunSteps({ session_id: session().id, steps: REFERENCE }, sb, COACH, { uuid }),
-    (error) => error.status === 409 && /migration 20261105000001/.test(error.message) && /Nothing was changed/.test(error.message));
-  assert.deepEqual(base.calls.filter((c) => c.method !== 'GET').map((c) => c.path), ['rpc/replace_run_steps']);
+    (error) => error.status === 409 && /migration 20261106000001/.test(error.message) && /Nothing was changed/.test(error.message));
+  assert.deepEqual(sb.calls.filter((c) => c.method !== 'GET' && c.path !== 'programme_change_log').map((c) => c.path), ['rpc/save_run_session']);
 });
 
 test('rows get server ids, parents are remapped, and order is per sibling', async () => {
   const sb = fakeSb();
   await saveRunSteps({ session_id: session().id, steps: REFERENCE }, sb, COACH, { uuid });
-  const rows = sb.calls.find((c) => c.path === 'rpc/replace_run_steps').body.p_steps;
+  const rows = sb.calls.find((c) => c.path === 'rpc/save_run_session').body.p_steps;
 
   assert.ok(rows.every((r) => /^[0-9a-f-]{36}$/.test(r.id)), 'client refs never reach the database');
   const repeat = rows.find((r) => r.step_type === 'repeat');
@@ -118,13 +115,25 @@ test('rows get server ids, parents are remapped, and order is per sibling', asyn
   assert.ok(rows.every((r) => r.planned_session_id === session().id));
 });
 
-test('save and publish travel together in the same call', async () => {
-  const sb = fakeSb();
-  const result = await saveRunSteps({ session_id: session().id, steps: REFERENCE, publish: true }, sb, COACH, { uuid });
-  const call = sb.calls.find((c) => c.path === 'rpc/replace_run_steps');
-  assert.equal(call.body.p_publish_state, 'published');
+test('save and publish: the athlete only ever sees a complete version', async () => {
+  // A draft is invisible to the athlete. Steps and text land first, in one
+  // transaction, while it is still a draft; only then is it published.
+  const draft = fakeSb({ sessionRow: session({ publish_state: 'draft' }) });
+  const result = await saveRunSteps({ session_id: session().id, steps: REFERENCE, publish: true }, draft, COACH, { uuid });
+  const writes = draft.calls.filter((c) => c.method !== 'GET' && c.path !== 'programme_change_log');
+  assert.deepEqual(writes.map((c) => `${c.method} ${c.path.split('?')[0]}`), ['POST rpc/save_run_session', 'PATCH planned_sessions']);
+  assert.deepEqual(writes[1].body, { publish_state: 'published' });
   assert.equal(result.publish_state, 'published');
-  assert.equal(sb.calls.filter((c) => c.method === 'PATCH').length, 0, 'no separate publish request that could fail on its own');
+
+  // If publishing fails the work is saved as a draft and the coach is told.
+  const failing = fakeSb({ sessionRow: session({ publish_state: 'draft' }), failPatch: new Error('timeout') });
+  await assert.rejects(saveRunSteps({ session_id: session().id, steps: REFERENCE, publish: true }, failing, COACH, { uuid }),
+    (error) => error.status === 502 && /saved as a draft, but publishing failed/.test(error.message));
+
+  // Already published: one atomic call, no second request.
+  const live = fakeSb({ sessionRow: session({ publish_state: 'published' }) });
+  await saveRunSteps({ session_id: session().id, steps: REFERENCE, publish: true }, live, COACH, { uuid });
+  assert.equal(live.calls.filter((c) => c.method === 'PATCH').length, 0);
 });
 
 test('an invalid workout is refused in plain language and nothing is written', async () => {
@@ -142,7 +151,7 @@ test('more than 100 rows is refused, never silently truncated', async () => {
   const many = Array.from({ length: 101 }, (_, i) => ({ id: 's' + i, step_type: 'run', step_order: i, end: 'lap' }));
   await assert.rejects(saveRunSteps({ session_id: session().id, steps: many }, sb, COACH, { uuid }),
     (error) => error.status === 422 && /at most 100 steps; this one has 101/.test(error.message));
-  assert.equal(sb.calls.filter((c) => c.path === 'rpc/replace_run_steps').length, 0);
+  assert.equal(sb.calls.filter((c) => c.path === 'rpc/save_run_session').length, 0);
 });
 
 test('completed sessions and other coaches’ athletes are refused before any write', async () => {
@@ -162,7 +171,7 @@ test('a forged parent or session reference in the body cannot escape the session
   const sb = fakeSb();
   const forged = REFERENCE.map((s) => ({ ...s, planned_session_id: 'other-session' }));
   await saveRunSteps({ session_id: session().id, steps: forged }, sb, COACH, { uuid });
-  const rows = sb.calls.find((c) => c.path === 'rpc/replace_run_steps').body.p_steps;
+  const rows = sb.calls.find((c) => c.path === 'rpc/save_run_session').body.p_steps;
   assert.ok(rows.every((r) => r.planned_session_id === session().id));
 
   const orphan = [{ id: 'a', parent_step_id: '99999999-9999-4999-8999-999999999999', step_type: 'interval', end: 'lap' }];
@@ -253,7 +262,7 @@ test('a session completed before locking existed is refused like every other pro
 
   const untyped = fakeSb({ sessionRow: session({ status: null }) });
   await saveRunSteps({ session_id: session().id, steps: REFERENCE }, untyped, COACH, { uuid });
-  assert.equal(untyped.calls.filter((c) => c.path === 'rpc/replace_run_steps').length, 1, 'no status is still editable');
+  assert.equal(untyped.calls.filter((c) => c.path === 'rpc/save_run_session').length, 1, 'no status is still editable');
 });
 
 test('the Garmin date check follows the athlete’s own move, as Send to Garmin does', async () => {

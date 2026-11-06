@@ -69,8 +69,12 @@ async function sb(path, options = {}) {
 
   if (table === 'rpc/save_run_session') {
     const b = options.body;
+    let steps = b.p_steps;
+    // Simulates the database failing part-way: the last row breaks a CHECK
+    // constraint after earlier writes in the same call already ran.
+    if (failNextRpc) { failNextRpc = false; steps = steps.map((s, i) => i === steps.length - 1 ? { ...s, step_type: 'bogus' } : s); }
     try {
-      return JSON.parse(sql(`select public.save_run_session(${lit(b.p_session_id)}::uuid, ${lit(b.p_athlete_code)}, ${json(b.p_fields)}, ${json(b.p_steps)})`));
+      return JSON.parse(sql(`select public.save_run_session(${lit(b.p_session_id)}::uuid, ${lit(b.p_athlete_code)}, ${json(b.p_fields)}, ${json(steps)})`));
     } catch (error) {
       const message = (String(error.stderr || error.message).match(/ERROR:\s+(.*)/) || [])[1] || 'database error';
       throw Object.assign(new Error(message), { status: 400 });
@@ -139,13 +143,16 @@ async function check(name, fn) {
 }
 
 // ── Checks ───────────────────────────────────────────────────────────────────
-await check('draft save: athlete cannot see it, legacy text untouched', async () => {
+await check('draft save: athlete cannot see it; card text now written from the steps', async () => {
   const out = await saveRunSteps({ session_id: sessionId, steps: FIXTURE.builderSteps }, sb, ADMIN);
   assert.equal(out.publish_state, 'draft');
   assert.equal(portalLoad(sessionId), null, 'a draft must not reach the portal');
   const row = rows(`select prescription_mode, warm_up, intervals, rest, cool_down from public.planned_sessions where id = ${lit(sessionId)}`)[0];
   assert.equal(row.prescription_mode, 'structured');
-  assert.deepEqual({ warm_up: row.warm_up, intervals: row.intervals, rest: row.rest, cool_down: row.cool_down }, LEGACY);
+  // Whichever window saves the steps, the athlete card is written from them,
+  // so the portal card and Garmin always describe the same workout.
+  assert.deepEqual({ warm_up: row.warm_up, intervals: row.intervals, rest: row.rest, cool_down: row.cool_down },
+    { warm_up: '10 min', intervals: '6 × 1 km', rest: '1 min 30 s', cool_down: '10 min' });
 });
 
 await check('publish → portal converter output equals the acceptance fixture exactly', async () => {
@@ -168,7 +175,7 @@ await check('save and reload: the coach builder reads back the same steps', asyn
   const report = R.validate(data.session, reloaded);
   assert.equal(report.garminReady, true);
   assert.equal(report.expandedSteps, FIXTURE.expectedCounts.expandedGarminSteps);
-  assert.deepEqual(data.legacyRun.map((r) => r.value), Object.values(LEGACY), 'legacy text still shown for reference');
+  assert.ok(data.legacyRun.some((r) => r.value === '6 × 1 km'), 'the card text shown beside the builder is the text written from the steps');
   // Save what was reloaded, unchanged: the portal output must not move.
   await saveRunSteps({ session_id: sessionId, steps: reloaded }, sb, ADMIN);
   assert.deepEqual(portalLoad(sessionId).workout, FIXTURE.expectedGarminWorkout);

@@ -12,7 +12,8 @@
  *   - send anything to Garmin. The athlete reviews the run in the portal and
  *     taps Send to Garmin; "compatible" here never means "sent".
  *   - parse a text prescription into steps. Converting a legacy session
- *     starts from an empty builder with the text shown for reference.
+ *     starts from an empty builder with the text shown for reference; saving
+ *     the steps then writes the card text from them (asked first).
  */
 (function () {
   'use strict';
@@ -343,7 +344,7 @@
     return '' +
       '<div class="rb-convert">' +
         '<div class="rb-convert-title">This run is a text prescription</div>' +
-        '<p>The portal can only send structured runs to Garmin. Converting starts an empty step builder; nothing is read out of the text and the text fields are left exactly as they are.</p>' +
+        '<p>The portal can only send structured runs to Garmin. Converting starts an empty step builder; nothing is read out of the text. When you save the steps, the athlete card’s text is written from them and replaces this text (you are asked first).</p>' +
         '<p>' + (isPublished()
           ? 'This session is <strong>published</strong>, so the structured version reaches the athlete only when you choose <em>Review &amp; publish</em>.'
           : 'This session is a <strong>draft</strong>. Save the steps, then publish when ready.') + '</p>' +
@@ -389,7 +390,7 @@
       '<div class="rb" id="rb">' +
         '<section class="rb-status" id="rb-status" aria-live="polite"></section>' +
         (showBuilder
-          ? (isLegacy() ? '<div class="rb-banner">Converting from the text prescription. Build the steps below; the text is shown for reference only.</div>' : '') +
+          ? (isLegacy() ? '<div class="rb-banner">Converting from the text prescription. Build the steps below; on save, the athlete card’s text is written from the steps and replaces it.</div>' : '') +
             renderLegacy(isLegacy()) +
             '<div class="rb-steps" id="rb-steps">' + renderSteps() + '</div>' +
             '<div class="rb-add" id="rb-add">' +
@@ -688,10 +689,16 @@
     }
     var publishing = opts.publish === true && !isPublished();
     var code = state.session.athlete_code;
-    if (isLegacy() && (isPublished() || publishing)) {
-      if (!window.confirm('Publish the structured version of “' + (state.session.title || 'this run') + '” to ' + code + '?\n\n' +
+    // Saving steps writes the athlete-card text from them (same as Plan
+    // Session), so a text prescription is replaced: say so before it happens.
+    var replacesText = isLegacy() && state.legacyRun && state.legacyRun.length;
+    if (replacesText || (isLegacy() && (isPublished() || publishing))) {
+      var card = R.cardText(state.steps);
+      var main = card.intervals && card.working_pace ? card.intervals + (/^\d/.test(card.working_pace) ? ' @ ' : ' · ') + card.working_pace : (card.intervals || card.working_pace);
+      if (!window.confirm((isPublished() || publishing ? 'Publish the structured version of “' : 'Save the structured version of “') + (state.session.title || 'this run') + '” for ' + code + '?\n\n' +
         state.steps.length + ' step' + (state.steps.length === 1 ? '' : 's') + ', ' + rep.expandedSteps + ' on the watch once repeats are expanded.\n' +
-        'The text prescription fields stay stored and unchanged.')) return false;
+        (replacesText ? 'The text prescription on the athlete’s card is replaced with text written from the steps:\n' +
+          [card.warm_up, main, card.rest, card.cool_down].filter(Boolean).join(' · ') + '\nThe old text is not kept.' : ''))) return false;
     } else if (publishing) {
       if (!window.confirm('Publish this run to ' + code + '?\n\nThey can then review it in the portal and tap Send to Garmin.')) return false;
     }

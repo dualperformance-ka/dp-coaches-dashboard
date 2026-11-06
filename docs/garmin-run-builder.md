@@ -39,6 +39,15 @@ types that are not Plan Session types map to the nearest one the portal sends
 (Track, Hills, Fartlek, Race Pace → Speed; Threshold → Tempo; Easy Run → Easy
 Effort; Progression → Run), so Type is no longer left on "—".
 
+**Both windows write the card text.** The prescription drawer's save goes
+through the same `save_run_session()` call, so steps saved from either window
+also write warm up / intervals / working pace / rest / cool down. (Until
+6 Nov the drawer saved steps only, which left the portal card showing just the
+total.) Save & publish on a draft saves first, still as a draft the athlete
+cannot see, then publishes; if publishing fails the coach is told and the
+athlete sees nothing partial. Converting a text session in the drawer asks
+before its text is replaced.
+
 The prescription drawer (Edit prescription →) still works for the same steps
 and holds the publish toggle.
 

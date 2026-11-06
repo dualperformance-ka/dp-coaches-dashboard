@@ -582,21 +582,41 @@ export async function saveRunSteps(body, sb, coach, { uuid = randomUUID } = {}) 
     throw httpError('Some steps are not connected to the workout. Reload and try again.', 422);
   }
 
+  // Steps and the athlete-card text they produce are saved together, the
+  // same call the Plan Session window uses: the portal card and Garmin can
+  // never describe different workouts, whichever window the coach saved from.
+  const card = RULES.cardText(steps);
+  const fields = rows.length
+    ? { warm_up: card.warm_up, intervals: card.intervals, working_pace: card.working_pace, target_pace: card.working_pace, rest: card.rest, cool_down: card.cool_down }
+    : {};
   const publish = body.publish === true ? 'published' : null;
   try {
-    await sb('rpc/replace_run_steps', {
+    await sb('rpc/save_run_session', {
       method: 'POST',
-      body: { p_session_id: session.id, p_steps: rows, p_publish_state: publish },
+      body: { p_session_id: session.id, p_athlete_code: null, p_fields: fields, p_steps: rows },
     });
   } catch (error) {
     // PGRST202: the function is not in PostgREST's schema yet, i.e. the
-    // migration has not been applied. Fail closed with the fix, rather than
-    // falling back to the old delete-then-insert path this replaces. Nothing
-    // was written: the call never started.
-    if (error && (error.upstreamCode === 'PGRST202' || /Could not find the function[\s\S]*replace_run_steps/.test(String(error.message || '')))) {
-      throw httpError('Run steps can’t be saved until the database update replace_run_steps (migration 20261105000001) is applied. Nothing was changed.', 409);
+    // migration has not been applied. Fail closed with the fix. Nothing was
+    // written: the call never started.
+    if (error && (error.upstreamCode === 'PGRST202' || /Could not find the function[\s\S]*save_run_session/.test(String(error.message || '')))) {
+      throw httpError('Run steps can’t be saved until the database update save_run_session (migration 20261106000001) is applied. Nothing was changed.', 409);
     }
     throw error;
+  }
+  // Publishing a draft is a second step on purpose: until it succeeds the
+  // session is still a draft the athlete cannot see, so they only ever see a
+  // complete version. A published session needs no second call.
+  if (publish && session.publish_state !== 'published') {
+    try {
+      await sb(`planned_sessions?id=eq.${encodeURIComponent(session.id)}`, {
+        method: 'PATCH',
+        body: { publish_state: 'published' },
+        prefer: 'return=minimal',
+      });
+    } catch (error) {
+      throw httpError('The steps were saved as a draft, but publishing failed. The athlete can’t see them yet. Publish again.', 502);
+    }
   }
 
   const publishState = publish || session.publish_state;
