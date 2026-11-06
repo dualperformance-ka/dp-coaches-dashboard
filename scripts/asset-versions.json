@@ -28,8 +28,8 @@
     "sha": "f9731f3c05ae"
   },
   "programming.css": {
-    "version": "20261106-02",
-    "sha": "84b0fdf7bd5a"
+    "version": "20261106-03",
+    "sha": "d5c0f360fb36"
   },
   "weekly-sport-targets.css": {
     "version": "3",
@@ -112,8 +112,8 @@
     "sha": "1e289001e136"
   },
   "plan-session-run.js": {
-    "version": "2",
-    "sha": "9fcdd14d8cbc"
+    "version": "3",
+    "sha": "20a4f6e97260"
   },
   "run-analysis.js": {
     "version": "20260906-17",

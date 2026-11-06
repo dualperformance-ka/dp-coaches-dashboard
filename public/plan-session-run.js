@@ -87,6 +87,26 @@
     }
   }
 
+  // ── Wide screens: steps beside the session fields ─────────────────────────
+  // At 1100px and up the window widens and the Garmin steps get their own
+  // column, so the coach edits fields and steps without scrolling between
+  // them. Below that (and on phones) the steps stay in the form, as before.
+  // The node is moved, not copied: every id and listener comes with it.
+  var WIDE = window.matchMedia ? window.matchMedia('(min-width: 1100px)') : null;
+
+  function placeSteps() {
+    var field = el('ps-steps-field'), col = el('ps-steps-col'), anchor = el('ps-steps-anchor'), overlay = el('ps-overlay');
+    if (!field || !col || !anchor || !overlay) return;
+    var wide = !!(WIDE && WIDE.matches) && field.style.display !== 'none';
+    if (wide && field.parentNode !== col) col.appendChild(field);
+    if (!wide && field.parentNode === col) anchor.parentNode.insertBefore(field, anchor.nextSibling);
+    overlay.classList.toggle('ps-wide', wide);
+  }
+  if (WIDE) {
+    if (WIDE.addEventListener) WIDE.addEventListener('change', placeSteps);
+    else if (WIDE.addListener) WIDE.addListener(placeSteps);
+  }
+
   // ── Mount ─────────────────────────────────────────────────────────────────
 
   function context() {
@@ -131,6 +151,7 @@
     if (!field) return;
     if (!runMode()) { unmount(); return; }
     field.style.display = '';
+    placeSteps();
 
     if (!rowId) {
       ctl.active = true;
@@ -168,6 +189,7 @@
     ctl.active = false;
     var field = el('ps-steps-field');
     if (field) field.style.display = 'none';
+    placeSteps();
     var host = el('ps-steps');
     if (host) host.innerHTML = '';
     showDraftNotes(null);

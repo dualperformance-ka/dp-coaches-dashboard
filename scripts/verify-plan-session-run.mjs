@@ -138,6 +138,15 @@ let created;
   check(/6 × 1 km @ 4:30–4:45 \/km/.test(card) && /1 min 30 s/.test(card) && /10 min/.test(card), 'athlete card preview written from the steps', card);
   check(await page.$eval('#ps-intervals', (n) => n.value) === '6 × 1 km', 'hidden text field holds the step text');
   check(/Garmin-compatible · unsaved changes/.test(await text(page, '#ps-steps .rb-status-title')), 'status: compatible, unsaved');
+  // 1280 wide: fields left, steps in their own right-hand column.
+  const layout = await page.evaluate(() => {
+    const overlay = document.getElementById('ps-overlay'), modal = overlay.querySelector('.po-modal');
+    const main = overlay.querySelector('.ps-main').getBoundingClientRect(), col = document.getElementById('ps-steps-col').getBoundingClientRect();
+    return { wide: overlay.classList.contains('ps-wide'), inCol: document.getElementById('ps-steps-field').parentNode.id, width: Math.round(modal.getBoundingClientRect().width),
+      sideBySide: col.left >= main.right - 1 && Math.abs(col.top - main.top) < 2, overflow: document.documentElement.scrollWidth - innerWidth };
+  });
+  check(layout.wide && layout.inCol === 'ps-steps-col' && layout.width >= 1150 && layout.sideBySide && layout.overflow <= 0,
+    'desktop: window widens and the steps sit in their own column beside the fields', JSON.stringify(layout));
   check(/14 \/ 100 Garmin steps/.test(await text(page, '#ps-steps #rb-preview')), 'preview: 14 Garmin steps');
   await page.screenshot({ path: OUT + '/1-plan-session-steps-desktop.png' });
 
@@ -248,10 +257,22 @@ let created;
   check(await visible(page, '#ps-warmup') && (await page.$eval('#ps-warmup', (n) => n.value)) === '15min easy', 'pyramid: template text kept for a text-only run');
   await page.evaluate(() => { _snapshotModal('ps-overlay'); closePlanSession(); });
 
+  // Narrower desktop (1024): back to the single-column drawer, steps in the form.
+  await page.setViewportSize({ width: 1024, height: 768 });
+  await openNew(page, '2026-11-26');
+  const narrow = await page.evaluate(() => ({ wide: document.getElementById('ps-overlay').classList.contains('ps-wide'),
+    parent: document.getElementById('ps-steps-field').parentNode.id, width: Math.round(document.querySelector('#ps-overlay .po-modal').getBoundingClientRect().width) }));
+  check(!narrow.wide && narrow.parent === 'ps-run-fields' && narrow.width <= 460, '1024 wide: single-column drawer as before', JSON.stringify(narrow));
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.waitForFunction(() => document.getElementById('ps-overlay').classList.contains('ps-wide'));
+  check(true, 'resizing back to 1280 moves the steps into the right-hand column again');
+  await page.evaluate(() => { _snapshotModal('ps-overlay'); closePlanSession(); });
+
   // Strength mode: no step builder.
   await page.evaluate(() => openPlanSession(null, '2026-11-16'));
   await page.click('#ps-mode-str');
   check(!(await visible(page, '#ps-steps-field')), 'Strength: no Garmin step builder');
+  check(!(await page.$eval('#ps-overlay', (n) => n.classList.contains('ps-wide'))), 'Strength: keeps the narrow drawer');
   await page.evaluate(() => closePlanSession());
   check(errors.length === 0, 'desktop: zero console errors', errors.join(' | '));
 }

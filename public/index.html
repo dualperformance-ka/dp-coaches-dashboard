@@ -2298,7 +2298,7 @@ body[data-theme="light"] .theme-btn.active{background:rgba(255,255,255,.22);colo
 <link rel="stylesheet" href="/dashboard-theme-system.css?v=20260909-37">
 <link rel="stylesheet" href="/dashboard-desktop.css?v=20260906-17">
 <link rel="stylesheet" href="/triage.css?v=20261014-01">
-<link rel="stylesheet" href="/programming.css?v=20261106-02">
+<link rel="stylesheet" href="/programming.css?v=20261106-03">
 <link rel="stylesheet" href="/weekly-sport-targets.css?v=3">
 <link rel="stylesheet" href="/daily-macro-overrides.css?v=3">
 <link rel="stylesheet" href="/coach-parity.css?v=20260924-01">
@@ -2861,7 +2861,8 @@ function refreshRosterDrivenUI() {
       </div>
       <button class="po-close" onclick="closePlanSession()">✕</button>
     </div>
-    <div class="po-modal-body">
+    <div class="po-modal-body ps-body">
+      <div class="ps-main">
       <div id="ps-mode-picker">
         <div class="po-label" style="margin-bottom:8px">What kind of session?</div>
         <div class="ps-mode-row">
@@ -2932,6 +2933,7 @@ function refreshRosterDrivenUI() {
       <div id="ps-run-fields">
         <!-- Garmin steps (plan-session-run.js). With steps, the text fields below
              are hidden and written from the steps on save. -->
+        <span id="ps-steps-anchor" hidden></span>
         <div class="po-field ps-steps-field" id="ps-steps-field" style="display:none">
           <div class="po-label">Workout steps · Garmin</div>
           <div class="ps-steps-draft" id="ps-steps-draft" style="display:none" aria-live="polite"></div>
@@ -2986,6 +2988,9 @@ function refreshRosterDrivenUI() {
         <textarea class="po-input" id="ps-notes" rows="2" placeholder="Any cues, context, or motivation…" style="resize:vertical;line-height:1.5"></textarea>
       </div>
       </div>
+      </div>
+      <!-- Wide screens: the Garmin steps move here, beside the session fields (plan-session-run.js). -->
+      <aside class="ps-steps-col" id="ps-steps-col" aria-label="Workout steps"></aside>
     </div>
     <div class="po-modal-foot">
       <button class="po-btn save" id="ps-save" onclick="savePlanSession()">Save Session</button>
@@ -14463,7 +14468,7 @@ document.getElementById('gen-btn').addEventListener('click', generateAI);
 <script src="/run-workout.js?v=4" defer></script>
 <script src="/run-builder.js?v=5" defer></script>
 <script src="/programming.js?v=5" defer></script>
-<script src="/plan-session-run.js?v=2" defer></script>
+<script src="/plan-session-run.js?v=3" defer></script>
 <!-- Analysis modules. ES modules so tests can import them directly; each also
      publishes itself on window for the classic-script render code. -->
 <script type="module" src="/run-analysis.js?v=20260906-17"></script>
