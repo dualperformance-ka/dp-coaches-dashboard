@@ -200,6 +200,54 @@ let created;
   await page.screenshot({ path: OUT + '/2-plan-session-error-desktop.png' });
   await page.evaluate(() => { _snapshotModal('ps-overlay'); closePlanSession(); });
 
+  // Run template → steps drafted, Type mapped, one save, no double entry.
+  posts.length = 0;
+  await page.evaluate(() => {
+    _libCache = [
+      { id: 'lib-800', name: '8x800m Intervals', session_type: 'Track', description: '8x800m strong with 2min jog recovery.', warm_up: '15min easy', cool_down: '10min easy', target_pace: '10K pace' },
+      { id: 'lib-hills', name: '10x20s Hill Sprints', session_type: 'Hills', description: '10x20s hill sprints with full walk recovery.', warm_up: '15min easy + drills', cool_down: '10min easy', target_pace: 'Sprint' },
+      { id: 'lib-pyr', name: 'Pyramid Intervals', session_type: 'Track', description: 'Pyramid 1-2-3-4-3-2-1min strong with equal jog recovery.', warm_up: '15min easy', cool_down: '10min easy', target_pace: 'Variable' },
+    ];
+  });
+  await openNew(page, '2026-11-21');
+  check(!(await visible(page, '#ps-steps #rb-status')), 'no steps: no “steps are valid” banner over an empty list');
+  await page.fill('#ps-lib-search', '8x800');
+  await page.dispatchEvent('#ps-lib-search', 'input');
+  await page.waitForSelector('.ps-lib-result');
+  await page.dispatchEvent('.ps-lib-result', 'mousedown');
+  await page.waitForFunction(() => document.querySelectorAll('#ps-steps .rb-step').length === 4);
+  check((await page.$eval('#ps-name', (n) => n.value)) === '8x800m Intervals', 'template fills the title');
+  check((await page.$eval('#ps-type', (n) => n.value)) === 'Speed', 'Track template maps Type to Speed (was “—”)', await page.$eval('#ps-type', (n) => n.value));
+  check(/Steps drafted from “8x800m Intervals”/.test(await text(page, '#ps-steps-draft')) && /effort word/.test(await text(page, '#ps-steps-draft')), 'draft banner lists what to check', await text(page, '#ps-steps-draft'));
+  check(!(await visible(page, '#ps-warmup')), 'template steps replace the text fields: nothing typed twice');
+  check(/8 × 800 m/.test(await text(page, '#ps-steps .rb-card')) && /18 \/ 100/.test(await text(page, '#ps-steps #rb-preview')), 'card and preview show 8 × 800 m, 18 Garmin steps');
+  check(/Garmin-compatible · unsaved changes/.test(await text(page, '#ps-steps .rb-status-title')), 'drafted run is Garmin-compatible as it stands');
+  await page.screenshot({ path: OUT + '/5-template-draft-desktop.png' });
+
+  // A second template asks before replacing steps.
+  page.__dialogs = [];
+  await page.fill('#ps-lib-search', 'hill');
+  await page.dispatchEvent('#ps-lib-search', 'input');
+  await page.waitForSelector('.ps-lib-result');
+  await page.dispatchEvent('.ps-lib-result', 'mousedown');
+  await page.waitForFunction(() => /10 × 20 s/.test(document.querySelector('#ps-steps .rb-card')?.textContent || ''));
+  check((page.__dialogs || []).some((m) => /Replace the current steps with the steps from “10x20s Hill Sprints”/.test(m)), 'replacing drafted steps asks first');
+  await page.click('#ps-save');
+  await page.waitForFunction(() => document.getElementById('ps-overlay').classList.contains('hidden'));
+  const hill = [...db.sessions.values()].find((s) => s.planned_date === '2026-11-21');
+  check(JSON.stringify(posts) === '["plan_save_run"]' && hill && hill.intervals === '10 × 20 s' && hill.session_type === 'Speed' && stored(hill.id).length === 5,
+    'template run saved once: steps + card text + type', hill && JSON.stringify([hill.title, hill.session_type, hill.intervals, hill.rest, stored(hill.id).length]));
+
+  // A template with no fixed shape drafts nothing and says so; its text stays.
+  await openNew(page, '2026-11-22');
+  await page.fill('#ps-lib-search', 'pyramid');
+  await page.dispatchEvent('#ps-lib-search', 'input');
+  await page.waitForSelector('.ps-lib-result');
+  await page.dispatchEvent('.ps-lib-result', 'mousedown');
+  check(/no fixed reps, distance or time/.test(await text(page, '#ps-steps-draft')) && (await page.$$('#ps-steps .rb-step')).length === 0, 'pyramid: no guessed steps, says why');
+  check(await visible(page, '#ps-warmup') && (await page.$eval('#ps-warmup', (n) => n.value)) === '15min easy', 'pyramid: template text kept for a text-only run');
+  await page.evaluate(() => { _snapshotModal('ps-overlay'); closePlanSession(); });
+
   // Strength mode: no step builder.
   await page.evaluate(() => openPlanSession(null, '2026-11-16'));
   await page.click('#ps-mode-str');
@@ -232,6 +280,18 @@ let created;
   await page.waitForFunction(() => document.getElementById('ps-overlay').classList.contains('hidden'));
   const longRun = [...db.sessions.values()].find((s) => s.title === 'Long run');
   check(JSON.stringify(posts) === '["plan_save_run"]' && longRun && longRun.intervals === '18 km' && longRun.working_pace === 'HR zone 2' && longRun.distance_km === 18, 'mobile save: continuous HR run stored with its card text', longRun && JSON.stringify([longRun.intervals, longRun.working_pace, longRun.distance_km]));
+  await page.evaluate(() => { _libCache = [{ id: 'lib-thr', name: '5x1km Threshold', session_type: 'Threshold', description: '5x1km threshold with 90s jog recovery.', warm_up: '15min easy + strides', cool_down: '10min easy', target_pace: 'Threshold' }]; });
+  await openNew(page, '2026-11-25');
+  await page.fill('#ps-lib-search', '5x1km');
+  await page.dispatchEvent('#ps-lib-search', 'input');
+  await page.waitForSelector('.ps-lib-result');
+  await page.dispatchEvent('.ps-lib-result', 'mousedown');
+  await page.waitForFunction(() => document.querySelectorAll('#ps-steps .rb-step').length === 4);
+  check((await page.$eval('#ps-type', (n) => n.value)) === 'Tempo', 'mobile: Threshold template maps Type to Tempo');
+  const overflow2 = await page.evaluate(() => { const p = document.querySelector('#ps-overlay .po-modal-body') || document.querySelector('#ps-overlay .po-modal'); return p.scrollWidth - p.clientWidth; });
+  check(overflow2 <= 1, 'mobile: template draft fits without horizontal scroll', String(overflow2));
+  await page.$eval('#ps-steps-field', (n) => n.scrollIntoView());
+  await page.screenshot({ path: OUT + '/6-template-draft-mobile.png' });
   check(errors.length === 0, 'mobile: zero console errors', errors.join(' | '));
 }
 

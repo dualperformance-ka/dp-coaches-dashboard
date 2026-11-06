@@ -57,6 +57,15 @@
     if (text) text.style.display = stepsOn ? 'none' : '';
     if (pace) pace.style.display = stepsOn ? 'none' : '';
     if (!ctl.active) return;
+    if (stepsOn && !ctl.stepsShown) {
+      // Steps just appeared: remember the text they replace (the session's own,
+      // a template's, or what the coach typed) so removing them restores it.
+      ctl.original = ctl.original || {};
+      Object.keys(TEXT_FIELDS).forEach(function (key) { ctl.original[key] = val(TEXT_FIELDS[key]); });
+      ctl.original.distance_km = ctl.autoDist && val('ps-dist') === ctl.autoDist ? ctl.original.distance_km : val('ps-dist');
+    }
+    var wasShown = ctl.stepsShown;
+    ctl.stepsShown = stepsOn;
     if (stepsOn) {
       var report = B.report();
       if (!report.valid) return; // keep the last valid text until the steps are fixed
@@ -69,8 +78,8 @@
         dist.value = card.total_km ? String(card.total_km) : (ctl.original.distance_km || '');
         ctl.autoDist = card.total_km ? dist.value : null;
       }
-    } else if (ctl.original) {
-      // All steps removed: the coach's own text comes back.
+    } else if (wasShown && ctl.original) {
+      // The last step was just removed: the text it replaced comes back.
       Object.keys(TEXT_FIELDS).forEach(function (key) { var e = el(TEXT_FIELDS[key]); if (e) e.value = ctl.original[key] || ''; });
       var d = el('ps-dist');
       if (d && ctl.autoDist && d.value === ctl.autoDist) d.value = ctl.original.distance_km || '';
@@ -116,6 +125,8 @@
     ctl.original = {};
     Object.keys(TEXT_FIELDS).forEach(function (key) { ctl.original[key] = val(TEXT_FIELDS[key]); });
     ctl.original.distance_km = val('ps-dist');
+    ctl.stepsShown = false;
+    showDraftNotes(null);
     ctl.autoDist = null;
     if (!field) return;
     if (!runMode()) { unmount(); return; }
@@ -159,6 +170,7 @@
     if (field) field.style.display = 'none';
     var host = el('ps-steps');
     if (host) host.innerHTML = '';
+    showDraftNotes(null);
     var text = el('ps-run-text'), pace = el('ps-pace-field');
     if (text) text.style.display = '';
     if (pace) pace.style.display = '';
@@ -247,7 +259,42 @@
     if (!ctl.active && !ctl.loading) { mount(editingId()); return; }
     if (ctl.active) { B.setSession({ session_type: val('ps-type') || null }); syncText(); }
   });
-  wrap('applyLibPick', function () { if (hasSteps()) syncText(); });
+  // ── Run template → draft steps ─────────────────────────────────────────────
+  // The template's types (Track, Hills, Threshold…) are not all Plan Session
+  // types; map them to the nearest one the portal sends to Garmin, so picking
+  // a template no longer leaves Type on "—".
+  var TEMPLATE_TYPES = {
+    'track': 'Speed', 'hills': 'Speed', 'fartlek': 'Speed', 'race pace': 'Speed',
+    'threshold': 'Tempo', 'easy run': 'Easy Effort', 'progression': 'Run',
+  };
+
+  function showDraftNotes(name, notes) {
+    var box = el('ps-steps-draft');
+    if (!box) return;
+    if (!name) { box.innerHTML = ''; box.style.display = 'none'; return; }
+    box.innerHTML = '<div class="ps-draft-head">Steps drafted from “' + escapeHtml(name) + '”. Check them before saving.</div>' +
+      (notes.length ? '<ul>' + notes.map(function (n) { return '<li>' + escapeHtml(n) + '</li>'; }).join('') + '</ul>' : '');
+    box.style.display = '';
+  }
+  function escapeHtml(v) {
+    return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; });
+  }
+
+  wrap('applyLibTemplate', function () {
+    var lib = (typeof _libCache !== 'undefined' ? _libCache : []).find(function (l) { return l.id === val('ps-lib'); });
+    if (!lib) return;
+    var type = el('ps-type');
+    var mapped = TEMPLATE_TYPES[String(lib.session_type || '').trim().toLowerCase()];
+    if (type && !type.value && mapped) { type.value = mapped; window.updatePsVisibility(); }
+    if (!runMode() || !ctl.active) return;
+
+    var draft = R.fromTemplate(lib);
+    if (!draft.steps.length) { showDraftNotes(lib.name, draft.notes); syncText(); return; }
+    if (B.steps().length && !window.confirm('Replace the current steps with the steps from “' + lib.name + '”?')) { syncText(); return; }
+    B.setSteps(draft.steps);
+    showDraftNotes(lib.name, draft.notes);
+    syncText();
+  });
   wrap('closePlanSession', function () { unmount(); ctl.rowId = null; });
 
   var save = window.savePlanSession;

@@ -580,6 +580,144 @@
     return out;
   }
 
+  // ── Draft steps from a run template (session_library) ────────────────────
+  // Templates are written in a regular house style:
+  //   name/description  "8x800m strong with 2min jog recovery."
+  //   warm_up           "15min easy + strides" | "10-15min easy" | "Included" | "None"
+  //   cool_down         "10min easy"
+  //   target_pace       "10K pace" | "Tempo" | "Variable" (an effort word, not a number)
+  // This turns that into DRAFT steps the coach reviews in the builder before
+  // saving. It never invents a pace: the template's pace word becomes an effort
+  // target (text on the watch) the coach can switch to a pace range. Anything
+  // it had to choose (the low end of "10-15min", "8–10x") is listed in notes;
+  // anything it cannot read is left out and said so.
+
+  var UNIT = '(m|km|s|sec|secs|min|mins)';
+  var NUM = '(\\d+(?:\\.\\d+)?)(?:\\s*[-–]\\s*(\\d+(?:\\.\\d+)?))?';
+
+  function cap(text) {
+    var t = String(text || '').replace(/\s+/g, ' ').replace(/[.\s]+$/, '').trim();
+    return t ? t.charAt(0).toUpperCase() + t.slice(1) : '';
+  }
+
+  function amount(value, unit) {
+    var v = Number(value);
+    unit = String(unit || '').toLowerCase();
+    if (unit === 'km') return { end: 'distance', distance_km: v };
+    if (unit === 'm') return { end: 'distance', distance_km: v / 1000 };
+    if (unit === 'min' || unit === 'mins') return { end: 'time', duration_sec: Math.round(v * 60) };
+    return { end: 'time', duration_sec: Math.round(v) };
+  }
+
+  // "Threshold" + "Threshold" → "Threshold"; "Strong" + "10K pace" → "Strong · 10K pace".
+  function joinEffort(words, pace) {
+    var w = String(words || ''), p = String(pace || '');
+    if (!p || w.toLowerCase().indexOf(p.toLowerCase()) >= 0) return w;
+    if (!w || p.toLowerCase().indexOf(w.toLowerCase()) >= 0) return p;
+    return w + ' · ' + p;
+  }
+
+  function fromTemplate(lib) {
+    lib = lib || {};
+    var notes = [];
+    var steps = [];
+    var order = 0;
+    var seq = 0;
+    var childOrder = {};
+    function id() { seq += 1; return 'tpl-' + seq; }
+    function leaf(type, parentId, end, effort, instructions) {
+      var position = parentId ? (childOrder[parentId] = (childOrder[parentId] || 0) + 1) - 1 : order++;
+      var step = { id: id(), parent_step_id: parentId || null, step_order: position, step_type: type,
+        repeat_count: null, end: end.end, distance_km: end.distance_km == null ? null : end.distance_km,
+        duration_sec: end.duration_sec == null ? null : end.duration_sec, target: effort ? 'effort' : 'none',
+        pace_fast: '', pace_slow: '', hr_zone: '', rpe: null, effort: effort ? effort.slice(0, LIMITS.effort) : '',
+        instructions: instructions ? String(instructions).slice(0, LIMITS.instructions) : '', coach_notes: '' };
+      steps.push(step);
+      return step;
+    }
+    function lowEnd(match, what) {
+      if (match[2]) notes.push(what + ' was “' + match[0].trim() + '”: set to ' + match[1] + ', the low end. Change it if you want more.');
+      return match[1];
+    }
+
+    // Warm-up / cool-down columns.
+    function bookend(text, type, label) {
+      var raw = String(text || '').trim();
+      if (!raw || /^(none|included|n\/a|-)$/i.test(raw)) return;
+      var m = new RegExp('^' + NUM + '\\s*' + UNIT + '\\b\\s*(.*)$', 'i').exec(raw);
+      if (!m) { notes.push(label + ' “' + raw + '” has no time or distance, so it was left out.'); return; }
+      var value = lowEnd(m, label);
+      leaf(type, null, amount(value, m[3]), cap(m[4]));
+    }
+
+    // One part of the main set: "8x800m strong with 2min jog recovery",
+    // "6km easy run", "4x100m strides".
+    function mainPart(text, pace) {
+      var part = String(text || '').trim();
+      var rep = new RegExp('^' + NUM + '\\s*x\\s*(\\d+(?:\\.\\d+)?)\\s*' + UNIT + '\\b\\s*(.*)$', 'i').exec(part);
+      if (rep) {
+        var count = Number(lowEnd(rep, 'Repeats'));
+        var rest = rep[5] || '';
+        var withAt = rest.search(/\bwith\b/i);
+        var workWords = cap((withAt >= 0 ? rest.slice(0, withAt) : rest).replace(/^at\s+/i, ''));
+        var recovery = withAt >= 0 ? rest.slice(withAt).replace(/^with\s+/i, '') : '';
+        var effort = joinEffort(workWords, pace);
+        var block = { id: id(), parent_step_id: null, step_order: order++, step_type: 'repeat', repeat_count: count };
+        steps.push(block);
+        leaf('interval', block.id, amount(rep[3], rep[4]), effort);
+        if (recovery) {
+          var r = new RegExp('^' + NUM + '\\s*' + UNIT + '\\b\\s*(.*)$', 'i').exec(recovery);
+          if (r) {
+            var rValue = lowEnd(r, 'Recovery');
+            leaf('recovery', block.id, amount(rValue, r[3]), cap(r[4].replace(/\brecovery\b/i, '')) || 'Easy');
+          } else {
+            // "full recovery", "jog back recovery", "walk down recovery": the
+            // athlete presses lap when ready.
+            leaf('recovery', block.id, { end: 'lap' }, cap(recovery) || 'Recover');
+          }
+        } else {
+          // "4x100m strides" says nothing about recovery, and a watch would
+          // run the reps back to back. Lap-button recovery, flagged.
+          leaf('recovery', block.id, { end: 'lap' }, 'Walk back recovery');
+          notes.push('“' + part + '” gives no recovery, so each rep is followed by a walk-back recovery that ends on the lap button.');
+        }
+        return true;
+      }
+      var run = new RegExp('^' + NUM + '\\s*(km|min|mins)\\b\\s*(.*)$', 'i').exec(part);
+      if (run) {
+        var value = lowEnd(run, 'Distance');
+        var words = cap(run[4]);
+        // Short words are the effort ("easy run"); a sentence goes to the
+        // instructions and its first word ("Progressive", "Fartlek") is the effort.
+        var short = words.length <= 24 ? words : cap(words.split(' ')[0]);
+        leaf('run', null, amount(value, run[3]), joinEffort(short, pace) || 'Easy', words.length <= 24 ? '' : words);
+        return true;
+      }
+      return false;
+    }
+
+    var pace = String(lib.target_pace || '').trim();
+    if (/^(variable|-|n\/a)$/i.test(pace)) pace = '';
+    var description = String(lib.description || '').trim();
+    var main = description.split(/\.\s/)[0].replace(/\.$/, '');
+    var parts = main.split(/\s+(?:\+|then|finishing with)\s+/i);
+
+    bookend(lib.warm_up, 'warmup', 'Warm-up');
+    var before = steps.length;
+    var ok = parts.every(function (part, i) {
+      // A pace word describes the hard part. On an "easy + strides" session it
+      // belongs to the strides only, and "Easy-Fast" means the "Fast" half.
+      if (parts.length > 1) return mainPart(part, i === 0 ? '' : pace.split('-').pop().trim());
+      return mainPart(part, pace);
+    });
+    if (!ok || steps.length === before) {
+      return { steps: [], notes: ['“' + (lib.name || description || 'This template') + '” has no fixed reps, distance or time to build from. Add the steps yourself.'] };
+    }
+    bookend(lib.cool_down, 'cooldown', 'Cool-down');
+    if (pace) notes.push('“' + pace + '” is an effort word, so it reaches the watch as text. Switch the target to Pace for a pace alert.');
+    return { steps: steps.map(fromInput), notes: notes };
+  }
+
   var api = {
     STEP_TYPES: STEP_TYPES,
     LEAF_TYPES: LEAF_TYPES,
@@ -604,6 +742,7 @@
     tree: tree,
     summary: summary,
     cardText: cardText,
+    fromTemplate: fromTemplate,
   };
 
   root.DPRunWorkout = api;

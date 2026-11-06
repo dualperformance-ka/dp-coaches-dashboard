@@ -519,7 +519,13 @@
     var rep = report();
     var scope = root || document;
     var status = scope.querySelector('#rb-status');
-    if (status) status.innerHTML = statusHtml(rep);
+    // Plan Session with no steps: the empty state explains it; a "steps are
+    // valid" banner over zero steps only confuses.
+    if (status) {
+      var quiet = state.embedded && !state.steps.length;
+      status.innerHTML = quiet ? '' : statusHtml(rep);
+      status.style.display = quiet ? 'none' : '';
+    }
     var preview = scope.querySelector('#rb-preview');
     if (preview) preview.innerHTML = previewHtml(rep);
     var savebar = scope.querySelector('#rb-savebar');
@@ -787,6 +793,16 @@
       Object.assign(state.session, patch || {});
       var current = document.querySelector('#rb');
       if (current) refresh(current.parentElement);
+    },
+    // Replace the whole step list (a template draft). Ids are fresh; the save
+    // assigns real ones. Counts as an unsaved change.
+    setSteps: function (steps) {
+      state.steps = (steps || []).map(function (step) { return Object.assign({}, step, { id: newId() }); });
+      var idMap = {};
+      (steps || []).forEach(function (step, i) { idMap[step.id] = state.steps[i].id; });
+      state.steps.forEach(function (step) { if (step.parent_step_id) step.parent_step_id = idMap[step.parent_step_id] || null; });
+      var current = document.querySelector('#rb');
+      if (current) rerender(current.parentElement);
     },
     markSaved: function (session, rows) {
       if (session) state.session = Object.assign(state.session || {}, session);

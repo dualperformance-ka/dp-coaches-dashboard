@@ -2298,7 +2298,7 @@ body[data-theme="light"] .theme-btn.active{background:rgba(255,255,255,.22);colo
 <link rel="stylesheet" href="/dashboard-theme-system.css?v=20260909-37">
 <link rel="stylesheet" href="/dashboard-desktop.css?v=20260906-17">
 <link rel="stylesheet" href="/triage.css?v=20261014-01">
-<link rel="stylesheet" href="/programming.css?v=20261106-01">
+<link rel="stylesheet" href="/programming.css?v=20261106-02">
 <link rel="stylesheet" href="/weekly-sport-targets.css?v=3">
 <link rel="stylesheet" href="/daily-macro-overrides.css?v=3">
 <link rel="stylesheet" href="/coach-parity.css?v=20260924-01">
@@ -2934,6 +2934,7 @@ function refreshRosterDrivenUI() {
              are hidden and written from the steps on save. -->
         <div class="po-field ps-steps-field" id="ps-steps-field" style="display:none">
           <div class="po-label">Workout steps · Garmin</div>
+          <div class="ps-steps-draft" id="ps-steps-draft" style="display:none" aria-live="polite"></div>
           <div id="ps-steps"></div>
         </div>
         <div class="po-field-row">
@@ -14459,10 +14460,10 @@ document.getElementById('gen-btn').addEventListener('click', generateAI);
 <script src="/strava-activities.js?v=20261010-01" defer></script>
 <script src="/weekly-sport-targets.js?v=3" defer></script>
 <script src="/daily-macro-overrides.js?v=3" defer></script>
-<script src="/run-workout.js?v=3" defer></script>
-<script src="/run-builder.js?v=3" defer></script>
+<script src="/run-workout.js?v=4" defer></script>
+<script src="/run-builder.js?v=4" defer></script>
 <script src="/programming.js?v=5" defer></script>
-<script src="/plan-session-run.js?v=1" defer></script>
+<script src="/plan-session-run.js?v=2" defer></script>
 <!-- Analysis modules. ES modules so tests can import them directly; each also
      publishes itself on window for the classic-script render code. -->
 <script type="module" src="/run-analysis.js?v=20260906-17"></script>

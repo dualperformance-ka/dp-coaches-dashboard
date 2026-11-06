@@ -536,3 +536,7 @@
 .rb-card dl{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;margin:0;font-size:13px}
 .rb-card dt{color:var(--dim)}
 .rb-card dd{margin:0;color:var(--text)}
+.ps-steps-draft{border:1px solid var(--border-mid);border-left:3px solid var(--brand);border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:13px;line-height:1.45}
+.ps-draft-head{font-weight:600;color:var(--text)}
+.ps-steps-draft ul{margin:6px 0 0;padding-left:18px;color:var(--dim)}
+.ps-steps-draft li+li{margin-top:3px}

@@ -203,3 +203,22 @@ test('5,000 random builder workouts: whatever the builder saves as ready, the po
   }
   assert.ok(checked > 500, `checked ${checked}`);
 });
+
+test('template drafts convert through the portal converter with the step count the builder shows', () => {
+  const templates = [
+    { name: '8x800m Intervals', session_type: 'Speed', description: '8x800m strong with 2min jog recovery.', warm_up: '15min easy', cool_down: '10min easy', target_pace: '10K pace' },
+    { name: '10x20s Hill Sprints', session_type: 'Speed', description: '10x20s hill sprints with full walk recovery.', warm_up: '15min easy + drills', cool_down: '10min easy', target_pace: 'Sprint' },
+    { name: '6km Easy + 4x100m Strides', session_type: 'Easy Effort', description: '6km easy run finishing with 4x100m strides.', warm_up: 'Included', cool_down: 'Included', target_pace: 'Easy-Fast' },
+  ];
+  for (const lib of templates) {
+    const session = { title: lib.name, session_type: lib.session_type, prescription_mode: 'structured' };
+    const steps = R.fromTemplate(lib).steps;
+    const report = R.validate(session, steps);
+    const workout = buildRunningWorkout(session, asPortalReads(buildRunStepRows(steps, 's', uuid)));
+    assert.equal(leafCount(workout.segments[0].steps), report.expandedSteps, lib.name);
+  }
+  const hills = buildRunningWorkout({ title: 'h', session_type: 'Speed', prescription_mode: 'structured' },
+    asPortalReads(buildRunStepRows(R.fromTemplate(templates[1]).steps, 's', uuid))).segments[0].steps[1];
+  assert.deepEqual([hills.repeatValue, hills.steps[0].durationValue, hills.steps[1].durationType, hills.steps[1].description],
+    [10, 20, 'OPEN', 'Full walk recovery']);
+});

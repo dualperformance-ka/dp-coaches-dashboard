@@ -316,3 +316,60 @@ test('card text: shapes that do not fit one pace are spelled out in full, nothin
   assert.equal(R.cardText(mixed).intervals, '3 km @ 5:00–5:10 /km + 2 km @ 4:10–4:15 /km');
   assert.deepEqual(R.cardText([]), { warm_up: null, intervals: null, working_pace: null, rest: null, cool_down: null, total_km: null });
 });
+
+// ── Run template → draft steps (Plan Session, Nov 2026) ───────────────────────
+
+test('template draft: 8x800m Intervals becomes warm-up, 8 × (800 m + 2 min jog), cool-down', () => {
+  const draft = R.fromTemplate({ name: '8x800m Intervals', description: '8x800m strong with 2min jog recovery.', warm_up: '15min easy', cool_down: '10min easy', target_pace: '10K pace' });
+  const report = R.validate({ session_type: 'Speed' }, draft.steps);
+  assert.equal(report.garminReady, true);
+  assert.equal(report.expandedSteps, 18);
+  assert.deepEqual(R.cardText(draft.steps), { warm_up: '15 min · Easy', intervals: '8 × 800 m', working_pace: 'Strong · 10K pace', rest: '2 min · Jog', cool_down: '10 min · Easy', total_km: null });
+  assert.ok(draft.notes.some((n) => /effort word/.test(n)), 'a pace word is never turned into a number');
+  assert.ok(draft.steps.every((s) => s.target !== 'pace'));
+});
+
+test('template draft: ranges take the low end and say so; missing recovery is added and said', () => {
+  const flying = R.fromTemplate({ name: 'Flying 200s', description: '8–10x200m fast with full recovery.', warm_up: '10-15min easy + drills', cool_down: '10min easy', target_pace: 'Max' });
+  assert.equal(flying.steps.find((s) => s.step_type === 'repeat').repeat_count, 8);
+  assert.equal(flying.steps.find((s) => s.step_type === 'warmup').duration_sec, 600);
+  assert.equal(flying.steps.find((s) => s.step_type === 'recovery').end, 'lap', 'full recovery ends on the lap button');
+  assert.equal(flying.notes.filter((n) => /low end/.test(n)).length, 2);
+  const strides = R.fromTemplate({ name: '6km Easy + 4x100m Strides', description: '6km easy run finishing with 4x100m strides.', warm_up: 'Included', cool_down: 'Included', target_pace: 'Easy-Fast' });
+  assert.deepEqual(strides.steps.map((s) => s.step_type), ['run', 'repeat', 'interval', 'recovery']);
+  assert.equal(strides.steps.find((s) => s.step_type === 'interval').effort, 'Strides · Fast');
+  assert.ok(strides.notes.some((n) => /gives no recovery/.test(n)));
+});
+
+test('template draft: every shape in the live library either drafts valid Garmin steps or says why not', () => {
+  const live = [
+    ['10km Easy', '10km easy aerobic run.', '10min easy', '5min easy', 'Easy'],
+    ['16km Easy', '16km easy aerobic run.', 'Included', 'Included', 'Easy'],
+    ['10x90s Fartlek', '10x90s strong with 90s easy jog recovery.', '10-15min easy', '10min easy', 'Variable'],
+    ['15min Fartlek', '15min fartlek alternating 1min strong / 1min easy.', '10min easy', '10min easy', 'Variable'],
+    ['10x20s Hill Sprints', '10x20s hill sprints with full walk recovery.', '15min easy + drills', '10min easy', 'Sprint'],
+    ['10x45s Hills', '10x45s uphill with jog back recovery.', '15min easy', '10min easy', 'Uphill'],
+    ['8x200m Hills', '8x200m uphill strong with jog/walk back recovery.', '15min easy', '10min easy', 'Uphill'],
+    ['24km Progressive Long Run', '24km progressive long run gradually increasing pace toward finish.', 'Included', 'Included', 'Easy-Tempo'],
+    ['2x5km at 10K Pace', '2x5km at 10K race pace with 3–4min jog recovery.', '15min easy', '10min easy', '10K race pace'],
+    ['3x1600m at 5K Pace', '3x1600m at 5K race pace with 400m jog recovery.', '15min easy + strides', '10min easy', '5K race pace'],
+    ['3km Recovery', '3km very easy recovery jog.', 'None', 'None', 'Recovery'],
+    ['3km Shakeout + Strides', '3km very easy + 4x100m strides. Taper/race week.', 'None', 'None', 'Recovery-Fast'],
+    ['10min Easy + 6x200m', '10min easy then 6x200m at 5K effort with 200m recovery.', '10min easy', '10min easy', '5K effort'],
+    ['12km Tempo Run', '12km tempo effort.', '10-15min easy', '10min easy', 'Tempo'],
+    ['3x10min Tempo', '3x10min tempo with 2–3min jog recovery.', '15min easy', '10min easy', 'Tempo'],
+    ['5x1.6km Threshold', '5x1.6km threshold with 2min jog recovery.', '15min easy', '10min easy', 'Threshold'],
+    ['16x400m Intervals', '16x400m fast with 200m jog recovery.', '15min easy', '10min easy', '5K pace'],
+  ];
+  for (const [name, description, warm_up, cool_down, target_pace] of live) {
+    const draft = R.fromTemplate({ name, description, warm_up, cool_down, target_pace });
+    const report = R.validate({ session_type: 'Speed' }, draft.steps);
+    assert.ok(draft.steps.length > 0, name);
+    assert.equal(report.garminReady, true, `${name}: ${report.errors.map((e) => e.message).join('; ')}`);
+  }
+  for (const [name, description] of [['Pyramid Intervals', 'Pyramid 1-2-3-4-3-2-1min strong with equal jog recovery.'], ['Steady Long Run', 'Long run steady aerobic effort.']]) {
+    const draft = R.fromTemplate({ name, description, warm_up: '15min easy', cool_down: '10min easy' });
+    assert.equal(draft.steps.length, 0, name);
+    assert.match(draft.notes[0], /no fixed reps, distance or time/);
+  }
+});

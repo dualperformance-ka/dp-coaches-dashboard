@@ -25,6 +25,20 @@ keeps it until steps are added; saving then asks before replacing it. A save
 that changes only session fields (date, title, status) leaves the steps
 untouched, so an athlete's Garmin receipt does not read as changed.
 
+**Run templates draft the steps.** Picking a run template fills the title
+and details as before and also drafts the steps from the template's own
+wording (`DPRunWorkout.fromTemplate`): "8x800m strong with 2min jog recovery"
+with warm-up "15min easy" and cool-down "10min easy" becomes 15 min warm-up,
+8 × (800 m + 2 min jog), 10 min cool-down. Nothing is typed twice. A banner
+lists anything to check: a range ("10-15min") takes its low end, strides with
+no stated recovery get a lap-button walk-back, and the template's pace word
+("10K pace", "Threshold") becomes an effort target because it is not a
+number. Templates with no fixed shape (Pyramid, the open long runs) draft no
+steps and say so. Picking a template over existing steps asks first. Template
+types that are not Plan Session types map to the nearest one the portal sends
+(Track, Hills, Fartlek, Race Pace → Speed; Threshold → Tempo; Easy Run → Easy
+Effort; Progression → Run), so Type is no longer left on "—".
+
 The prescription drawer (Edit prescription →) still works for the same steps
 and holds the publish toggle.
 
