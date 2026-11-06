@@ -522,3 +522,17 @@
   .rb .rx-btn{min-height:40px}
   .rb-step-head .rb-count{width:76px;flex:0 0 auto}
 }
+
+/* ── Garmin steps inside the Plan Session window (plan-session-run.js) ── */
+.ps-steps-field{margin-bottom:14px}
+.ps-steps-field .rb-embedded{display:flex;flex-direction:column;gap:10px}
+.ps-steps-field .rb-step-head{flex-wrap:wrap}
+.rb-loading{font-size:13px;color:var(--dim);padding:10px 0}
+.rb-loading.is-bad{color:var(--red-text)}
+.rb-card{border:1px solid var(--border-mid);border-radius:8px;padding:10px 12px}
+.rb-card:empty{display:none}
+.rb-card-head{font-family:var(--mono);font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--text);margin-bottom:8px}
+.rb-card-head span{text-transform:none;letter-spacing:0;font-weight:400;color:var(--dim);margin-left:6px}
+.rb-card dl{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;margin:0;font-size:13px}
+.rb-card dt{color:var(--dim)}
+.rb-card dd{margin:0;color:var(--text)}

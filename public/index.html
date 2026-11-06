@@ -2298,7 +2298,7 @@ body[data-theme="light"] .theme-btn.active{background:rgba(255,255,255,.22);colo
 <link rel="stylesheet" href="/dashboard-theme-system.css?v=20260909-37">
 <link rel="stylesheet" href="/dashboard-desktop.css?v=20260906-17">
 <link rel="stylesheet" href="/triage.css?v=20261014-01">
-<link rel="stylesheet" href="/programming.css?v=20261105-01">
+<link rel="stylesheet" href="/programming.css?v=20261106-01">
 <link rel="stylesheet" href="/weekly-sport-targets.css?v=3">
 <link rel="stylesheet" href="/daily-macro-overrides.css?v=3">
 <link rel="stylesheet" href="/coach-parity.css?v=20260924-01">
@@ -2930,16 +2930,23 @@ function refreshRosterDrivenUI() {
       </div>
       <div id="ps-ex-preview" style="display:none"></div>
       <div id="ps-run-fields">
+        <!-- Garmin steps (plan-session-run.js). With steps, the text fields below
+             are hidden and written from the steps on save. -->
+        <div class="po-field ps-steps-field" id="ps-steps-field" style="display:none">
+          <div class="po-label">Workout steps · Garmin</div>
+          <div id="ps-steps"></div>
+        </div>
         <div class="po-field-row">
           <div class="po-field">
             <div class="po-label">Distance (km)</div>
             <input class="po-input" id="ps-dist" type="number" step="0.1" min="0" placeholder="e.g. 10">
           </div>
-          <div class="po-field">
+          <div class="po-field" id="ps-pace-field">
             <div class="po-label">Target Pace</div>
             <input class="po-input" id="ps-pace" type="text" placeholder="e.g. 5:30 /km">
           </div>
         </div>
+        <div id="ps-run-text">
         <div class="po-field">
           <div class="po-label">Warm Up</div>
           <input class="po-input" id="ps-warmup" type="text" placeholder="e.g. 2km easy jog">
@@ -2963,6 +2970,7 @@ function refreshRosterDrivenUI() {
             <div class="po-label">Cool Down</div>
             <input class="po-input" id="ps-cooldown" type="text" placeholder="e.g. 2km easy">
           </div>
+        </div>
         </div>
       </div>
       <div class="po-field" id="ps-discovery-fields" style="display:none">
@@ -14451,9 +14459,10 @@ document.getElementById('gen-btn').addEventListener('click', generateAI);
 <script src="/strava-activities.js?v=20261010-01" defer></script>
 <script src="/weekly-sport-targets.js?v=3" defer></script>
 <script src="/daily-macro-overrides.js?v=3" defer></script>
-<script src="/run-workout.js?v=2" defer></script>
-<script src="/run-builder.js?v=2" defer></script>
+<script src="/run-workout.js?v=3" defer></script>
+<script src="/run-builder.js?v=3" defer></script>
 <script src="/programming.js?v=5" defer></script>
+<script src="/plan-session-run.js?v=1" defer></script>
 <!-- Analysis modules. ES modules so tests can import them directly; each also
      publishes itself on window for the classic-script render code. -->
 <script type="module" src="/run-analysis.js?v=20260906-17"></script>

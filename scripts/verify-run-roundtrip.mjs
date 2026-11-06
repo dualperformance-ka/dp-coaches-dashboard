@@ -20,7 +20,7 @@ import { readFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
 
 import '../public/run-workout.js';
-import { copyPrescription, readPrescription, saveRunSteps, setPublishState } from '../server/programming.js';
+import { copyPrescription, readPrescription, saveRunSession, saveRunSteps, setPublishState } from '../server/programming.js';
 import { buildRunningWorkout } from '../tests/fixtures/portal-garmin-workouts.js';
 
 const R = globalThis.DPRunWorkout;
@@ -67,6 +67,15 @@ async function sb(path, options = {}) {
   const params = [...new URLSearchParams(qs)];
   const get = (k) => (params.find(([key]) => key === k) || [])[1];
 
+  if (table === 'rpc/save_run_session') {
+    const b = options.body;
+    try {
+      return JSON.parse(sql(`select public.save_run_session(${lit(b.p_session_id)}::uuid, ${lit(b.p_athlete_code)}, ${json(b.p_fields)}, ${json(b.p_steps)})`));
+    } catch (error) {
+      const message = (String(error.stderr || error.message).match(/ERROR:\s+(.*)/) || [])[1] || 'database error';
+      throw Object.assign(new Error(message), { status: 400 });
+    }
+  }
   if (table === 'rpc/replace_run_steps') {
     let steps = options.body.p_steps;
     // Simulates the database failing part-way through the call: the last row
@@ -256,6 +265,19 @@ await check('duplicating a nested repeat copies every level atomically and conve
   const ids = new Set(rows(`select id from public.run_steps where planned_session_id = ${lit(sessionId)}`).map((r) => r.id));
   assert.ok(copy.steps.every((r) => !ids.has(r.id)), 'copy has its own ids');
   await saveRunSteps({ session_id: sessionId, steps: FIXTURE.builderSteps }, sb, ADMIN);
+});
+
+await check('Plan Session save: new session + steps in one call → card text from the steps → portal converter = fixture', async () => {
+  const out = await saveRunSession({ athlete_code: ATHLETE, fields: { title: FIXTURE.session.title, session_type: 'Speed', planned_date: '2026-11-20', week_label: 'Week 6' }, steps: FIXTURE.builderSteps }, sb, ADMIN);
+  const id = out.row.id;
+  const row = rows(`select warm_up, intervals, working_pace, rest, cool_down, target_pace, publish_state, prescription_mode from public.planned_sessions where id = ${lit(id)}`)[0];
+  assert.deepEqual(row, { warm_up: '10 min', intervals: '6 × 1 km', working_pace: '4:30–4:45 /km', rest: '1 min 30 s', cool_down: '10 min', target_pace: '4:30–4:45 /km', publish_state: 'published', prescription_mode: 'structured' });
+  assert.deepEqual(portalLoad(id).workout, FIXTURE.expectedGarminWorkout);
+  // A failing step save leaves the session row exactly as it was.
+  const before = rows(`select title, planned_date, intervals from public.planned_sessions where id = ${lit(id)}`)[0];
+  failNextRpc = false;
+  await assert.rejects(saveRunSession({ id, fields: { title: 'Changed', planned_date: '2026-11-22' }, steps: [{ id: 'x', step_type: 'repeat', step_order: 0, repeat_count: 2 }] }, sb, ADMIN), { status: 422 });
+  assert.deepEqual(rows(`select title, planned_date, intervals from public.planned_sessions where id = ${lit(id)}`)[0], before);
 });
 
 // ── Report ───────────────────────────────────────────────────────────────────

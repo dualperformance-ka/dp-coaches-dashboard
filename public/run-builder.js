@@ -43,6 +43,7 @@
     converting: false,
     ctx: null,
     saving: false,
+    embedded: false,      // true inside the Plan Session window: no own save bar
   };
 
   function esc(value) {
@@ -61,14 +62,19 @@
     }));
   }
 
-  function isDirty() { return state.sessionId !== null && serialise(state.steps) !== state.saved; }
+  function isDirty() {
+    // A new session in the Plan Session window has no id yet: any step is unsaved.
+    if (state.sessionId === null) return state.embedded && state.steps.length > 0;
+    return serialise(state.steps) !== state.saved;
+  }
   function report() { return R.validate(state.session, state.steps); }
   function isLegacy() { return state.session && state.session.prescription_mode !== 'structured'; }
   function isPublished() { return state.session && state.session.publish_state === 'published'; }
 
   // ── Load ────────────────────────────────────────────────────────────────
 
-  function load(data, ctx) {
+  function load(data, ctx, opts) {
+    state.embedded = !!(opts && opts.embedded);
     state.ctx = ctx || state.ctx;
     state.sessionId = data.session ? data.session.id : null;
     state.session = data.session || null;
@@ -81,6 +87,7 @@
   }
 
   function reset() {
+    state.embedded = false;
     state.sessionId = null;
     state.session = null;
     state.steps = [];
@@ -308,7 +315,9 @@
     var top = R.childrenOf(state.steps, null);
     if (!top.length) {
       return '<div class="rb-empty">' +
-        '<p>No steps yet. Build the run the way the watch will run it.</p>' +
+        '<p>' + (state.embedded
+          ? 'No steps yet. Add them to send this run to Garmin; the warm-up, main set and cool-down text is then written from the steps. Leave it empty for a text-only run.'
+          : 'No steps yet. Build the run the way the watch will run it.') + '</p>' +
         '<div class="rb-quick">' +
           '<button type="button" class="rx-btn" data-quick="intervals">Warm-up · repeat block · cool-down</button>' +
           '<button type="button" class="rx-btn" data-quick="run">Single continuous run</button>' +
@@ -342,8 +351,39 @@
       '</div>';
   }
 
+  // Plan Session window: the steps ARE the run. No convert step, no save bar
+  // (Save Session saves the session and its steps together), and a panel
+  // showing the athlete-card text that will be written from the steps.
+  function embeddedHtml() {
+    return '' +
+      '<div class="rb rb-embedded" id="rb">' +
+        '<section class="rb-status" id="rb-status" aria-live="polite"></section>' +
+        '<div class="rb-steps" id="rb-steps">' + renderSteps() + '</div>' +
+        '<div class="rb-add" id="rb-add">' +
+          TYPE_ORDER.map(function (t) {
+            return '<button type="button" class="rx-btn" data-add="' + t + '">+ ' + esc(R.LABELS[t]) + '</button>';
+          }).join('') +
+          '<button type="button" class="rx-btn" data-add="repeat">+ Repeat block</button>' +
+        '</div>' +
+        '<section class="rb-preview" id="rb-preview"></section>' +
+        '<section class="rb-card" id="rb-card"></section>' +
+      '</div>';
+  }
+
+  function cardHtml() {
+    if (!state.steps.length) return '';
+    var t = R.cardText(state.steps);
+    // Joined the way the portal card joins them (runMainSetText): "@" before a pace, "·" before anything else.
+    var main = t.intervals && t.working_pace ? t.intervals + (/^\d/.test(t.working_pace) ? ' @ ' : ' · ') + t.working_pace : (t.intervals || t.working_pace);
+    var rows = [['Warm up', t.warm_up], ['Main set', main], ['Rest', t.rest], ['Cool down', t.cool_down]]
+      .filter(function (r) { return r[1]; });
+    return '<div class="rb-card-head">Athlete card will read <span>written from the steps on save</span></div>' +
+      '<dl>' + rows.map(function (r) { return '<dt>' + esc(r[0]) + '</dt><dd>' + esc(r[1]) + '</dd>'; }).join('') + '</dl>';
+  }
+
   function html() {
     if (!state.session) return '';
+    if (state.embedded) return embeddedHtml();
     var showBuilder = !isLegacy() || state.steps.length || state.converting;
     return '' +
       '<div class="rb" id="rb">' +
@@ -387,7 +427,13 @@
       title = 'Garmin-compatible · published';
     }
 
-    if (rep.valid && !rep.blockers.length) {
+    if (state.embedded && rep.valid && !rep.blockers.length) {
+      lines.push(dirty
+        ? 'Save Session saves these steps and the athlete card together.'
+        : isPublished()
+          ? 'The athlete can review this run in the portal and tap Send to Garmin. It is not on their watch until they do and their watch syncs.'
+          : 'Publish when ready. The athlete then reviews it in the portal and taps Send to Garmin.');
+    } else if (rep.valid && !rep.blockers.length) {
       lines.push(dirty
         ? 'Save to make these changes available to the athlete.'
         : isPublished()
@@ -478,6 +524,9 @@
     if (preview) preview.innerHTML = previewHtml(rep);
     var savebar = scope.querySelector('#rb-savebar');
     if (savebar) savebar.innerHTML = savebarHtml(rep);
+    var card = scope.querySelector('#rb-card');
+    if (card) card.innerHTML = cardHtml();
+    if (state.embedded && state.ctx && state.ctx.onChange) state.ctx.onChange(rep);
 
     // Per-step problems sit under the step they belong to.
     var byStep = {};
@@ -729,6 +778,22 @@
     togglePublish: togglePublish,
     save: save,
     athletePreviewHtml: athletePreviewHtml,
+    // Plan Session window.
+    steps: function () { return state.steps; },
+    report: function () { return report(); },
+    isEmbedded: function () { return state.embedded; },
+    setSession: function (patch) {
+      if (!state.session) return;
+      Object.assign(state.session, patch || {});
+      var current = document.querySelector('#rb');
+      if (current) refresh(current.parentElement);
+    },
+    markSaved: function (session, rows) {
+      if (session) state.session = Object.assign(state.session || {}, session);
+      state.sessionId = state.session ? state.session.id : null;
+      state.steps = (rows || []).map(R.fromRow);
+      remember();
+    },
     // Test hooks.
     _state: state,
   };

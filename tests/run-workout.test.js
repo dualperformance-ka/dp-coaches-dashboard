@@ -272,3 +272,47 @@ test('a single pace is valid but the coach is told the watch band is zero-width'
   const range = R.validate(RUN, reference());
   assert.ok(!range.notes.some((n) => /zero-width/.test(n.message)), 'a real range carries no warning');
 });
+
+// ── Athlete card text written from the steps (Plan Session, Nov 2026) ─────────
+
+test('card text: the acceptance fixture reads the way a coach writes it', () => {
+  assert.deepEqual(R.cardText(reference()), {
+    warm_up: '10 min · Easy', intervals: '6 × 1 km', working_pace: '4:30–4:45 /km',
+    rest: '1 min 30 s', cool_down: '10 min · Easy', total_km: null,
+  });
+});
+
+test('card text: continuous run, HR, lap button and all-distance totals', () => {
+  const run = (o) => R.fromInput({ id: 'a', step_type: 'run', step_order: 0, target: 'none', ...o });
+  assert.deepEqual(R.cardText([run({ end: 'distance', distance_km: 8, target: 'hr', hr_zone: '2' })]),
+    { warm_up: null, intervals: '8 km', working_pace: 'HR zone 2', rest: null, cool_down: null, total_km: 8 });
+  assert.equal(R.cardText([run({ end: 'lap' })]).intervals, 'until lap button');
+  assert.equal(R.cardText([run({ end: 'time', durationText: '45:00' })]).total_km, null, 'time has no honest km');
+  const track = [
+    { id: 'w', step_type: 'warmup', step_order: 0, end: 'distance', distance_km: 2, target: 'none' },
+    { id: 'r', step_type: 'repeat', step_order: 1, repeat_count: 8 },
+    { id: 'i', parent_step_id: 'r', step_type: 'interval', step_order: 0, end: 'distance', distance_km: 0.4, target: 'pace', pace_fast: '3:40', pace_slow: '3:45' },
+    { id: 'j', parent_step_id: 'r', step_type: 'recovery', step_order: 1, end: 'distance', distance_km: 0.2, target: 'effort', effort: 'Jog' },
+    { id: 'c', step_type: 'cooldown', step_order: 2, end: 'distance', distance_km: 2, target: 'none' },
+  ].map(R.fromInput);
+  assert.deepEqual(R.cardText(track), { warm_up: '2 km', intervals: '8 × 400 m', working_pace: '3:40–3:45 /km', rest: '200 m · Jog', cool_down: '2 km', total_km: 8.8 });
+});
+
+test('card text: shapes that do not fit one pace are spelled out in full, nothing dropped', () => {
+  const nested = [
+    { id: 'o', step_type: 'repeat', step_order: 0, repeat_count: 3 },
+    { id: 'i', parent_step_id: 'o', step_type: 'repeat', step_order: 0, repeat_count: 4 },
+    { id: 'x', parent_step_id: 'i', step_type: 'interval', step_order: 0, end: 'distance', distance_km: 0.2, target: 'pace', pace_fast: '3:30', pace_slow: '3:40' },
+    { id: 'y', parent_step_id: 'i', step_type: 'recovery', step_order: 1, end: 'time', durationText: '60s', target: 'none' },
+    { id: 'z', parent_step_id: 'o', step_type: 'rest', step_order: 1, end: 'time', durationText: '3:00', target: 'none' },
+  ].map(R.fromInput);
+  const out = R.cardText(nested);
+  assert.equal(out.intervals, '3 × (4 × (200 m @ 3:30–3:40 /km + 1 min) + 3 min)');
+  assert.equal(out.working_pace, null);
+  const mixed = [
+    { id: 'a', step_type: 'run', step_order: 0, end: 'distance', distance_km: 3, target: 'pace', pace_fast: '5:00', pace_slow: '5:10' },
+    { id: 'b', step_type: 'interval', step_order: 1, end: 'distance', distance_km: 2, target: 'pace', pace_fast: '4:10', pace_slow: '4:15' },
+  ].map(R.fromInput);
+  assert.equal(R.cardText(mixed).intervals, '3 km @ 5:00–5:10 /km + 2 km @ 4:10–4:15 /km');
+  assert.deepEqual(R.cardText([]), { warm_up: null, intervals: null, working_pace: null, rest: null, cool_down: null, total_km: null });
+});

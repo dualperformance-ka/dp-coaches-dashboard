@@ -10,6 +10,24 @@ coach builds + publishes  →  athlete reviews in portal  →  athlete taps Send
         (this repo)                 (dp-athlete-portal)          →  Garmin Connect  →  watch sync
 ```
 
+## Where coaches build it
+
+**Plan Session window (Nov 2026).** Choose Running, and the step builder sits
+in the window under "Workout steps · Garmin". With no steps, the window works
+as before: a text-only run that the portal cannot send to Garmin. Once a step
+is added, Warm up, Intervals, Working pace, Rest, Cool down and Target pace are
+hidden and **written from the steps** (`DPRunWorkout.cardText`), shown as
+"Athlete card will read". Save Session stores the session and its steps in one
+transaction (`plan_save_run` → `save_run_session()`, migration
+20261106000001). Total distance follows the steps when every step is a
+distance, until the coach types their own total. A run that already has text
+keeps it until steps are added; saving then asks before replacing it. A save
+that changes only session fields (date, title, status) leaves the steps
+untouched, so an athlete's Garmin receipt does not read as changed.
+
+The prescription drawer (Edit prescription →) still works for the same steps
+and holds the publish toggle.
+
 ## What a step can be
 
 | Field | Options | Stored as (`run_steps`) |
@@ -106,9 +124,12 @@ psql … -f supabase/tests/programming-schema.fixture.sql  # then the programmin
                                            # migrations, the 20261105000001
                                            # migration, and:
 psql … -f supabase/tests/replace-run-steps.verify.sql
+psql … -f supabase/migrations/20261106000001_save_run_session.sql
+psql … -f supabase/tests/save-run-session.verify.sql
 PSQL="psql -d <scratch db>" node scripts/verify-run-roundtrip.mjs   # real save →
                                            # real DB → portal query + converter
 node scripts/serve-preview.mjs & node scripts/verify-run-builder.mjs
+node scripts/verify-plan-session-run.mjs   # Plan Session window, 1280 and 390 wide
 ```
 
 A real Garmin Connect and watch test needs a test athlete with Garmin

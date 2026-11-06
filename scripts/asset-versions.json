@@ -28,8 +28,8 @@
     "sha": "f9731f3c05ae"
   },
   "programming.css": {
-    "version": "20261105-01",
-    "sha": "ee1d78d5f09a"
+    "version": "20261106-01",
+    "sha": "45844219d10f"
   },
   "weekly-sport-targets.css": {
     "version": "3",
@@ -100,16 +100,20 @@
     "sha": "67b1f679ceed"
   },
   "run-workout.js": {
-    "version": "2",
-    "sha": "477e7f6cdc52"
+    "version": "3",
+    "sha": "ea7d31bb598f"
   },
   "run-builder.js": {
-    "version": "2",
-    "sha": "7efd0928c00e"
+    "version": "3",
+    "sha": "a4855ebeeaf4"
   },
   "programming.js": {
     "version": "5",
     "sha": "1e289001e136"
+  },
+  "plan-session-run.js": {
+    "version": "1",
+    "sha": "4ff1f6578469"
   },
   "run-analysis.js": {
     "version": "20260906-17",

@@ -1,5 +1,19 @@
 # Migrations to run
 
+## 20261106000001_save_run_session.sql — RUN THIS BEFORE DEPLOYING
+
+Adds `save_run_session()`: the Plan Session window saves a running session
+and its Garmin steps in one transaction. Additive (one function, service role
+only), no data changed. Without it the dashboard still deploys, but saving a
+running session WITH steps from Plan Session fails closed with a message
+naming this migration; text-only sessions and the prescription drawer keep
+working. Needs 20261105000001 (already on production).
+
+Verify: `supabase/tests/save-run-session.verify.sql` on a scratch database.
+Rollback: `supabase/rollback/20261106000001_save_run_session_down.sql`.
+
+---
+
 ## 20261022000001_cron_reminders_and_run_history_retention.sql — NEEDS APPROVAL
 
 Version-controls the pg_cron jobs behind the October 2026 timeout incident:

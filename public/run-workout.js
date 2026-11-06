@@ -505,6 +505,81 @@
     return parts.join(' + ');
   }
 
+  // ── Athlete card text ───────────────────────────────────────────────────
+  // The portal's session card reads planned_sessions' text columns (warm_up,
+  // intervals, working_pace, rest, cool_down); Garmin reads run_steps. When a
+  // coach builds steps, the text is WRITTEN FROM the steps so the two can
+  // never disagree and nobody types the run twice. Text is never parsed back
+  // into steps. Call with valid steps only.
+
+  function endShort(step) {
+    if (step.end === 'distance') return humanDistance(step.distance_km);
+    if (step.end === 'time') return humanDuration(step.duration_sec);
+    return 'until lap button';
+  }
+
+  function withTarget(step) {
+    var target = targetText(step);
+    return endShort(step) + (target ? (step.target === 'pace' ? ' @ ' : ' · ') + target : '');
+  }
+
+  function isWork(step) { return step.step_type === 'interval' || step.step_type === 'run'; }
+  function isEasy(step) { return step.step_type === 'recovery' || step.step_type === 'rest'; }
+
+  function full(steps, step) {
+    if (step.step_type !== 'repeat') return withTarget(step);
+    var kids = childrenOf(steps, step.id);
+    var inner = kids.map(function (k) { return full(steps, k); }).join(' + ');
+    return Number(step.repeat_count) + ' × ' + (kids.length > 1 ? '(' + inner + ')' : inner);
+  }
+
+  function cardText(inputSteps) {
+    var steps = Array.isArray(inputSteps) ? inputSteps : [];
+    var top = childrenOf(steps, null);
+    var out = { warm_up: null, intervals: null, working_pace: null, rest: null, cool_down: null, total_km: null };
+    if (!top.length) return out;
+
+    var first = 0, last = top.length - 1;
+    while (first <= last && top[first].step_type === 'warmup') first += 1;
+    while (last >= first && top[last].step_type === 'cooldown') last -= 1;
+    var join = function (list) { return list.length ? list.map(withTarget).join(' + ') : null; };
+    out.warm_up = join(top.slice(0, first));
+    out.cool_down = join(top.slice(last + 1));
+    var middle = top.slice(first, last + 1);
+
+    // The common shapes read the way coaches write them: "6 × 1 km" with the
+    // pace and the recovery in their own fields. Anything else is spelled out
+    // in full, targets inline, so nothing is lost.
+    var single = middle.length === 1 ? middle[0] : null;
+    var kids = single && single.step_type === 'repeat' ? childrenOf(steps, single.id) : [];
+    var work = kids.filter(isWork), easy = kids.filter(isEasy);
+    var paces = work.map(targetText).filter(function (t, i, all) { return all.indexOf(t) === i; });
+    if (single && single.step_type !== 'repeat' && single.step_type !== 'cooldown' && single.step_type !== 'warmup') {
+      out.intervals = endShort(single);
+      out.working_pace = targetText(single) || null;
+    } else if (kids.length && work.length && work.length + easy.length === kids.length && paces.length === 1 &&
+               kids.every(function (k) { return k.step_type !== 'repeat'; })) {
+      var shape = work.map(endShort);
+      out.intervals = Number(single.repeat_count) + ' × ' + (shape.length > 1 ? '(' + shape.join(' + ') + ')' : shape[0]);
+      out.working_pace = paces[0] || null;
+      out.rest = easy.length ? easy.map(withTarget).join(' + ') : null;
+    } else if (middle.length) {
+      out.intervals = middle.map(function (step) { return full(steps, step); }).join(' + ');
+    }
+
+    // Total km only when every step is a distance: a time or lap step has no
+    // honest distance, and weekly volume should not count a guess.
+    var allDistance = true, km = 0;
+    (function walk(parentId, times) {
+      childrenOf(steps, parentId).forEach(function (step) {
+        if (step.step_type === 'repeat') { walk(step.id, times * (Number(step.repeat_count) || 1)); return; }
+        if (step.end === 'distance') km += Number(step.distance_km) * times; else allDistance = false;
+      });
+    })(null, 1);
+    out.total_km = allDistance && km > 0 ? Math.round(km * 1000) / 1000 : null;
+    return out;
+  }
+
   var api = {
     STEP_TYPES: STEP_TYPES,
     LEAF_TYPES: LEAF_TYPES,
@@ -528,6 +603,7 @@
     describe: describe,
     tree: tree,
     summary: summary,
+    cardText: cardText,
   };
 
   root.DPRunWorkout = api;

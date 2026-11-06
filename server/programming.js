@@ -627,6 +627,127 @@ export async function saveRunSteps(body, sb, coach, { uuid = randomUUID } = {}) 
   };
 }
 
+// ── Plan Session save for a running session built from steps ───────────────
+//
+// One save from the Plan Session window: the session's own fields, the
+// athlete-card text WRITTEN FROM the steps (RULES.cardText), and the steps,
+// through save_run_session() in one transaction. The card and the watch can
+// therefore never describe different workouts, and the coach types it once.
+// publish_state is never touched here (new rows take the same default as
+// plan_insert; edits keep theirs).
+
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export function cleanRunSessionFields(input = {}) {
+  const out = {};
+  const str = (value, max) => {
+    const v = String(value == null ? '' : value).trim();
+    return v ? v.slice(0, max) : null;
+  };
+  if ('title' in input) out.title = str(input.title, 200) || 'Session';
+  if ('session_type' in input) out.session_type = str(input.session_type, 60);
+  if ('status' in input) out.status = str(input.status, 40) || 'Planned';
+  if ('planned_date' in input) {
+    const date = String(input.planned_date || '').trim();
+    if (!ISO_DATE.test(date) || new Date(`${date}T12:00:00Z`).toISOString().slice(0, 10) !== date) {
+      throw httpError('The session needs a valid date.', 400);
+    }
+    out.planned_date = date;
+  }
+  if ('week_label' in input) out.week_label = str(input.week_label, 60);
+  if ('run_details' in input) out.run_details = str(input.run_details, 2000);
+  if ('notes' in input) out.notes = str(input.notes, 4000);
+  if ('library_id' in input) out.library_id = UUID.test(String(input.library_id || '')) ? String(input.library_id) : null;
+  if ('distance_km' in input) {
+    const km = num(input.distance_km);
+    out.distance_km = km !== null && km > 0 && km < 1000 ? km : null;
+  }
+  return out;
+}
+
+export async function saveRunSession(body, sb, coach, { uuid = randomUUID } = {}) {
+  const id = body.id ? String(body.id).trim() : null;
+  let athleteCode;
+  let existing = null;
+  if (id) {
+    existing = await loadSession(id, sb);
+    await assertAthleteAllowed(coach, existing.athlete_code, sb);
+    if (existing.locked_at || (existing.status && existing.status !== 'Planned')) {
+      throw httpError(`That session is marked ${existing.status || 'completed'} and cannot be edited`, 409);
+    }
+    athleteCode = existing.athlete_code;
+  } else {
+    athleteCode = String(body.athlete_code || '').trim().toUpperCase();
+    await assertAthleteAllowed(coach, athleteCode, sb);
+  }
+
+  const fields = cleanRunSessionFields(body.fields || {});
+  if (!id && !fields.planned_date) throw httpError('The session needs a valid date.', 400);
+
+  const input = Array.isArray(body.steps) ? body.steps : [];
+  if (input.length > RULES.LIMITS.rows) {
+    throw httpError(`A run workout can hold at most ${RULES.LIMITS.rows} steps; this one has ${input.length}.`, 422);
+  }
+  const steps = input.map(RULES.fromInput);
+  const sessionType = 'session_type' in fields ? fields.session_type : existing && existing.session_type;
+  const report = RULES.validate({ session_type: sessionType }, steps);
+  if (!report.valid) throw runValidationError(report);
+
+  // The athlete card text comes from the steps, never the request.
+  const card = RULES.cardText(steps);
+  Object.assign(fields, {
+    warm_up: card.warm_up,
+    intervals: card.intervals,
+    working_pace: card.working_pace,
+    target_pace: card.working_pace,
+    rest: card.rest,
+    cool_down: card.cool_down,
+  });
+  // Weekly volume reads distance_km. Keep the coach's total; fill it from the
+  // steps only when every step is a distance and none was given.
+  if ((fields.distance_km == null) && card.total_km) fields.distance_km = card.total_km;
+
+  const rows = buildRunStepRows(steps, id || 'new', uuid);
+  if (rows.length !== steps.length) {
+    throw httpError('Some steps are not connected to the workout. Reload and try again.', 422);
+  }
+
+  let saved;
+  try {
+    saved = await sb('rpc/save_run_session', {
+      method: 'POST',
+      body: { p_session_id: id, p_athlete_code: athleteCode, p_fields: fields, p_steps: rows },
+    });
+  } catch (error) {
+    if (error && (error.upstreamCode === 'PGRST202' || /Could not find the function[\s\S]*save_run_session/.test(String(error.message || '')))) {
+      throw httpError('Running sessions with Garmin steps can’t be saved until the database update save_run_session (migration 20261106000001) is applied. Nothing was changed.', 409);
+    }
+    throw error;
+  }
+  const row = Array.isArray(saved) ? saved[0] : saved;
+  if (!row || !row.id) throw httpError('The saved session was not returned.', 502);
+
+  await logProgrammeChange(sb, {
+    athleteCode,
+    changedBy: coach.handle,
+    entityType: 'run_steps',
+    entityId: row.id,
+    action: id ? 'saved' : 'created',
+    scope: 'session',
+    newValue: { steps: rows.length, garmin_steps: report.expandedSteps, planned_date: row.planned_date },
+    summary: `${id ? 'Saved' : 'Planned'} ${row.title} with ${rows.length} Garmin step${rows.length === 1 ? '' : 's'}`,
+  });
+
+  return {
+    ok: true,
+    row,
+    runSteps: rows,
+    card,
+    validation: { garminReady: report.garminReady, blockers: report.blockers, expandedSteps: report.expandedSteps },
+  };
+}
+
 const RUN_STEP_COLUMNS = 'id,planned_session_id,parent_step_id,step_order,step_type,repeat_count,distance_km,duration_sec,intensity_type,pace_min,pace_max,hr_zone,rpe,effort,instructions,coach_notes,created_at,updated_at';
 
 // Publishing exposes a structured run to the portal, and from there to the

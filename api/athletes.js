@@ -14,6 +14,7 @@ import {
   removeExercise,
   reorderExercises,
   replaceExercise,
+  saveRunSession,
   saveRunSteps,
   saveSessionAsSplit,
   searchExerciseLibrary,
@@ -491,6 +492,19 @@ export async function updatePlannedSession(matchId, fields, request = sb) {
   );
   if (!Array.isArray(rows) || !rows.length) throw new Error('Planned session not found');
   return { ok: true, rows };
+}
+
+// The athlete a planned session belongs to, found by canonical id or Notion
+// alias, so plan_update / plan_delete can be scoped like every other write.
+export async function plannedSessionOwner(matchId, request = sb) {
+  const id = String(matchId || '').trim();
+  if (!id) throw new Error('Planned session ID is required');
+  const rows = await request(
+    `planned_sessions?or=(notion_page_id.eq.${encodeURIComponent(id)},id.eq.${encodeURIComponent(id)})&select=athlete_code&limit=1`
+  );
+  const code = Array.isArray(rows) && rows[0] ? normaliseCode(rows[0].athlete_code) : '';
+  if (!code) throw Object.assign(new Error('Planned session not found'), { status: 404 });
+  return code;
 }
 
 export async function deletePlannedSession(matchId, request = sb) {
@@ -1068,7 +1082,13 @@ async function handler(req, res) {
       ));
     }
 
+    // Plan writes are scoped like the programming writes: a coach may only
+    // touch athletes they are authorised for, a copy may only read from one,
+    // and an update cannot move a session to a different athlete.
     if (action === 'plan_insert') {
+      const incoming = req.body?.rows ?? req.body?.row;
+      for (const row of (Array.isArray(incoming) ? incoming : [incoming])) await assertScoped(row?.athlete_code);
+      if (req.body?.copy_from) await assertScoped(await plannedSessionOwner(req.body.copy_from));
       return res.status(200).json(await insertPlannedSessions(
         req.body?.rows ?? req.body?.row,
         sb,
@@ -1077,10 +1097,20 @@ async function handler(req, res) {
     }
 
     if (action === 'plan_update') {
-      return res.status(200).json(await updatePlannedSession(req.body?.id, req.body?.fields || {}));
+      const owner = await plannedSessionOwner(req.body?.id);
+      await assertScoped(owner);
+      const fields = { ...(req.body?.fields || {}) };
+      if ('athlete_code' in fields) {
+        if (normaliseCode(fields.athlete_code) !== owner) {
+          return res.status(400).json({ ok: false, error: 'A session cannot be moved to another athlete' });
+        }
+        delete fields.athlete_code;
+      }
+      return res.status(200).json(await updatePlannedSession(req.body?.id, fields));
     }
 
     if (action === 'plan_delete') {
+      await assertScoped(await plannedSessionOwner(req.body?.id));
       return res.status(200).json(await deletePlannedSession(req.body?.id));
     }
 
@@ -1158,6 +1188,7 @@ async function handler(req, res) {
       exercise_remove: removeExercise,
       exercise_reorder: reorderExercises,
       runsteps_save: saveRunSteps,
+      plan_save_run: saveRunSession,
       session_publish: setPublishState,
       split_save_from_session: saveSessionAsSplit,
       weekly_sport_target_save: saveWeeklySportTarget,
