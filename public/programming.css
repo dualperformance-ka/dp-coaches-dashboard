@@ -560,3 +560,23 @@
   #ps-overlay.ps-wide .ps-steps-col { display: block; min-height: 0; overflow-y: auto; padding: 16px 24px 24px; }
   #ps-overlay.ps-wide .ps-steps-col .ps-steps-field { margin-bottom: 0; }
 }
+
+/* Garmin readiness, next 14 days (plan-session-run.js). One line until opened. */
+.prog-garmin-ready:empty{display:none}
+.prog-garmin-ready{margin:0 0 10px}
+.pgr{border:1px solid var(--border-mid);border-radius:8px;background:var(--surface);font-size:12.5px}
+.pgr summary{cursor:pointer;padding:8px 12px;display:flex;flex-wrap:wrap;gap:4px 8px;align-items:baseline;color:var(--text)}
+.pgr summary span{color:var(--dim)}
+.pgr ul{list-style:none;margin:0;padding:0 8px 8px}
+.pgr li{border-top:1px solid var(--border);padding:6px 4px}
+.pgr li button{all:unset;cursor:pointer;display:grid;grid-template-columns:auto 1fr auto;gap:8px;width:100%;align-items:baseline}
+.pgr li button:focus-visible{outline:2px solid var(--amber);outline-offset:2px;border-radius:4px}
+.pgr-day{font-family:var(--mono);font-size:11px;color:var(--muted);white-space:nowrap}
+.pgr-name{color:var(--text);min-width:0;overflow-wrap:anywhere}
+.pgr-name em{font-style:normal;font-size:10.5px;color:var(--amber-text)}
+.pgr-state{font-family:var(--mono);font-size:10.5px;font-weight:700;white-space:nowrap}
+.pgr-ready .pgr-state{color:var(--green-text)}
+.pgr-text_only .pgr-state{color:var(--amber-text)}
+.pgr-needs_fixing .pgr-state{color:var(--red-text)}
+.pgr li small{display:block;color:var(--dim);margin-top:2px;overflow-wrap:anywhere}
+.rb-clear-garmin{margin-top:6px}

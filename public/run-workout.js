@@ -718,6 +718,48 @@
     return { steps: steps.map(fromInput), notes: notes };
   }
 
+  // ── Start from text: a session's own text prescription → draft steps ─────
+  // Same reading as fromTemplate, fed from the Plan Session text fields:
+  //   warm_up "2km easy jog", intervals "6 x 1km", working_pace "4:30-4:45",
+  //   rest "90s jog", cool_down "10min easy".
+  // A pace the text states as minutes:seconds becomes a pace target on the
+  // work steps; a pace word stays text. Nothing is saved: the coach reviews.
+  var STATED_PACE = /^(\d{1,2}:[0-5]\d)\s*(?:(?:[-–]|to)\s*(\d{1,2}:[0-5]\d))?\s*(?:\/\s*km|min\/km|per km)?$/i;
+
+  function fromLegacyRun(row) {
+    row = row || {};
+    var main = text(row.intervals) || text(row.run_details);
+    var rest = text(row.rest);
+    if (main && rest && !/\bwith\b/i.test(main)) main += ' with ' + rest + (/recover/i.test(rest) ? '' : ' recovery');
+    var paceText = text(row.working_pace) || text(row.target_pace);
+    var stated = STATED_PACE.exec(paceText);
+    var draft = fromTemplate({
+      name: text(row.title) || 'this run',
+      warm_up: row.warm_up, cool_down: row.cool_down,
+      description: main, target_pace: stated ? '' : paceText,
+    });
+    if (!draft.steps.length) {
+      return { steps: [], notes: [main ? '“' + main + '” has no fixed reps, distance or time to build from. Add the steps yourself.' : 'There is no main set in the text to build from. Add the steps yourself.'] };
+    }
+    if (stated) {
+      var a = parsePace(stated[1]), b = stated[2] ? parsePace(stated[2]) : a;
+      var fast = formatPace(Math.min(a, b)), slow = stated[2] ? formatPace(Math.max(a, b)) : '';
+      var work = 0;
+      draft.steps = draft.steps.map(function (step) {
+        if (step.step_type !== 'interval' && step.step_type !== 'run') return step;
+        work += 1;
+        return fromInput(Object.assign({}, step, { target: 'pace', pace_fast: fast, pace_slow: slow, effort: '',
+          instructions: [step.effort, step.instructions].filter(Boolean).join('. ') }));
+      });
+      draft.notes.push(work
+        ? 'Pace ' + paceText + ' from the text is the pace target on the main set. Check it.'
+        : 'Pace ' + paceText + ' was not placed because there is no main-set step. Add it where it belongs.');
+    } else if (!paceText) {
+      draft.notes.push('The text gives no pace, so the main set has no pace target. Add one if the watch should alert.');
+    }
+    return draft;
+  }
+
   var api = {
     STEP_TYPES: STEP_TYPES,
     LEAF_TYPES: LEAF_TYPES,
@@ -743,6 +785,7 @@
     summary: summary,
     cardText: cardText,
     fromTemplate: fromTemplate,
+    fromLegacyRun: fromLegacyRun,
   };
 
   root.DPRunWorkout = api;

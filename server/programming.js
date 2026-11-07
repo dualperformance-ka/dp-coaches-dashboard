@@ -21,6 +21,7 @@ import {
   logProgrammeChange,
   resolveScope,
 } from './coach-scope.js';
+import { addDaysISO, adelaideToday } from './performance-summary-core.js';
 
 function httpError(message, status) {
   const error = new Error(message);
@@ -171,7 +172,8 @@ export async function readPrescription(sessionId, sb) {
     sb(`run_steps?planned_session_id=eq.${id}&select=*&order=step_order.asc&limit=200`),
     session.prescription_mode === 'structured' ? Promise.resolve(null) : findMatchingSplit(session, sb),
     // The text prescription the session already carries. Shown beside the
-    // structured builder for reference; never parsed into steps.
+    // structured builder for reference, and the source for Start from text
+    // (a draft the coach checks; never saved by itself).
     sb(`planned_sessions?id=eq.${id}&select=run_details,distance_km,target_pace,warm_up,intervals,working_pace,rest,cool_down,notes,updated_at,notion_page_id&limit=1`)
       .catch(() => null),
     readGarminReceipts(session.id, sb),
@@ -248,8 +250,14 @@ export function garminDeliveryStatus(receipts, session, detail, runSteps, movedT
   const athleteMovedTo = movedTo && movedTo !== session.planned_date ? movedTo : null;
   if (!rows.length) return { delivery: 'none', ...(athleteMovedTo ? { athleteMovedTo } : {}) };
   const latest = rows.slice().sort((a, b) => (Date.parse(b.updated_at) || 0) - (Date.parse(a.updated_at) || 0))[0];
-  if (latest.state === 'creating' || latest.state === 'scheduling') {
-    return { delivery: 'uncertain', updatedAt: latest.updated_at || null, ...(athleteMovedTo ? { athleteMovedTo } : {}) };
+  // Lost answer when the workout was created: the portal blocks a re-send and
+  // a coach has to check (runbook "Uncertain create"). Lost answer on the
+  // calendar entry: the athlete can finish, the portal checks the day first.
+  if (latest.state === 'creating') {
+    return { delivery: 'needs_check', updatedAt: latest.updated_at || null, ...(athleteMovedTo ? { athleteMovedTo } : {}) };
+  }
+  if (latest.state === 'scheduling') {
+    return { delivery: 'calendar_unconfirmed', scheduledDate: latest.scheduled_date || null, updatedAt: latest.updated_at || null, ...(athleteMovedTo ? { athleteMovedTo } : {}) };
   }
   if (latest.state !== 'sent' || !latest.sent_at) return { delivery: 'not_sent', updatedAt: latest.updated_at || null, ...(athleteMovedTo ? { athleteMovedTo } : {}) };
   // Compared as instants: PostgREST returns "+00:00", the portal writes "Z".
@@ -267,6 +275,63 @@ export function garminDeliveryStatus(receipts, session, detail, runSteps, movedT
     // move that is already on Garmin does not read as a problem.
     plannedDateDiffers: Boolean(latest.scheduled_date && effectiveDate && latest.scheduled_date !== effectiveDate),
     ...(athleteMovedTo ? { athleteMovedTo } : {}),
+  };
+}
+
+// Coach reset for a Garmin delivery the portal could not confirm at creation
+// ('creating'). The coach confirms the athlete checked Garmin Connect first;
+// this only ever moves a 'creating' receipt to 'retryable', so the athlete's
+// next Send to Garmin creates exactly one workout. Nothing else is touched.
+export async function resetGarminReceipt(body, sb, coach) {
+  const session = await loadSession(body.session_id, sb);
+  await assertAthleteAllowed(coach, session.athlete_code, sb);
+  const code = String(session.athlete_code || '').toUpperCase();
+  const rows = await sb(
+    `garmin_workout_deliveries?athlete_code=eq.${encodeURIComponent(code)}&planned_session_id=eq.${encodeURIComponent(session.id)}&state=eq.creating`,
+    {
+      method: 'PATCH',
+      body: { state: 'retryable', workout_id: null, owner_id: null, schedule_id: null, scheduled_date: null, fingerprint: null, updated_at: new Date().toISOString() },
+      prefer: 'return=representation',
+    }
+  );
+  if (!Array.isArray(rows) || !rows.length) throw httpError('Nothing to clear: this run is not waiting on a coach check.', 409);
+  return { ok: true, cleared: rows.length };
+}
+
+// Which of an athlete's running sessions in the next 14 days can reach a
+// Garmin watch, judged by the same rules as the builder and the portal's
+// converter. Read-only. Delivery state only, no Garmin data.
+export async function garminReadiness(code, sb, coach, { now = new Date() } = {}) {
+  await assertAthleteAllowed(coach, code, sb);
+  const athlete = String(code || '').trim().toUpperCase();
+  if (!/^[A-Z0-9_-]{1,40}$/.test(athlete)) throw httpError('A valid athlete is required', 400);
+  const today = adelaideToday(now);
+  const until = addDaysISO(today, 13);
+  const sessions = (await sb(
+    `planned_sessions?athlete_code=eq.${encodeURIComponent(athlete)}&planned_date=gte.${today}&planned_date=lte.${until}` +
+    '&select=id,title,session_type,planned_date,publish_state,prescription_mode,status&order=planned_date.asc&limit=200'
+  ) || []).filter((row) => RULES.sessionSendsToGarmin(row) && row.status !== 'Completed');
+  const ids = sessions.map((row) => row.id).filter(Boolean);
+  const [steps, receipts] = ids.length ? await Promise.all([
+    sb(`run_steps?planned_session_id=in.(${ids.map(encodeURIComponent).join(',')})&select=*&limit=2000`),
+    sb(`garmin_workout_deliveries?planned_session_id=in.(${ids.map(encodeURIComponent).join(',')})&select=planned_session_id,state&limit=200`).catch(() => []),
+  ]) : [[], []];
+  const byId = new Map();
+  (steps || []).forEach((row) => { if (!byId.has(row.planned_session_id)) byId.set(row.planned_session_id, []); byId.get(row.planned_session_id).push(row); });
+  const stateOf = new Map((receipts || []).map((row) => [row.planned_session_id, row.state]));
+  const items = sessions.map((row) => {
+    const rows = byId.get(row.id) || [];
+    const base = { id: row.id, title: row.title || 'Run', date: row.planned_date, draft: row.publish_state === 'draft', delivery: stateOf.get(row.id) || null };
+    if (row.prescription_mode !== 'structured' || !rows.length) {
+      return { ...base, status: 'text_only', reason: 'Written as text. Open it and use Start from text, or add steps.' };
+    }
+    const report = RULES.validate(row, rows.map(RULES.fromRow));
+    if (!report.valid) return { ...base, status: 'needs_fixing', reason: report.errors[0].message };
+    return { ...base, status: 'ready', reason: base.draft ? 'Steps are Garmin-ready. Publish it so the athlete can send it.' : 'Garmin-ready. The athlete can send it from the portal.' };
+  });
+  return {
+    ok: true, from: today, to: until, items,
+    counts: items.reduce((out, item) => { out[item.status] = (out[item.status] || 0) + 1; return out; }, { ready: 0, text_only: 0, needs_fixing: 0 }),
   };
 }
 

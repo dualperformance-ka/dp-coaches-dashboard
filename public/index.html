@@ -2298,7 +2298,7 @@ body[data-theme="light"] .theme-btn.active{background:rgba(255,255,255,.22);colo
 <link rel="stylesheet" href="/dashboard-theme-system.css?v=20260909-37">
 <link rel="stylesheet" href="/dashboard-desktop.css?v=20260906-17">
 <link rel="stylesheet" href="/triage.css?v=20261014-01">
-<link rel="stylesheet" href="/programming.css?v=20261106-03">
+<link rel="stylesheet" href="/programming.css?v=20261106-04">
 <link rel="stylesheet" href="/weekly-sport-targets.css?v=3">
 <link rel="stylesheet" href="/daily-macro-overrides.css?v=3">
 <link rel="stylesheet" href="/coach-parity.css?v=20260924-01">
@@ -5228,9 +5228,14 @@ async function deletePlanSession() {
   const delRow = _planRowsSB.find(r => r.id === _psEditingId);
   // A structured run may already be in the athlete's Garmin Connect calendar.
   // Deleting here does not reach Garmin, and it removes DP's delivery record.
-  const garminNote = delRow && delRow.prescription_mode === 'structured' && !/strength/i.test(delRow.session_type || '')
-    ? '\n\nIf the athlete already sent this run to Garmin, it stays in Garmin Connect. They need to delete it there.'
-    : '';
+  // Exact when the run's Garmin receipt loaded with the window; the general
+  // note only when it could not be checked.
+  const known = window.DPPlanSessionRun && typeof window.DPPlanSessionRun.garminWarning === 'function'
+    ? window.DPPlanSessionRun.garminWarning() : null;
+  const garminNote = known !== null ? known
+    : delRow && delRow.prescription_mode === 'structured' && !/strength/i.test(delRow.session_type || '')
+      ? '\n\nIf the athlete already sent this run to Garmin, it stays in Garmin Connect. They need to delete it there.'
+      : '';
   if (!confirm('Delete this planned session?' + garminNote)) return;
   try {
     await maPost({ action: 'plan_delete', id: _psEditingId });
@@ -14465,10 +14470,10 @@ document.getElementById('gen-btn').addEventListener('click', generateAI);
 <script src="/strava-activities.js?v=20261010-01" defer></script>
 <script src="/weekly-sport-targets.js?v=3" defer></script>
 <script src="/daily-macro-overrides.js?v=3" defer></script>
-<script src="/run-workout.js?v=4" defer></script>
-<script src="/run-builder.js?v=5" defer></script>
+<script src="/run-workout.js?v=5" defer></script>
+<script src="/run-builder.js?v=6" defer></script>
 <script src="/programming.js?v=5" defer></script>
-<script src="/plan-session-run.js?v=3" defer></script>
+<script src="/plan-session-run.js?v=4" defer></script>
 <!-- Analysis modules. ES modules so tests can import them directly; each also
      publishes itself on window for the classic-script render code. -->
 <script type="module" src="/run-analysis.js?v=20260906-17"></script>

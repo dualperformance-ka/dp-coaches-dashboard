@@ -11,6 +11,8 @@ import {
   materialiseSession,
   programmeHistory,
   readPrescription,
+  garminReadiness,
+  resetGarminReceipt,
   removeExercise,
   reorderExercises,
   replaceExercise,
@@ -961,6 +963,11 @@ async function handler(req, res) {
         return res.status(200).json({ ok: true, ...data });
       }
 
+      if (action === 'garmin_readiness') {
+        const coachRow = await resolveCoachIdentity(req, sb);
+        return res.status(200).json(await garminReadiness(req.query.code, sb, coachRow));
+      }
+
       if (action === 'programme_history') {
         const coachRow = await resolveCoachIdentity(req, sb);
         await assertAthleteAllowed(coachRow, req.query.code, sb);
@@ -1190,6 +1197,7 @@ async function handler(req, res) {
       runsteps_save: saveRunSteps,
       plan_save_run: saveRunSession,
       session_publish: setPublishState,
+      garmin_receipt_reset: resetGarminReceipt,
       split_save_from_session: saveSessionAsSplit,
       weekly_sport_target_save: saveWeeklySportTarget,
       weekly_sport_target_remove: removeWeeklySportTarget,

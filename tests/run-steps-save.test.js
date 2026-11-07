@@ -229,10 +229,14 @@ test('the coach read carries the text prescription for reference and the deliver
   assert.match(receiptCall.path, /select=state,scheduled_date,sent_at,updated_at&/, 'no Garmin ids or tokens are read');
 });
 
-test('delivery status distinguishes none, uncertain, sent and changed-since', () => {
+test('delivery status distinguishes none, needs-check, calendar-unconfirmed, sent and changed-since', () => {
   const s = session();
   assert.deepEqual(garminDeliveryStatus([], s, null, []), { delivery: 'none' });
-  assert.equal(garminDeliveryStatus([{ state: 'creating', updated_at: 'x' }], s, null, []).delivery, 'uncertain');
+  // A lost create needs a coach check; a lost calendar entry the athlete can finish.
+  assert.equal(garminDeliveryStatus([{ state: 'creating', updated_at: 'x' }], s, null, []).delivery, 'needs_check');
+  const unconfirmed = garminDeliveryStatus([{ state: 'scheduling', scheduled_date: '2026-11-12', updated_at: 'x' }], s, null, []);
+  assert.equal(unconfirmed.delivery, 'calendar_unconfirmed');assert.equal(unconfirmed.scheduledDate, '2026-11-12');
+  assert.equal(garminDeliveryStatus([{ state: 'retryable', updated_at: 'x' }], s, null, []).delivery, 'not_sent');
   const sent = [{ state: 'sent', sent_at: '2026-11-04T09:00:00.000Z', scheduled_date: '2026-11-12', updated_at: '2026-11-04T09:00:00.000Z' }];
   assert.equal(garminDeliveryStatus(sent, s, { updated_at: '2026-11-04T08:00:00+00:00' }, []).changedSince, false);
   assert.equal(garminDeliveryStatus(sent, s, { updated_at: '2026-11-04T08:00:00+00:00' }, [{ created_at: '2026-11-04T10:00:00+00:00' }]).changedSince, true);

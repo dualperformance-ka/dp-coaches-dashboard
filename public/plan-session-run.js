@@ -9,7 +9,8 @@
  *   - No steps: the window works exactly as before (text-only run, no Garmin).
  *   - Steps: Warm up / Intervals / Working pace / Rest / Cool down / Target
  *     pace are hidden and filled from the steps, so the portal card and the
- *     watch can never disagree. Text is never parsed into steps.
+ *     watch can never disagree. Text becomes steps only when the coach taps
+ *     Start from text, as a draft they check before saving.
  *   - Sending stays an athlete action: the athlete reviews the run in the
  *     portal and taps Send to Garmin.
  *
@@ -114,6 +115,12 @@
       apiPost: function (payload) { return maPost(payload); },
       toast: function (message, tone) { if (tone === 'bad') alert(message); },
       onChange: function () { syncText(); },
+      // Start from text reads what is in the window now, typed or saved.
+      legacyText: function () {
+        var out = { title: val('ps-name'), run_details: val('ps-details') };
+        Object.keys(TEXT_FIELDS).forEach(function (key) { out[key] = val(TEXT_FIELDS[key]); });
+        return out;
+      },
     };
   }
 
@@ -330,5 +337,70 @@
     };
   }
 
-  window.DPPlanSessionRun = { state: ctl, hasSteps: hasSteps };
+  // ── Garmin readiness: next 14 days ────────────────────────────────────────
+  // Which upcoming runs can reach the athlete's watch, by the same rules as the
+  // builder and the portal. One line above the week; open it for each run and
+  // the reason. Read-only; opening a run goes to the usual Plan Session window.
+  var READY_LABEL = { ready: 'Garmin-ready', text_only: 'Text only', needs_fixing: 'Needs fixing' };
+  var readiness = { code: null, at: 0, data: null, token: 0 };
+
+  function readinessHost() {
+    var host = el('prog-garmin-ready');
+    if (host) return host;
+    var meta = el('plan-week-meta');
+    if (!meta || !meta.parentNode) return null;
+    host = document.createElement('div');
+    host.id = 'prog-garmin-ready';
+    host.className = 'prog-garmin-ready';
+    meta.parentNode.insertBefore(host, meta.nextSibling);
+    return host;
+  }
+
+  function readinessHtml(data) {
+    var items = (data && data.items) || [];
+    if (!items.length) return '';
+    var c = data.counts || {};
+    var parts = [c.ready ? c.ready + ' ready' : '', c.text_only ? c.text_only + ' text only' : '', c.needs_fixing ? c.needs_fixing + ' need fixing' : ''].filter(Boolean);
+    return '<details class="pgr"><summary><strong>Garmin · next 14 days</strong> <span>' + escapeHtml(parts.join(' · ')) + '</span></summary><ul>' +
+      items.map(function (item) {
+        var day = new Date(item.date + 'T12:00:00').toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' });
+        return '<li class="pgr-' + escapeHtml(item.status) + '"><button type="button" data-open-session="' + escapeHtml(item.id) + '">' +
+          '<span class="pgr-day">' + escapeHtml(day) + '</span><span class="pgr-name">' + escapeHtml(item.title) + (item.draft ? ' <em>draft</em>' : '') + '</span>' +
+          '<span class="pgr-state">' + escapeHtml(READY_LABEL[item.status] || item.status) + '</span></button>' +
+          '<small>' + escapeHtml(item.reason) + '</small></li>';
+      }).join('') + '</ul></details>';
+  }
+
+  function renderReadiness(force) {
+    var host = readinessHost();
+    var code = typeof _progAthlete !== 'undefined' ? _progAthlete : '';
+    if (!host) return;
+    if (!code) { host.innerHTML = ''; return; }
+    if (!force && readiness.code === code && readiness.data && Date.now() - readiness.at < 60000) { host.innerHTML = readinessHtml(readiness.data); return; }
+    var token = ++readiness.token;
+    apiGet({ action: 'garmin_readiness', code: code }).then(function (data) {
+      if (token !== readiness.token) return;
+      readiness = { code: code, at: Date.now(), data: data, token: token };
+      var current = readinessHost();
+      if (current && (typeof _progAthlete === 'undefined' || _progAthlete === code)) current.innerHTML = readinessHtml(data);
+    }).catch(function () { if (token === readiness.token) { var h = readinessHost(); if (h) h.innerHTML = ''; } });
+  }
+
+  document.addEventListener('click', function (event) {
+    var button = event.target.closest && event.target.closest('#prog-garmin-ready [data-open-session]');
+    if (button && typeof window.openPlanSession === 'function') window.openPlanSession(button.getAttribute('data-open-session'));
+  });
+
+  wrap('renderPlanGrid', function () { renderReadiness(false); });
+  // A save, publish or delete changes readiness: refresh on the next render.
+  ['savePlanSession', 'deletePlanSession', 'closePlanSession'].forEach(function (name) { wrap(name, function () { readiness.at = 0; }); });
+
+  // The delete warning names Garmin only when this run's receipt says it
+  // reached Garmin Connect. null means the steps (and receipt) never loaded.
+  function garminWarning() {
+    if (!ctl.active || ctl.rowId !== editingId() || typeof B.garminWarning !== 'function') return null;
+    return B.garminWarning();
+  }
+
+  window.DPPlanSessionRun = { state: ctl, hasSteps: hasSteps, garminWarning: garminWarning, renderReadiness: renderReadiness, readinessHtml: readinessHtml };
 })();

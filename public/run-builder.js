@@ -83,6 +83,7 @@
     state.saved = serialise(state.steps);
     state.legacyRun = data.legacyRun || [];
     state.garmin = data.garmin || { delivery: 'none' };
+    state.draftNotes = null;
     state.converting = false;
     remember();
   }
@@ -182,6 +183,14 @@
   // offered on an empty builder, never applied over existing steps.
   function quickStart(kind) {
     if (state.steps.length) return;
+    if (kind === 'text') {
+      // Start from text: draft steps from this run's own text prescription.
+      // Pre-fill only; nothing is saved until the coach checks and saves.
+      var draft = R.fromLegacyRun(textSource());
+      state.draftNotes = draft.notes;
+      adoptSteps(draft.steps);
+      return;
+    }
     if (kind === 'intervals') {
       addStep('warmup');
       addRepeat();
@@ -189,6 +198,26 @@
     } else {
       addStep('run');
     }
+  }
+
+  // The run's text prescription: the Plan Session window's live text fields,
+  // else the session's saved text (readPrescription's legacyRun).
+  var TEXT_KEYS = ['warm_up', 'intervals', 'working_pace', 'rest', 'cool_down', 'target_pace', 'run_details'];
+  function textSource() {
+    if (state.ctx && typeof state.ctx.legacyText === 'function') return state.ctx.legacyText() || {};
+    var out = { title: state.session ? state.session.title : '' };
+    (state.legacyRun || []).forEach(function (field) { out[field.key] = field.value; });
+    return out;
+  }
+  function hasText() {
+    var source = textSource();
+    return TEXT_KEYS.some(function (key) { return String(source[key] == null ? '' : source[key]).trim(); });
+  }
+  // Fresh ids for draft steps, parents remapped.
+  function adoptSteps(steps) {
+    var idMap = {};
+    state.steps = (steps || []).map(function (step) { var copy = Object.assign({}, step, { id: newId() }); idMap[step.id] = copy.id; return copy; });
+    state.steps.forEach(function (step) { if (step.parent_step_id) step.parent_step_id = idMap[step.parent_step_id] || null; });
   }
 
   // ── Render ──────────────────────────────────────────────────────────────
@@ -315,17 +344,22 @@
     var numbers = R.numbering(state.steps);
     var top = R.childrenOf(state.steps, null);
     if (!top.length) {
+      state.draftNotes = null;
+      // Draft notes from text that produced no steps stay visible.
       return '<div class="rb-empty">' +
         '<p>' + (state.embedded
           ? 'No steps yet. Add them to send this run to Garmin; the warm-up, main set and cool-down text is then written from the steps. Leave it empty for a text-only run.'
           : 'No steps yet. Build the run the way the watch will run it.') + '</p>' +
         '<div class="rb-quick">' +
+          (hasText() ? '<button type="button" class="rx-btn" data-quick="text" title="Draft steps from this run’s warm-up, intervals, pace, rest and cool-down text. Check them before saving.">Start from text</button>' : '') +
           '<button type="button" class="rx-btn" data-quick="intervals">Warm-up · repeat block · cool-down</button>' +
           '<button type="button" class="rx-btn" data-quick="run">Single continuous run</button>' +
         '</div>' +
       '</div>';
     }
-    return top.map(function (step) {
+    var notes = state.draftNotes ? '<div class="ps-steps-draft rb-draft-notes" aria-live="polite"><div class="ps-draft-head">Steps drafted from this run’s text. Check every step before saving.</div>' +
+      (state.draftNotes.length ? '<ul>' + state.draftNotes.map(function (n) { return '<li>' + esc(n) + '</li>'; }).join('') + '</ul>' : '') + '</div>' : '';
+    return notes + top.map(function (step) {
       return step.step_type === 'repeat' ? renderRepeat(step, numbers, 1) : renderLeaf(step, numbers, false);
     }).join('');
   }
@@ -333,7 +367,7 @@
   function renderLegacy(open) {
     if (!state.legacyRun || !state.legacyRun.length) return '';
     return '<details class="rb-legacy"' + (open ? ' open' : '') + '>' +
-      '<summary>Text prescription <span>reference only · not copied · not changed</span></summary>' +
+      '<summary>Text prescription <span>reference · not changed until you save steps</span></summary>' +
       '<dl>' + state.legacyRun.map(function (row) {
         return '<dt>' + esc(row.label) + '</dt><dd>' + esc(row.value) + '</dd>';
       }).join('') + '</dl>' +
@@ -344,7 +378,7 @@
     return '' +
       '<div class="rb-convert">' +
         '<div class="rb-convert-title">This run is a text prescription</div>' +
-        '<p>The portal can only send structured runs to Garmin. Converting starts an empty step builder; nothing is read out of the text. When you save the steps, the athlete card’s text is written from them and replaces this text (you are asked first).</p>' +
+        '<p>The portal can only send structured runs to Garmin. Converting starts an empty step builder. <strong>Start from text</strong> there drafts steps from this text for you to check; nothing is read out of it otherwise. When you save the steps, the athlete card’s text is written from them and replaces this text (you are asked first).</p>' +
         '<p>' + (isPublished()
           ? 'This session is <strong>published</strong>, so the structured version reaches the athlete only when you choose <em>Review &amp; publish</em>.'
           : 'This session is a <strong>draft</strong>. Save the steps, then publish when ready.') + '</p>' +
@@ -446,10 +480,18 @@
     var g = state.garmin || {};
     var delivery = '';
     if (g.delivery === 'sent') {
-      delivery = 'Athlete sent this to Garmin Connect' + (g.sentAt ? ' on ' + fmtDate(g.sentAt) : '') +
-        (g.scheduledDate ? ' for ' + fmtDay(g.scheduledDate) : '') + '. That confirms Garmin Connect, not the watch.';
-      if (g.changedSince || dirty) delivery += ' <strong>Changes since then are not on Garmin</strong> — the athlete needs to send it again from the portal.';
-      if (g.plannedDateDiffers) delivery += ' <strong>The Garmin calendar date (' + esc(fmtDay(g.scheduledDate)) + ') no longer matches this run’s date</strong> — the athlete needs to send it again.';
+      var stale = g.changedSince || dirty || g.plannedDateDiffers;
+      delivery = '<strong>' + (stale ? 'Out of date in Garmin.' : 'Saved to Garmin Connect.') + '</strong> The athlete sent this' +
+        (g.scheduledDate ? ' for ' + esc(fmtDay(g.scheduledDate)) : '') + (g.sentAt ? ' on ' + fmtDate(g.sentAt) : '') +
+        '. That confirms their Garmin calendar, not their watch.';
+      if (g.changedSince || dirty) delivery += ' Changes since then are not on Garmin: the athlete needs to send it again from the portal.';
+      if (g.plannedDateDiffers) delivery += ' The Garmin calendar date (' + esc(fmtDay(g.scheduledDate)) + ') no longer matches this run’s date: the athlete needs to send it again.';
+    } else if (g.delivery === 'calendar_unconfirmed') {
+      delivery = '<strong>Calendar not confirmed, athlete can finish.</strong> The workout reached Garmin Connect but its calendar entry wasn’t confirmed. The athlete taps Send to Garmin again; DP checks their Garmin calendar first, so it won’t double up.';
+    } else if (g.delivery === 'needs_check') {
+      delivery = '<strong>Needs coach check.</strong> Garmin didn’t answer when this workout was created, so the portal blocks sending it again. Ask the athlete to look in Garmin Connect → Training & Planning → Workouts for “' + esc((state.session && state.session.title) || 'this run') +
+        '”. If it’s there, have them delete it (or keep it and add it to the calendar themselves, not both). Then clear the block so they can send once.' +
+        ' <button type="button" class="rx-btn rb-clear-garmin" data-garmin-reset="1">Clear the block</button>';
     } else if (g.delivery === 'uncertain') {
       delivery = '<strong>Last Garmin delivery is uncertain.</strong> The athlete should check Garmin Connect before sending again.';
     }
@@ -618,7 +660,8 @@
         return;
       }
       var quick = button.getAttribute('data-quick');
-      if (quick) { quickStart(quick); rerender(scope); return; }
+      if (quick) { quickStart(quick); rerender(scope); if (quick === 'text' && state.ctx && state.ctx.onChange) state.ctx.onChange(); return; }
+      if (button.getAttribute('data-garmin-reset')) { clearGarminBlock(scope); return; }
 
       var act = button.getAttribute('data-act');
       if (act) {
@@ -741,7 +784,7 @@
     if (!state.session) return;
     if (isPublished()) {
       if (isDirty() && !window.confirm('You have unsaved step changes. Moving to draft keeps the last saved version. Continue?')) return;
-      if (!window.confirm('Move “' + (state.session.title || 'this run') + '” to draft?\n\nIt disappears from the athlete’s portal. A workout they already sent stays in Garmin Connect until they delete it there.')) return;
+      if (!window.confirm('Move “' + (state.session.title || 'this run') + '” to draft?\n\nIt disappears from the athlete’s portal.' + garminWarning())) return;
       return publishState('draft');
     }
     // Draft → published. Unsaved edits are saved and published together, in
@@ -751,6 +794,31 @@
     if (!rep.valid) { var b = document.querySelector('#rb'); refresh(b ? b.parentElement : document); toast('Fix the highlighted issues before publishing.', 'bad'); return; }
     if (!window.confirm('Publish this run to ' + state.session.athlete_code + '?\n\nThey can then review it in the portal and tap Send to Garmin.')) return;
     return publishState('published');
+  }
+
+  // Said only when a receipt shows the run reached Garmin Connect.
+  function garminWarning() {
+    var g = state.garmin || {};
+    if (g.delivery === 'sent' || g.delivery === 'calendar_unconfirmed') {
+      return '\n\nThis run is in the athlete’s Garmin Connect calendar' + (g.scheduledDate ? ' for ' + fmtDay(g.scheduledDate) : '') + ' and will stay there. Ask them to delete it in Garmin Connect.';
+    }
+    if (g.delivery === 'needs_check' || g.delivery === 'uncertain') return '\n\nThis run may already be in the athlete’s Garmin Connect. Ask them to check and delete it there.';
+    return '';
+  }
+
+  // Coach reset for a delivery Garmin never confirmed. Only after the coach
+  // says they checked Garmin Connect; the server only touches 'creating'.
+  async function clearGarminBlock(scope) {
+    if (!state.sessionId || !state.ctx) return;
+    if (!window.confirm('Clear the Garmin block for “' + ((state.session && state.session.title) || 'this run') + '”?\n\nOnly do this once the athlete has checked Garmin Connect → Training & Planning → Workouts and deleted any copy of this workout. Their next Send to Garmin then creates exactly one.')) return;
+    try {
+      await state.ctx.apiPost({ action: 'garmin_receipt_reset', session_id: state.sessionId });
+      state.garmin = { delivery: 'not_sent' };
+      if (state.ctx.toast) state.ctx.toast('Cleared. The athlete can send it to Garmin again.', 'ok');
+      refresh(scope);
+    } catch (error) {
+      if (state.ctx.toast) state.ctx.toast(error.message || 'Could not clear it', 'bad');
+    }
   }
 
   async function publishState(next) {
@@ -793,6 +861,8 @@
     athletePreviewHtml: athletePreviewHtml,
     // Plan Session window.
     steps: function () { return state.steps; },
+    garmin: function () { return state.garmin || { delivery: 'none' }; },
+    garminWarning: function () { return garminWarning(); },
     report: function () { return report(); },
     isEmbedded: function () { return state.embedded; },
     setSession: function (patch) {
