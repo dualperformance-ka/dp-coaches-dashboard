@@ -1936,6 +1936,8 @@ body[data-theme="light"] .strava-command-bar{background:linear-gradient(135deg,r
 .strava-confirmed-list{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
 .strava-confirmed-item{font-family:var(--mono);font-size:9px;color:var(--text);padding:5px 8px;border:1px solid rgba(252,76,2,.24);border-radius:999px;background:rgba(252,76,2,.07)}
 .strava-source-chip{display:inline-flex;align-items:center;gap:4px;margin-left:6px;padding:2px 6px;border:1px solid rgba(252,76,2,.3);border-radius:999px;background:rgba(252,76,2,.09);color:#fc4c02;font-family:var(--mono);font-size:8px;font-weight:750;letter-spacing:.03em;text-transform:none;vertical-align:middle}
+/* Garmin-confirmed sessions: neutral, not Strava orange. */
+.strava-source-chip.is-garmin{border-color:rgba(146,210,237,.35);background:rgba(146,210,237,.09);color:#92d2ed}
 @media(max-width:640px){
   .strava-command-bar{align-items:flex-start;flex-direction:column;padding:12px}
   .strava-command-actions,.strava-sync-btn{width:100%}
@@ -6916,9 +6918,9 @@ function buildAll(weekly, sessions, body, nutrition, athleteDb = [], targets = [
     const sessionName = r.Session || '';
     const k = `${id}|${sessionName}|${_cat}|${ds}`;
     const _stravaConfirmed = r._stravaConfirmed === true ||
-      /^\s*matched from strava\b/i.test(String(r['Exercise Log'] || r.exerciseLog || ''));
+      /^\s*matched from (strava|garmin)\b/i.test(String(r['Exercise Log'] || r.exerciseLog || ''));
     if (!sessionMap[k]) {
-      sessionMap[k] = { ...r, _d: ds, _cat, _isRun, _isStr, _isDisc, _stravaConfirmed, _exercises: [], _swaps: {}, _structuredSets: [] };
+      sessionMap[k] = { ...r, _d: ds, _cat, _isRun, _isStr, _isDisc, _stravaConfirmed, _activitySource: r._activitySource || (/^\s*matched from garmin\b/i.test(String(r['Exercise Log'] || r.exerciseLog || '')) ? 'garmin' : null), _exercises: [], _swaps: {}, _structuredSets: [] };
     } else if (_stravaConfirmed) {
       sessionMap[k]._stravaConfirmed = true;
       if (!sessionMap[k]._stravaSummary && r._stravaSummary) sessionMap[k]._stravaSummary = r._stravaSummary;
@@ -8266,7 +8268,7 @@ function _peekLoggedHtml(ctx) {
     const plannedExs = s._isStr ? (splitForTitle(s.Session, athlete?.id)?.exercises || null) : null;
     const metrics = typed(s);
     return `<div class="sp-log">
-      <div class="sp-log-head">${esc(s.Session || s._cat || 'Session')}${s._stravaConfirmed ? '<span class="strava-source-chip">Confirmed via Strava</span>' : ''}</div>
+      <div class="sp-log-head">${esc(s.Session || s._cat || 'Session')}${s._stravaConfirmed ? (s._activitySource === 'garmin' ? '<span class="strava-source-chip is-garmin">Confirmed via Garmin</span>' : '<span class="strava-source-chip">Confirmed via Strava</span>') : ''}</div>
       ${metrics.length ? `<div class="sp-metrics">${metrics.map(m => `<span>${esc(m)}</span>`).join('')}</div>` : ''}
       ${s._isDisc ? `<div class="wd-sess-notes">${esc(exLog || s.Notes || '')}</div>` : renderExerciseLog(exLog, s._isRun, priorBests, plannedExs, s._swaps)}
       ${s.Notes && !s._isDisc ? `<div class="wd-sess-reflect"><span class="wd-reflect-lbl">Athlete note</span><span class="wd-reflect-txt">${esc(s.Notes)}</span></div>` : ''}
@@ -11175,7 +11177,9 @@ function buildFPCard(a, weekOffset = 0) {
           const cls = isRun ? 'run' : isStr ? 'str' : 'other';
           const catLabel = 'Completed ' + (isRun ? 'run' : isStr ? 'lift' : (esc(s._cat || 'session').toLowerCase()));
           const stravaSource = s._stravaConfirmed === true
-            ? '<span class="strava-source-chip">' + DP_ICON('dot') + ' Athlete confirmed via Strava</span>'
+            ? (s._activitySource === 'garmin'
+              ? '<span class="strava-source-chip is-garmin">' + DP_ICON('dot') + ' Athlete confirmed via Garmin</span>'
+              : '<span class="strava-source-chip">' + DP_ICON('dot') + ' Athlete confirmed via Strava</span>')
             : '';
           const rawName = s.Session || (s.Name || '').split('—').slice(1, -1).join('—').trim() || '';
           const exLog = s['Exercise Log'] || s.exerciseLog || s['Exercises'] || '';

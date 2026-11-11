@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import handler, { mapSession, sessionWasStravaConfirmed, submittedStravaSummary } from '../api/coach-data.js';
+import { readFileSync } from 'node:fs';
+import handler, { mapSession, sessionActivitySource, sessionWasStravaConfirmed, submittedStravaSummary } from '../api/coach-data.js';
 
 function responseRecorder() {
   return {
@@ -40,7 +41,9 @@ test('coach session mapping exposes only safe Strava confirmation provenance', (
   assert.equal(sessionWasStravaConfirmed(row), true);
   const mapped = mapSession(row);
   assert.equal(mapped._stravaConfirmed, true);
+  assert.equal(mapped._activitySource, 'strava');
   assert.deepEqual(submittedStravaSummary(row), {
+    source: 'Strava',
     type: 'Run',
     name: 'Easy Run',
     distance: '5km',
@@ -162,4 +165,39 @@ test('protected coach-data returns every dashboard data collection', async () =>
       else process.env[key] = value;
     });
   }
+});
+
+// Garmin is the portal's primary activity source since Nov 2026. A session it
+// completed must read as device-confirmed, labelled Garmin, not hand-logged.
+test('a Garmin-completed session is device-confirmed and labelled Garmin', () => {
+  const row = {
+    session_name: 'Easy Run', session_category: 'Run', distance_km: 5, duration_min: 31.2, pace: '6:13',
+    exercise_log: 'Matched from Garmin run | Distance: 5km | Moving time: 31.2min | Pace: 6:13',
+    raw_payload: { activitySource: 'garmin', garminActivityId: '21047282990', clientWriteId: 'garmin_g1' },
+  };
+  assert.equal(sessionActivitySource(row), 'garmin');
+  assert.equal(sessionWasStravaConfirmed(row), true);
+  const mapped = mapSession(row);
+  assert.equal(mapped._activitySource, 'garmin');
+  assert.equal(submittedStravaSummary(row).source, 'Garmin');
+  assert.equal(submittedStravaSummary(row).distance, '5km');
+});
+
+test('a Strava-completed session moved onto Garmin reads as Garmin', () => {
+  // The portal keeps the original strava_ clientWriteId when it moves a session
+  // to Garmin's copy, so provenance comes from the payload, not the id.
+  const row = { exercise_log: 'Matched from Garmin run | Distance: 5km', raw_payload: { activitySource: 'garmin', clientWriteId: 'strava_111' } };
+  assert.equal(sessionActivitySource(row), 'garmin');
+});
+
+test('hand-logged sessions are neither', () => {
+  assert.equal(sessionActivitySource({ exercise_log: 'Easy 5k, felt good', raw_payload: {} }), null);
+  assert.equal(sessionWasStravaConfirmed({ exercise_log: '', raw_payload: { stravaActivityId: '' } }), false);
+});
+
+test('the dashboard labels Garmin-confirmed sessions as Garmin', () => {
+  const html = readFileSync(new URL('../public/index.html', import.meta.url), 'utf8');
+  assert.match(html, /matched from \(strava\|garmin\)/);
+  assert.match(html, /Confirmed via Garmin/);
+  assert.match(html, /Athlete confirmed via Garmin/);
 });

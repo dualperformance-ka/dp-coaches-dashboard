@@ -309,14 +309,26 @@ function mapNutrition(row) {
   };
 }
 
-export function sessionWasStravaConfirmed(row) {
-  const payload = row?.raw_payload;
-  const sourceId = payload && typeof payload === 'object'
-    ? (payload.stravaActivityId ?? payload.strava_activity_id)
-    : null;
+/**
+ * Which device service completed a portal session: 'garmin', 'strava', or null
+ * for a hand-logged one. Garmin is the primary source since Nov 2026 (the
+ * portal sends activitySource + garminActivityId and "Matched from Garmin");
+ * Strava is the fallback and every older device-matched log.
+ */
+export function sessionActivitySource(row) {
+  const payload = row?.raw_payload && typeof row.raw_payload === 'object' ? row.raw_payload : {};
   const log = String(row?.exercise_log || '');
-  return sourceId !== null && sourceId !== undefined && String(sourceId).trim() !== '' ||
-    /^\s*matched from strava\b/i.test(log);
+  const present = (value) => value !== null && value !== undefined && String(value).trim() !== '';
+  if (String(payload.activitySource || '').toLowerCase() === 'garmin' || present(payload.garminActivityId) ||
+    /^\s*matched from garmin\b/i.test(log)) return 'garmin';
+  if (present(payload.stravaActivityId ?? payload.strava_activity_id) || /^\s*matched from strava\b/i.test(log)) return 'strava';
+  return null;
+}
+
+// Kept under its old name for the callers and the _stravaConfirmed field: it
+// now means "completed by a device recording", Garmin or Strava.
+export function sessionWasStravaConfirmed(row) {
+  return sessionActivitySource(row) !== null;
 }
 
 export function submittedStravaSummary(row) {
@@ -335,9 +347,11 @@ export function submittedStravaSummary(row) {
     }
   });
 
+  const source = sessionActivitySource(row) === 'garmin' ? 'Garmin' : 'Strava';
   return {
+    source,
     type: row.session_category || 'Run',
-    name: row.session_name || 'Strava activity',
+    name: row.session_name || source + ' activity',
     distance: row.distance_km != null ? `${row.distance_km}km` : (fields.distance || ''),
     movingTime: row.duration_min != null ? `${row.duration_min}min` : (fields['moving time'] || ''),
     pace: row.pace || fields.pace || '',
@@ -413,6 +427,7 @@ export function mapSession(row) {
     // Safe coach-facing provenance only. Raw Strava payloads, activity ids,
     // tokens, routes and activity detail remain server-side/athlete-only.
     _stravaConfirmed: sessionWasStravaConfirmed(row),
+    _activitySource: sessionActivitySource(row),
     _stravaSummary: submittedStravaSummary(row),
     _clientWriteId: row.client_write_id,
     _source: 'portal_supabase',
